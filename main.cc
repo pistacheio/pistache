@@ -1,21 +1,22 @@
-#include "listener.h"
 #include "net.h"
+#include "http.h"
 #include <iostream>
 #include <cstring>
 
 using namespace std;
 
-int main() {
-    Net::Address addr(Net::Ipv4::any(), 9080);
+int main(int argc, char *argv[]) {
+    Net::Port port(9080);
 
-    Net::Tcp::Listener listener(addr);
-    if (listener.bind()) {
-        cout << "Now listening on " << addr.host() << " " << addr.port() << endl;
-        listener.run();
-    } 
-    else {
-        cout << "Failed to listen lol" << endl;
-        cout << "errno = " << strerror(errno) << endl;
+    if (argc == 2) {
+        port = std::stol(argv[1]);
     }
 
+    Net::Address addr(Net::Ipv4::any(), port);
+    static constexpr size_t Workers = 4;
+
+    cout << "Cores = " << hardware_concurrency() << endl;
+
+    Net::Http::Server server(addr);
+    server.serve();
 }
