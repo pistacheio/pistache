@@ -6,8 +6,11 @@
 
 #pragma once
 
+#include <type_traits>
+#include <stdexcept>
 #include "listener.h"
 #include "net.h"
+#include "http_headers.h"
 
 namespace Net {
 
@@ -78,6 +81,11 @@ enum class Code {
 #undef CODE
 };
 
+enum class Version {
+    Http10, // HTTP/1.0
+    Http11 // HTTP/1.1
+};
+
 const char* methodString(Method method);
 const char* codeString(Code code);
 
@@ -85,7 +93,9 @@ const char* codeString(Code code);
 class Message {
 public:
     Message();
-    std::vector<std::pair<std::string, std::string>> headers;
+    Version version;
+
+    Headers headers;
     std::string body;
 };
 
@@ -101,17 +111,24 @@ public:
 // 6. Response
 class Response : public Message {
 public:
+    Response(int code, std::string body);
     Response(Code code, std::string body);
 
     void writeTo(Tcp::Peer& peer);
+    std::string mimeType;
 
 private:
-    Code code_;
+    int code_;
 };
 
 namespace Private {
 
+    struct ParsingError : public std::runtime_error {
+        ParsingError(const char* msg) : std::runtime_error(msg) { }
+    };
+
     struct Parser {
+
         Parser(const char* buffer, size_t len)
             : buffer(buffer)
             , len(len)
@@ -133,8 +150,50 @@ namespace Private {
 
         char next() const;
     private:
+        void raise(const char* msg) const;
         ssize_t contentLength;
         Request request;
+    };
+
+    struct Writer {
+        Writer(char* buffer, size_t len) 
+            : buf(buffer)
+            , len(len)
+        { }
+
+        ssize_t writeRaw(const void* data, size_t len);
+        ssize_t writeString(const char* str);
+
+        template<typename T>
+        typename std::enable_if<
+                     std::is_integral<T>::value, ssize_t
+                  >::type
+        writeInt(T value) {
+            auto str = std::to_string(value);
+            return writeRaw(str.c_str(), str.size());
+        }
+
+        ssize_t writeChar(char c) {
+            *buf++ = c;
+            return 0;
+        }
+
+        ssize_t writeHeader(const char* name, const char* value);
+
+        template<typename T>
+        typename std::enable_if<
+                    std::is_arithmetic<T>::value, ssize_t
+                 >::type
+        writeHeader(const char* name, T value) {
+            auto str = std::to_string(value);
+            return writeHeader(name, str.c_str());
+        }
+
+        char *cursor() const { return buf; }
+
+    private:
+        char* buf;
+        size_t len;
     };
 
 }

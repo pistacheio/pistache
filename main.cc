@@ -1,6 +1,7 @@
 #include "net.h"
 #include "peer.h"
 #include "http.h"
+#include "http_headers.h"
 #include <iostream>
 #include <cstring>
 
@@ -8,14 +9,15 @@ using namespace std;
 
 class MyHandler : public Net::Http::Handler {
     void onRequest(const Net::Http::Request& req, Net::Tcp::Peer& peer) {
-        cout << "Received " << methodString(req.method) << " request on " << req.resource << endl;
-
         if (req.resource == "/ping") {
             if (req.method == Net::Http::Method::Get) {
-                cout << "PONG" << endl;
+
+                auto host = req.headers.getHeader<Net::Http::Host>();
+                cout << "Host = " << host->host() << endl;
 
                 Net::Http::Response response(Net::Http::Code::Ok, "PONG");
                 response.writeTo(peer);
+
             }
         }
     }

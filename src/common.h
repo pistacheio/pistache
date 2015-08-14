@@ -9,6 +9,8 @@
 #include <sstream>
 #include <cstdio>
 #include <cassert>
+#include <cstring>
+#include <stdexcept>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -17,9 +19,15 @@
     do { \
         auto ret = __VA_ARGS__; \
         if (ret < 0) { \
-            perror(#__VA_ARGS__); \
-            cerr << gai_strerror(ret) << endl; \
-            return false; \
+            const char* str = #__VA_ARGS__; \
+            std::ostringstream oss; \
+            oss << str << ": "; \
+            if (errno == 0) { \
+                oss << gai_strerror(ret); \
+            } else { \
+                oss << strerror(errno); \
+            } \
+            throw std::runtime_error(oss.str()); \
         } \
     } while (0)
 
@@ -35,6 +43,8 @@
         return ret; \
     }(); \
     (void) 0
+
+#define unreachable() __builtin_unreachable()
 
 namespace Const {
 

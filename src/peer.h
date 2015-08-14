@@ -18,7 +18,7 @@ namespace Tcp {
 class Peer {
 public:
     Peer();
-    Peer(const Address& addr, const std::string& hostname);
+    Peer(const Address& addr);
 
     Address address() const;
     std::string hostname() const;
@@ -28,7 +28,7 @@ public:
 
 private:
     Address addr;
-    std::string host;
+    std::string hostname_;
     Fd fd_;
 };
 

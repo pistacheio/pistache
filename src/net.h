@@ -8,6 +8,15 @@
 #include <string>
 #include <sys/socket.h>
 
+#ifndef _KERNEL_FASTOPEN
+#define _KERNEL_FASTOPEN
+
+/* conditional define for TCP_FASTOPEN */
+#ifndef TCP_FASTOPEN
+#define TCP_FASTOPEN   23
+#endif
+#endif
+
 namespace Net {
 
 class Port {

@@ -17,9 +17,8 @@ Peer::Peer()
     : fd_(-1)
 { }
 
-Peer::Peer(const Address& addr, const string& host)
+Peer::Peer(const Address& addr)
     : addr(addr)
-    , host(host)
     , fd_(-1)
 { }
 
@@ -30,7 +29,7 @@ Peer::address() const {
 
 string
 Peer::hostname() const {
-    return host;
+    return hostname_;
 }
 
 void

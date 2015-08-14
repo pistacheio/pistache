@@ -8,9 +8,11 @@
 #include <sys/socket.h>
 #include <unistd.h> 
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/epoll.h>
+#include <signal.h>
 #include <cassert>
 #include <cstring>
 #include "listener.h"
@@ -24,24 +26,29 @@ namespace Net {
 
 namespace Tcp {
 
+namespace {
+    volatile sig_atomic_t g_listen_fd = -1;
+
+    void handle_sigint(int) {
+        if (g_listen_fd != -1) {
+            close(g_listen_fd);
+            g_listen_fd = -1;
+        }
+    }
+}
+
+using Polling::NotifyOn;
+
 struct Message {
     virtual ~Message() { }
 
-    enum class Type { NewPeer, Shutdown };
+    enum class Type { Shutdown };
 
     virtual Type type() const = 0;
 };
 
-struct PeerMessage : public Message {
-    PeerMessage(const std::shared_ptr<Peer>& peer)
-        : peer_(peer)
-    { }
-
-    Type type() const { return Type::NewPeer; }
-    std::shared_ptr<Peer> peer() const { return peer_; }
-
-private:
-    std::shared_ptr<Peer> peer_;
+struct ShutdownMessage : public Message {
+    Type type() const { return Type::Shutdown; }
 };
 
 template<typename To>
@@ -50,9 +57,31 @@ To *message_cast(const std::unique_ptr<Message>& from)
     return static_cast<To *>(from.get());
 }
 
+void setSocketOptions(Fd fd, Flags<Options> options) {
+    if (options.hasFlag(Options::ReuseAddr)) {
+        int one = 1;
+        TRY(::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof (one)));
+    }
+
+    if (options.hasFlag(Options::Linger)) {
+        struct linger opt;
+        opt.l_onoff = 1;
+        opt.l_linger = 1;
+        TRY(::setsockopt(fd, SOL_SOCKET, SO_LINGER, &opt, sizeof (opt)));
+    }
+
+    if (options.hasFlag(Options::FastOpen)) {
+        int hint = 5;
+        TRY(::setsockopt(fd, SOL_TCP, TCP_FASTOPEN, &hint, sizeof (hint)));
+    }
+    if (options.hasFlag(Options::NoDelay)) {
+        int one = 1;
+        TRY(::setsockopt(fd, SOL_TCP, TCP_NODELAY, &one, sizeof (one)));
+    }
+
+}
 
 IoWorker::IoWorker() {
-    epoll_fd = TRY_RET(epoll_create(128));
 }
 
 IoWorker::~IoWorker() {
@@ -62,8 +91,10 @@ IoWorker::~IoWorker() {
 }
 
 void
-IoWorker::start(const std::shared_ptr<Handler>& handler) {
+IoWorker::start(const std::shared_ptr<Handler>& handler, Flags<Options> options) {
     handler_ = handler;
+    options_ = options;
+
     thread.reset(new std::thread([this]() {
         this->run();
     }));
@@ -72,6 +103,7 @@ IoWorker::start(const std::shared_ptr<Handler>& handler) {
 std::shared_ptr<Peer>
 IoWorker::getPeer(Fd fd) const
 {
+    std::unique_lock<std::mutex> guard(peersMutex);
     auto it = peers.find(fd);
     if (it == std::end(peers))
     {
@@ -80,6 +112,11 @@ IoWorker::getPeer(Fd fd) const
     return it->second;
 }
 
+std::shared_ptr<Peer>
+IoWorker::getPeer(Polling::Tag tag) const
+{
+    return getPeer(tag.value());
+}
 
 void
 IoWorker::handleIncoming(const std::shared_ptr<Peer>& peer) {
@@ -97,14 +134,22 @@ IoWorker::handleIncoming(const std::shared_ptr<Peer>& peer) {
         bytes = recv(fd, buffer + totalBytes, Const::MaxBuffer - totalBytes, 0);
         if (bytes == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                handler_->onInput(buffer, totalBytes, *peer);
+                if (totalBytes > 0) {
+                    handler_->onInput(buffer, totalBytes, *peer);
+                }
             } else {
-                throw std::runtime_error(strerror(errno));
+                if (errno == ECONNRESET) {
+                    handler_->onDisconnection(peer);
+                    close(fd);
+                }
+                else {
+                    throw std::runtime_error(strerror(errno));
+                }
             }
             break;
         }
         else if (bytes == 0) {
-            cout << "Peer " << *peer << " has disconnected" << endl;
+            handler_->onDisconnection(peer);
             close(fd);
             break;
         }
@@ -123,47 +168,51 @@ IoWorker::handleIncoming(const std::shared_ptr<Peer>& peer) {
 void
 IoWorker::handleNewPeer(const std::shared_ptr<Peer>& peer)
 {
-    std::cout << "New peer: " << *peer << std::endl;
     int fd = peer->fd();
+    {
+        std::unique_lock<std::mutex> guard(peersMutex);
+        peers.insert(std::make_pair(fd, peer));
+    }
 
-    struct epoll_event event;
-    event.events = EPOLLIN;
-    event.data.fd = fd;
-
-    epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &event);
-    peers.insert(std::make_pair(fd, peer));
+    handler_->onConnection(peer);
+    poller.addFd(fd, NotifyOn::Read, Polling::Tag(fd), Polling::Mode::Edge);
 }
 
 
 void
 IoWorker::run() {
-    struct epoll_event events[Const::MaxEvents];
+
+    mailbox.bind(poller);
 
     for (;;) {
+        std::vector<Polling::Event> events;
+
         int ready_fds;
-        switch(ready_fds = epoll_wait(epoll_fd, events, Const::MaxEvents, 100)) {
+        switch(ready_fds = poller.poll(events, 32, std::chrono::milliseconds(0))) {
         case -1:
             break;
         case 0:
-            if (!mailbox.isEmpty()) {
-                std::unique_ptr<Message> msg(mailbox.clear());
-                if (msg->type() == Message::Type::NewPeer) {
-                    auto peer_msg = message_cast<PeerMessage>(msg);
-
-                    handleNewPeer(peer_msg->peer());
-                }
-
-            }
             break;
         default:
-            for (int i = 0; i < ready_fds; ++i) {
-                const struct epoll_event *event = events + i;
-                handleIncoming(getPeer(event->data.fd));
+            for (const auto& event: events) {
+                if (event.tag == mailbox.tag()) {
+                    std::unique_ptr<Message> msg(mailbox.clear());
+                    if (msg->type() == Message::Type::Shutdown) {
+                        return;
+                    }
+                } else {
+                    if (event.flags.hasFlag(NotifyOn::Read)) {
+                        handleIncoming(getPeer(event.tag));
+                    }
+                }
             }
             break;
-
         }
     }
+}
+
+void
+IoWorker::handleMailbox() {
 }
 
 Handler::Handler()
@@ -173,11 +222,11 @@ Handler::~Handler()
 { }
 
 void
-Handler::onConnection() {
+Handler::onConnection(const std::shared_ptr<Peer>& peer) {
 }
 
 void
-Handler::onDisconnection() {
+Handler::onDisconnection(const std::shared_ptr<Peer>& peer) {
 }
 
 Listener::Listener()
@@ -192,10 +241,18 @@ Listener::Listener(const Address& address)
 
 
 void
-Listener::init(size_t workers)
+Listener::init(size_t workers, Flags<Options> options)
 {
     if (workers > hardware_concurrency()) {
         // Log::warning() << "More workers than available cores"
+    }
+
+    options_ = options;
+
+    if (options_.hasFlag(Options::InstallSignalHandler)) {
+        if (signal(SIGINT, handle_sigint) == SIG_ERR) {
+            throw std::runtime_error("Could not install signal handler");
+        }
     }
 
     for (size_t i = 0; i < workers; ++i) {
@@ -250,6 +307,8 @@ Listener::bind(const Address& address) {
         fd = ::socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
         if (fd < 0) continue;
 
+        setSocketOptions(fd, options_);
+
         if (::bind(fd, addr->ai_addr, addr->ai_addrlen) < 0) {
             close(fd);
             continue;
@@ -258,10 +317,12 @@ Listener::bind(const Address& address) {
         TRY(::listen(fd, Const::MaxBacklog));
     }
 
+
     listen_fd = fd;
+    g_listen_fd = fd;
 
     for (auto& io: ioGroup) {
-        io->start(handler_);
+        io->start(handler_, options_);
     }
     
     return true;
@@ -272,20 +333,31 @@ Listener::run() {
     for (;;) {
         struct sockaddr_in peer_addr;
         socklen_t peer_addr_len = sizeof(peer_addr);
-        int client_fd = TRY_RET(::accept(listen_fd, (struct sockaddr *)&peer_addr, &peer_addr_len));
+        int client_fd = ::accept(listen_fd, (struct sockaddr *)&peer_addr, &peer_addr_len);
+        if (client_fd < 0) {
+            if (g_listen_fd == -1) {
+                cout << "SIGINT Signal received, shutdowning !" << endl;
+                shutdown();
+                break;
+
+            } else {
+                throw std::runtime_error(strerror(errno));
+            }
+        }
 
         make_non_blocking(client_fd);
 
-        char peer_host[NI_MAXHOST];
+        auto peer = make_shared<Peer>(Address::fromUnix((struct sockaddr *)&peer_addr));
+        peer->associateFd(client_fd);
 
-        if (getnameinfo((struct sockaddr *)&peer_addr, peer_addr_len, peer_host, NI_MAXHOST, nullptr, 0, 0) == 0) {
-            Address addr = Address::fromUnix((struct sockaddr *)&peer_addr);
-            auto peer = make_shared<Peer>(addr, peer_host);
-            peer->associateFd(client_fd);
+        dispatchPeer(peer);
+    }
+}
 
-            dispatchPeer(peer);
-        }
-
+void
+Listener::shutdown() {
+    for (auto &worker: ioGroup) {
+        worker->mailbox.post(new ShutdownMessage());
     }
 }
 
@@ -294,33 +366,22 @@ Listener::address() const {
     return addr_;
 }
 
+Options
+Listener::options() const {
+    return options_;
+}
 
 void
 Listener::dispatchPeer(const std::shared_ptr<Peer>& peer) {
     const size_t workers = ioGroup.size();
-    size_t start = peer->fd() % workers;
+    size_t worker = peer->fd() % workers;
 
-    /* Find the first available worker */
-    size_t current = start;
-    for (;;) {
-        auto& mailbox = ioGroup[current]->mailbox;
+    ioGroup[worker]->handleNewPeer(peer);
 
-        if (mailbox.isEmpty()) {
-            auto message = new PeerMessage(peer);
+}
 
-            auto *old = mailbox.post(message);
-            assert(old == nullptr);
-            return;
-        }
-
-        current = (current + 1) % workers;
-        if (current == start) {
-            break;
-        } 
-    }
-
-    /* We did not find any available worker, what do we do ? */
-
+void
+Listener::handleSigint(int) {
 }
 
 } // namespace Tcp

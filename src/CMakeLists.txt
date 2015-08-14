@@ -5,6 +5,8 @@ set(SOURCE_FILES
     os.cc
     peer.cc
     http.cc
+    http_header.cc
+    http_headers.cc
 )
 
 add_library(net ${SOURCE_FILES})
