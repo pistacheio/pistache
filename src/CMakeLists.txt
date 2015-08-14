@@ -2,6 +2,9 @@ set(SOURCE_FILES
     listener.cc
     net.cc
     peer.cc
+    os.cc
+    peer.cc
+    http.cc
 )
 
 add_library(net ${SOURCE_FILES})

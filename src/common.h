@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <sstream>
 #include <cstdio>
 #include <cassert>
 #include <sys/types.h>
@@ -26,8 +27,10 @@
     [&]() { \
         auto ret = __VA_ARGS__; \
         if (ret < 0) { \
-            perror(#__VA_ARGS__); \
-            throw std::runtime_error(#__VA_ARGS__); \
+            const char *str = #__VA_ARGS__; \
+            std::ostringstream oss; \
+            oss << str << ": " << strerror(errno); \
+            throw std::runtime_error(oss.str()); \
         } \
         return ret; \
     }(); \

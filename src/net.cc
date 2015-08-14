@@ -9,7 +9,6 @@
 #include <stdexcept>
 #include <limits>
 #include <cstring>
-#include <fcntl.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
@@ -17,16 +16,19 @@ using namespace std;
 
 namespace Net {
 
-bool make_non_blocking(int sfd)
-{
-    int flags = fcntl (sfd, F_GETFL, 0);
-    if (flags == -1) return false; 
+Port::Port(uint16_t port)
+    : port(port)
+{ }
 
-    flags |= O_NONBLOCK;
-    int ret = fcntl (sfd, F_SETFL, flags);
-    if (ret == -1) return false;
+bool
+Port::isReserved() const {
+    return port < 1024;
+}
 
-    return true;
+bool
+Port::isUsed() const {
+    throw std::runtime_error("Unimplemented");
+    return false;
 }
 
 Ipv4::Ipv4(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
@@ -36,11 +38,13 @@ Ipv4::Ipv4(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
     , d(d)
 { }
 
-Ipv4 Ipv4::any() {
+Ipv4
+Ipv4::any() {
     return Ipv4(0, 0, 0, 0);
 }
 
-std::string Ipv4::toString() const {
+std::string
+Ipv4::toString() const {
     static constexpr size_t MaxSize = sizeof("255") * 4 + 3 + 1; /* 4 * 255 + 3 * dot + \0 */
 
     char buff[MaxSize];
@@ -88,6 +92,7 @@ Address
 Address::fromUnix(struct sockaddr* addr) {
     struct sockaddr_in *in_addr = reinterpret_cast<struct sockaddr_in *>(addr);
     std::string host = TRY_RET(inet_ntoa(in_addr->sin_addr));
+
     int port = in_addr->sin_port;
 
     return Address(std::move(host), port);

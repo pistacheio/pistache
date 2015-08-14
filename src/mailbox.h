@@ -13,6 +13,10 @@
 template<typename T>
 class Mailbox {
 public:
+    Mailbox() {
+        data.store(nullptr);
+    }
+
     const T *get() const {
         if (isEmpty()) {
             throw std::runtime_error("Can not retrieve mail from empty mailbox");

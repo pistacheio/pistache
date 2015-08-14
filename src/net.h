@@ -10,9 +10,18 @@
 
 namespace Net {
 
-typedef uint16_t Port;
+class Port {
+public:
+    Port(uint16_t port = 0);
 
-bool make_non_blocking(int fd);
+    operator uint16_t() const { return port; }
+
+    bool isReserved() const;
+    bool isUsed() const;
+
+private:
+    uint16_t port;
+};
 
 class Ipv4 {
 public:

@@ -7,8 +7,10 @@
 #include <cstring>
 #include <iostream>
 #include <stdexcept>
+#include "common.h"
 #include "http.h"
 #include "net.h"
+#include "peer.h"
 
 using namespace std;
 
@@ -16,10 +18,11 @@ namespace Net {
 
 namespace Http {
 
-namespace Private {
+static constexpr char CR = 0xD;
+static constexpr char LF = 0xA;
+static constexpr char CRLF[] = {CR, LF};
 
-    static constexpr char CR = 0xD;
-    static constexpr char LF = 0xA;
+namespace Private {
 
     void
     Parser::advance(size_t count) {
@@ -32,7 +35,25 @@ namespace Private {
 
     bool
     Parser::eol() const {
-        return buffer[cursor] == CR && buffer[cursor + 1] == LF;
+        return buffer[cursor] == CR && next() == LF;
+    }
+
+    char
+    Parser::next() const {
+        if (cursor + 1 >= len) {
+            throw std::runtime_error("Early EOF");
+        }
+
+        return buffer[cursor + 1];
+    }
+
+    Request
+    Parser::expectRequest() {
+        expectRequestLine();
+        expectHeaders();
+        expectBody();
+
+        return request;
     }
 
     // 5.1 Request-Line
@@ -99,6 +120,7 @@ namespace Private {
     void
     Parser::expectHeaders() {
         while (!eol()) {
+            // Read the header name
             size_t start = cursor;
 
             while (buffer[cursor] != ':')
@@ -111,51 +133,135 @@ namespace Private {
             // Skip the ':'
             advance(1);
 
+            // Read the header value
             start = cursor;
             while (!eol())
                 advance(1);
 
             std::string fieldValue = std::string(buffer + start, cursor - start);
 
-            advance(2);
+            if (fieldName == "Content-Length") {
+                size_t pos;
+                contentLength = std::stol(fieldValue, &pos);
+            }
+
             request.headers.push_back(make_pair(std::move(fieldName), std::move(fieldValue)));
+
+
+            // CRLF
+            advance(2);
+        }
+    }
+
+    void
+    Parser::expectBody() {
+        if (contentLength > 0) {
+            advance(2); // CRLF
+
+            if (cursor + contentLength > len) {
+                throw std::runtime_error("Corrupted HTTP Body");
+            }
+
+            request.body = std::string(buffer + cursor, contentLength);
         }
     }
 
 
 } // namespace Private
 
-Request::Request()
-{ }
-
-
 const char* methodString(Method method)
 {
-    static constexpr size_t MethodsCount
-        = sizeof priv__methodStrings / sizeof *priv__methodStrings;
+    switch (method) {
+#define METHOD(name, str) \
+    case Method::name: \
+        return str;
+    HTTP_METHODS
+#undef METHOD
+    }
 
-    int index = static_cast<int>(method);
-    if (index >= MethodsCount)
-        throw std::logic_error("Invalid method index");
+    return nullptr;
+}
 
-    return priv__methodStrings[index];
+const char* codeString(Code code)
+{
+    switch (code) {
+#define CODE(_, name, str) \
+    case Code::name: \
+         return str;
+    STATUS_CODES
+#undef CODE
+    }
+
+    return nullptr;
+}
+
+Message::Message()
+{ }
+
+Request::Request()
+    : Message()
+{ }
+
+Response::Response(Code code, std::string body)
+    : Message()
+{
+    this->body = std::move(body);
+    code_ = code;
 }
 
 void
-Handler::onInput(const char* buffer, size_t len) {
-    cout << "Received http request " << string(buffer, len) << endl;
+Response::writeTo(Tcp::Peer& peer)
+{
+    int fd = peer.fd();
+
+    char buffer[Const::MaxBuffer];
+    std::memset(buffer, 0, Const::MaxBuffer);
+    char *p_buf = buffer;
+
+    auto writeRaw = [&](const void* data, size_t len) {
+        p_buf = static_cast<char *>(memcpy(p_buf, data, len));
+        p_buf += len;
+    };
+
+    auto writeString = [&](const char* str) {
+        const size_t len = std::strlen(str);
+        writeRaw(str, std::strlen(str));
+    };
+
+    auto writeInt = [&](uint64_t value) {
+        auto str = std::to_string(value);
+        writeRaw(str.c_str(), str.size());
+    };
+
+    auto writeChar = [&](char c) {
+        *p_buf++ = c;
+    };
+
+    writeString("HTTP/1.1 ");
+    writeInt(static_cast<int>(code_));
+    writeChar(' ');
+    writeString(codeString(code_));
+    writeRaw(CRLF, 2);
+
+    writeString("Content-Length:");
+    writeInt(body.size());
+    writeRaw(CRLF, 2);
+
+    writeRaw(CRLF, 2);
+    writeString(body.c_str());
+
+    const size_t len = p_buf - buffer;
+
+    ssize_t bytes = send(fd, buffer, len, 0);
+    cout << bytes << " bytes sent" << endl;
+}
+
+void
+Handler::onInput(const char* buffer, size_t len, Tcp::Peer& peer) {
     Private::Parser parser(buffer, len);
-    parser.expectRequestLine();
-    parser.expectHeaders();
+    auto request = parser.expectRequest();
 
-    auto req = parser.request;
-
-    cout << "method = " << methodString(req.method) << endl;
-    cout << "resource = " << req.resource << endl;
-    cout << "headers = " << endl;
-    for (const auto& header: req.headers) {
-        cout << string(' ', 4) << header.first << " -> " << header.second << endl;
-    }
+    onRequest(request, peer);
 }
 
 void
@@ -170,10 +276,18 @@ Server::Server(const Net::Address& addr)
 { }
 
 void
+Server::setHandler(const std::shared_ptr<Handler>& handler) {
+    handler_ = handler;
+}
+
+void
 Server::serve()
 {
+    if (!handler_)
+        throw std::runtime_error("Must call setHandler() prior to serve()");
+
     listener.init(4);
-    listener.setHandler(make_shared<Handler>());
+    listener.setHandler(handler_);
 
     if (listener.bind()) { 
         const auto& addr = listener.address();

@@ -16,12 +16,40 @@
 #include "listener.h"
 #include "peer.h"
 #include "common.h"
+#include "os.h"
 
 using namespace std;
 
 namespace Net {
 
 namespace Tcp {
+
+struct Message {
+    virtual ~Message() { }
+
+    enum class Type { NewPeer, Shutdown };
+
+    virtual Type type() const = 0;
+};
+
+struct PeerMessage : public Message {
+    PeerMessage(const std::shared_ptr<Peer>& peer)
+        : peer_(peer)
+    { }
+
+    Type type() const { return Type::NewPeer; }
+    std::shared_ptr<Peer> peer() const { return peer_; }
+
+private:
+    std::shared_ptr<Peer> peer_;
+};
+
+template<typename To>
+To *message_cast(const std::unique_ptr<Message>& from)
+{
+    return static_cast<To *>(from.get());
+}
+
 
 IoWorker::IoWorker() {
     epoll_fd = TRY_RET(epoll_create(128));
@@ -34,20 +62,33 @@ IoWorker::~IoWorker() {
 }
 
 void
-IoWorker::start() {
+IoWorker::start(const std::shared_ptr<Handler>& handler) {
+    handler_ = handler;
     thread.reset(new std::thread([this]() {
         this->run();
     }));
 }
 
+std::shared_ptr<Peer>
+IoWorker::getPeer(Fd fd) const
+{
+    auto it = peers.find(fd);
+    if (it == std::end(peers))
+    {
+        throw std::runtime_error("No peer found for fd: " + to_string(fd));
+    }
+    return it->second;
+}
+
 
 void
-IoWorker::readIncomingData(int fd) {
+IoWorker::handleIncoming(const std::shared_ptr<Peer>& peer) {
 
     char buffer[Const::MaxBuffer];
     memset(buffer, 0, sizeof buffer);
 
     ssize_t totalBytes = 0;
+    int fd = peer->fd();
 
     for (;;) {
 
@@ -56,14 +97,15 @@ IoWorker::readIncomingData(int fd) {
         bytes = recv(fd, buffer + totalBytes, Const::MaxBuffer - totalBytes, 0);
         if (bytes == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                cout << "Received " << buffer << endl;
+                handler_->onInput(buffer, totalBytes, *peer);
             } else {
                 throw std::runtime_error(strerror(errno));
             }
             break;
         }
         else if (bytes == 0) {
-            cout << "Peer has been shutdowned" << endl;
+            cout << "Peer " << *peer << " has disconnected" << endl;
+            close(fd);
             break;
         }
 
@@ -79,6 +121,21 @@ IoWorker::readIncomingData(int fd) {
 } 
 
 void
+IoWorker::handleNewPeer(const std::shared_ptr<Peer>& peer)
+{
+    std::cout << "New peer: " << *peer << std::endl;
+    int fd = peer->fd();
+
+    struct epoll_event event;
+    event.events = EPOLLIN;
+    event.data.fd = fd;
+
+    epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &event);
+    peers.insert(std::make_pair(fd, peer));
+}
+
+
+void
 IoWorker::run() {
     struct epoll_event events[Const::MaxEvents];
 
@@ -89,21 +146,19 @@ IoWorker::run() {
             break;
         case 0:
             if (!mailbox.isEmpty()) {
-                int *fd = mailbox.clear();
+                std::unique_ptr<Message> msg(mailbox.clear());
+                if (msg->type() == Message::Type::NewPeer) {
+                    auto peer_msg = message_cast<PeerMessage>(msg);
 
-                struct epoll_event event;
-                event.events = EPOLLIN;
-                event.data.fd = *fd;
+                    handleNewPeer(peer_msg->peer());
+                }
 
-                epoll_ctl(epoll_fd, EPOLL_CTL_ADD, *fd, &event);
-
-                delete fd;
             }
             break;
         default:
             for (int i = 0; i < ready_fds; ++i) {
                 const struct epoll_event *event = events + i;
-                readIncomingData(event->data.fd);
+                handleIncoming(getPeer(event->data.fd));
             }
             break;
 
@@ -111,13 +166,62 @@ IoWorker::run() {
     }
 }
 
+Handler::Handler()
+{ }
+
+Handler::~Handler()
+{ }
+
+void
+Handler::onConnection() {
+}
+
+void
+Handler::onDisconnection() {
+}
+
+Listener::Listener()
+    : listen_fd(-1)
+{ }
+
 Listener::Listener(const Address& address)
     : addr_(address)
     , listen_fd(-1)
 {
 }
 
-bool Listener::bind() {
+
+void
+Listener::init(size_t workers)
+{
+    if (workers > hardware_concurrency()) {
+        // Log::warning() << "More workers than available cores"
+    }
+
+    for (size_t i = 0; i < workers; ++i) {
+        auto wrk = std::unique_ptr<IoWorker>(new IoWorker);
+        ioGroup.push_back(std::move(wrk));
+    }
+}
+
+void
+Listener::setHandler(const std::shared_ptr<Handler>& handler)
+{
+    handler_ = handler;
+}
+
+bool
+Listener::bind() {
+    return bind(addr_);
+}
+
+bool
+Listener::bind(const Address& address) {
+    if (ioGroup.empty()) {
+        throw std::runtime_error("Call init() before calling bind()");
+    }
+
+    addr_ = address;
 
     struct addrinfo hints;
     hints.ai_family = AF_INET;
@@ -135,7 +239,7 @@ bool Listener::bind() {
 
     char port[MaxPortLen];
     std::fill(port, port + MaxPortLen, 0);
-    std::snprintf(port, MaxPortLen, "%d", addr_.port());
+    std::snprintf(port, MaxPortLen, "%d", static_cast<uint16_t>(addr_.port()));
 
     struct addrinfo *addrs;
     TRY(::getaddrinfo(host.c_str(), port, &hints, &addrs));
@@ -156,16 +260,15 @@ bool Listener::bind() {
 
     listen_fd = fd;
 
-    for (int i = 0; i < 4; ++i) {
-        auto wrk = std::unique_ptr<IoWorker>(new IoWorker);
-        wrk->start();
-        ioGroup.push_back(std::move(wrk));
+    for (auto& io: ioGroup) {
+        io->start(handler_);
     }
     
     return true;
 }
 
-void Listener::run() {
+void
+Listener::run() {
     for (;;) {
         struct sockaddr_in peer_addr;
         socklen_t peer_addr_len = sizeof(peer_addr);
@@ -177,31 +280,40 @@ void Listener::run() {
 
         if (getnameinfo((struct sockaddr *)&peer_addr, peer_addr_len, peer_host, NI_MAXHOST, nullptr, 0, 0) == 0) {
             Address addr = Address::fromUnix((struct sockaddr *)&peer_addr);
-            Peer peer(addr, peer_host);
+            auto peer = make_shared<Peer>(addr, peer_host);
+            peer->associateFd(client_fd);
 
-            std::cout << "New peer: " << peer << std::endl;
-
-            dispatchConnection(client_fd);
+            dispatchPeer(peer);
         }
 
     }
 }
 
+Address
+Listener::address() const {
+    return addr_;
+}
 
-void Listener::dispatchConnection(int fd) {
-    size_t start = fd % 4;
+
+void
+Listener::dispatchPeer(const std::shared_ptr<Peer>& peer) {
+    const size_t workers = ioGroup.size();
+    size_t start = peer->fd() % workers;
+
     /* Find the first available worker */
     size_t current = start;
     for (;;) {
         auto& mailbox = ioGroup[current]->mailbox;
+
         if (mailbox.isEmpty()) {
-            int *message = new int(fd);
-            int *old = mailbox.post(message);
+            auto message = new PeerMessage(peer);
+
+            auto *old = mailbox.post(message);
             assert(old == nullptr);
             return;
         }
 
-        current = (current + 1) % 4;
+        current = (current + 1) % workers;
         if (current == start) {
             break;
         } 
