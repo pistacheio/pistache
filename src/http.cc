@@ -24,46 +24,71 @@ static constexpr char CRLF[] = {CR, LF};
 
 namespace Private {
 
-    void
-    Parser::advance(size_t count) {
-        if (cursor + count >= len) {
-            raise("Early EOF");
+    bool
+    Parser::Cursor::advance(size_t count)
+    {
+        if (value + count >= sizeof (buff.data)) {
+            //parser->raise("Early EOF");
+        }
+        else if (value + count >= buff.len) {
+            return false;
         }
 
-        cursor += count;
+        value += count;
+        return true;
     }
 
     bool
-    Parser::eol() const {
-        return buffer[cursor] == CR && next() == LF;
+    Parser::Cursor::eol() const {
+        return buff.data[value] == CR && next() == LF;
+    }
+
+    int
+    Parser::Cursor::next() const {
+        if (value + 1 >= sizeof (buff.data)) {
+            //parser->raise("Early EOF");
+        }
+
+        else if (value + 1 >= buff.len) {
+            return Eof;
+        }
+
+        return buff.data[value + 1];
     }
 
     char
-    Parser::next() const {
-        if (cursor + 1 >= len) {
-            raise("Early EOF");
-        }
-
-        return buffer[cursor + 1];
+    Parser::Cursor::current() const {
+        return buff.data[value];
     }
 
-    Request
-    Parser::expectRequest() {
-        expectRequestLine();
-        expectHeaders();
-        expectBody();
-
-        return request;
+    const char *
+    Parser::Cursor::offset() const {
+        return buff.data + value;
     }
 
-    // 5.1 Request-Line
+    const char *
+    Parser::Cursor::offset(size_t off) const {
+        return buff.data + off;
+    }
+
+    size_t
+    Parser::Cursor::diff(size_t previous) const {
+        return value - previous;
+    }
+
     void
-    Parser::expectRequestLine() {
+    Parser::Step::raise(const char* msg) {
+        throw ParsingError(msg);
+    }
+
+    Parser::State
+    Parser::RequestLineStep::apply(Cursor& cursor) {
+        Reverter reverter(cursor);
 
         auto tryMatch = [&](const char* const str) {
             const size_t len = std::strlen(str);
-            if (strncmp(buffer, str, len) == 0) {
-                cursor += len - 1;
+            if (strncmp(cursor.offset(), str, len) == 0) {
+                cursor.advance(len - 1);
                 return true;
             }
             return false;
@@ -72,123 +97,152 @@ namespace Private {
         // Method
 
         if (tryMatch("OPTIONS")) {
-           request.method = Method::Options;
+           request->method = Method::Options;
         }
         else if (tryMatch("GET")) {
-            request.method = Method::Get;
+            request->method = Method::Get;
         }
         else if (tryMatch("POST")) {
-            request.method = Method::Post;
+            request->method = Method::Post;
         }
         else if (tryMatch("HEAD")) {
-            request.method = Method::Head;
+            request->method = Method::Head;
         }
         else if (tryMatch("PUT")) {
-            request.method = Method::Put;
+            request->method = Method::Put;
         }
         else if (tryMatch("DELETE")) {
-            request.method = Method::Delete;
+            request->method = Method::Delete;
         }
 
-        if (next() != ' ') {
-            raise("Malformed HTTP request after Method");
-        }
+        auto n = cursor.next();
+        if (n == Cursor::Eof) return State::Again;
 
-        // SP
-        advance(2);
-
-        // Request-URI
+        else if (n != ' ') raise("Malformed HTTP Request");
+        if (!cursor.advance(2)) return State::Again;
 
         size_t start = cursor;
 
-        while (next() != ' ') {
-            advance(1);
-            if (eol()) {
-                raise("Malformed HTTP request after Request-URI");
-            }
+        while ((n = cursor.next()) != Cursor::Eof && n != ' ') {
+            if (!cursor.advance(1)) return State::Again;
         }
 
-        request.resource = std::string(buffer + start, cursor - start + 1); 
-        if (next() != ' ') {
+        request->resource = std::string(cursor.offset(start), cursor.diff(start) + 1);
+        if ((n = cursor.next()) == Cursor::Eof) return State::Again;
+
+        if (n != ' ')
             raise("Malformed HTTP request after Request-URI");
-        }
 
         // SP
-        advance(2);
+        if (!cursor.advance(2)) return State::Again;
 
         // HTTP-Version
         start = cursor;
 
-        while (!eol())
-            advance(1);
+        while (!cursor.eol())
+            if (!cursor.advance(1)) return State::Again;
 
-        const size_t diff = cursor - start;
-        if (strncmp(buffer + start, "HTTP/1.0", diff) == 0) {
-            request.version = Version::Http10;
+        const size_t diff = cursor.diff(start);
+        if (strncmp(cursor.offset(start), "HTTP/1.0", diff) == 0) {
+            request->version = Version::Http10;
         }
-        else if (strncmp(buffer + start, "HTTP/1.1", diff) == 0) {
-            request.version = Version::Http11;
+        else if (strncmp(cursor.offset(start), "HTTP/1.1", diff) == 0) {
+            request->version = Version::Http11;
         }
         else {
             raise("Encountered invalid HTTP version");
         }
 
-        advance(2);
+        if (!cursor.advance(2)) return State::Again;
+
+        reverter.clear();
+        return State::Next;
 
     }
 
-    void
-    Parser::expectHeaders() {
-        while (!eol()) {
+    Parser::State
+    Parser::HeadersStep::apply(Cursor& cursor) {
+        Reverter reverter(cursor);
+
+        while (!cursor.eol()) {
+            Reverter headerReverter(cursor);
+
             // Read the header name
             size_t start = cursor;
 
-            while (buffer[cursor] != ':')
-                advance(1);
+            while (cursor.current() != ':')
+                if (!cursor.advance(1)) return State::Again;
 
-            advance(1);
+            if (!cursor.advance(1)) return State::Again;
 
-            std::string name = std::string(buffer + start, cursor - start - 1);
+            std::string name = std::string(cursor.offset(start), cursor.diff(start) - 1);
 
             // Skip the ':'
-            advance(1);
+            if (!cursor.advance(1)) return State::Again;
 
             // Read the header value
             start = cursor;
-            while (!eol())
-                advance(1);
-
+            while (!cursor.eol()) {
+                if (!cursor.advance(1)) return State::Again;
+            }
 
             if (HeaderRegistry::isRegistered(name)) {
                 std::shared_ptr<Header> header = HeaderRegistry::makeHeader(name);
-                header->parseRaw(buffer + start, cursor - start);
-                request.headers.add(header);
-            }
-            else {
-                std::string value = std::string(buffer + start, cursor - start);
+                header->parseRaw(cursor.offset(start), cursor.diff(start));
+                request->headers.add(header);
             }
 
             // CRLF
-            advance(2);
+            if (!cursor.advance(2)) return State::Again;
+
+            headerReverter.clear();
         }
+
+        return Parser::State::Next;
     }
 
-    void
-    Parser::expectBody() {
-        if (contentLength > 0) {
-            advance(2); // CRLF
+    Parser::State
+    Parser::BodyStep::apply(Cursor& cursor) {
+        auto cl = request->headers.tryGet<ContentLength>();
 
-            if (cursor + contentLength > len) {
-                throw std::runtime_error("Corrupted HTTP Body");
+        if (cl) {
+            // CRLF
+            if (!cursor.advance(2)) return State::Again;
+
+            auto len = cl->value();
+            auto start = cursor;
+
+            if (!cursor.advance(len)) return State::Again;
+
+            request->body = std::string(cursor.offset(start), cursor.diff(start));
+        }
+
+        return Parser::State::Done;
+    }
+
+    Parser::State
+    Parser::parse() {
+        State state = State::Again;
+        do {
+            Step *step = allSteps[currentStep].get();
+            state = step->apply(cursor);
+            if (state == State::Next) {
+                ++currentStep;
             }
+        } while (state == State::Next);
 
-            request.body = std::string(buffer + cursor, contentLength);
-        }
+        // Should be either Again or Done
+        return state;
     }
 
-    void
-    Parser::raise(const char* msg) const {
-        throw ParsingError(msg);
+    bool
+    Parser::feed(const char* data, size_t len) {
+        if (len + buffer.len >= sizeof (buffer.data)) {
+            return false;
+        }
+
+        memcpy(buffer.data + buffer.len, data, len);
+        buffer.len += len;
     }
 
     ssize_t
@@ -280,6 +334,15 @@ Response::writeTo(Tcp::Peer& peer)
     fmt.writeString(codeString(static_cast<Code>(code_)));
     fmt.writeRaw(CRLF, 2);
 
+    for (const auto& header: headers.list()) {
+        std::ostringstream oss;
+        header->write(oss);
+
+        std::string str = oss.str();
+        fmt.writeRaw(str.c_str(), str.size());
+        fmt.writeRaw(CRLF, 2);
+    }
+
     fmt.writeHeader("Content-Length", body.size());
 
     fmt.writeRaw(CRLF, 2);
@@ -288,15 +351,16 @@ Response::writeTo(Tcp::Peer& peer)
     const size_t len = fmt.cursor() - buffer;
 
     ssize_t bytes = send(fd, buffer, len, 0);
-    //cout << bytes << " bytes sent" << endl;
 }
 
 void
 Handler::onInput(const char* buffer, size_t len, Tcp::Peer& peer) {
     Private::Parser parser(buffer, len);
     try {
-        auto request = parser.expectRequest();
-        onRequest(request, peer);
+        Private::Parser::State state = parser.parse();
+        if (state == Private::Parser::State::Done) {
+            onRequest(parser.request, peer);
+        }
     } catch (const Private::ParsingError &err) {
         cerr << "Error when parsing HTTP request: " << err.what() << endl;
     }
@@ -306,28 +370,25 @@ void
 Handler::onOutput() {
 }
 
-Server::Server()
+Endpoint::Endpoint()
 { }
 
-Server::Server(const Net::Address& addr)
+Endpoint::Endpoint(const Net::Address& addr)
     : listener(addr)
 { }
 
 void
-Server::setHandler(const std::shared_ptr<Handler>& handler) {
+Endpoint::setHandler(const std::shared_ptr<Handler>& handler) {
     handler_ = handler;
 }
 
 void
-Server::serve()
+Endpoint::serve()
 {
     if (!handler_)
         throw std::runtime_error("Must call setHandler() prior to serve()");
 
-    listener.init(8,
-            Tcp::Options::NoDelay |
-            Tcp::Options::InstallSignalHandler |
-            Tcp::Options::ReuseAddr);
+    listener.init(8, Tcp::Options::InstallSignalHandler);
     listener.setHandler(handler_);
 
     if (listener.bind()) { 

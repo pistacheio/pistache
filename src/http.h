@@ -8,6 +8,7 @@
 
 #include <type_traits>
 #include <stdexcept>
+#include <array>
 #include "listener.h"
 #include "net.h"
 #include "http_headers.h"
@@ -129,30 +130,127 @@ namespace Private {
 
     struct Parser {
 
-        Parser(const char* buffer, size_t len)
-            : buffer(buffer)
-            , len(len)
-            , cursor(0)
-            , contentLength(-1)
-        { }
+        struct Buffer {
+            char data[Const::MaxBuffer];
+            size_t len;
+        };
 
-        Request expectRequest();
-        void expectRequestLine();
-        void expectHeaders();
-        void expectBody();
+        struct Cursor {
+            static constexpr int Eof = -1;
 
-        void advance(size_t count);
-        bool eol() const;
+            Cursor(const Buffer &buffer, size_t initialPos = 0)
+                : buff(buffer)
+                , value(initialPos)
+            { }
 
-        const char* buffer;
-        size_t len;
-        size_t cursor;
+            bool advance(size_t count);
 
-        char next() const;
-    private:
-        void raise(const char* msg) const;
-        ssize_t contentLength;
+            operator size_t() const { return value; }
+
+            bool eol() const;
+            int next() const;
+            char current() const;
+
+            const char *offset() const;
+            const char *offset(size_t off) const;
+
+            size_t diff(size_t before) const;
+
+            const Buffer& buff;
+            size_t value;
+        };
+
+        struct Reverter {
+            Reverter(Cursor& cursor)
+                : cursor(cursor)
+                , pos(cursor.value)
+                , active(true)
+            { }
+
+            void revert() {
+                cursor.value = pos;
+            }
+
+            void clear() {
+                active = false;
+            }
+
+            ~Reverter() {
+                if (active) cursor.value = pos;
+            }
+
+            Cursor& cursor;
+
+            size_t pos;
+            bool active;
+        };
+
+        enum class State { Again, Next, Done };
+
+        struct Step {
+            Step(Request* request)
+                : request(request)
+            { }
+
+            virtual State apply(Cursor& cursor) = 0;
+
+            void raise(const char* msg);
+
+            Request *request;
+        };
+
+        struct RequestLineStep : public Step {
+            RequestLineStep(Request* request)
+                : Step(request)
+            { }
+
+            State apply(Cursor& cursor);
+        };
+
+        struct HeadersStep : public Step {
+            HeadersStep(Request* request)
+                : Step(request)
+            { }
+
+            State apply(Cursor& cursor);
+        };
+
+        struct BodyStep : public Step {
+            BodyStep(Request* request)
+                : Step(request)
+            { }
+
+            State apply(Cursor& cursor);
+        };
+
+        Parser(const char* data, size_t len)
+            : contentLength(-1)
+            , currentStep(0)
+            , cursor(buffer)
+        {
+            allSteps[0].reset(new RequestLineStep(&request));
+            allSteps[1].reset(new HeadersStep(&request));
+            allSteps[2].reset(new BodyStep(&request));
+
+            feed(data, len);
+        }
+
+        bool feed(const char* data, size_t len);
+
+        State parse();
+
+        Buffer buffer;
+        Cursor cursor;
+
         Request request;
+
+    private:
+        static constexpr size_t StepsCount = 3;
+
+        std::unique_ptr<Step> allSteps[StepsCount];
+        size_t currentStep;
+
+        ssize_t contentLength;
     };
 
     struct Writer {
@@ -206,10 +304,10 @@ public:
     virtual void onRequest(const Request& request, Tcp::Peer& peer) = 0;
 };
 
-class Server {
+class Endpoint {
 public:
-    Server();
-    Server(const Net::Address& addr);
+    Endpoint();
+    Endpoint(const Net::Address& addr);
 
     void setHandler(const std::shared_ptr<Handler>& handler);
     void serve();

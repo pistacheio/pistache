@@ -12,10 +12,11 @@ class MyHandler : public Net::Http::Handler {
         if (req.resource == "/ping") {
             if (req.method == Net::Http::Method::Get) {
 
-                auto host = req.headers.getHeader<Net::Http::Host>();
-                cout << "Host = " << host->host() << endl;
+                using namespace Net::Http;
 
                 Net::Http::Response response(Net::Http::Code::Ok, "PONG");
+               // response.headers
+               //     .add(std::make_shared<Server>("lys"));
                 response.writeTo(peer);
 
             }
@@ -35,7 +36,7 @@ int main(int argc, char *argv[]) {
 
     cout << "Cores = " << hardware_concurrency() << endl;
 
-    Net::Http::Server server(addr);
+    Net::Http::Endpoint server(addr);
     server.setHandler(std::make_shared<MyHandler>());
 
     server.serve();

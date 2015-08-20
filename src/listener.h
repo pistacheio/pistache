@@ -95,7 +95,6 @@ private:
     std::shared_ptr<Handler> handler_;
 
     void dispatchPeer(const std::shared_ptr<Peer>& peer);
-    void handleSigint(int);
 };
 
 class Handler {

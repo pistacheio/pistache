@@ -19,21 +19,57 @@ class Headers {
 public:
 
     template<typename H>
-    /*
     typename std::enable_if<
-                 std::is_base_of<H, Header>::value, std::shared_ptr<Header>
+                 IsHeader<H>::value, std::shared_ptr<const H>
              >::type
-     */
-    std::shared_ptr<H>
-    getHeader() const {
-        return std::static_pointer_cast<H>(getHeader(H::Name));
+    get() const {
+        return std::static_pointer_cast<const H>(get(H::Name));
+    }
+    template<typename H>
+    typename std::enable_if<
+                 IsHeader<H>::value, std::shared_ptr<H>
+             >::type
+    get() {
+        return std::static_pointer_cast<H>(get(H::Name));
     }
 
-    void add(const std::shared_ptr<Header>& header);
+    template<typename H>
+    typename std::enable_if<
+                 IsHeader<H>::value, std::shared_ptr<const H>
+             >::type
+    tryGet() const {
+        return std::static_pointer_cast<const H>(tryGet(H::Name));
+    }
+    template<typename H>
+    typename std::enable_if<
+                 IsHeader<H>::value, std::shared_ptr<H>
+             >::type
+    tryGet() {
+        return std::static_pointer_cast<H>(tryGet(H::Name));
+    }
 
-    std::shared_ptr<Header> getHeader(const std::string& name) const;
+    Headers& add(const std::shared_ptr<Header>& header);
+
+    std::shared_ptr<const Header> get(const std::string& name) const;
+    std::shared_ptr<Header> get(const std::string& name);
+
+    std::shared_ptr<const Header> tryGet(const std::string& name) const;
+    std::shared_ptr<Header> tryGet(const std::string& name);
+
+    template<typename H>
+    typename std::enable_if<
+                 IsHeader<H>::value, bool
+             >::type
+    has() const {
+        return has(H::Name);
+    }
+    bool has(const std::string& name) const;
+
+    std::vector<std::shared_ptr<Header>> list() const;
 
 private:
+    std::pair<bool, std::shared_ptr<Header>> getImpl(const std::string& name) const;
+
     std::unordered_map<std::string, std::shared_ptr<Header>> headers;
 };
 
@@ -43,14 +79,12 @@ struct HeaderRegistry {
 
     template<typename H>
     static
-    /* typename std::enable_if<
-                std::is_base_of<H, Header>::value, void
+    typename std::enable_if<
+                IsHeader<H>::value, void
              >::type
-             */
-    void
     registerHeader() {
         registerHeader(H::Name, []() -> std::unique_ptr<Header> {
-                return std::unique_ptr<Header>(new H());
+            return std::unique_ptr<Header>(new H());
         });
 
     }

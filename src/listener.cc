@@ -184,14 +184,17 @@ IoWorker::run() {
 
     mailbox.bind(poller);
 
+    std::chrono::milliseconds timeout(-1);
+
     for (;;) {
         std::vector<Polling::Event> events;
 
         int ready_fds;
-        switch(ready_fds = poller.poll(events, 32, std::chrono::milliseconds(0))) {
+        switch(ready_fds = poller.poll(events, 1024, timeout)) {
         case -1:
             break;
         case 0:
+            timeout = std::chrono::milliseconds(-1);
             break;
         default:
             for (const auto& event: events) {
@@ -206,6 +209,7 @@ IoWorker::run() {
                     }
                 }
             }
+            timeout = std::chrono::milliseconds(0);
             break;
         }
     }
@@ -378,10 +382,6 @@ Listener::dispatchPeer(const std::shared_ptr<Peer>& peer) {
 
     ioGroup[worker]->handleNewPeer(peer);
 
-}
-
-void
-Listener::handleSigint(int) {
 }
 
 } // namespace Tcp
