@@ -12,6 +12,7 @@
 #include <atomic>
 #include <stdexcept>
 #include <sys/eventfd.h>
+#include <unistd.h>
 
 template<typename T>
 class Mailbox {
@@ -85,7 +86,7 @@ public:
 
         if (isBound()) {
             uint64_t val = 1;
-            TRY_RET(write(event_fd, &val, sizeof val));
+            TRY(write(event_fd, &val, sizeof val));
         }
 
         return ret;

@@ -56,6 +56,9 @@ public:
     Address(const Address& other) = default;
     Address(Address&& other) = default;
 
+    Address &operator=(const Address& other) = default;
+    Address &operator=(Address&& other) = default;
+
     static Address fromUnix(struct sockaddr *addr); 
 
     std::string host() const;
