@@ -24,6 +24,12 @@ static constexpr char CRLF[] = {CR, LF};
 
 namespace Private {
 
+    Parser::Buffer::Buffer()
+        : len(0)
+    {
+        memset(data, sizeof data, 0);
+    }
+
     bool
     Parser::Cursor::advance(size_t count)
     {
@@ -114,11 +120,15 @@ namespace Private {
         else if (tryMatch("DELETE")) {
             request->method = Method::Delete;
         }
+        else {
+            raise("Lol wat");
+        }
 
         auto n = cursor.next();
         if (n == Cursor::Eof) return State::Again;
-
         else if (n != ' ') raise("Malformed HTTP Request");
+
+
         if (!cursor.advance(2)) return State::Again;
 
         size_t start = cursor;

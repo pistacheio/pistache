@@ -131,6 +131,8 @@ namespace Private {
     struct Parser {
 
         struct Buffer {
+            Buffer();
+
             char data[Const::MaxBuffer];
             size_t len;
         };
