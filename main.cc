@@ -21,6 +21,13 @@ class MyHandler : public Net::Http::Handler {
 
             }
         }
+        else if (req.resource == "/echo") {
+            if (req.method == Net::Http::Method::Post) {
+                Net::Http::Response response(Net::Http::Code::Ok, req.body);
+
+                response.writeTo(peer);
+            }
+        }
     }
 };
 

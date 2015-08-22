@@ -135,6 +135,8 @@ namespace Private {
 
             char data[Const::MaxBuffer];
             size_t len;
+
+            void reset();
         };
 
         struct Cursor {
@@ -182,8 +184,13 @@ namespace Private {
             const char *offset() const;
             const char *offset(size_t off) const;
 
-            size_t diff(size_t before) const;
+            size_t diff(size_t other) const;
+            size_t diff(const Cursor& other) const;
+            size_t remaining() const;
 
+            void reset();
+
+        private:
             const Buffer& buff;
             size_t value;
         };
@@ -221,10 +228,24 @@ namespace Private {
         struct BodyStep : public Step {
             BodyStep(Request* request)
                 : Step(request)
+                , bytesRead(0)
             { }
 
             State apply(Cursor& cursor);
+
+        private:
+            size_t bytesRead;
         };
+
+        Parser()
+            : contentLength(-1)
+            , currentStep(0)
+            , cursor(buffer)
+        {
+            allSteps[0].reset(new RequestLineStep(&request));
+            allSteps[1].reset(new HeadersStep(&request));
+            allSteps[2].reset(new BodyStep(&request));
+        }
 
         Parser(const char* data, size_t len)
             : contentLength(-1)
@@ -239,6 +260,7 @@ namespace Private {
         }
 
         bool feed(const char* data, size_t len);
+        void reset();
 
         State parse();
 
@@ -305,6 +327,9 @@ public:
     void onOutput();
 
     virtual void onRequest(const Request& request, Tcp::Peer& peer) = 0;
+
+private:
+    Private::Parser parser;
 };
 
 class Endpoint {

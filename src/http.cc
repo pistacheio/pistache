@@ -30,13 +30,20 @@ namespace Private {
         memset(data, sizeof data, 0);
     }
 
+    void
+    Parser::Buffer::reset() {
+        memset(data, sizeof data, 0);
+        len = 0;
+    }
+
     bool
     Parser::Cursor::advance(size_t count)
     {
         if (value + count >= sizeof (buff.data)) {
             //parser->raise("Early EOF");
         }
-        else if (value + count >= buff.len) {
+        // Allowed to advance one past the end
+        else if (value + count > buff.len) {
             return false;
         }
 
@@ -78,8 +85,24 @@ namespace Private {
     }
 
     size_t
-    Parser::Cursor::diff(size_t previous) const {
-        return value - previous;
+    Parser::Cursor::diff(size_t other) const {
+        return value - other;
+    }
+
+    size_t
+    Parser::Cursor::diff(const Cursor& other) const {
+        return value - other.value;
+    }
+
+    size_t
+    Parser::Cursor::remaining() const {
+        // assert(val <= buff.len);
+        return buff.len - value;
+    }
+
+    void
+    Parser::Cursor::reset() {
+        value = 0;
     }
 
     void
@@ -215,19 +238,54 @@ namespace Private {
     Parser::State
     Parser::BodyStep::apply(Cursor& cursor) {
         auto cl = request->headers.tryGet<ContentLength>();
+        if (!cl) return Parser::State::Done;
 
-        if (cl) {
-            // CRLF
-            if (!cursor.advance(2)) return State::Again;
-
-            auto len = cl->value();
+        auto contentLength = cl->value();
+        // We already started to read some bytes but we got an incomplete payload
+        if (bytesRead > 0) {
+            // How many bytes do we still need to read ?
+            const size_t remaining = contentLength - bytesRead;
             auto start = cursor;
 
-            if (!cursor.advance(len)) return State::Again;
+            // Could be refactored in a single function / lambda but I'm too lazy
+            // for that right now
+            if (!cursor.advance(remaining)) {
+                const size_t available = cursor.remaining();
 
-            request->body = std::string(cursor.offset(start), cursor.diff(start));
+                request->body.append(cursor.offset(start), available);
+                bytesRead += available;
+
+                cursor.advance(available);
+                return State::Again;
+            }
+            else {
+                request->body.append(cursor.offset(), cursor.diff(start));
+            }
+
+        }
+        // This is the first time we are reading the payload
+        else {
+            if (!cursor.advance(2)) return State::Again;
+
+            request->body.reserve(contentLength);
+
+            auto start = cursor;
+
+            // We have an incomplete body, read what we can
+            if (!cursor.advance(contentLength)) {
+                const size_t available = cursor.remaining();
+
+                request->body.append(cursor.offset(start), available);
+                bytesRead += available;
+
+                cursor.advance(available);
+                return State::Again;
+            }
+
+            request->body.append(cursor.offset(start), cursor.diff(start));
         }
 
+        bytesRead = 0;
         return Parser::State::Done;
     }
 
@@ -254,6 +312,19 @@ namespace Private {
 
         memcpy(buffer.data + buffer.len, data, len);
         buffer.len += len;
+        return true;
+    }
+
+    void
+    Parser::reset() {
+        buffer.reset();
+        cursor.reset();
+
+        currentStep = 0;
+
+        request.headers.clear();
+        request.body.clear();
+        request.resource.clear();
     }
 
     ssize_t
@@ -366,14 +437,19 @@ Response::writeTo(Tcp::Peer& peer)
 
 void
 Handler::onInput(const char* buffer, size_t len, Tcp::Peer& peer) {
-    Private::Parser parser(buffer, len);
-    try {
-        Private::Parser::State state = parser.parse();
-        if (state == Private::Parser::State::Done) {
-            onRequest(parser.request, peer);
+    if (!parser.feed(buffer, len)) {
+        cout << "Could not feed parser bro" << endl;
+    }
+    else {
+        try {
+            auto state = parser.parse();
+            if (state == Private::Parser::State::Done) {
+                onRequest(parser.request, peer);
+                parser.reset();
+            }
+        } catch (const Private::ParsingError &err) {
+            cerr << "Error when parsing HTTP request: " << err.what() << endl;
         }
-    } catch (const Private::ParsingError &err) {
-        cerr << "Error when parsing HTTP request: " << err.what() << endl;
     }
 }
 

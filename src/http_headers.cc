@@ -116,6 +116,11 @@ Headers::list() const {
     return ret;
 }
 
+void
+Headers::clear() {
+    headers.clear();
+}
+
 std::pair<bool, std::shared_ptr<Header>>
 Headers::getImpl(const std::string& name) const {
     auto it = headers.find(name);

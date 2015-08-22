@@ -67,6 +67,8 @@ public:
 
     std::vector<std::shared_ptr<Header>> list() const;
 
+    void clear();
+
 private:
     std::pair<bool, std::shared_ptr<Header>> getImpl(const std::string& name) const;
 
