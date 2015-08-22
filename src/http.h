@@ -138,6 +138,32 @@ namespace Private {
         };
 
         struct Cursor {
+
+            struct Revert {
+                Revert(Cursor& cursor)
+                    : cursor(cursor)
+                    , pos(cursor.value)
+                    , active(true)
+                { }
+
+                void revert() {
+                    cursor.value = pos;
+                }
+
+                void ignore() {
+                    active = false;
+                }
+
+                ~Revert() {
+                    if (active) cursor.value = pos;
+                }
+
+                Cursor& cursor;
+
+                size_t pos;
+                bool active;
+            };
+
             static constexpr int Eof = -1;
 
             Cursor(const Buffer &buffer, size_t initialPos = 0)
@@ -160,31 +186,6 @@ namespace Private {
 
             const Buffer& buff;
             size_t value;
-        };
-
-        struct Reverter {
-            Reverter(Cursor& cursor)
-                : cursor(cursor)
-                , pos(cursor.value)
-                , active(true)
-            { }
-
-            void revert() {
-                cursor.value = pos;
-            }
-
-            void clear() {
-                active = false;
-            }
-
-            ~Reverter() {
-                if (active) cursor.value = pos;
-            }
-
-            Cursor& cursor;
-
-            size_t pos;
-            bool active;
         };
 
         enum class State { Again, Next, Done };

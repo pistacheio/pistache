@@ -89,7 +89,7 @@ namespace Private {
 
     Parser::State
     Parser::RequestLineStep::apply(Cursor& cursor) {
-        Reverter reverter(cursor);
+        Cursor::Revert revert(cursor);
 
         auto tryMatch = [&](const char* const str) {
             const size_t len = std::strlen(str);
@@ -165,17 +165,17 @@ namespace Private {
 
         if (!cursor.advance(2)) return State::Again;
 
-        reverter.clear();
+        revert.ignore();
         return State::Next;
 
     }
 
     Parser::State
     Parser::HeadersStep::apply(Cursor& cursor) {
-        Reverter reverter(cursor);
+        Cursor::Revert revert(cursor);
 
         while (!cursor.eol()) {
-            Reverter headerReverter(cursor);
+            Cursor::Revert headerRevert(cursor);
 
             // Read the header name
             size_t start = cursor;
@@ -205,7 +205,7 @@ namespace Private {
             // CRLF
             if (!cursor.advance(2)) return State::Again;
 
-            headerReverter.clear();
+            headerRevert.ignore();
         }
 
         return Parser::State::Next;
