@@ -208,6 +208,7 @@ namespace Private {
             headerRevert.ignore();
         }
 
+        revert.ignore();
         return Parser::State::Next;
     }
 
