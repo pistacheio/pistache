@@ -61,6 +61,113 @@ enum class Encoding {
 
 const char* encodingString(Encoding encoding);
 
+namespace Mime {
+
+#define MIME_TYPES \
+    TYPE(Star       , "*")           \
+    TYPE(Text       , "text")        \
+    TYPE(Image      , "image")       \
+    TYPE(Audio      , "audio")       \
+    TYPE(Video      , "video")       \
+    TYPE(Application, "application") \
+    TYPE(Message    , "message")     \
+    TYPE(Multipart  , "multipart")
+
+#define MIME_SUBTYPES \
+    SUB_TYPE(Star      , "*")          \
+    SUB_TYPE(Plain     , "plain")      \
+    SUB_TYPE(Html      , "html")       \
+    SUB_TYPE(Xhtml     , "xhtml")      \
+    SUB_TYPE(Xml       , "xml")        \
+    SUB_TYPE(Javascript, "javascript") \
+    SUB_TYPE(Css       , "css")        \
+    \
+    SUB_TYPE(Json          , "json")                  \
+    SUB_TYPE(FormUrlEncoded, "x-www-form-urlencoded") \
+    \
+    SUB_TYPE(Png, "png") \
+    SUB_TYPE(Gif, "gif") \
+    SUB_TYPE(Bmp, "bmp") \
+    SUB_TYPE(Jpeg, "jpeg")
+
+#define MIME_SUFFIXES \
+    SUFFIX(Json       , "json"       , "JavaScript Object Notation")   \
+    SUFFIX(Ber        , "ber"        , "Basic Encoding Rules")         \
+    SUFFIX(Der        , "der"        , "Distinguished Encoding Rules") \
+    SUFFIX(Fastinfoset, "fastinfoset", "Fast Infoset")                 \
+    SUFFIX(Wbxml      , "wbxml"      , "WAP Binary XML")               \
+    SUFFIX(Zip        , "zip"        , "ZIP file storage")             \
+    SUFFIX(Xml        , "xml"        , "Extensible Markup Language")
+
+
+enum class Type {
+#define TYPE(val, _) val,
+    MIME_TYPES
+#undef TYPE
+    Ext
+};
+
+enum class Subtype {
+#define SUB_TYPE(val, _) val,
+    MIME_SUBTYPES
+#undef SUB_TYPE
+    Ext
+};
+
+enum class Suffix {
+#define SUFFIX(val, _, __) val,
+    MIME_SUFFIXES
+#undef SUFFIX
+    None,
+    Ext
+};
+
+// 3.7 Media Types
+class MediaType {
+public:
+    constexpr MediaType()
+        : top(Type::Ext)
+        , sub(Subtype::Ext)
+        , suffix(Suffix::None)
+    { }
+
+    constexpr MediaType(Mime::Type top, Mime::Subtype sub)
+        : top(top)
+        , sub(sub)
+        , suffix(Suffix::None)
+    { }
+
+    constexpr MediaType(Mime::Type top, Mime::Subtype sub, Mime::Suffix suffix)
+        : top(top)
+        , sub(sub)
+        , suffix(suffix)
+    { }
+
+    Mime::Type top;
+    Mime::Subtype sub;
+    Mime::Suffix suffix;
+
+    static MediaType fromRaw(const char* str, size_t len);
+
+    static MediaType fromString(const std::string& str);
+    static MediaType fromString(std::string&& str);
+
+    std::string toString() const;
+};
+
+inline bool operator==(const MediaType& lhs, const MediaType& rhs) {
+    return lhs.top == rhs.top && lhs.sub == rhs.sub;
+}
+
+} // namespace Mime
+
+#define MIME(top, sub) \
+    Net::Http::Mime::MediaType(Net::Http::Mime::Type::top, Net::Http::Mime::Subtype::sub)
+
+#define MIME3(top, sub, suffix) \
+    Net::Http::Mime::MediaType(Net::Http::Mime::Type::top, Net::Http::Mime::Subtype::sub, Net::Http::Mime::Suffix::suffix);
+
+
 class Header {
 public:
     virtual const char *name() const = 0;
@@ -115,7 +222,7 @@ public:
         : value_(0)
     { }
 
-    ContentLength(uint64_t val)
+    explicit ContentLength(uint64_t val)
         : value_(val)
     { }
 
@@ -137,7 +244,7 @@ public:
      , port_(-1)
     { }
 
-    Host(const std::string& host, int16_t port = -1)
+    explicit Host(const std::string& host, int16_t port = -1)
         : host_(host)
         , port_(port)
     { }
@@ -158,7 +265,7 @@ public:
     NAME("User-Agent")
 
     UserAgent() { }
-    UserAgent(const std::string& ua) :
+    explicit UserAgent(const std::string& ua) :
         ua_(ua)
     { }
 
@@ -192,7 +299,7 @@ public:
        : encoding_(Encoding::Identity)
     { }
 
-    ContentEncoding(Encoding encoding)
+    explicit ContentEncoding(Encoding encoding)
        : encoding_(encoding)
     { }
 
@@ -211,9 +318,9 @@ public:
 
     Server() { }
 
-    Server(const std::vector<std::string>& tokens);
-    Server(const std::string& token);
-    Server(const char* token);
+    explicit Server(const std::vector<std::string>& tokens);
+    explicit Server(const std::string& token);
+    explicit Server(const char* token);
 
     void parse(const std::string& data);
     void write(std::ostream& os) const;
@@ -221,6 +328,26 @@ public:
     std::vector<std::string> tokens() const { return tokens_; }
 private:
     std::vector<std::string> tokens_;
+};
+
+class ContentType : public Header {
+public:
+    NAME("Content-Type")
+
+    ContentType() { }
+
+    explicit ContentType(const Mime::MediaType& mime) :
+        mime_(mime)
+    { }
+
+    void parseRaw(const char* str, size_t len);
+    void write(std::ostream& os) const;
+
+    Mime::MediaType mime() const { return mime_; }
+
+private:
+    Mime::MediaType mime_;
+
 };
 
 } // namespace Http

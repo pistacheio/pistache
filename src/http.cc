@@ -143,9 +143,6 @@ namespace Private {
         else if (tryMatch("DELETE")) {
             request->method = Method::Delete;
         }
-        else {
-            raise("Lol wat");
-        }
 
         auto n = cursor.next();
         if (n == Cursor::Eof) return State::Again;
