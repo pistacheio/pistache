@@ -106,8 +106,8 @@ namespace Private {
     }
 
     void
-    Parser::Step::raise(const char* msg) {
-        throw ParsingError(msg);
+    Parser::Step::raise(const char* msg, Code code /* = Code::Bad_Request */) {
+        throw HttpError(code, msg);
     }
 
     Parser::State
@@ -143,10 +143,13 @@ namespace Private {
         else if (tryMatch("DELETE")) {
             request->method = Method::Delete;
         }
+        else {
+            raise("Unknown HTTP request method");
+        }
 
         auto n = cursor.next();
         if (n == Cursor::Eof) return State::Again;
-        else if (n != ' ') raise("Malformed HTTP Request");
+        else if (n != ' ') raise("Malformed HTTP request after Method, expected SP");
 
         if (!cursor.advance(2)) return State::Again;
 
@@ -376,8 +379,18 @@ const char* codeString(Code code)
 #undef CODE
     }
 
-    unreachable();
+    return "";
 }
+
+HttpError::HttpError(Code code, std::string reason)
+    : code_(static_cast<int>(code))
+    , reason_(std::move(reason))
+{ }
+
+HttpError::HttpError(int code, std::string reason)
+    : code_(code)
+    , reason_(std::move(reason))
+{ }
 
 Message::Message()
     : version(Version::Http11)
@@ -448,8 +461,13 @@ Handler::onInput(const char* buffer, size_t len, Tcp::Peer& peer) {
                 onRequest(parser.request, peer);
                 parser.reset();
             }
-        } catch (const Private::ParsingError &err) {
-            cerr << "Error when parsing HTTP request: " << err.what() << endl;
+        } catch (const HttpError &err) {
+            Response response(err.code(), err.reason());
+            response.writeTo(peer);
+        }
+        catch (const std::exception& e) {
+            Response response(Code::Internal_Server_Error, e.what());
+            response.writeTo(peer);
         }
     }
 }

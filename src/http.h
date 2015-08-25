@@ -90,6 +90,22 @@ enum class Version {
 const char* methodString(Method method);
 const char* codeString(Code code);
 
+struct HttpError : public std::exception {
+    HttpError(Code code, std::string reason);
+    HttpError(int code, std::string reason);
+
+    ~HttpError() noexcept { }
+
+    const char* what() const noexcept { return reason_.c_str(); }
+
+    int code() const { return code_; }
+    std::string reason() const { return reason_; }
+
+private:
+    int code_;
+    std::string reason_;
+};
+
 // 4. HTTP Message
 class Message {
 public:
@@ -123,10 +139,6 @@ private:
 };
 
 namespace Private {
-
-    struct ParsingError : public std::runtime_error {
-        ParsingError(const char* msg) : std::runtime_error(msg) { }
-    };
 
     struct Parser {
 
@@ -204,7 +216,7 @@ namespace Private {
 
             virtual State apply(Cursor& cursor) = 0;
 
-            void raise(const char* msg);
+            void raise(const char* msg, Code code = Code::Bad_Request);
 
             Request *request;
         };
@@ -336,7 +348,6 @@ public:
 
 private:
     Private::Parser& getParser(Tcp::Peer& peer);
-
 };
 
 class Endpoint {
