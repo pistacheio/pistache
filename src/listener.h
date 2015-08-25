@@ -105,8 +105,8 @@ public:
     virtual void onInput(const char *buffer, size_t len, Tcp::Peer& peer) = 0;
     virtual void onOutput() = 0;
 
-    virtual void onConnection(const std::shared_ptr<Peer>& peer);
-    virtual void onDisconnection(const std::shared_ptr<Peer>& peer);
+    virtual void onConnection(Tcp::Peer& peer);
+    virtual void onDisconnection(Tcp::Peer& peer);
 
 };
 

@@ -15,11 +15,13 @@ using namespace std;
 
 Peer::Peer()
     : fd_(-1)
+    , data_(nullptr)
 { }
 
 Peer::Peer(const Address& addr)
     : addr(addr)
     , fd_(-1)
+    , data_(nullptr)
 { }
 
 Address
@@ -44,6 +46,16 @@ Peer::fd() const {
     }
 
     return fd_;
+}
+
+void
+Peer::setData(std::shared_ptr<void> data) {
+    data_ = std::move(data);
+}
+
+std::shared_ptr<void>
+Peer::data() const {
+    return data_;
 }
 
 std::ostream& operator<<(std::ostream& os, const Peer& peer) {

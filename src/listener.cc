@@ -139,7 +139,7 @@ IoWorker::handleIncoming(const std::shared_ptr<Peer>& peer) {
                 }
             } else {
                 if (errno == ECONNRESET) {
-                    handler_->onDisconnection(peer);
+                    handler_->onDisconnection(*peer);
                     close(fd);
                 }
                 else {
@@ -149,7 +149,7 @@ IoWorker::handleIncoming(const std::shared_ptr<Peer>& peer) {
             break;
         }
         else if (bytes == 0) {
-            handler_->onDisconnection(peer);
+            handler_->onDisconnection(*peer);
             close(fd);
             break;
         }
@@ -174,7 +174,7 @@ IoWorker::handleNewPeer(const std::shared_ptr<Peer>& peer)
         peers.insert(std::make_pair(fd, peer));
     }
 
-    handler_->onConnection(peer);
+    handler_->onConnection(*peer);
     poller.addFd(fd, NotifyOn::Read, Polling::Tag(fd), Polling::Mode::Edge);
 }
 
@@ -226,11 +226,11 @@ Handler::~Handler()
 { }
 
 void
-Handler::onConnection(const std::shared_ptr<Peer>& peer) {
+Handler::onConnection(Tcp::Peer& peer) {
 }
 
 void
-Handler::onDisconnection(const std::shared_ptr<Peer>& peer) {
+Handler::onDisconnection(Tcp::Peer& peer) {
 }
 
 Listener::Listener()

@@ -148,7 +148,6 @@ namespace Private {
         if (n == Cursor::Eof) return State::Again;
         else if (n != ' ') raise("Malformed HTTP Request");
 
-
         if (!cursor.advance(2)) return State::Again;
 
         size_t start = cursor;
@@ -203,12 +202,14 @@ namespace Private {
             while (cursor.current() != ':')
                 if (!cursor.advance(1)) return State::Again;
 
+            // Skip the ':'
             if (!cursor.advance(1)) return State::Again;
 
             std::string name = std::string(cursor.offset(start), cursor.diff(start) - 1);
 
-            // Skip the ':'
-            if (!cursor.advance(1)) return State::Again;
+            // Ignore spaces
+            while (cursor.current() == ' ')
+                if (!cursor.advance(1)) return State::Again;
 
             // Read the header value
             start = cursor;
@@ -309,6 +310,7 @@ namespace Private {
 
         memcpy(buffer.data + buffer.len, data, len);
         buffer.len += len;
+
         return true;
     }
 
@@ -434,6 +436,8 @@ Response::writeTo(Tcp::Peer& peer)
 
 void
 Handler::onInput(const char* buffer, size_t len, Tcp::Peer& peer) {
+    auto& parser = getParser(peer);
+
     if (!parser.feed(buffer, len)) {
         cout << "Could not feed parser bro" << endl;
     }
@@ -452,6 +456,21 @@ Handler::onInput(const char* buffer, size_t len, Tcp::Peer& peer) {
 
 void
 Handler::onOutput() {
+}
+
+void
+Handler::onConnection(Tcp::Peer& peer) {
+    peer.setData(std::make_shared<Private::Parser>());
+}
+
+void
+Handler::onDisconnection(Tcp::Peer& peer) {
+}
+
+Private::Parser&
+Handler::getParser(Tcp::Peer& peer) {
+    auto data = peer.data();
+    return *std::static_pointer_cast<Private::Parser>(data);
 }
 
 Endpoint::Endpoint()

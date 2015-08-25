@@ -18,6 +18,7 @@ class MyHandler : public Net::Http::Handler {
                 response.headers
                     .add(std::make_shared<Server>("lys"))
                     .add(std::make_shared<ContentType>(MIME(Text, Plain)));
+
                 response.writeTo(peer);
 
             }

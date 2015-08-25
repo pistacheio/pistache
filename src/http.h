@@ -259,6 +259,9 @@ namespace Private {
             feed(data, len);
         }
 
+        Parser(const Parser& other) = delete;
+        Parser(Parser&& other) = default;
+
         bool feed(const char* data, size_t len);
         void reset();
 
@@ -272,7 +275,7 @@ namespace Private {
     private:
         static constexpr size_t StepsCount = 3;
 
-        std::unique_ptr<Step> allSteps[StepsCount];
+        std::array<std::unique_ptr<Step>, StepsCount> allSteps;
         size_t currentStep;
 
         ssize_t contentLength;
@@ -326,10 +329,14 @@ public:
     void onInput(const char* buffer, size_t len, Tcp::Peer& peer);
     void onOutput();
 
+    void onConnection(Tcp::Peer& peer);
+    void onDisconnection(Tcp::Peer& peer);
+
     virtual void onRequest(const Request& request, Tcp::Peer& peer) = 0;
 
 private:
-    Private::Parser parser;
+    Private::Parser& getParser(Tcp::Peer& peer);
+
 };
 
 class Endpoint {
