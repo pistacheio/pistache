@@ -449,26 +449,24 @@ Response::writeTo(Tcp::Peer& peer)
 
 void
 Handler::onInput(const char* buffer, size_t len, Tcp::Peer& peer) {
-    auto& parser = getParser(peer);
+    try {
+        auto& parser = getParser(peer);
+        if (!parser.feed(buffer, len)) {
+            throw HttpError(Code::Request_Entity_Too_Large, "Request exceeded maximum buffer size");
+        }
 
-    if (!parser.feed(buffer, len)) {
-        cout << "Could not feed parser bro" << endl;
+        auto state = parser.parse();
+        if (state == Private::Parser::State::Done) {
+            onRequest(parser.request, peer);
+            parser.reset();
+        }
+    } catch (const HttpError &err) {
+        Response response(err.code(), err.reason());
+        response.writeTo(peer);
     }
-    else {
-        try {
-            auto state = parser.parse();
-            if (state == Private::Parser::State::Done) {
-                onRequest(parser.request, peer);
-                parser.reset();
-            }
-        } catch (const HttpError &err) {
-            Response response(err.code(), err.reason());
-            response.writeTo(peer);
-        }
-        catch (const std::exception& e) {
-            Response response(Code::Internal_Server_Error, e.what());
-            response.writeTo(peer);
-        }
+    catch (const std::exception& e) {
+        Response response(Code::Internal_Server_Error, e.what());
+        response.writeTo(peer);
     }
 }
 
