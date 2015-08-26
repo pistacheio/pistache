@@ -347,7 +347,7 @@ public:
     virtual void onRequest(const Request& request, Tcp::Peer& peer) = 0;
 
 private:
-    Private::Parser& getParser(Tcp::Peer& peer);
+    Private::Parser& getParser(Tcp::Peer& peer) const;
 };
 
 class Endpoint {

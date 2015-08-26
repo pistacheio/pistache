@@ -22,6 +22,8 @@ static constexpr char CR = 0xD;
 static constexpr char LF = 0xA;
 static constexpr char CRLF[] = {CR, LF};
 
+static constexpr const char* ParserData = "__Parser";
+
 namespace Private {
 
     Parser::Buffer::Buffer()
@@ -476,7 +478,7 @@ Handler::onOutput() {
 
 void
 Handler::onConnection(Tcp::Peer& peer) {
-    peer.setData(std::make_shared<Private::Parser>());
+    peer.putData(ParserData, std::make_shared<Private::Parser>());
 }
 
 void
@@ -484,9 +486,8 @@ Handler::onDisconnection(Tcp::Peer& peer) {
 }
 
 Private::Parser&
-Handler::getParser(Tcp::Peer& peer) {
-    auto data = peer.data();
-    return *std::static_pointer_cast<Private::Parser>(data);
+Handler::getParser(Tcp::Peer& peer) const {
+    return *peer.getData<Private::Parser>(ParserData);
 }
 
 Endpoint::Endpoint()
