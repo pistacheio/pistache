@@ -11,6 +11,7 @@
 #include "http.h"
 #include "net.h"
 #include "peer.h"
+#include "array_buf.h"
 
 using namespace std;
 
@@ -21,6 +22,11 @@ namespace Http {
 static constexpr char CR = 0xD;
 static constexpr char LF = 0xA;
 static constexpr char CRLF[] = {CR, LF};
+
+template< class CharT, class Traits>
+std::basic_ostream<CharT, Traits>& crlf(std::basic_ostream<CharT, Traits>& os) {
+    os.write(CRLF, 2);
+}
 
 static constexpr const char* ParserData = "__Parser";
 
@@ -331,31 +337,6 @@ namespace Private {
         request.resource.clear();
     }
 
-    ssize_t
-    Writer::writeRaw(const void* data, size_t len) {
-        buf = static_cast<char *>(memcpy(buf, data, len));
-        buf += len;
-
-        return 0;
-    }
-
-    ssize_t
-    Writer::writeString(const char* str) {
-        const size_t len = std::strlen(str);
-        return writeRaw(str, std::strlen(str));
-    }
-
-    ssize_t
-    Writer::writeHeader(const char* name, const char* value) {
-        writeString(name);
-        writeChar(':');
-        writeString(value);
-        writeRaw(CRLF, 2);
-
-        return 0;
-    }
-
-
 } // namespace Private
 
 const char* methodString(Method method)
@@ -421,32 +402,26 @@ Response::writeTo(Tcp::Peer& peer)
     int fd = peer.fd();
 
     char buffer[Const::MaxBuffer];
-    std::memset(buffer, 0, Const::MaxBuffer);
-    Private::Writer fmt(buffer, sizeof buffer);
+    Io::OutArrayBuf obuf(buffer, Io::Init::ZeroOut);
 
-    fmt.writeString("HTTP/1.1 ");
-    fmt.writeInt(code_);
-    fmt.writeChar(' ');
-    fmt.writeString(codeString(static_cast<Code>(code_)));
-    fmt.writeRaw(CRLF, 2);
+    std::ostream stream(&obuf);
+    stream << "HTTP/1.1 ";
+    stream << code_;
+    stream << ' ';
+    stream << codeString(static_cast<Code>(code_));
+    stream << crlf;
 
     for (const auto& header: headers.list()) {
-        std::ostringstream oss;
-        header->write(oss);
-
-        std::string str = oss.str();
-        fmt.writeRaw(str.c_str(), str.size());
-        fmt.writeRaw(CRLF, 2);
+        header->write(stream);
+        stream << crlf;
     }
 
-    fmt.writeHeader("Content-Length", body.size());
+    stream << "Content-Length: " << body.size() << crlf;
+    stream << crlf;
 
-    fmt.writeRaw(CRLF, 2);
-    fmt.writeString(body.c_str());
+    stream << body;
 
-    const size_t len = fmt.cursor() - buffer;
-
-    ssize_t bytes = send(fd, buffer, len, 0);
+    ssize_t bytes = send(fd, buffer, obuf.len(), 0);
 }
 
 void

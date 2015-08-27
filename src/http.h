@@ -293,47 +293,6 @@ namespace Private {
         ssize_t contentLength;
     };
 
-    struct Writer {
-        Writer(char* buffer, size_t len) 
-            : buf(buffer)
-            , len(len)
-        { }
-
-        ssize_t writeRaw(const void* data, size_t len);
-        ssize_t writeString(const char* str);
-
-        template<typename T>
-        typename std::enable_if<
-                     std::is_integral<T>::value, ssize_t
-                  >::type
-        writeInt(T value) {
-            auto str = std::to_string(value);
-            return writeRaw(str.c_str(), str.size());
-        }
-
-        ssize_t writeChar(char c) {
-            *buf++ = c;
-            return 0;
-        }
-
-        ssize_t writeHeader(const char* name, const char* value);
-
-        template<typename T>
-        typename std::enable_if<
-                    std::is_arithmetic<T>::value, ssize_t
-                 >::type
-        writeHeader(const char* name, T value) {
-            auto str = std::to_string(value);
-            return writeHeader(name, str.c_str());
-        }
-
-        char *cursor() const { return buf; }
-
-    private:
-        char* buf;
-        size_t len;
-    };
-
 }
 
 class Handler : public Net::Tcp::Handler {
