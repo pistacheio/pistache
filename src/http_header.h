@@ -13,6 +13,7 @@
 #include <ostream>
 #include <vector>
 #include <stdexcept>
+#include <cassert>
 
 #define SAFE_HEADER_CAST
 
@@ -106,7 +107,7 @@ enum class Type {
 #define TYPE(val, _) val,
     MIME_TYPES
 #undef TYPE
-    Ext
+    None
 };
 
 enum class Subtype {
@@ -114,7 +115,8 @@ enum class Subtype {
     MIME_SUBTYPES
 #undef SUB_TYPE
     Vendor,
-    Ext
+    Ext,
+    None
 };
 
 enum class Suffix {
@@ -162,18 +164,26 @@ inline bool operator==(Q lhs, Q rhs) {
 // 3.7 Media Types
 class MediaType {
 public:
+    enum Parse { DoParse, DontParse };
+
     MediaType()
-        : top_(Type::Ext)
-        , sub_(Subtype::Ext)
+        : top_(Type::None)
+        , sub_(Subtype::None)
         , suffix_(Suffix::None)
     { }
 
-    MediaType(std::string raw)
-        : top_(Type::Ext)
-        , sub_(Subtype::Ext)
-        , suffix_(Suffix::Ext)
-        , raw_(std::move(raw))
-    { }
+    MediaType(std::string raw, Parse parse = DontParse)
+        : top_(Type::None)
+        , sub_(Subtype::None)
+        , suffix_(Suffix::None)
+    {
+        if (parse == DoParse) {
+            parseRaw(raw.c_str(), raw.length());
+        }
+        else {
+            raw_ = std::move(raw);
+        }
+    }
 
     MediaType(Mime::Type top, Mime::Subtype sub)
         : top_(top)
@@ -197,6 +207,10 @@ public:
     Mime::Subtype sub() const { return sub_; }
     Mime::Suffix suffix() const { return suffix_; }
 
+    std::string rawSub() const {
+        return rawSubIndex.splice(raw_);
+    }
+
     std::string raw() const { return raw_; }
 
     const Optional<Q>& q() const { return q_; }
@@ -204,11 +218,31 @@ public:
 
     std::string toString() const;
 private:
+    void parseRaw(const char* str, size_t len);
+
     Mime::Type top_;
     Mime::Subtype sub_;
     Mime::Suffix suffix_;
 
+    /* Let's save some extra memory allocations by only storing the
+       raw MediaType along with indexes of the relevant parts
+       Note: experimental for now as it might not be a good idea
+    */
     std::string raw_;
+
+    struct Index {
+        size_t beg;
+        size_t end;
+
+        std::string splice(const std::string& str) const {
+            assert(end >= beg);
+            return str.substr(beg, end - beg + 1);
+        }
+    };
+
+    Index rawSubIndex;
+    Index rawSuffixIndex;
+
     Optional<Q> q_;
 };
 

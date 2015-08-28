@@ -6,6 +6,7 @@
 
 #include "http_header.h"
 #include "common.h"
+#include "http.h"
 #include <stdexcept>
 #include <iterator>
 #include <cstring>
@@ -50,17 +51,33 @@ MediaType
 MediaType::fromRaw(const char* str, size_t len) {
     MediaType res;
 
-    // HUGE @Todo: Validate the input when parsing to avoid overflow
+    res.parseRaw(str, len);
+    return res;
+}
 
+void
+MediaType::parseRaw(const char* str, size_t len) {
     auto eof = [&](const char *p) {
         return p - str == len;
     };
 
-    #define MAX_SIZE(s) std::min(sizeof(s) - 1, static_cast<size_t>(p - str))
+    auto offset = [&](const char* ptr) {
+        return static_cast<size_t>(ptr - str);
+    };
+
+    auto raise = [&](const char* str) {
+        throw HttpError(Http::Code::Unsupported_Media_Type, str);
+    };
+
+    #define MAX_SIZE(s) std::min(sizeof(s) - 1, offset(p))
 
     // Parse type
     const char *p = strchr(str, '/');
-    if (p == NULL) return res;
+    if (p == NULL) {
+        raise("Malformated Media Type");
+    }
+
+    raw_ = string(str, len);
 
     Mime::Type top;
 
@@ -73,27 +90,26 @@ MediaType::fromRaw(const char* str, size_t len) {
     //
     // Watch out, this pattern is repeated throughout the function
     do {
-#define TYPE(val, s) \
+#define TYPE(val, s)                            \
         if (memcmp(str, s, MAX_SIZE(s)) == 0) { \
-            top = Type::val; \
-            break;  \
+            top = Type::val;                    \
+            break;                              \
         }
         MIME_TYPES
 #undef TYPE
-        top = Type::Ext;
+        throw HttpError(Http::Code::Unsupported_Media_Type, "Unknown Media Type");
     } while (0);
 
-    res.top_ = top;
-    if (top == Type::Ext) return res;
+    top_ = top;
 
     // Parse subtype
     Mime::Subtype sub;
-
     ++p;
+
+    if (eof(p)) raise("Malformed Media Type");
 
     if (memcmp(p, "vnd.", 4) == 0) {
         sub = Subtype::Vendor;
-        while (!eof(p) && (*p != ';' && *p != '+')) ++p;
     } else {
         do {
 #define SUB_TYPE(val, s) \
@@ -108,12 +124,23 @@ MediaType::fromRaw(const char* str, size_t len) {
         } while (0);
     }
 
-    res.sub_ = sub;
+    if (sub == Subtype::Ext || sub == Subtype::Vendor) {
+        rawSubIndex.beg = offset(p);
+        while (!eof(p) && (*p != ';' && *p != '+')) ++p;
+        rawSubIndex.end = offset(p) - 1;
+    }
+
+    sub_ = sub;
+
+    if (eof(p)) return;
 
     // Parse suffix
     Mime::Suffix suffix = Suffix::None;
     if (*p == '+') {
+
         ++p;
+
+        if (eof(p)) raise("Malformed Media Type");
 
         do {
 #define SUFFIX(val, s, _) \
@@ -127,32 +154,54 @@ MediaType::fromRaw(const char* str, size_t len) {
             suffix = Suffix::Ext;
         } while (0);
 
-        res.suffix_ = suffix;
+        if (suffix == Suffix::Ext) {
+            rawSuffixIndex.beg = offset(p);
+            while (!eof(p) && (*p != ';' && *p != '+')) ++p;
+            rawSuffixIndex.end = offset(p) - 1;
+        }
+
+        suffix_ = suffix;
     }
 
-    if (eof(p)) return res;
+    if (eof(p)) return;
 
     if (*p == ';') ++p;
 
+    if (eof(p)) {
+        raise("Malformed Media Type");
+    }
+
     while (*p == ' ') ++p;
+
+    if (eof(p)) {
+        raise("Malformed Media Type");
+    };
 
     Optional<Q> q = None();
 
     if (*p == 'q') {
         ++p;
 
+        if (eof(p)) {
+            raise("Invalid quality factor");
+        }
+
         if (*p == '=') {
             char *end;
             double val = strtod(p + 1, &end);
+            if (!eof(end) && *end != ';' && *end != ' ') {
+                raise("Invalid quality factor");
+            }
             q = Some(Q::fromFloat(val));
+        }
+        else {
+            raise("Invalid quality factor");
         }
     }
 
-    res.q_ = std::move(q);
+    q_ = std::move(q);
 
     #undef MAX_SIZE
-
-    return res;
 
 }
 
@@ -163,6 +212,8 @@ MediaType::setQuality(Q quality) {
 
 std::string
 MediaType::toString() const {
+
+    if (!raw_.empty()) return raw_;
 
     auto topString = [](Mime::Type top) -> const char * {
         switch (top) {
