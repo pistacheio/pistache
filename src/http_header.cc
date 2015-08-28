@@ -19,6 +19,23 @@ namespace Http {
 
 namespace Mime {
 
+std::string
+Q::toString() const {
+    if (val_ == 0)
+        return "q=0";
+    else if (val_ == 100)
+        return "q=1";
+
+    char buff[sizeof("q=0.99")];
+    memset(buff, sizeof buff, 0);
+    if (val_ % 10 == 0)
+        snprintf(buff, sizeof buff, "q=%.1f", val_ / 100.0);
+    else
+        snprintf(buff, sizeof buff, "q=%.2f", val_ / 100.0);
+
+    return std::string(buff);
+}
+
 MediaType
 MediaType::fromString(const std::string& str) {
     return fromRaw(str.c_str(), str.size());
@@ -35,11 +52,15 @@ MediaType::fromRaw(const char* str, size_t len) {
 
     // HUGE @Todo: Validate the input when parsing to avoid overflow
 
+    auto eof = [&](const char *p) {
+        return p - str == len;
+    };
+
+    #define MAX_SIZE(s) std::min(sizeof(s) - 1, static_cast<size_t>(p - str))
+
     // Parse type
     const char *p = strchr(str, '/');
     if (p == NULL) return res;
-
-    const ptrdiff_t size = p - str;
 
     Mime::Type top;
 
@@ -53,42 +74,41 @@ MediaType::fromRaw(const char* str, size_t len) {
     // Watch out, this pattern is repeated throughout the function
     do {
 #define TYPE(val, s) \
-        if (strncmp(str, s, size) == 0) { \
+        if (memcmp(str, s, MAX_SIZE(s)) == 0) { \
             top = Type::val; \
             break;  \
         }
         MIME_TYPES
 #undef TYPE
-        else {
-            top = Type::Ext;
-        }
+        top = Type::Ext;
     } while (0);
 
+    res.top_ = top;
     if (top == Type::Ext) return res;
-
-    res.top = top;
 
     // Parse subtype
     Mime::Subtype sub;
 
     ++p;
 
-    do {
+    if (memcmp(p, "vnd.", 4) == 0) {
+        sub = Subtype::Vendor;
+        while (!eof(p) && (*p != ';' && *p != '+')) ++p;
+    } else {
+        do {
 #define SUB_TYPE(val, s) \
-        if (strncmp(p, s, sizeof (s) - 1) == 0) { \
-            sub = Subtype::val; \
-            p += sizeof(s) - 1; \
-            break; \
-        }
-        MIME_SUBTYPES
+            if (memcmp(p, s, MAX_SIZE(s)) == 0) { \
+                sub = Subtype::val; \
+                p += sizeof(s) - 1; \
+                break; \
+            }
+            MIME_SUBTYPES
 #undef SUB_TYPE
-        else {
             sub = Subtype::Ext;
-        }
-    } while (0);
+        } while (0);
+    }
 
-    if (sub == Subtype::Ext) return res;
-    res.sub = sub;
+    res.sub_ = sub;
 
     // Parse suffix
     Mime::Suffix suffix = Suffix::None;
@@ -97,22 +117,48 @@ MediaType::fromRaw(const char* str, size_t len) {
 
         do {
 #define SUFFIX(val, s, _) \
-            if (strncmp(p, s, sizeof (s) - 1) == 0) { \
+            if (memcmp(p, s, MAX_SIZE(s)) == 0) { \
                 suffix = Suffix::val; \
+                p += sizeof(s) - 1; \
                 break; \
             }
             MIME_SUFFIXES
 #undef SUFFIX
-            else {
-                suffix = Suffix::Ext;
-            }
+            suffix = Suffix::Ext;
         } while (0);
 
-        res.suffix = suffix;
+        res.suffix_ = suffix;
     }
+
+    if (eof(p)) return res;
+
+    if (*p == ';') ++p;
+
+    while (*p == ' ') ++p;
+
+    Optional<Q> q = None();
+
+    if (*p == 'q') {
+        ++p;
+
+        if (*p == '=') {
+            char *end;
+            double val = strtod(p + 1, &end);
+            q = Some(Q::fromFloat(val));
+        }
+    }
+
+    res.q_ = std::move(q);
+
+    #undef MAX_SIZE
 
     return res;
 
+}
+
+void
+MediaType::setQuality(Q quality) {
+    q_ = Some(quality);
 }
 
 std::string
@@ -149,12 +195,17 @@ MediaType::toString() const {
     };
 
     std::string res;
-    res += topString(top);
+    res += topString(top_);
     res += "/";
-    res += subString(sub);
-    if (suffix != Suffix::None) {
-        res += suffixString(suffix);
+    res += subString(sub_);
+    if (suffix_ != Suffix::None) {
+        res += suffixString(suffix_);
     }
+
+    optionally_do(q_, [&res](Q quality) {
+        res += "; ";
+        res += quality.toString();
+    });
 
     return res;
 }

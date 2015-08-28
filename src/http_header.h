@@ -6,11 +6,13 @@
 
 #pragma once
 
+#include "optional.h"
 #include <string>
 #include <type_traits>
 #include <memory>
 #include <ostream>
 #include <vector>
+#include <stdexcept>
 
 #define SAFE_HEADER_CAST
 
@@ -111,6 +113,7 @@ enum class Subtype {
 #define SUB_TYPE(val, _) val,
     MIME_SUBTYPES
 #undef SUB_TYPE
+    Vendor,
     Ext
 };
 
@@ -122,41 +125,97 @@ enum class Suffix {
     Ext
 };
 
+// 3.9 Quality Values
+class Q {
+public:
+
+    // typedef uint8_t Type;
+
+    typedef uint16_t Type;
+
+    explicit Q(Type val)
+    {
+        if (val > 100) {
+            throw std::runtime_error("Invalid quality value, must be in the [0; 100] range");
+        }
+
+        val_ = val;
+    }
+
+    static Q fromFloat(double f) {
+        return Q(static_cast<Type>(f * 100.0));
+    }
+
+    Type value() const { return val_; }
+    operator Type() const { return val_; }
+
+    std::string toString() const;
+
+private:
+    Type val_;
+};
+
+inline bool operator==(Q lhs, Q rhs) {
+    return lhs.value() == rhs.value();
+}
+
 // 3.7 Media Types
 class MediaType {
 public:
-    constexpr MediaType()
-        : top(Type::Ext)
-        , sub(Subtype::Ext)
-        , suffix(Suffix::None)
+    MediaType()
+        : top_(Type::Ext)
+        , sub_(Subtype::Ext)
+        , suffix_(Suffix::None)
     { }
 
-    constexpr MediaType(Mime::Type top, Mime::Subtype sub)
-        : top(top)
-        , sub(sub)
-        , suffix(Suffix::None)
+    MediaType(std::string raw)
+        : top_(Type::Ext)
+        , sub_(Subtype::Ext)
+        , suffix_(Suffix::Ext)
+        , raw_(std::move(raw))
     { }
 
-    constexpr MediaType(Mime::Type top, Mime::Subtype sub, Mime::Suffix suffix)
-        : top(top)
-        , sub(sub)
-        , suffix(suffix)
+    MediaType(Mime::Type top, Mime::Subtype sub)
+        : top_(top)
+        , sub_(sub)
+        , suffix_(Suffix::None)
     { }
 
-    Mime::Type top;
-    Mime::Subtype sub;
-    Mime::Suffix suffix;
+    MediaType(Mime::Type top, Mime::Subtype sub, Mime::Suffix suffix)
+        : top_(top)
+        , sub_(sub)
+        , suffix_(suffix)
+    { }
+
 
     static MediaType fromRaw(const char* str, size_t len);
 
     static MediaType fromString(const std::string& str);
     static MediaType fromString(std::string&& str);
 
+    Mime::Type top() const { return top_; }
+    Mime::Subtype sub() const { return sub_; }
+    Mime::Suffix suffix() const { return suffix_; }
+
+    std::string raw() const { return raw_; }
+
+    const Optional<Q>& q() const { return q_; }
+    void setQuality(Q quality);
+
     std::string toString() const;
+private:
+    Mime::Type top_;
+    Mime::Subtype sub_;
+    Mime::Suffix suffix_;
+
+    std::string raw_;
+    Optional<Q> q_;
 };
 
 inline bool operator==(const MediaType& lhs, const MediaType& rhs) {
-    return lhs.top == rhs.top && lhs.sub == rhs.sub;
+    return lhs.top() == rhs.top() &&
+           lhs.sub() == rhs.sub() &&
+           lhs.suffix() == rhs.suffix();
 }
 
 } // namespace Mime
