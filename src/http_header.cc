@@ -66,10 +66,17 @@ MediaType::parseRaw(const char* str, size_t len) {
     };
 
     auto raise = [&](const char* str) {
+        // TODO: eventually, we should throw a more generic exception
+        // that could then be catched in lower stack frames to rethrow
+        // an HttpError
         throw HttpError(Http::Code::Unsupported_Media_Type, str);
     };
 
-    #define MAX_SIZE(s) std::min(sizeof(s) - 1, offset(p))
+    // Macro to ensure that we do not overflow when comparing strings
+    // The trick here is to use sizeof on a raw string literal of type
+    // const char[N] instead of strlen to avoid additional
+    // runtime computation
+    #define MAX_SIZE(s) std::min(sizeof(s) - 1, len - offset(p))
 
     // Parse type
     const char *p = strchr(str, '/');
@@ -97,7 +104,7 @@ MediaType::parseRaw(const char* str, size_t len) {
         }
         MIME_TYPES
 #undef TYPE
-        throw HttpError(Http::Code::Unsupported_Media_Type, "Unknown Media Type");
+        raise("Unknown Media Type");
     } while (0);
 
     top_ = top;
@@ -108,15 +115,15 @@ MediaType::parseRaw(const char* str, size_t len) {
 
     if (eof(p)) raise("Malformed Media Type");
 
-    if (memcmp(p, "vnd.", 4) == 0) {
+    if (memcmp(p, "vnd.", MAX_SIZE("vnd.")) == 0) {
         sub = Subtype::Vendor;
     } else {
         do {
-#define SUB_TYPE(val, s) \
+#define SUB_TYPE(val, s)                          \
             if (memcmp(p, s, MAX_SIZE(s)) == 0) { \
-                sub = Subtype::val; \
-                p += sizeof(s) - 1; \
-                break; \
+                sub = Subtype::val;               \
+                p += sizeof(s) - 1;               \
+                break;                            \
             }
             MIME_SUBTYPES
 #undef SUB_TYPE
@@ -143,11 +150,11 @@ MediaType::parseRaw(const char* str, size_t len) {
         if (eof(p)) raise("Malformed Media Type");
 
         do {
-#define SUFFIX(val, s, _) \
+#define SUFFIX(val, s, _)                         \
             if (memcmp(p, s, MAX_SIZE(s)) == 0) { \
-                suffix = Suffix::val; \
-                p += sizeof(s) - 1; \
-                break; \
+                suffix = Suffix::val;             \
+                p += sizeof(s) - 1;               \
+                break;                            \
             }
             MIME_SUFFIXES
 #undef SUFFIX
@@ -217,7 +224,7 @@ MediaType::toString() const {
 
     auto topString = [](Mime::Type top) -> const char * {
         switch (top) {
-#define TYPE(val, str) \
+#define TYPE(val, str)        \
         case Mime::Type::val: \
             return str;
         MIME_TYPES
@@ -227,7 +234,7 @@ MediaType::toString() const {
 
     auto subString = [](Mime::Subtype sub) -> const char * {
         switch (sub) {
-#define SUB_TYPE(val, str) \
+#define SUB_TYPE(val, str)       \
         case Mime::Subtype::val: \
             return str;
         MIME_SUBTYPES
@@ -237,7 +244,7 @@ MediaType::toString() const {
 
     auto suffixString = [](Mime::Suffix suffix) -> const char * {
         switch (suffix) {
-#define SUFFIX(val, str, _) \
+#define SUFFIX(val, str, _)     \
         case Mime::Suffix::val: \
             return "+" str;
         MIME_SUFFIXES
