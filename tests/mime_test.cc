@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "http_header.h"
+#include "mime.h"
 #include "http.h"
 
 using namespace Net::Http;
