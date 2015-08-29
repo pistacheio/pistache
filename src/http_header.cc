@@ -170,43 +170,55 @@ MediaType::parseRaw(const char* str, size_t len) {
         suffix_ = suffix;
     }
 
-    if (eof(p)) return;
+    // Parse parameters
+    while (!eof(p)) {
 
-    if (*p == ';') ++p;
-
-    if (eof(p)) {
-        raise("Malformed Media Type");
-    }
-
-    while (*p == ' ') ++p;
-
-    if (eof(p)) {
-        raise("Malformed Media Type");
-    };
-
-    Optional<Q> q = None();
-
-    if (*p == 'q') {
-        ++p;
-
-        if (eof(p)) {
-            raise("Invalid quality factor");
+        if (*p == ';' || *p == ' ') {
+            if (eof(p + 1)) raise("Malformed Media Type");
+            ++p;
         }
 
-        if (*p == '=') {
-            char *end;
-            double val = strtod(p + 1, &end);
-            if (!eof(end) && *end != ';' && *end != ' ') {
+        else if (*p == 'q') {
+            ++p;
+
+            if (eof(p)) {
                 raise("Invalid quality factor");
             }
-            q = Some(Q::fromFloat(val));
+
+            if (*p == '=') {
+                char *end;
+                double val = strtod(p + 1, &end);
+                if (!eof(end) && *end != ';' && *end != ' ') {
+                    raise("Invalid quality factor");
+                }
+                q_ = Some(Q::fromFloat(val));
+                p = end;
+            }
+            else {
+                raise("Invalid quality factor");
+            }
         }
         else {
-            raise("Invalid quality factor");
-        }
-    }
+            const char *begin = p;
+            while (!eof(p) && *p != '=') ++p;
 
-    q_ = std::move(q);
+            if (eof(p)) raise("Unfinished Media Type parameter");
+            const char *end = p;
+            ++p;
+            if (eof(p)) raise("Unfinished Media Type parameter");
+
+            std::string key(begin, end);
+
+            begin = p;
+            while (!eof(p) && *p != ' ' && *p != ';') ++p;
+
+            std::string value(begin, p);
+
+            params.insert(std::make_pair(std::move(key), std::move(value)));
+
+        }
+
+    }
 
     #undef MAX_SIZE
 
@@ -215,6 +227,21 @@ MediaType::parseRaw(const char* str, size_t len) {
 void
 MediaType::setQuality(Q quality) {
     q_ = Some(quality);
+}
+
+Optional<std::string>
+MediaType::getParam(std::string name) const {
+    auto it = params.find(name);
+    if (it == std::end(params)) {
+        return None();
+    }
+
+    return Some(it->second);
+}
+
+void
+MediaType::setParam(std::string name, std::string value) {
+    params[name] = value;
 }
 
 std::string
@@ -252,6 +279,7 @@ MediaType::toString() const {
         }
     };
 
+    // @Improvement: allocating and concatenating many small strings is probably slow
     std::string res;
     res += topString(top_);
     res += "/";
@@ -264,6 +292,11 @@ MediaType::toString() const {
         res += "; ";
         res += quality.toString();
     });
+
+    for (const auto& param: params) {
+        res += "; ";
+        res += param.first + "=" + param.second;
+    }
 
     return res;
 }

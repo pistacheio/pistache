@@ -14,6 +14,7 @@
 #include <vector>
 #include <stdexcept>
 #include <cassert>
+#include <unordered_map>
 
 #define SAFE_HEADER_CAST
 
@@ -216,6 +217,9 @@ public:
     const Optional<Q>& q() const { return q_; }
     void setQuality(Q quality);
 
+    Optional<std::string> getParam(std::string name) const;
+    void setParam(std::string name, std::string value);
+
     std::string toString() const;
 private:
     void parseRaw(const char* str, size_t len);
@@ -242,6 +246,8 @@ private:
 
     Index rawSubIndex;
     Index rawSuffixIndex;
+
+    std::unordered_map<std::string, std::string> params;
 
     Optional<Q> q_;
 };
