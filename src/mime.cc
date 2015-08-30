@@ -75,7 +75,7 @@ MediaType::parseRaw(const char* str, size_t len) {
     #define MAX_SIZE(s) std::min(sizeof(s) - 1, len - offset(p))
 
     // Parse type
-    const char *p = strchr(str, '/');
+    const char *p = static_cast<const char *>(memchr(str, '/', len));
     if (p == NULL) {
         raise("Malformated Media Type");
     }
