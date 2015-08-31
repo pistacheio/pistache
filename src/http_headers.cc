@@ -135,6 +135,7 @@ namespace {
     struct AtInit {
         AtInit() {
             HeaderRegistry::registerHeader<ContentLength>();
+            HeaderRegistry::registerHeader<ContentType>();
             HeaderRegistry::registerHeader<Host>();
             HeaderRegistry::registerHeader<Accept>();
             HeaderRegistry::registerHeader<UserAgent>();

@@ -160,6 +160,7 @@ Server::write(std::ostream& os) const
 void
 ContentType::parseRaw(const char* str, size_t len)
 {
+    mime_.parseRaw(str, len);
 }
 
 void

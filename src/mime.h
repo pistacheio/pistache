@@ -150,6 +150,7 @@ public:
     { }
 
 
+    void parseRaw(const char* str, size_t len);
     static MediaType fromRaw(const char* str, size_t len);
 
     static MediaType fromString(const std::string& str);
@@ -173,7 +174,6 @@ public:
 
     std::string toString() const;
 private:
-    void parseRaw(const char* str, size_t len);
 
     Mime::Type top_;
     Mime::Subtype sub_;
