@@ -74,7 +74,7 @@ Host::parse(const std::string& data) {
         port_ = p;
     } else {
         host_ = data;
-        port_ = -1;
+        port_ = 80;
     }
 }
 

@@ -7,6 +7,7 @@
 #pragma once
 
 #include "mime.h"
+#include "net.h"
 #include <string>
 #include <type_traits>
 #include <memory>
@@ -138,7 +139,7 @@ public:
      , port_(-1)
     { }
 
-    explicit Host(const std::string& host, int16_t port = -1)
+    explicit Host(const std::string& host, Net::Port port = 80)
         : host_(host)
         , port_(port)
     { }
@@ -147,11 +148,11 @@ public:
     void write(std::ostream& os) const;
 
     std::string host() const { return host_; }
-    int16_t port() const { return port_; }
+    Net::Port port() const { return port_; }
 
 private:
     std::string host_;
-    int16_t port_;
+    Net::Port port_;
 };
 
 class UserAgent : public Header {
