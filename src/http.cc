@@ -372,10 +372,11 @@ Response::writeTo(Tcp::Peer& peer)
     stream << "HTTP/1.1 ";
     stream << code_;
     stream << ' ';
-    stream << codeString(static_cast<Code>(code_));
+    stream << static_cast<Code>(code_);
     stream << crlf;
 
     for (const auto& header: headers.list()) {
+        stream << header->name() << ": ";
         header->write(stream);
         stream << crlf;
     }

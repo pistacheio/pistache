@@ -243,7 +243,7 @@ ContentLength::parse(const std::string& data) {
 
 void
 ContentLength::write(std::ostream& os) const {
-    os << "Content-Length: " << value_;
+    os << value_;
 }
 
 void
@@ -276,7 +276,7 @@ UserAgent::parse(const std::string& data) {
 
 void
 UserAgent::write(std::ostream& os) const {
-    os << "User-Agent: " << ua_;
+    os << ua_;
 }
 
 void
@@ -340,7 +340,7 @@ ContentEncoding::parseRaw(const char* str, size_t len) {
 
 void
 ContentEncoding::write(std::ostream& os) const {
-    os << "Content-Encoding: " << encodingString(encoding_);
+    os << encodingString(encoding_);
 }
 
 Server::Server(const std::vector<std::string>& tokens)
@@ -365,7 +365,6 @@ Server::parse(const std::string& data)
 void
 Server::write(std::ostream& os) const
 {
-    os << "Server: ";
     std::copy(std::begin(tokens_), std::end(tokens_),
                  std::ostream_iterator<std::string>(os, " "));
 }
@@ -378,7 +377,6 @@ ContentType::parseRaw(const char* str, size_t len)
 
 void
 ContentType::write(std::ostream& os) const {
-    os << "Content-Type: ";
     os << mime_.toString();
 }
 
