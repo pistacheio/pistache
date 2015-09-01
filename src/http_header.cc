@@ -100,6 +100,36 @@ UserAgent::write(std::ostream& os) const {
 
 void
 Accept::parseRaw(const char *str, size_t len) {
+
+    auto remaining = [&](const char* p) {
+        return len - (p - str);
+    };
+
+    auto eof = [&](const char *p) {
+        return remaining(p) == 0;
+    };
+
+    const char *p = static_cast<const char *>(memchr(str, ',', len));
+    const char *begin = str;
+    if (p == NULL) {
+        mediaRange_.push_back(Mime::MediaType::fromRaw(str, len));
+    } else {
+        do {
+
+            const size_t mimeLen = p - begin;
+            mediaRange_.push_back(Mime::MediaType::fromRaw(begin, mimeLen));
+
+            while (!eof(p) && (*p == ',' || *p == ' ')) ++p;
+            if (eof(p)) throw std::runtime_error("Invalid format for Accept header");
+            begin = p;
+
+            p = static_cast<const char *>(memchr(p, ',', remaining(p)));
+
+        } while (p != NULL);
+
+        mediaRange_.push_back(Mime::MediaType::fromRaw(begin, remaining(begin)));
+    }
+
 }
 
 void

@@ -184,8 +184,10 @@ public:
     void parseRaw(const char *str, size_t len);
     void write(std::ostream& os) const;
 
+    const std::vector<Mime::MediaType> media() const { return mediaRange_; }
+
 private:
-    std::string data;
+    std::vector<Mime::MediaType> mediaRange_;
 };
 
 class ContentEncoding : public Header {
