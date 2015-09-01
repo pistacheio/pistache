@@ -15,7 +15,9 @@ namespace Net {
 
 namespace Http {
 
-class Headers {
+namespace Header {
+
+class Collection {
 public:
 
     template<typename H>
@@ -48,7 +50,7 @@ public:
         return std::static_pointer_cast<H>(tryGet(H::Name));
     }
 
-    Headers& add(const std::shared_ptr<Header>& header);
+    Collection& add(const std::shared_ptr<Header>& header);
 
     std::shared_ptr<const Header> get(const std::string& name) const;
     std::shared_ptr<Header> get(const std::string& name);
@@ -75,7 +77,7 @@ private:
     std::unordered_map<std::string, std::shared_ptr<Header>> headers;
 };
 
-struct HeaderRegistry {
+struct Registry {
 
     typedef std::function<std::unique_ptr<Header>()> RegistryFunc;
 
@@ -98,6 +100,8 @@ struct HeaderRegistry {
     static std::unique_ptr<Header> makeHeader(const std::string& name);
     static bool isRegistered(const std::string& name);
 };
+
+} // namespace Header
 
 } // namespace Http
 

@@ -18,6 +18,8 @@ namespace Net {
 
 namespace Http {
 
+namespace Header {
+
 const char* encodingString(Encoding encoding) {
     switch (encoding) {
     case Encoding::Gzip:
@@ -168,6 +170,8 @@ ContentType::write(std::ostream& os) const {
     os << "Content-Type: ";
     os << mime_.toString();
 }
+
+} // namespace Header
 
 } // namespace Http
 

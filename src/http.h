@@ -112,7 +112,7 @@ public:
     Message();
     Version version;
 
-    Headers headers;
+    Header::Collection headers;
     std::string body;
 };
 

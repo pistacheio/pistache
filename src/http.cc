@@ -228,8 +228,8 @@ namespace Private {
                 if (!cursor.advance(1)) return State::Again;
             }
 
-            if (HeaderRegistry::isRegistered(name)) {
-                std::shared_ptr<Header> header = HeaderRegistry::makeHeader(name);
+            if (Header::Registry::isRegistered(name)) {
+                std::shared_ptr<Header::Header> header = Header::Registry::makeHeader(name);
                 header->parseRaw(cursor.offset(start), cursor.diff(start));
                 request->headers.add(header);
             }
@@ -246,7 +246,7 @@ namespace Private {
 
     Parser::State
     Parser::BodyStep::apply(Cursor& cursor) {
-        auto cl = request->headers.tryGet<ContentLength>();
+        auto cl = request->headers.tryGet<Header::ContentLength>();
         if (!cl) return Parser::State::Done;
 
         auto contentLength = cl->value();
@@ -483,7 +483,7 @@ Endpoint::serve()
     if (!handler_)
         throw std::runtime_error("Must call setHandler() prior to serve()");
 
-    listener.init(8, Tcp::Options::InstallSignalHandler);
+    listener.init(24, Tcp::Options::InstallSignalHandler);
     listener.setHandler(handler_);
 
     if (listener.bind()) { 

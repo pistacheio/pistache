@@ -4,14 +4,14 @@
 using namespace Net::Http;
 
 TEST(headers_test, content_length) {
-    ContentLength cl;
+    Header::ContentLength cl;
 
     cl.parse("3495");
     ASSERT_EQ(cl.value(), 3495);
 }
 
 TEST(headers_test, host) {
-    Host host;
+    Header::Host host;
 
     host.parse("www.w3.org");
     ASSERT_EQ(host.host(), "www.w3.org");
@@ -23,21 +23,21 @@ TEST(headers_test, host) {
 }
 
 TEST(headers_test, user_agent) {
-    UserAgent ua;
+    Header::UserAgent ua;
 
     ua.parse("CERN-LineMode/2.15 libwww/2.17b3");
     ASSERT_EQ(ua.ua(), "CERN-LineMode/2.15 libwww/2.17b3");
 }
 
 TEST(headers_test, content_encoding) {
-    ContentEncoding ce;
+    Header::ContentEncoding ce;
 
     ce.parse("gzip");
-    ASSERT_EQ(ce.encoding(), Encoding::Gzip);
+    ASSERT_EQ(ce.encoding(), Header::Encoding::Gzip);
 }
 
 TEST(headers_test, content_type) {
-    ContentType ct;
+    Header::ContentType ct;
 
     ct.parse("text/html; charset=ISO-8859-4");
     const auto& mime = ct.mime();

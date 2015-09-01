@@ -20,6 +20,8 @@ namespace Net {
 
 namespace Http {
 
+namespace Header {
+
 #ifdef SAFE_HEADER_CAST
 namespace detail {
 
@@ -244,6 +246,8 @@ private:
     Mime::MediaType mime_;
 
 };
+
+} // namespace Header
 
 } // namespace Http
 

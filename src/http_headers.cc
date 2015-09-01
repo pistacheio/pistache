@@ -14,12 +14,14 @@ namespace Net {
 
 namespace Http {
 
+namespace Header {
+
 namespace {
-    std::unordered_map<std::string, HeaderRegistry::RegistryFunc> registry;
+    std::unordered_map<std::string, Registry::RegistryFunc> registry;
 }
 
 void
-HeaderRegistry::registerHeader(std::string name, HeaderRegistry::RegistryFunc func)
+Registry::registerHeader(std::string name, Registry::RegistryFunc func)
 {
     auto it = registry.find(name);
     if (it != std::end(registry)) {
@@ -30,7 +32,7 @@ HeaderRegistry::registerHeader(std::string name, HeaderRegistry::RegistryFunc fu
 }
 
 std::vector<std::string>
-HeaderRegistry::headersList() {
+Registry::headersList() {
     std::vector<std::string> names;
     names.reserve(registry.size());
 
@@ -42,7 +44,7 @@ HeaderRegistry::headersList() {
 }
 
 std::unique_ptr<Header>
-HeaderRegistry::makeHeader(const std::string& name) {
+Registry::makeHeader(const std::string& name) {
     auto it = registry.find(name);
     if (it == std::end(registry)) {
         throw std::runtime_error("Unknown header");
@@ -52,20 +54,20 @@ HeaderRegistry::makeHeader(const std::string& name) {
 }
 
 bool
-HeaderRegistry::isRegistered(const std::string& name) {
+Registry::isRegistered(const std::string& name) {
     auto it = registry.find(name);
     return it != std::end(registry);
 }
 
-Headers&
-Headers::add(const std::shared_ptr<Header>& header) {
+Collection&
+Collection::add(const std::shared_ptr<Header>& header) {
     headers.insert(std::make_pair(header->name(), header));
     
     return *this;
 }
 
 std::shared_ptr<const Header>
-Headers::get(const std::string& name) const {
+Collection::get(const std::string& name) const {
     auto header = getImpl(name);
     if (!header.first) {
         throw std::runtime_error("Could not find header");
@@ -75,7 +77,7 @@ Headers::get(const std::string& name) const {
 }
 
 std::shared_ptr<Header>
-Headers::get(const std::string& name) {
+Collection::get(const std::string& name) {
     auto header = getImpl(name);
     if (!header.first) {
         throw std::runtime_error("Could not find header");
@@ -85,7 +87,7 @@ Headers::get(const std::string& name) {
 }
 
 std::shared_ptr<const Header>
-Headers::tryGet(const std::string& name) const {
+Collection::tryGet(const std::string& name) const {
     auto header = getImpl(name);
     if (!header.first) return nullptr;
 
@@ -93,7 +95,7 @@ Headers::tryGet(const std::string& name) const {
 }
 
 std::shared_ptr<Header>
-Headers::tryGet(const std::string& name) {
+Collection::tryGet(const std::string& name) {
     auto header = getImpl(name);
     if (!header.first) return nullptr;
 
@@ -101,12 +103,12 @@ Headers::tryGet(const std::string& name) {
 }
 
 bool
-Headers::has(const std::string& name) const {
+Collection::has(const std::string& name) const {
     return getImpl(name).first;
 }
 
 std::vector<std::shared_ptr<Header>>
-Headers::list() const {
+Collection::list() const {
     std::vector<std::shared_ptr<Header>> ret;
     ret.reserve(headers.size());
     for (const auto& h: headers) {
@@ -117,12 +119,12 @@ Headers::list() const {
 }
 
 void
-Headers::clear() {
+Collection::clear() {
     headers.clear();
 }
 
 std::pair<bool, std::shared_ptr<Header>>
-Headers::getImpl(const std::string& name) const {
+Collection::getImpl(const std::string& name) const {
     auto it = headers.find(name);
     if (it == std::end(headers)) {
         return std::make_pair(false, nullptr);
@@ -134,15 +136,17 @@ Headers::getImpl(const std::string& name) const {
 namespace {
     struct AtInit {
         AtInit() {
-            HeaderRegistry::registerHeader<ContentLength>();
-            HeaderRegistry::registerHeader<ContentType>();
-            HeaderRegistry::registerHeader<Host>();
-            HeaderRegistry::registerHeader<Accept>();
-            HeaderRegistry::registerHeader<UserAgent>();
-            HeaderRegistry::registerHeader<ContentEncoding>();
+            Registry::registerHeader<ContentLength>();
+            Registry::registerHeader<ContentType>();
+            Registry::registerHeader<Host>();
+            Registry::registerHeader<Accept>();
+            Registry::registerHeader<UserAgent>();
+            Registry::registerHeader<ContentEncoding>();
         }
     } atInit;
 }
+
+} // namespace Header
 
 } // namespace Http
 

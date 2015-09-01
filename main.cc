@@ -16,8 +16,8 @@ class MyHandler : public Net::Http::Handler {
 
                 Net::Http::Response response(Net::Http::Code::Ok, "PONG");
                 response.headers
-                    .add(std::make_shared<Server>("lys"))
-                    .add(std::make_shared<ContentType>(MIME(Text, Plain)));
+                    .add(std::make_shared<Header::Server>("lys"))
+                    .add(std::make_shared<Header::ContentType>(MIME(Text, Plain)));
 
                 response.writeTo(peer);
 
