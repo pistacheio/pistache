@@ -7,6 +7,7 @@ set(SOURCE_FILES
     http.cc
     http_header.cc
     http_headers.cc
+    http_defs.cc
     mime.cc
 )
 

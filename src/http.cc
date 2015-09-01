@@ -339,42 +339,6 @@ namespace Private {
 
 } // namespace Private
 
-const char* methodString(Method method)
-{
-    switch (method) {
-#define METHOD(name, str) \
-    case Method::name: \
-        return str;
-    HTTP_METHODS
-#undef METHOD
-    }
-
-    unreachable();
-}
-
-const char* codeString(Code code)
-{
-    switch (code) {
-#define CODE(_, name, str) \
-    case Code::name: \
-         return str;
-    STATUS_CODES
-#undef CODE
-    }
-
-    return "";
-}
-
-HttpError::HttpError(Code code, std::string reason)
-    : code_(static_cast<int>(code))
-    , reason_(std::move(reason))
-{ }
-
-HttpError::HttpError(int code, std::string reason)
-    : code_(code)
-    , reason_(std::move(reason))
-{ }
-
 Message::Message()
     : version(Version::Http11)
 { }

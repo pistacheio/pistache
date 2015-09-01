@@ -61,6 +61,106 @@ TEST(headers_test, accept) {
 
 }
 
+TEST(headers_test, allow) {
+    Header::Allow a1(Method::Get);
+
+    std::ostringstream os;
+    a1.write(os);
+    ASSERT_EQ(os.str(), "GET");
+    os.str("");
+
+    Header::Allow a2({ Method::Post, Method::Put });
+    a2.write(os);
+    ASSERT_EQ(os.str(), "POST, PUT");
+    os.str("");
+
+    Header::Allow a3;
+    a3.addMethod(Method::Get);
+    a3.write(os);
+    ASSERT_EQ(os.str(), "GET");
+    os.str("");
+    a3.addMethod(Method::Options);
+    a3.write(os);
+    ASSERT_EQ(os.str(), "GET, OPTIONS");
+    os.str("");
+
+    Header::Allow a4(Method::Head);
+    a4.addMethods({ Method::Get, Method::Options });
+    a4.write(os);
+    ASSERT_EQ(os.str(), "HEAD, GET, OPTIONS");
+}
+
+TEST(headers_test, cache_control) {
+    auto testTrivial = [](std::string str, CacheDirective::Directive expected) {
+        Header::CacheControl cc;
+        cc.parse(str);
+
+        auto directives = cc.directives();
+        ASSERT_EQ(directives.size(), 1);
+        ASSERT_EQ(directives[0].directive(), expected);
+    };
+
+    auto testTimed = [](
+            std::string str, CacheDirective::Directive expected, uint64_t delta) {
+        Header::CacheControl cc;
+        cc.parse(str);
+
+        auto directives = cc.directives();
+        ASSERT_EQ(directives.size(), 1);
+
+        ASSERT_EQ(directives[0].directive(), expected);
+        ASSERT_EQ(directives[0].delta(), std::chrono::seconds(delta));
+    };
+
+    testTrivial("no-cache", CacheDirective::NoCache);
+    testTrivial("no-store", CacheDirective::NoStore);
+    testTrivial("no-transform", CacheDirective::NoTransform);
+    testTrivial("only-if-cached", CacheDirective::OnlyIfCached);
+
+    testTimed("max-age=0", CacheDirective::MaxAge, 0);
+    testTimed("max-age=12", CacheDirective::MaxAge, 12);
+
+    testTimed("max-stale=12345", CacheDirective::MaxStale, 12345);
+    testTimed("min-fresh=48", CacheDirective::MinFresh, 48);
+
+    Header::CacheControl cc1;
+    cc1.parse("private, max-age=600");
+    auto d1 = cc1.directives();
+    ASSERT_EQ(d1.size(), 2);
+    ASSERT_EQ(d1[0].directive(), CacheDirective::Private);
+    ASSERT_EQ(d1[1].directive(), CacheDirective::MaxAge);
+    ASSERT_EQ(d1[1].delta(), std::chrono::seconds(600));
+
+    Header::CacheControl cc2;
+    cc2.parse("public, s-maxage=200, proxy-revalidate");
+    auto d2 = cc2.directives();
+    ASSERT_EQ(d2.size(), 3);
+    ASSERT_EQ(d2[0].directive(), CacheDirective::Public);
+    ASSERT_EQ(d2[1].directive(), CacheDirective::SMaxAge);
+    ASSERT_EQ(d2[1].delta(), std::chrono::seconds(200));
+    ASSERT_EQ(d2[2].directive(), CacheDirective::ProxyRevalidate);
+
+    Header::CacheControl cc3(CacheDirective::NoCache);
+    std::ostringstream oss;
+    cc3.write(oss);
+    ASSERT_EQ(oss.str(), "no-cache");
+    oss.str("");
+
+    cc3.addDirective(CacheDirective::NoStore);
+    cc3.write(oss);
+    ASSERT_EQ(oss.str(), "no-cache, no-store");
+    oss.str("");
+
+    Header::CacheControl cc4;
+    cc4.addDirectives({
+            CacheDirective::Public,
+            CacheDirective(CacheDirective::MaxAge, std::chrono::seconds(600))
+    });
+    cc4.write(oss);
+    ASSERT_EQ(oss.str(), "public, max-age=600");
+
+}
+
 TEST(headers_test, content_length) {
     Header::ContentLength cl;
 

@@ -48,6 +48,187 @@ Header::parseRaw(const char *str, size_t len) {
 }
 
 void
+Allow::parseRaw(const char* str, size_t len) {
+}
+
+void
+Allow::write(std::ostream& os) const {
+    /* This puts an extra ',' at the end :/
+    std::copy(std::begin(methods_), std::end(methods_),
+              std::ostream_iterator<Http::Method>(os, ", "));
+    */
+
+    for (std::vector<Http::Method>::size_type i = 0; i < methods_.size(); ++i) {
+        os << methods_[i];
+        if (i < methods_.size() - 1) os << ", ";
+    }
+}
+
+void
+Allow::addMethod(Http::Method method) {
+    methods_.push_back(method);
+}
+
+void
+Allow::addMethods(std::initializer_list<Method> methods) {
+    std::copy(std::begin(methods), std::end(methods), std::back_inserter(methods_));
+}
+
+void
+Allow::addMethods(const std::vector<Http::Method>& methods)
+{
+    std::copy(std::begin(methods), std::end(methods), std::back_inserter(methods_));
+}
+
+CacheControl::CacheControl(Http::CacheDirective directive)
+{
+    directives_.push_back(directive);
+}
+
+void
+CacheControl::parseRaw(const char* str, size_t len) {
+    using Http::CacheDirective;
+
+    auto eof = [&](const char *p) {
+        return p - str == len;
+    };
+
+#define MAX_SIZE(s) \
+    std::min(sizeof(s) - 1, len - (begin - str))
+
+#define TRY_PARSE_TRIVIAL_DIRECTIVE(dstr, directive) \
+    if (memcmp(begin, dstr, MAX_SIZE(dstr)) == 0) { \
+        directives_.push_back(CacheDirective(CacheDirective::directive)); \
+        begin += sizeof(dstr) - 1; \
+        break; \
+    } \
+    (void) 0
+
+    // @Todo: check for overflow
+#define TRY_PARSE_TIMED_DIRECTIVE(dstr, directive) \
+    if (memcmp(begin, dstr, MAX_SIZE(dstr)) == 0) { \
+        const char *p = static_cast<const char *>(memchr(str, '=', len)); \
+        if (p == NULL) { \
+            throw std::runtime_error("Invalid caching directive, missing delta-seconds"); \
+        } \
+        char *end; \
+        int secs = strtol(p + 1, &end, 10); \
+        if (!eof(end) && *end != ',') { \
+            throw std::runtime_error("Invalid caching directive, malformated delta-seconds"); \
+        } \
+        directives_.push_back(CacheDirective(CacheDirective::directive, std::chrono::seconds(secs))); \
+        begin = end; \
+        break; \
+    } \
+    (void) 0
+
+    const char *begin = str;
+    do {
+
+        do {
+            TRY_PARSE_TRIVIAL_DIRECTIVE("no-cache", NoCache);
+            TRY_PARSE_TRIVIAL_DIRECTIVE("no-store", NoStore);
+            TRY_PARSE_TRIVIAL_DIRECTIVE("no-transform", NoTransform);
+            TRY_PARSE_TRIVIAL_DIRECTIVE("only-if-cached", OnlyIfCached);
+            TRY_PARSE_TRIVIAL_DIRECTIVE("public", Public);
+            TRY_PARSE_TRIVIAL_DIRECTIVE("private", Private);
+            TRY_PARSE_TRIVIAL_DIRECTIVE("must-revalidate", MustRevalidate);
+            TRY_PARSE_TRIVIAL_DIRECTIVE("proxy-revalidate", ProxyRevalidate);
+
+            TRY_PARSE_TIMED_DIRECTIVE("max-age", MaxAge);
+            TRY_PARSE_TIMED_DIRECTIVE("max-stale", MaxStale);
+            TRY_PARSE_TIMED_DIRECTIVE("min-fresh", MinFresh);
+            TRY_PARSE_TIMED_DIRECTIVE("s-maxage", SMaxAge);
+
+        } while (false);
+
+        if (!eof(begin)) {
+            if (*begin != ',')
+                throw std::runtime_error("Invalid caching directive, expected a comma");
+
+            while (!eof(begin) && *begin == ',' || *begin == ' ') ++begin;
+        }
+
+    } while (!eof(begin));
+
+#undef TRY_PARSE_TRIVIAL_DIRECTIVE
+#undef TRY_PARSE_TIMED_DIRECTIVE
+
+}
+
+void
+CacheControl::write(std::ostream& os) const {
+    using Http::CacheDirective;
+
+    auto directiveString = [](CacheDirective directive) -> const char* const {
+        switch (directive.directive()) {
+            case CacheDirective::NoCache:
+                return "no-cache";
+            case CacheDirective::NoStore:
+                return "no-store";
+            case CacheDirective::NoTransform:
+                return "no-transform";
+            case CacheDirective::OnlyIfCached:
+                return "only-if-cached";
+            case CacheDirective::Public:
+                return "public";
+            case CacheDirective::Private:
+                return "private";
+            case CacheDirective::MustRevalidate:
+                return "must-revalidate";
+            case CacheDirective::ProxyRevalidate:
+                return "proxy-revalidate";
+            case CacheDirective::MaxAge:
+                return "max-age";
+            case CacheDirective::MaxStale:
+                return "max-stale";
+            case CacheDirective::MinFresh:
+                return "min-fresh";
+            case CacheDirective::SMaxAge:
+                return "s-maxage";
+        }
+    };
+
+    auto hasDelta = [](CacheDirective directive) {
+        switch (directive.directive()) {
+            case CacheDirective::MaxAge:
+            case CacheDirective::MaxStale:
+            case CacheDirective::MinFresh:
+            case CacheDirective::SMaxAge:
+                return true;
+        }
+        return false;
+    };
+
+    for (std::vector<CacheDirective>::size_type i = 0; i < directives_.size(); ++i) {
+        const auto& d = directives_[i];
+        os << directiveString(d);
+        if (hasDelta(d)) {
+            auto delta = d.delta();
+            if (delta.count() > 0) {
+                os << "=" << delta.count();
+            }
+        }
+
+        if (i < directives_.size() - 1) {
+            os << ", ";
+        }
+    }
+
+
+}
+
+void
+CacheControl::addDirective(Http::CacheDirective directive) {
+    directives_.push_back(directive);
+}
+
+void
+CacheControl::addDirectives(const std::vector<Http::CacheDirective>& directives) {
+    std::copy(std::begin(directives), std::end(directives), std::back_inserter(directives_));
+}
+
+void
 ContentLength::parse(const std::string& data) {
     try {
         size_t pos;

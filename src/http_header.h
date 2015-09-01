@@ -8,6 +8,7 @@
 
 #include "mime.h"
 #include "net.h"
+#include "http_defs.h"
 #include <string>
 #include <type_traits>
 #include <memory>
@@ -111,6 +112,96 @@ header_cast(const std::shared_ptr<const Header>& from)
 }
 #endif
 
+class Allow : public Header {
+public:
+    NAME("Allow");
+
+    Allow() { }
+
+    explicit Allow(const std::vector<Http::Method>& methods)
+        : methods_(methods)
+    { }
+    explicit Allow(std::initializer_list<Http::Method> methods)
+        : methods_(methods)
+    { }
+
+    explicit Allow(Http::Method method)
+    {
+        methods_.push_back(method);
+    }
+
+    void parseRaw(const char *str, size_t len);
+    void write(std::ostream& os) const;
+
+    void addMethod(Http::Method method);
+    void addMethods(std::initializer_list<Method> methods);
+    void addMethods(const std::vector<Http::Method>& methods);
+
+    std::vector<Http::Method> methods() const { return methods_; }
+
+private:
+    std::vector<Http::Method> methods_;
+};
+
+class Accept : public Header {
+public:
+    NAME("Accept")
+
+    Accept() { }
+
+    void parseRaw(const char *str, size_t len);
+    void write(std::ostream& os) const;
+
+    const std::vector<Mime::MediaType> media() const { return mediaRange_; }
+
+private:
+    std::vector<Mime::MediaType> mediaRange_;
+};
+
+class CacheControl : public Header {
+public:
+    NAME("Cache-Control")
+
+    CacheControl() { }
+    explicit CacheControl(const std::vector<Http::CacheDirective>& directives)
+        : directives_(directives)
+    { }
+    explicit CacheControl(Http::CacheDirective directive);
+
+    void parseRaw(const char* str, size_t len);
+    void write(std::ostream& os) const;
+
+    std::vector<Http::CacheDirective> directives() const { return directives_; }
+
+    void addDirective(Http::CacheDirective directive);
+    void addDirectives(const std::vector<Http::CacheDirective>& directives);
+
+private:
+    std::vector<Http::CacheDirective> directives_;
+};
+
+
+class ContentEncoding : public Header {
+public:
+    NAME("Content-Encoding")
+
+    ContentEncoding()
+       : encoding_(Encoding::Identity)
+    { }
+
+    explicit ContentEncoding(Encoding encoding)
+       : encoding_(encoding)
+    { }
+
+    void parseRaw(const char* str, size_t len);
+    void write(std::ostream& os) const;
+
+    Encoding encoding() const { return encoding_; }
+
+private:
+    Encoding encoding_;
+};
+
 class ContentLength : public Header {
 public:
     NAME("Content-Length");
@@ -130,6 +221,26 @@ public:
 
 private:
     uint64_t value_;
+};
+
+class ContentType : public Header {
+public:
+    NAME("Content-Type")
+
+    ContentType() { }
+
+    explicit ContentType(const Mime::MediaType& mime) :
+        mime_(mime)
+    { }
+
+    void parseRaw(const char* str, size_t len);
+    void write(std::ostream& os) const;
+
+    Mime::MediaType mime() const { return mime_; }
+
+private:
+    Mime::MediaType mime_;
+
 };
 
 class Host : public Header {
@@ -157,60 +268,6 @@ private:
     Net::Port port_;
 };
 
-class UserAgent : public Header {
-public:
-    NAME("User-Agent")
-
-    UserAgent() { }
-    explicit UserAgent(const std::string& ua) :
-        ua_(ua)
-    { }
-
-    void parse(const std::string& data);
-    void write(std::ostream& os) const;
-
-    std::string ua() const { return ua_; }
-
-private:
-    std::string ua_;
-};
-
-class Accept : public Header {
-public:
-    NAME("Accept")
-
-    Accept() { }
-
-    void parseRaw(const char *str, size_t len);
-    void write(std::ostream& os) const;
-
-    const std::vector<Mime::MediaType> media() const { return mediaRange_; }
-
-private:
-    std::vector<Mime::MediaType> mediaRange_;
-};
-
-class ContentEncoding : public Header {
-public:
-    NAME("Content-Encoding")
-
-    ContentEncoding()
-       : encoding_(Encoding::Identity)
-    { }
-
-    explicit ContentEncoding(Encoding encoding)
-       : encoding_(encoding)
-    { }
-
-    void parseRaw(const char* str, size_t len);
-    void write(std::ostream& os) const;
-
-    Encoding encoding() const { return encoding_; }
-
-private:
-    Encoding encoding_;
-};
-
 class Server : public Header {
 public:
     NAME("Server")
@@ -229,24 +286,22 @@ private:
     std::vector<std::string> tokens_;
 };
 
-class ContentType : public Header {
+class UserAgent : public Header {
 public:
-    NAME("Content-Type")
+    NAME("User-Agent")
 
-    ContentType() { }
-
-    explicit ContentType(const Mime::MediaType& mime) :
-        mime_(mime)
+    UserAgent() { }
+    explicit UserAgent(const std::string& ua) :
+        ua_(ua)
     { }
 
-    void parseRaw(const char* str, size_t len);
+    void parse(const std::string& data);
     void write(std::ostream& os) const;
 
-    Mime::MediaType mime() const { return mime_; }
+    std::string ua() const { return ua_; }
 
 private:
-    Mime::MediaType mime_;
-
+    std::string ua_;
 };
 
 } // namespace Header
