@@ -96,30 +96,30 @@ CacheControl::parseRaw(const char* str, size_t len) {
 #define MAX_SIZE(s) \
     std::min(sizeof(s) - 1, len - (begin - str))
 
-#define TRY_PARSE_TRIVIAL_DIRECTIVE(dstr, directive) \
-    if (memcmp(begin, dstr, MAX_SIZE(dstr)) == 0) { \
+#define TRY_PARSE_TRIVIAL_DIRECTIVE(dstr, directive)                      \
+    if (memcmp(begin, dstr, MAX_SIZE(dstr)) == 0) {                       \
         directives_.push_back(CacheDirective(CacheDirective::directive)); \
-        begin += sizeof(dstr) - 1; \
-        break; \
-    } \
+        begin += sizeof(dstr) - 1;                                        \
+        break;                                                            \
+    }                                                                     \
     (void) 0
 
     // @Todo: check for overflow
-#define TRY_PARSE_TIMED_DIRECTIVE(dstr, directive) \
-    if (memcmp(begin, dstr, MAX_SIZE(dstr)) == 0) { \
-        const char *p = static_cast<const char *>(memchr(str, '=', len)); \
-        if (p == NULL) { \
-            throw std::runtime_error("Invalid caching directive, missing delta-seconds"); \
-        } \
-        char *end; \
-        int secs = strtol(p + 1, &end, 10); \
-        if (!eof(end) && *end != ',') { \
-            throw std::runtime_error("Invalid caching directive, malformated delta-seconds"); \
-        } \
+#define TRY_PARSE_TIMED_DIRECTIVE(dstr, directive)                                                    \
+    if (memcmp(begin, dstr, MAX_SIZE(dstr)) == 0) {                                                   \
+        const char *p = static_cast<const char *>(memchr(str, '=', len));                             \
+        if (p == NULL) {                                                                              \
+            throw std::runtime_error("Invalid caching directive, missing delta-seconds");             \
+        }                                                                                             \
+        char *end;                                                                                    \
+        int secs = strtol(p + 1, &end, 10);                                                           \
+        if (!eof(end) && *end != ',') {                                                               \
+            throw std::runtime_error("Invalid caching directive, malformated delta-seconds");         \
+        }                                                                                             \
         directives_.push_back(CacheDirective(CacheDirective::directive, std::chrono::seconds(secs))); \
-        begin = end; \
-        break; \
-    } \
+        begin = end;                                                                                  \
+        break;                                                                                        \
+    }                                                                                                 \
     (void) 0
 
     const char *begin = str;
