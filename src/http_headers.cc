@@ -20,6 +20,13 @@ namespace {
     std::unordered_map<std::string, Registry::RegistryFunc> registry;
 }
 
+RegisterHeader(Accept);
+RegisterHeader(ContentLength);
+RegisterHeader(ContentType);
+RegisterHeader(Host);
+RegisterHeader(ContentEncoding);
+RegisterHeader(UserAgent);
+
 void
 Registry::registerHeader(std::string name, Registry::RegistryFunc func)
 {
@@ -131,19 +138,6 @@ Collection::getImpl(const std::string& name) const {
     }
 
     return std::make_pair(true, it->second);
-}
-
-namespace {
-    struct AtInit {
-        AtInit() {
-            Registry::registerHeader<ContentLength>();
-            Registry::registerHeader<ContentType>();
-            Registry::registerHeader<Host>();
-            Registry::registerHeader<Accept>();
-            Registry::registerHeader<UserAgent>();
-            Registry::registerHeader<ContentEncoding>();
-        }
-    } atInit;
 }
 
 } // namespace Header

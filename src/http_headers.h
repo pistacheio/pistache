@@ -101,6 +101,27 @@ struct Registry {
     static bool isRegistered(const std::string& name);
 };
 
+template<typename H>
+struct Registrar {
+    static_assert(IsHeader<H>::value, "Registrar only works with header types");
+
+    Registrar() {
+        Registry::registerHeader<H>();
+    }
+};
+
+/* Crazy macro machinery to generate a unique variable name
+ * Don't touch it !
+ */
+#define CAT(a, b) CAT_I(a, b)
+#define CAT_I(a, b) a ## b
+
+#define UNIQUE_NAME(base) CAT(base, __LINE__)
+
+#define RegisterHeader(Header) \
+    Registrar<Header> UNIQUE_NAME(CAT(CAT_I(__, Header), __))
+
+
 } // namespace Header
 
 } // namespace Http
