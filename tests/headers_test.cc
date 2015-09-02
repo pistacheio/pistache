@@ -168,6 +168,48 @@ TEST(headers_test, content_length) {
     ASSERT_EQ(cl.value(), 3495);
 }
 
+TEST(headers_test, date_test) {
+    /* RFC-1123 */
+    Header::Date d1;
+    d1.parse("Sun, 06 Nov 1994 08:49:37 GMT");
+    auto fd1 = d1.fullDate();
+    auto dd1 = fd1.date();
+
+    ASSERT_EQ(dd1.tm_year, 94);
+    ASSERT_EQ(dd1.tm_mon, 10);
+    ASSERT_EQ(dd1.tm_mday, 6);
+    ASSERT_EQ(dd1.tm_hour, 8);
+    ASSERT_EQ(dd1.tm_min, 49);
+    ASSERT_EQ(dd1.tm_sec, 37);
+
+    /* RFC-850 */
+    Header::Date d2;
+    d2.parse("Sunday, 06-Nov-94 08:49:37 GMT");
+    auto fd2 = d2.fullDate();
+    auto dd2 = fd2.date();
+
+    ASSERT_EQ(dd2.tm_year, 94);
+    ASSERT_EQ(dd2.tm_mon, 10);
+    ASSERT_EQ(dd2.tm_mday, 6);
+    ASSERT_EQ(dd2.tm_hour, 8);
+    ASSERT_EQ(dd2.tm_min, 49);
+    ASSERT_EQ(dd2.tm_sec, 37);
+
+    /* ANSI C's asctime format */
+    Header::Date d3;
+    d3.parse("Sun Nov  6 08:49:37 1994");
+    auto fd3 = d3.fullDate();
+    auto dd3 = fd3.date();
+
+    ASSERT_EQ(dd3.tm_year, 94);
+    ASSERT_EQ(dd3.tm_mon, 10);
+    ASSERT_EQ(dd3.tm_mday, 6);
+    ASSERT_EQ(dd3.tm_hour, 8);
+    ASSERT_EQ(dd3.tm_min, 49);
+    ASSERT_EQ(dd3.tm_sec, 37);
+
+}
+
 TEST(headers_test, host) {
     Header::Host host;
 

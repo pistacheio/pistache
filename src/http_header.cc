@@ -262,6 +262,15 @@ ContentLength::write(std::ostream& os) const {
 }
 
 void
+Date::parseRaw(const char* str, size_t len) {
+    fullDate_ = FullDate::fromRaw(str, len);
+}
+
+void
+Date::write(std::ostream& os) const {
+}
+
+void
 Host::parse(const std::string& data) {
     auto pos = data.find(':');
     if (pos != std::string::npos) {

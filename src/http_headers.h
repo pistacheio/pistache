@@ -51,12 +51,15 @@ public:
     }
 
     Collection& add(const std::shared_ptr<Header>& header);
+    Collection& addRaw(const Raw& raw);
 
     std::shared_ptr<const Header> get(const std::string& name) const;
     std::shared_ptr<Header> get(const std::string& name);
+    Raw getRaw(const std::string& name) const;
 
     std::shared_ptr<const Header> tryGet(const std::string& name) const;
     std::shared_ptr<Header> tryGet(const std::string& name);
+    Optional<Raw> tryGetRaw(const std::string& name) const;
 
     template<typename H>
     typename std::enable_if<
@@ -75,6 +78,7 @@ private:
     std::pair<bool, std::shared_ptr<Header>> getImpl(const std::string& name) const;
 
     std::unordered_map<std::string, std::shared_ptr<Header>> headers;
+    std::unordered_map<std::string, Raw> rawHeaders;
 };
 
 struct Registry {

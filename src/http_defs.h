@@ -9,6 +9,7 @@
 #include <ostream>
 #include <stdexcept>
 #include <chrono>
+#include <ctime>
 
 namespace Net {
 
@@ -66,6 +67,32 @@ namespace Http {
     CODE(503, Service_Unavailable, "Service Unavailable") \
     CODE(504, Gateway_Timeout, "Gateway Timeout")
 
+// 3.4. Character Sets
+// See http://tools.ietf.org/html/rfc2978 and
+// http://www.iana.org/assignments/character-sets/character-sets.xhtml
+#define CHARSETS \
+    CHARSET(UsAscii, "us-ascii") \
+    CHARSET(Iso-8859-1, "iso-8859-1") \
+    CHARSET(Iso-8859-2, "iso-8859-2") \
+    CHARSET(Iso-8859-3, "iso-8859-3") \
+    CHARSET(Iso-8859-4, "iso-8859-4") \
+    CHARSET(Iso-8859-5, "iso-8859-5") \
+    CHARSET(Iso-8859-6, "iso-8859-6") \
+    CHARSET(Iso-8859-7, "iso-8859-7") \
+    CHARSET(Iso-8859-8, "iso-8859-8") \
+    CHARSET(Iso-8859-9, "iso-8859-9") \
+    CHARSET(Iso-8859-10, "iso-8859-10") \
+    CHARSET(Shift-JIS, "shift_jis") \
+    CHARSET(Utf7, "utf-7") \
+    CHARSET(Utf8, "utf-8") \
+    CHARSET(Utf16, "utf-16") \
+    CHARSET(Utf16-BE, "utf-16be") \
+    CHARSET(Utf16-LE, "utf-16le") \
+    CHARSET(Utf32, "utf-32") \
+    CHARSET(Utf32-BE, "utf-32be") \
+    CHARSET(Utf32-LE, "utf-32le") \
+    CHARSET(Unicode-11, "unicode-1-1")
+
 enum class Method {
 #define METHOD(m, _) m, 
     HTTP_METHODS
@@ -107,6 +134,24 @@ private:
         struct { uint64_t maxStale; };
         struct { uint64_t minFresh; };
     } data;
+};
+
+// 3.3.1 Full Date
+class FullDate {
+public:
+    FullDate();
+
+    FullDate(std::tm date)
+        : date_(date)
+    { }
+
+    std::tm date() const { return date_; }
+
+    static FullDate fromRaw(const char* str, size_t len);
+    static FullDate fromString(const std::string& str);
+
+private:
+    std::tm date_;
 };
 
 const char* methodString(Method method);

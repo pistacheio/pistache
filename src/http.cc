@@ -7,6 +7,8 @@
 #include <cstring>
 #include <iostream>
 #include <stdexcept>
+#include <ctime>
+#include <iomanip>
 #include "common.h"
 #include "http.h"
 #include "net.h"
@@ -232,6 +234,10 @@ namespace Private {
                 std::shared_ptr<Header::Header> header = Header::Registry::makeHeader(name);
                 header->parseRaw(cursor.offset(start), cursor.diff(start));
                 request->headers.add(header);
+            }
+            else {
+                std::string value(cursor.offset(start), cursor.diff(start));
+                request->headers.addRaw(Header::Raw(std::move(name), std::move(value)));
             }
 
             // CRLF

@@ -21,10 +21,13 @@ namespace {
 }
 
 RegisterHeader(Accept);
+RegisterHeader(CacheControl);
+RegisterHeader(ContentEncoding);
 RegisterHeader(ContentLength);
 RegisterHeader(ContentType);
+RegisterHeader(Date);
 RegisterHeader(Host);
-RegisterHeader(ContentEncoding);
+RegisterHeader(Server);
 RegisterHeader(UserAgent);
 
 void
@@ -73,6 +76,11 @@ Collection::add(const std::shared_ptr<Header>& header) {
     return *this;
 }
 
+Collection&
+Collection::addRaw(const Raw& raw) {
+    rawHeaders.insert(std::make_pair(raw.name(), raw));
+}
+
 std::shared_ptr<const Header>
 Collection::get(const std::string& name) const {
     auto header = getImpl(name);
@@ -93,6 +101,16 @@ Collection::get(const std::string& name) {
     return header.second;
 }
 
+Raw
+Collection::getRaw(const std::string& name) const {
+    auto it = rawHeaders.find(name);
+    if (it == std::end(rawHeaders)) {
+        throw std::runtime_error("Could not find header");
+    }
+
+    return it->second;
+}
+
 std::shared_ptr<const Header>
 Collection::tryGet(const std::string& name) const {
     auto header = getImpl(name);
@@ -107,6 +125,16 @@ Collection::tryGet(const std::string& name) {
     if (!header.first) return nullptr;
 
     return header.second;
+}
+
+Optional<Raw>
+Collection::tryGetRaw(const std::string& name) const {
+    auto it = rawHeaders.find(name);
+    if (it == std::end(rawHeaders)) {
+        return None();
+    }
+
+    return Some(it->second);
 }
 
 bool
@@ -128,6 +156,7 @@ Collection::list() const {
 void
 Collection::clear() {
     headers.clear();
+    rawHeaders.clear();
 }
 
 std::pair<bool, std::shared_ptr<Header>>

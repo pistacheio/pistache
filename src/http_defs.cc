@@ -6,10 +6,27 @@
 
 #include "http_defs.h"
 #include "common.h"
+#include <iostream>
 
 namespace Net {
 
 namespace Http {
+
+namespace {
+    bool parseRFC1123Date(std::tm& tm, const char* str, size_t len) {
+        char *p = strptime(str, "%a, %d %b %Y %H:%M:%S %Z", &tm);
+        return p != NULL;
+    }
+
+    bool parseRFC850Date(std::tm& tm, const char* str, size_t len) {
+        char *p = strptime(str, "%A, %d-%b-%y %H:%M:%S %Z", &tm);
+        return p != NULL;
+    }
+
+    bool parseAscTimeDate(std::tm& tm, const char* str, size_t len) {
+        char *p = strptime(str, "%a %b  %d %H:%M:%S %Y", &tm);
+    }
+} // anonymous namespace
 
 CacheDirective::CacheDirective(Directive directive)
 {
@@ -56,6 +73,37 @@ CacheDirective::init(Directive directive, std::chrono::seconds delta)
             data.minFresh = delta.count();
             break;
     }
+}
+
+FullDate::FullDate() {
+    std::memset(&date_, 0, sizeof date_);
+}
+
+FullDate
+FullDate::fromRaw(const char* str, size_t len)
+{
+    // As per the RFC, implementation MUST support all three formats.
+    std::tm tm = {};
+    if (parseRFC1123Date(tm, str, len)) {
+        return FullDate(tm);
+    }
+
+    memset(&tm, 0, sizeof tm);
+    if (parseRFC850Date(tm, str, len)) {
+        return FullDate(tm);
+    }
+    memset(&tm, 0, sizeof tm);
+
+    if (parseAscTimeDate(tm, str, len)) {
+        return FullDate(tm);
+    }
+
+    throw std::runtime_error("Invalid Date format");
+}
+
+FullDate
+FullDate::fromString(const std::string& str) {
+    return FullDate::fromRaw(str.c_str(), str.size());
 }
 
 const char* methodString(Method method)

@@ -243,6 +243,25 @@ private:
 
 };
 
+class Date : public Header {
+public:
+    NAME("Date")
+
+    Date() { }
+
+    explicit Date(const FullDate& date) :
+        fullDate_(date)
+    { }
+
+    void parseRaw(const char* str, size_t len);
+    void write(std::ostream& os) const;
+
+    FullDate fullDate() const { return fullDate_; }
+
+private:
+    FullDate fullDate_;
+};
+
 class Host : public Header {
 public:
     NAME("Host");
@@ -302,6 +321,29 @@ public:
 
 private:
     std::string ua_;
+};
+
+class Raw {
+public:
+    Raw();
+    Raw(std::string name, std::string value)
+        : name_(std::move(name))
+        , value_(std::move(value))
+    { }
+
+    Raw(const Raw& other) = default;
+    Raw& operator=(const Raw& other) = default;
+
+    Raw(Raw&& other) = default;
+    Raw& operator=(Raw&& other) = default;
+
+    std::string name() const { return name_; }
+    std::string value() const { return value_; }
+
+private:
+    std::string name_;
+    std::string value_;
+
 };
 
 } // namespace Header
