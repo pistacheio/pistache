@@ -113,10 +113,10 @@ CacheControl::parseRaw(const char* str, size_t len) {
     };
 
     static constexpr DirectiveValue TimedDirectives[] = {
-        VALUE("max-age"  , CacheDirective::MaxAge  ),
-        VALUE("max-stale", CacheDirective::MaxStale),
-        VALUE("min-fresh", CacheDirective::MinFresh),
-        VALUE("s-maxage" , CacheDirective::SMaxAge )
+        VALUE("max-age"  , MaxAge  ),
+        VALUE("max-stale", MaxStale),
+        VALUE("min-fresh", MinFresh),
+        VALUE("s-maxage" , SMaxAge )
     };
 
 #undef VALUE
