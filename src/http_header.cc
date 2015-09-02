@@ -93,54 +93,72 @@ CacheControl::parseRaw(const char* str, size_t len) {
         return p - str == len;
     };
 
-#define MAX_SIZE(s) \
-    std::min(sizeof(s) - 1, len - (begin - str))
+    struct DirectiveValue {
+        const char* const str;
+        const size_t size;
+        CacheDirective::Directive repr;
+    };
 
-#define TRY_PARSE_TRIVIAL_DIRECTIVE(dstr, directive)                      \
-    if (memcmp(begin, dstr, MAX_SIZE(dstr)) == 0) {                       \
-        directives_.push_back(CacheDirective(CacheDirective::directive)); \
-        begin += sizeof(dstr) - 1;                                        \
-        break;                                                            \
-    }                                                                     \
-    (void) 0
+#define VALUE(divStr, enumValue) { divStr, sizeof(divStr) - 1, CacheDirective::enumValue }
 
-    // @Todo: check for overflow
-#define TRY_PARSE_TIMED_DIRECTIVE(dstr, directive)                                                    \
-    if (memcmp(begin, dstr, MAX_SIZE(dstr)) == 0) {                                                   \
-        const char *p = static_cast<const char *>(memchr(str, '=', len));                             \
-        if (p == NULL) {                                                                              \
-            throw std::runtime_error("Invalid caching directive, missing delta-seconds");             \
-        }                                                                                             \
-        char *end;                                                                                    \
-        int secs = strtol(p + 1, &end, 10);                                                           \
-        if (!eof(end) && *end != ',') {                                                               \
-            throw std::runtime_error("Invalid caching directive, malformated delta-seconds");         \
-        }                                                                                             \
-        directives_.push_back(CacheDirective(CacheDirective::directive, std::chrono::seconds(secs))); \
-        begin = end;                                                                                  \
-        break;                                                                                        \
-    }                                                                                                 \
-    (void) 0
+    static constexpr DirectiveValue TrivialDirectives[] = {
+        VALUE("no-cache"        , NoCache        ),
+        VALUE("no-store"        , NoStore        ),
+        VALUE("no-transform"    , NoTransform    ),
+        VALUE("only-if-cached"  , OnlyIfCached   ),
+        VALUE("public"          , Public         ),
+        VALUE("private"         , Private        ),
+        VALUE("must-revalidate" , MustRevalidate ),
+        VALUE("proxy-revalidate", ProxyRevalidate)
+    };
+
+    static constexpr DirectiveValue TimedDirectives[] = {
+        VALUE("max-age"  , CacheDirective::MaxAge  ),
+        VALUE("max-stale", CacheDirective::MaxStale),
+        VALUE("min-fresh", CacheDirective::MinFresh),
+        VALUE("s-maxage" , CacheDirective::SMaxAge )
+    };
+
+#undef VALUE
 
     const char *begin = str;
+    auto memsize = [&](size_t s) {
+        return std::min(s, len - (begin - str));
+    };
+
     do {
 
-        do {
-            TRY_PARSE_TRIVIAL_DIRECTIVE("no-cache", NoCache);
-            TRY_PARSE_TRIVIAL_DIRECTIVE("no-store", NoStore);
-            TRY_PARSE_TRIVIAL_DIRECTIVE("no-transform", NoTransform);
-            TRY_PARSE_TRIVIAL_DIRECTIVE("only-if-cached", OnlyIfCached);
-            TRY_PARSE_TRIVIAL_DIRECTIVE("public", Public);
-            TRY_PARSE_TRIVIAL_DIRECTIVE("private", Private);
-            TRY_PARSE_TRIVIAL_DIRECTIVE("must-revalidate", MustRevalidate);
-            TRY_PARSE_TRIVIAL_DIRECTIVE("proxy-revalidate", ProxyRevalidate);
+        bool found = false;
+        // First scan trivial directives
+        for (const auto& d: TrivialDirectives) {
+            if (memcmp(begin, d.str, memsize(d.size)) == 0) {
+                directives_.push_back(CacheDirective(d.repr));
+                begin += d.size;
+                found = true;
+                break;
+            }
+        }
 
-            TRY_PARSE_TIMED_DIRECTIVE("max-age", MaxAge);
-            TRY_PARSE_TIMED_DIRECTIVE("max-stale", MaxStale);
-            TRY_PARSE_TIMED_DIRECTIVE("min-fresh", MinFresh);
-            TRY_PARSE_TIMED_DIRECTIVE("s-maxage", SMaxAge);
-
-        } while (false);
+        // Not found, let's try timed directives
+        if (!found) {
+            for (const auto& d: TimedDirectives) {
+                if (memcmp(begin, d.str, memsize(d.size)) == 0) {
+                    const char *p = static_cast<const char *>(memchr(begin, '=', memsize(len)));
+                    if (p == NULL) {
+                        throw std::runtime_error("Invalid caching directive, missing delta-seconds");
+                    }
+                    char *end;
+                    int secs = strtol(p + 1, &end, 10);
+                    if (!eof(end) && *end != ',') {
+                        throw std::runtime_error("Invalid caching directive, malformated delta-seconds");
+                    }
+                    directives_.push_back(CacheDirective(d.repr, std::chrono::seconds(secs)));
+                    begin = end;
+                    found = true;
+                    break;
+                }
+            }
+        }
 
         if (!eof(begin)) {
             if (*begin != ',')
@@ -150,9 +168,6 @@ CacheControl::parseRaw(const char* str, size_t len) {
         }
 
     } while (!eof(begin));
-
-#undef TRY_PARSE_TRIVIAL_DIRECTIVE
-#undef TRY_PARSE_TIMED_DIRECTIVE
 
 }
 
