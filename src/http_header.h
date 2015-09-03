@@ -262,6 +262,25 @@ private:
     FullDate fullDate_;
 };
 
+class Expect : public Header {
+public:
+    NAME("Expect")
+
+    Expect() { }
+
+    explicit Expect(Http::Expectation expectation) :
+        expectation_(expectation)
+    { }
+
+    void parseRaw(const char* str, size_t len);
+    void write(std::ostream& os) const;
+
+    Http::Expectation expectation() const { return expectation_; }
+
+private:
+    Expectation expectation_;
+};
+
 class Host : public Header {
 public:
     NAME("Host");

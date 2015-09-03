@@ -271,6 +271,22 @@ Date::write(std::ostream& os) const {
 }
 
 void
+Expect::parseRaw(const char* str, size_t len) {
+    if (memcmp(str, "100-continue", len)) {
+        expectation_ = Expectation::Continue;
+    } else {
+        expectation_ = Expectation::Ext;
+    }
+}
+
+void
+Expect::write(std::ostream& os) const {
+    if (expectation_ == Expectation::Continue) {
+        os << "100-continue";
+    }
+}
+
+void
 Host::parse(const std::string& data) {
     auto pos = data.find(':');
     if (pos != std::string::npos) {
