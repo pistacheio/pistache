@@ -237,6 +237,7 @@ public:
     void write(std::ostream& os) const;
 
     Mime::MediaType mime() const { return mime_; }
+    void setMime(const Mime::MediaType& mime);
 
 private:
     Mime::MediaType mime_;
@@ -299,6 +300,9 @@ public:
 
     void parse(const std::string& data);
     void write(std::ostream& os) const;
+
+    void addToken(std::string token);
+    void addTokens(const std::vector<std::string>& tokens);
 
     std::vector<std::string> tokens() const { return tokens_; }
 private:

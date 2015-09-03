@@ -394,6 +394,17 @@ Server::write(std::ostream& os) const
 }
 
 void
+Server::addToken(std::string token) {
+    tokens_.push_back(std::move(token));
+}
+
+void
+Server::addTokens(const std::vector<std::string>& tokens) {
+    std::copy(std::begin(tokens), std::end(tokens),
+            std::back_inserter(tokens_));
+}
+
+void
 ContentType::parseRaw(const char* str, size_t len)
 {
     mime_.parseRaw(str, len);
@@ -402,6 +413,11 @@ ContentType::parseRaw(const char* str, size_t len)
 void
 ContentType::write(std::ostream& os) const {
     os << mime_.toString();
+}
+
+void
+ContentType::setMime(const Mime::MediaType& mime) {
+    mime_ = mime;
 }
 
 } // namespace Header

@@ -13,11 +13,13 @@ class MyHandler : public Net::Http::Handler {
             if (req.method == Net::Http::Method::Get) {
 
                 using namespace Net::Http;
-
                 Net::Http::Response response(Net::Http::Code::Ok, "PONG");
+
+#if 0
                 response.headers
-                    .add(std::make_shared<Header::Server>("lys"))
-                    .add(std::make_shared<Header::ContentType>(MIME(Text, Plain)));
+                    .add(make_header<Header::ContentEncoding>(Header::Encoding::Gzip))
+                    .add(make_header<Header::ContentType>(MIME(Text, Plain)));
+#endif
 
                 response.writeTo(peer);
 

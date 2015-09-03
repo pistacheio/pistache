@@ -10,6 +10,9 @@
 #include <vector>
 #include <memory>
 #include "http_header.h"
+#include "MemoryPool.h"
+#include <mutex>
+#include <array>
 
 namespace Net {
 
@@ -51,6 +54,7 @@ public:
     }
 
     Collection& add(const std::shared_ptr<Header>& header);
+    Collection& add(std::shared_ptr<Header>&& header);
     Collection& addRaw(const Raw& raw);
 
     std::shared_ptr<const Header> get(const std::string& name) const;
@@ -81,9 +85,67 @@ private:
     std::unordered_map<std::string, Raw> rawHeaders;
 };
 
-struct Registry {
+struct header_delete {
+    void operator()(Header* header);
+};
 
-    typedef std::function<std::unique_ptr<Header>()> RegistryFunc;
+struct AllocatorBase {
+    virtual Header* allocate(uint64_t tid) = 0;
+    virtual Header* defaultConstruct(uint64_t tid) = 0;
+
+    virtual void deallocate(Header* header, uint64_t tid) = 0;
+
+    virtual ~AllocatorBase() { }
+};
+
+template<typename H>
+struct Allocator : public AllocatorBase {
+public:
+    Allocator()
+    {
+    }
+
+    Header* allocate(uint64_t tid) {
+        return typedAllocate(tid);
+    }
+
+    Header* defaultConstruct(uint64_t tid) {
+        H *header = typedAllocate(tid);
+        new (header) H();
+        return header;
+    }
+
+    void deallocate(Header* header, uint64_t tid) {
+        auto& stripe = getStripe(tid);
+
+        typename Stripe::Guard guard(stripe.lock);
+        stripe.pool.deleteElement(static_cast<H *>(header));
+    }
+
+private:
+    struct Stripe {
+        typedef std::mutex Lock;
+        typedef std::lock_guard<Lock> Guard;
+
+        Lock lock;
+        MemoryPool<H> pool;
+    };
+
+    std::array<Stripe, 24> stripes;
+
+    Stripe& getStripe(uint64_t tid) {
+        return stripes[tid % stripes.size()];
+    }
+
+    H* typedAllocate(uint64_t tid) {
+        auto& stripe = getStripe(tid);
+
+        typename Stripe::Guard guard(stripe.lock);
+        return stripe.pool.allocate();
+    }
+};
+
+struct Registry {
 
     template<typename H>
     static
@@ -91,17 +153,15 @@ struct Registry {
                 IsHeader<H>::value, void
              >::type
     registerHeader() {
-        registerHeader(H::Name, []() -> std::unique_ptr<Header> {
-            return std::unique_ptr<Header>(new H());
-        });
-
+        auto alloc = std::unique_ptr<AllocatorBase>(new Allocator<H>());
+        registerHeader(H::Name, std::move(alloc));
     }
 
-    static void registerHeader(std::string name, RegistryFunc func);
+    static void registerHeader(std::string name, std::unique_ptr<AllocatorBase>&& alloc);
 
     static std::vector<std::string> headersList();
 
-    static std::unique_ptr<Header> makeHeader(const std::string& name);
+    static std::unique_ptr<Header, header_delete> makeHeader(const std::string& name);
     static bool isRegistered(const std::string& name);
 };
 
@@ -114,6 +174,10 @@ struct Registrar {
     }
 };
 
+namespace detail {
+    Header* allocate_header(const std::string& name);
+}
+
 /* Crazy macro machinery to generate a unique variable name
  * Don't touch it !
  */
@@ -125,8 +189,20 @@ struct Registrar {
 #define RegisterHeader(Header) \
     Registrar<Header> UNIQUE_NAME(CAT(CAT_I(__, Header), __))
 
-
 } // namespace Header
+
+template<typename H, typename... Args>
+typename std::enable_if<
+    Header::IsHeader<H>::value,
+    std::unique_ptr<H, Header::header_delete>
+>::type
+make_header(Args&&... args) {
+
+    auto h = static_cast<H *>(Header::detail::allocate_header(H::Name));
+    new (h) H(std::forward<Args>(args)...);
+
+    return std::unique_ptr<H, Header::header_delete>(h);
+}
 
 } // namespace Http
 

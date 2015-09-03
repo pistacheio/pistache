@@ -9,6 +9,7 @@
 #include <iterator>
 #include <stdexcept>
 #include <iostream>
+#include <atomic>
 
 namespace Net {
 
@@ -17,7 +18,38 @@ namespace Http {
 namespace Header {
 
 namespace {
-    std::unordered_map<std::string, Registry::RegistryFunc> registry;
+    std::atomic<uint64_t> g_threadCount { 0 };
+    __thread uint64_t tid = 0;
+
+    uint64_t thread_id() {
+        if (tid == 0) {
+            tid = g_threadCount.fetch_add(1);
+        }
+
+        return tid;
+    }
+
+    std::unordered_map<std::string, std::unique_ptr<AllocatorBase>> allocators;
+
+}
+
+namespace detail {
+    Header *
+    allocate_header(const std::string& name) {
+        auto it = allocators.find(name);
+        if (it == std::end(allocators)) {
+            throw std::bad_alloc();
+        }
+
+        return it->second->allocate(thread_id());
+    }
+}
+
+void
+header_delete::operator()(Header* header) {
+    auto it = allocators.find(header->name());
+
+    it->second->deallocate(header, thread_id());
 }
 
 RegisterHeader(Accept);
@@ -31,48 +63,49 @@ RegisterHeader(Server);
 RegisterHeader(UserAgent);
 
 void
-Registry::registerHeader(std::string name, Registry::RegistryFunc func)
+Registry::registerHeader(std::string name, std::unique_ptr<AllocatorBase>&& alloc)
 {
-    auto it = registry.find(name);
-    if (it != std::end(registry)) {
-        throw std::runtime_error("Header already registered");
-    }
-
-    registry.insert(std::make_pair(name, std::move(func)));
+    allocators.insert(std::make_pair(name, std::move(alloc)));
 }
 
 std::vector<std::string>
 Registry::headersList() {
     std::vector<std::string> names;
-    names.reserve(registry.size());
+    names.reserve(allocators.size());
 
-    for (const auto &header: registry) {
+    for (const auto &header: allocators) {
         names.push_back(header.first);
     }
 
     return names;
 }
 
-std::unique_ptr<Header>
+std::unique_ptr<Header, header_delete>
 Registry::makeHeader(const std::string& name) {
-    auto it = registry.find(name);
-    if (it == std::end(registry)) {
-        throw std::runtime_error("Unknown header");
+    auto it = allocators.find(name);
+    if (it == std::end(allocators)) {
+        throw std::bad_alloc();
     }
-
-    return it->second();
+    auto h = it->second->defaultConstruct(thread_id());
+    return std::unique_ptr<Header, header_delete>(h);
 }
 
 bool
 Registry::isRegistered(const std::string& name) {
-    auto it = registry.find(name);
-    return it != std::end(registry);
+    auto it = allocators.find(name);
+    return it != std::end(allocators);
 }
 
 Collection&
 Collection::add(const std::shared_ptr<Header>& header) {
     headers.insert(std::make_pair(header->name(), header));
     
+    return *this;
+}
+Collection&
+Collection::add(std::shared_ptr<Header>&& header) {
+    headers.insert(std::make_pair(header->name(), std::move(header)));
+
     return *this;
 }
 
@@ -168,6 +201,7 @@ Collection::getImpl(const std::string& name) const {
 
     return std::make_pair(true, it->second);
 }
+
 
 } // namespace Header
 

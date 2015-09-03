@@ -233,7 +233,7 @@ namespace Private {
             if (Header::Registry::isRegistered(name)) {
                 std::shared_ptr<Header::Header> header = Header::Registry::makeHeader(name);
                 header->parseRaw(cursor.offset(start), cursor.diff(start));
-                request->headers.add(header);
+                request->headers.add(std::move(header));
             }
             else {
                 std::string value(cursor.offset(start), cursor.diff(start));
