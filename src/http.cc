@@ -34,95 +34,14 @@ static constexpr const char* ParserData = "__Parser";
 
 namespace Private {
 
-    Parser::Buffer::Buffer()
-        : len(0)
-    {
-        memset(data, sizeof data, 0);
-    }
-
-    void
-    Parser::Buffer::reset() {
-        memset(data, sizeof data, 0);
-        len = 0;
-    }
-
-    bool
-    Parser::Cursor::advance(size_t count)
-    {
-        if (value + count >= sizeof (buff.data)) {
-            //parser->raise("Early EOF");
-        }
-        // Allowed to advance one past the end
-        else if (value + count > buff.len) {
-            return false;
-        }
-
-        value += count;
-        return true;
-    }
-
-    bool
-    Parser::Cursor::eol() const {
-        return buff.data[value] == CR && next() == LF;
-    }
-
-    int
-    Parser::Cursor::next() const {
-        if (value + 1 >= sizeof (buff.data)) {
-            //parser->raise("Early EOF");
-        }
-
-        else if (value + 1 >= buff.len) {
-            return Eof;
-        }
-
-        return buff.data[value + 1];
-    }
-
-    char
-    Parser::Cursor::current() const {
-        return buff.data[value];
-    }
-
-    const char *
-    Parser::Cursor::offset() const {
-        return buff.data + value;
-    }
-
-    const char *
-    Parser::Cursor::offset(size_t off) const {
-        return buff.data + off;
-    }
-
-    size_t
-    Parser::Cursor::diff(size_t other) const {
-        return value - other;
-    }
-
-    size_t
-    Parser::Cursor::diff(const Cursor& other) const {
-        return value - other.value;
-    }
-
-    size_t
-    Parser::Cursor::remaining() const {
-        // assert(val <= buff.len);
-        return buff.len - value;
-    }
-
-    void
-    Parser::Cursor::reset() {
-        value = 0;
-    }
-
     void
     Parser::Step::raise(const char* msg, Code code /* = Code::Bad_Request */) {
         throw HttpError(code, msg);
     }
 
     Parser::State
-    Parser::RequestLineStep::apply(Cursor& cursor) {
-        Cursor::Revert revert(cursor);
+    Parser::RequestLineStep::apply(StreamCursor& cursor) {
+        StreamCursor::Revert revert(cursor);
 
         auto tryMatch = [&](const char* const str) {
             const size_t len = std::strlen(str);
@@ -158,19 +77,19 @@ namespace Private {
         }
 
         auto n = cursor.next();
-        if (n == Cursor::Eof) return State::Again;
+        if (n == StreamCursor::Eof) return State::Again;
         else if (n != ' ') raise("Malformed HTTP request after Method, expected SP");
 
         if (!cursor.advance(2)) return State::Again;
 
         size_t start = cursor;
 
-        while ((n = cursor.next()) != Cursor::Eof && n != ' ') {
+        while ((n = cursor.next()) != StreamCursor::Eof && n != ' ') {
             if (!cursor.advance(1)) return State::Again;
         }
 
         request->resource = std::string(cursor.offset(start), cursor.diff(start) + 1);
-        if ((n = cursor.next()) == Cursor::Eof) return State::Again;
+        if ((n = cursor.next()) == StreamCursor::Eof) return State::Again;
 
         if (n != ' ')
             raise("Malformed HTTP request after Request-URI");
@@ -203,11 +122,11 @@ namespace Private {
     }
 
     Parser::State
-    Parser::HeadersStep::apply(Cursor& cursor) {
-        Cursor::Revert revert(cursor);
+    Parser::HeadersStep::apply(StreamCursor& cursor) {
+        StreamCursor::Revert revert(cursor);
 
         while (!cursor.eol()) {
-            Cursor::Revert headerRevert(cursor);
+            StreamCursor::Revert headerRevert(cursor);
 
             // Read the header name
             size_t start = cursor;
@@ -251,7 +170,7 @@ namespace Private {
     }
 
     Parser::State
-    Parser::BodyStep::apply(Cursor& cursor) {
+    Parser::BodyStep::apply(StreamCursor& cursor) {
         auto cl = request->headers.tryGet<Header::ContentLength>();
         if (!cl) return Parser::State::Done;
 
@@ -321,14 +240,7 @@ namespace Private {
 
     bool
     Parser::feed(const char* data, size_t len) {
-        if (len + buffer.len >= sizeof (buffer.data)) {
-            return false;
-        }
-
-        memcpy(buffer.data + buffer.len, data, len);
-        buffer.len += len;
-
-        return true;
+        return buffer.feed(data, len);
     }
 
     void

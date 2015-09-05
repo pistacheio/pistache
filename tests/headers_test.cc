@@ -57,8 +57,7 @@ TEST(headers_test, accept) {
     ASSERT_THROW(a4.parse("text/*;q=0.4, text/html;q=0.3,"), std::runtime_error);
 
     Header::Accept a5;
-    ASSERT_THROW(a4.parse("text/*;q=0.4, text/html;q=0.3, "), std::runtime_error);
-
+    ASSERT_THROW(a5.parse("text/*;q=0.4, text/html;q=0.3, "), std::runtime_error);
 }
 
 TEST(headers_test, allow) {

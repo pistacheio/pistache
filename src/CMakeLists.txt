@@ -9,6 +9,7 @@ set(SOURCE_FILES
     http_headers.cc
     http_defs.cc
     mime.cc
+    stream.cc
 )
 
 add_library(net ${SOURCE_FILES})
