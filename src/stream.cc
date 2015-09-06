@@ -91,3 +91,16 @@ void
 StreamCursor::reset() {
     value = 0;
 }
+
+bool
+match_raw(const void* buf, size_t len, StreamCursor& cursor) {
+    if (cursor.remaining() < len)
+        return false;
+
+    if (memcmp(cursor.offset(), buf, len) == 0) {
+        cursor.advance(len);
+        return true;
+    }
+
+    return false;
+}

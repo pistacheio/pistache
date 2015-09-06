@@ -131,9 +131,8 @@ CacheControl::parseRaw(const char* str, size_t len) {
         bool found = false;
         // First scan trivial directives
         for (const auto& d: TrivialDirectives) {
-            if (memcmp(cursor.offset(), d.str, memsize(d.size)) == 0) {
+            if (match_raw(d.str, d.size, cursor)) {
                 directives_.push_back(CacheDirective(d.repr));
-                cursor.advance(d.size);
                 found = true;
                 break;
             }
@@ -142,12 +141,9 @@ CacheControl::parseRaw(const char* str, size_t len) {
         // Not found, let's try timed directives
         if (!found) {
             for (const auto& d: TimedDirectives) {
-                if (memcmp(cursor.offset(), d.str, memsize(d.size)) == 0) {
+                if (match_raw(d.str, d.size, cursor)) {
                     int c;
-                    while (!cursor.eof() && cursor.current() != '=')
-                        cursor.advance(1);
-
-                    if (cursor.eof() || !cursor.advance(1)) {
+                    if (!cursor.advance(1)) {
                         throw std::runtime_error("Invalid caching directive, missing delta-seconds");
                     }
 

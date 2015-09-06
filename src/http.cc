@@ -21,12 +21,9 @@ namespace Net {
 
 namespace Http {
 
-static constexpr char CR = 0xD;
-static constexpr char LF = 0xA;
-static constexpr char CRLF[] = {CR, LF};
-
 template< class CharT, class Traits>
 std::basic_ostream<CharT, Traits>& crlf(std::basic_ostream<CharT, Traits>& os) {
+    static constexpr char CRLF[] = {0xD, 0xA};
     os.write(CRLF, 2);
 }
 
@@ -43,44 +40,42 @@ namespace Private {
     Parser::RequestLineStep::apply(StreamCursor& cursor) {
         StreamCursor::Revert revert(cursor);
 
-        auto tryMatch = [&](const char* const str) {
-            const size_t len = std::strlen(str);
-            if (strncmp(cursor.offset(), str, len) == 0) {
-                cursor.advance(len - 1);
-                return true;
-            }
-            return false;
+        // Method
+        //
+        struct MethodValue {
+            const char* const str;
+            const size_t len;
+
+            Method repr;
         };
 
-        // Method
+        static constexpr MethodValue Methods[] = {
+        #define METHOD(repr, str) \
+            { str, sizeof(str) - 1, Method::repr },
+            HTTP_METHODS
+        #undef METHOD
+        };
 
-        if (tryMatch("OPTIONS")) {
-           request->method = Method::Options;
+        bool found = false;
+        for (const auto& method: Methods) {
+            if (match_raw(method.str, method.len, cursor)) {
+                request->method = method.repr;
+                found = true;
+                break;
+            }
         }
-        else if (tryMatch("GET")) {
-            request->method = Method::Get;
-        }
-        else if (tryMatch("POST")) {
-            request->method = Method::Post;
-        }
-        else if (tryMatch("HEAD")) {
-            request->method = Method::Head;
-        }
-        else if (tryMatch("PUT")) {
-            request->method = Method::Put;
-        }
-        else if (tryMatch("DELETE")) {
-            request->method = Method::Delete;
-        }
-        else {
+
+        if (!found) {
             raise("Unknown HTTP request method");
         }
 
-        auto n = cursor.next();
-        if (n == StreamCursor::Eof) return State::Again;
-        else if (n != ' ') raise("Malformed HTTP request after Method, expected SP");
+        int n;
 
-        if (!cursor.advance(2)) return State::Again;
+        if (cursor.eof()) return State::Again;
+        else if ((n = cursor.current()) != ' ')
+            raise("Malformed HTTP request after Method, expected SP");
+
+        if (!cursor.advance(1)) return State::Again;
 
         size_t start = cursor;
 
@@ -193,7 +188,7 @@ namespace Private {
                 return State::Again;
             }
             else {
-                request->body.append(cursor.offset(), cursor.diff(start));
+                request->body.append(cursor.offset(), remaining);
             }
 
         }
@@ -216,7 +211,7 @@ namespace Private {
                 return State::Again;
             }
 
-            request->body.append(cursor.offset(start), cursor.diff(start));
+            request->body.append(cursor.offset(start), contentLength);
         }
 
         bytesRead = 0;
@@ -311,7 +306,11 @@ void
 Handler::onInput(const char* buffer, size_t len, Tcp::Peer& peer) {
     try {
         auto& parser = getParser(peer);
+       // scope (failure), {
+       //     parser.reset();
+       // };
         if (!parser.feed(buffer, len)) {
+            parser.reset();
             throw HttpError(Code::Request_Entity_Too_Large, "Request exceeded maximum buffer size");
         }
 
@@ -323,10 +322,12 @@ Handler::onInput(const char* buffer, size_t len, Tcp::Peer& peer) {
     } catch (const HttpError &err) {
         Response response(err.code(), err.reason());
         response.writeTo(peer);
+        getParser(peer).reset();
     }
     catch (const std::exception& e) {
         Response response(Code::Internal_Server_Error, e.what());
         response.writeTo(peer);
+        getParser(peer).reset();
     }
 }
 

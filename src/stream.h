@@ -69,6 +69,7 @@ public:
 
     void reset() {
         memset(bytes, 0, N);
+        size = 0;
         setArea(bytes, bytes, bytes);
     }
 
@@ -134,3 +135,5 @@ private:
     const BasicStreamBuf& buf;
     size_t value;
 };
+
+bool match_raw(const void* buf, size_t len, StreamCursor& cursor);
