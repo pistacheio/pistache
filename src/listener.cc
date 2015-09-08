@@ -12,6 +12,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/epoll.h>
+#include <pthread.h>
 #include <signal.h>
 #include <cassert>
 #include <cstring>
@@ -98,6 +99,23 @@ IoWorker::start(const std::shared_ptr<Handler>& handler, Flags<Options> options)
     thread.reset(new std::thread([this]() {
         this->run();
     }));
+
+    if (pins.count() > 0) {
+        auto cpuset = pins.toPosix();
+        auto handle = thread->native_handle();
+        pthread_setaffinity_np(handle, sizeof (cpuset), &cpuset);
+    }
+}
+
+void
+IoWorker::pin(const CpuSet& set) {
+    pins = set;
+
+    if (thread) {
+        auto cpuset = set.toPosix();
+        auto handle = thread->native_handle();
+        pthread_setaffinity_np(handle, sizeof (cpuset), &cpuset);
+    }
 }
 
 std::shared_ptr<Peer>
@@ -181,6 +199,9 @@ IoWorker::handleNewPeer(const std::shared_ptr<Peer>& peer)
 
 void
 IoWorker::run() {
+
+    if (pins.count() > 0) {
+    }
 
     mailbox.bind(poller);
 
@@ -269,6 +290,20 @@ void
 Listener::setHandler(const std::shared_ptr<Handler>& handler)
 {
     handler_ = handler;
+}
+
+void
+Listener::pinWorker(size_t worker, const CpuSet& set)
+{
+    if (ioGroup.empty()) {
+        throw std::domain_error("Invalid operation, did you call init() before ?");
+    }
+    if (worker > ioGroup.size()) {
+        throw std::invalid_argument("Trying to pin invalid worker");
+    }
+
+    auto &wrk = ioGroup[worker];
+    wrk->pin(set);
 }
 
 bool

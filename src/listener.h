@@ -49,6 +49,8 @@ public:
     void start(const std::shared_ptr<Handler> &handler, Flags<Options> options);
     void handleNewPeer(const std::shared_ptr<Peer>& peer);
 
+    void pin(const CpuSet& set);
+
 private:
     Polling::Epoll poller;
     std::unique_ptr<std::thread> thread;
@@ -56,6 +58,8 @@ private:
     std::unordered_map<Fd, std::shared_ptr<Peer>> peers;
     std::shared_ptr<Handler> handler_;
     Flags<Options> options_;
+
+    CpuSet pins;
 
     std::shared_ptr<Peer> getPeer(Fd fd) const;
     std::shared_ptr<Peer> getPeer(Polling::Tag tag) const;
@@ -86,6 +90,8 @@ public:
 
     Options options() const;
     Address address() const;
+
+    void pinWorker(size_t worker, const CpuSet& set);
 
 private: 
     Address addr_; 

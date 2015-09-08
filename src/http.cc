@@ -454,7 +454,14 @@ Endpoint::serve()
     if (!handler_)
         throw std::runtime_error("Must call setHandler() prior to serve()");
 
-    listener.init(24, Tcp::Options::InstallSignalHandler);
+    listener.init(4, Tcp::Options::InstallSignalHandler);
+#if 1
+    listener.pinWorker(0, CpuSet { 0 } );
+    listener.pinWorker(1, CpuSet { 1 } );
+    listener.pinWorker(2, CpuSet { 2 } );
+    listener.pinWorker(3, CpuSet { 3 } );
+#endif
+
     listener.setHandler(handler_);
 
     if (listener.bind()) { 
