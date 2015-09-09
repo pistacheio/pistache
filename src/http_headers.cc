@@ -29,13 +29,13 @@ namespace {
         return tid;
     }
 
-    std::unordered_map<std::string, std::unique_ptr<AllocatorBase>> allocators;
+    std::unordered_map<string, std::unique_ptr<AllocatorBase>> allocators;
 
 }
 
 namespace detail {
     Header *
-    allocate_header(const std::string& name) {
+    allocate_header(const string& name) {
         auto it = allocators.find(name);
         if (it == std::end(allocators)) {
             throw std::bad_alloc();
@@ -54,6 +54,7 @@ header_delete::operator()(Header* header) {
 
 RegisterHeader(Accept);
 RegisterHeader(CacheControl);
+RegisterHeader(Connection);
 RegisterHeader(ContentEncoding);
 RegisterHeader(ContentLength);
 RegisterHeader(ContentType);
@@ -63,14 +64,14 @@ RegisterHeader(Server);
 RegisterHeader(UserAgent);
 
 void
-Registry::registerHeader(std::string name, std::unique_ptr<AllocatorBase>&& alloc)
+Registry::registerHeader(string name, std::unique_ptr<AllocatorBase>&& alloc)
 {
     allocators.insert(std::make_pair(name, std::move(alloc)));
 }
 
-std::vector<std::string>
+std::vector<string>
 Registry::headersList() {
-    std::vector<std::string> names;
+    std::vector<string> names;
     names.reserve(allocators.size());
 
     for (const auto &header: allocators) {
@@ -81,7 +82,7 @@ Registry::headersList() {
 }
 
 std::unique_ptr<Header, header_delete>
-Registry::makeHeader(const std::string& name) {
+Registry::makeHeader(const string& name) {
     auto it = allocators.find(name);
     if (it == std::end(allocators)) {
         throw std::bad_alloc();
@@ -91,7 +92,7 @@ Registry::makeHeader(const std::string& name) {
 }
 
 bool
-Registry::isRegistered(const std::string& name) {
+Registry::isRegistered(const string& name) {
     auto it = allocators.find(name);
     return it != std::end(allocators);
 }
@@ -111,11 +112,11 @@ Collection::add(std::shared_ptr<Header>&& header) {
 
 Collection&
 Collection::addRaw(const Raw& raw) {
-    rawHeaders.insert(std::make_pair(raw.name(), raw));
+    //rawHeaders.insert(std::make_pair(raw.name(), raw));
 }
 
 std::shared_ptr<const Header>
-Collection::get(const std::string& name) const {
+Collection::get(const string& name) const {
     auto header = getImpl(name);
     if (!header.first) {
         throw std::runtime_error("Could not find header");
@@ -125,7 +126,7 @@ Collection::get(const std::string& name) const {
 }
 
 std::shared_ptr<Header>
-Collection::get(const std::string& name) {
+Collection::get(const string& name) {
     auto header = getImpl(name);
     if (!header.first) {
         throw std::runtime_error("Could not find header");
@@ -135,7 +136,7 @@ Collection::get(const std::string& name) {
 }
 
 Raw
-Collection::getRaw(const std::string& name) const {
+Collection::getRaw(const string& name) const {
     auto it = rawHeaders.find(name);
     if (it == std::end(rawHeaders)) {
         throw std::runtime_error("Could not find header");
@@ -145,7 +146,7 @@ Collection::getRaw(const std::string& name) const {
 }
 
 std::shared_ptr<const Header>
-Collection::tryGet(const std::string& name) const {
+Collection::tryGet(const string& name) const {
     auto header = getImpl(name);
     if (!header.first) return nullptr;
 
@@ -153,7 +154,7 @@ Collection::tryGet(const std::string& name) const {
 }
 
 std::shared_ptr<Header>
-Collection::tryGet(const std::string& name) {
+Collection::tryGet(const string& name) {
     auto header = getImpl(name);
     if (!header.first) return nullptr;
 
@@ -161,7 +162,7 @@ Collection::tryGet(const std::string& name) {
 }
 
 Optional<Raw>
-Collection::tryGetRaw(const std::string& name) const {
+Collection::tryGetRaw(const string& name) const {
     auto it = rawHeaders.find(name);
     if (it == std::end(rawHeaders)) {
         return None();
@@ -171,7 +172,7 @@ Collection::tryGetRaw(const std::string& name) const {
 }
 
 bool
-Collection::has(const std::string& name) const {
+Collection::has(const string& name) const {
     return getImpl(name).first;
 }
 
@@ -193,7 +194,7 @@ Collection::clear() {
 }
 
 std::pair<bool, std::shared_ptr<Header>>
-Collection::getImpl(const std::string& name) const {
+Collection::getImpl(const string& name) const {
     auto it = headers.find(name);
     if (it == std::end(headers)) {
         return std::make_pair(false, nullptr);

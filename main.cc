@@ -15,7 +15,7 @@ class MyHandler : public Net::Http::Handler {
                 using namespace Net::Http;
                 Net::Http::Response response(Net::Http::Code::Ok, "PONG");
 
-#if 0
+#if 1
                 response.headers
                     .add(make_header<Header::ContentEncoding>(Header::Encoding::Gzip))
                     .add(make_header<Header::ContentType>(MIME(Text, Plain)));

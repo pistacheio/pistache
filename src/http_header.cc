@@ -244,6 +244,13 @@ CacheControl::addDirectives(const std::vector<Http::CacheDirective>& directives)
 }
 
 void
+Connection::parseRaw(const char* str, size_t len) {
+}
+
+void Connection::write(std::ostream& os) const {
+}
+
+void
 ContentLength::parse(const std::string& data) {
     try {
         size_t pos;
@@ -271,16 +278,17 @@ Date::write(std::ostream& os) const {
 }
 
 void
-Host::parse(const std::string& data) {
-    auto pos = data.find(':');
-    if (pos != std::string::npos) {
-        std::string h = data.substr(0, pos);
-        int16_t p = std::stoi(data.substr(pos + 1));
+Host::parseRaw(const char* str, size_t size)
+{
+    const char *pos = static_cast<const char *>(memchr(str, ':', size));
+    if (pos != nullptr) {
+        string h = string(str, pos - str);
+        int16_t p = 80;
 
-        host_ = h;
+        host_ = std::move(h);
         port_ = p;
     } else {
-        host_ = data;
+        host_ = string(str, size);
         port_ = 80;
     }
 }

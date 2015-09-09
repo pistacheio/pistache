@@ -218,7 +218,7 @@ namespace Private {
             // Skip the ':'
             if (!cursor.advance(1)) return State::Again;
 
-            std::string name = std::string(cursor.offset(start), cursor.diff(start) - 1);
+            Header::string name = Header::string(cursor.offset(start), cursor.diff(start) - 1);
 
             // Ignore spaces
             while (cursor.current() == ' ')
@@ -236,8 +236,9 @@ namespace Private {
                 request->headers.add(std::move(header));
             }
             else {
+                cout << "La chouma c'est qui ce con " << name << endl;
                 std::string value(cursor.offset(start), cursor.diff(start));
-                request->headers.addRaw(Header::Raw(std::move(name), std::move(value)));
+                //request->headers.addRaw(Header::Raw(std::move(name), std::move(value)));
             }
 
             // CRLF

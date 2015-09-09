@@ -57,13 +57,13 @@ public:
     Collection& add(std::shared_ptr<Header>&& header);
     Collection& addRaw(const Raw& raw);
 
-    std::shared_ptr<const Header> get(const std::string& name) const;
-    std::shared_ptr<Header> get(const std::string& name);
-    Raw getRaw(const std::string& name) const;
+    std::shared_ptr<const Header> get(const string& name) const;
+    std::shared_ptr<Header> get(const string& name);
+    Raw getRaw(const string& name) const;
 
-    std::shared_ptr<const Header> tryGet(const std::string& name) const;
-    std::shared_ptr<Header> tryGet(const std::string& name);
-    Optional<Raw> tryGetRaw(const std::string& name) const;
+    std::shared_ptr<const Header> tryGet(const string& name) const;
+    std::shared_ptr<Header> tryGet(const string& name);
+    Optional<Raw> tryGetRaw(const string& name) const;
 
     template<typename H>
     typename std::enable_if<
@@ -72,17 +72,17 @@ public:
     has() const {
         return has(H::Name);
     }
-    bool has(const std::string& name) const;
+    bool has(const string& name) const;
 
     std::vector<std::shared_ptr<Header>> list() const;
 
     void clear();
 
 private:
-    std::pair<bool, std::shared_ptr<Header>> getImpl(const std::string& name) const;
+    std::pair<bool, std::shared_ptr<Header>> getImpl(const string& name) const;
 
-    std::unordered_map<std::string, std::shared_ptr<Header>> headers;
-    std::unordered_map<std::string, Raw> rawHeaders;
+    std::unordered_map<string, std::shared_ptr<Header>> headers;
+    std::unordered_map<string, Raw> rawHeaders;
 };
 
 struct header_delete {
@@ -157,12 +157,12 @@ struct Registry {
         registerHeader(H::Name, std::move(alloc));
     }
 
-    static void registerHeader(std::string name, std::unique_ptr<AllocatorBase>&& alloc);
+    static void registerHeader(string name, std::unique_ptr<AllocatorBase>&& alloc);
 
-    static std::vector<std::string> headersList();
+    static std::vector<string> headersList();
 
-    static std::unique_ptr<Header, header_delete> makeHeader(const std::string& name);
-    static bool isRegistered(const std::string& name);
+    static std::unique_ptr<Header, header_delete> makeHeader(const string& name);
+    static bool isRegistered(const string& name);
 };
 
 template<typename H>
@@ -175,7 +175,7 @@ struct Registrar {
 };
 
 namespace detail {
-    Header* allocate_header(const std::string& name);
+    Header* allocate_header(const string& name);
 }
 
 /* Crazy macro machinery to generate a unique variable name

@@ -6,6 +6,8 @@
 
 #pragma once
 
+#define USE_SSO_STRING
+
 #include "mime.h"
 #include "net.h"
 #include "http_defs.h"
@@ -14,6 +16,9 @@
 #include <memory>
 #include <ostream>
 #include <vector>
+#ifdef USE_SSO_STRING
+  #include <ext/vstring.h>
+#endif
 
 #define SAFE_HEADER_CAST
 
@@ -22,6 +27,12 @@ namespace Net {
 namespace Http {
 
 namespace Header {
+
+#ifdef USE_SSO_STRING
+    typedef __gnu_cxx::__vstring string;
+#else
+    typedef std::string string;
+#endif
 
 #ifdef SAFE_HEADER_CAST
 namespace detail {
@@ -180,6 +191,16 @@ private:
     std::vector<Http::CacheDirective> directives_;
 };
 
+class Connection : public Header {
+public:
+    NAME("Connection")
+
+    Connection() { };
+
+    void parseRaw(const char* str, size_t len);
+    void write(std::ostream& os) const;
+
+};
 
 class ContentEncoding : public Header {
 public:
@@ -272,19 +293,19 @@ public:
      , port_(-1)
     { }
 
-    explicit Host(const std::string& host, Net::Port port = 80)
+    explicit Host(const string& host, Net::Port port = 80)
         : host_(host)
         , port_(port)
     { }
 
-    void parse(const std::string& data);
+    void parseRaw(const char* str, size_t size);
     void write(std::ostream& os) const;
 
-    std::string host() const { return host_; }
+    string host() const { return host_; }
     Net::Port port() const { return port_; }
 
 private:
-    std::string host_;
+    string host_;
     Net::Port port_;
 };
 
