@@ -110,6 +110,11 @@ enum class Version {
     Http11 // HTTP/1.1
 };
 
+enum class Expectation {
+    Continue,
+    Ext
+};
+
 class CacheDirective {
 public:
     enum Directive { NoCache, NoStore, MaxAge, MaxStale, MinFresh,

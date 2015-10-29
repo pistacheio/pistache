@@ -7,6 +7,7 @@
 #include "http_header.h"
 #include "common.h"
 #include "http.h"
+#include "stream.h"
 #include <stdexcept>
 #include <iterator>
 #include <cstring>
@@ -89,10 +90,6 @@ void
 CacheControl::parseRaw(const char* str, size_t len) {
     using Http::CacheDirective;
 
-    auto eof = [&](const char *p) {
-        return p - str == len;
-    };
-
     struct DirectiveValue {
         const char* const str;
         const size_t size;
@@ -121,9 +118,12 @@ CacheControl::parseRaw(const char* str, size_t len) {
 
 #undef VALUE
 
+    StreamBuf buf(str, len);
+    StreamCursor cursor(buf);
+
     const char *begin = str;
     auto memsize = [&](size_t s) {
-        return std::min(s, len - (begin - str));
+        return std::min(s, cursor.remaining());
     };
 
     do {
@@ -131,9 +131,8 @@ CacheControl::parseRaw(const char* str, size_t len) {
         bool found = false;
         // First scan trivial directives
         for (const auto& d: TrivialDirectives) {
-            if (memcmp(begin, d.str, memsize(d.size)) == 0) {
+            if (match_raw(d.str, d.size, cursor)) {
                 directives_.push_back(CacheDirective(d.repr));
-                begin += d.size;
                 found = true;
                 break;
             }
@@ -142,32 +141,39 @@ CacheControl::parseRaw(const char* str, size_t len) {
         // Not found, let's try timed directives
         if (!found) {
             for (const auto& d: TimedDirectives) {
-                if (memcmp(begin, d.str, memsize(d.size)) == 0) {
-                    const char *p = static_cast<const char *>(memchr(begin, '=', memsize(len)));
-                    if (p == NULL) {
+                if (match_raw(d.str, d.size, cursor)) {
+                    int c;
+                    if (!cursor.advance(1)) {
                         throw std::runtime_error("Invalid caching directive, missing delta-seconds");
                     }
+
                     char *end;
-                    int secs = strtol(p + 1, &end, 10);
-                    if (!eof(end) && *end != ',') {
+                    const char* beg = cursor.offset();
+                    // @Security: if str is not \0 terminated, there might be a situation
+                    // where strtol can overflow. Double-check that it's harmless and fix if not
+                    int secs = strtol(beg, &end, 10);
+                    cursor.advance(end - beg);
+                    if (!cursor.eof() && cursor.current() != ',') {
                         throw std::runtime_error("Invalid caching directive, malformated delta-seconds");
                     }
                     directives_.push_back(CacheDirective(d.repr, std::chrono::seconds(secs)));
-                    begin = end;
                     found = true;
                     break;
                 }
             }
         }
 
-        if (!eof(begin)) {
-            if (*begin != ',')
+        if (!cursor.eof()) {
+            if (cursor.current() != ',') {
                 throw std::runtime_error("Invalid caching directive, expected a comma");
+            }
 
-            while (!eof(begin) && *begin == ',' || *begin == ' ') ++begin;
+            int c;
+            while ((c = cursor.current()) != StreamCursor::Eof && c == ',' || c == ' ')
+                cursor.advance(1);
         }
 
-    } while (!eof(begin));
+    } while (!cursor.eof());
 
 }
 
@@ -271,6 +277,22 @@ Date::write(std::ostream& os) const {
 }
 
 void
+Expect::parseRaw(const char* str, size_t len) {
+    if (memcmp(str, "100-continue", len)) {
+        expectation_ = Expectation::Continue;
+    } else {
+        expectation_ = Expectation::Ext;
+    }
+}
+
+void
+Expect::write(std::ostream& os) const {
+    if (expectation_ == Expectation::Continue) {
+        os << "100-continue";
+    }
+}
+
+void
 Host::parse(const std::string& data) {
     auto pos = data.find(':');
     if (pos != std::string::npos) {
@@ -306,35 +328,33 @@ UserAgent::write(std::ostream& os) const {
 void
 Accept::parseRaw(const char *str, size_t len) {
 
-    auto remaining = [&](const char* p) {
-        return len - (p - str);
-    };
+    StreamBuf buf(str, len);
+    StreamCursor cursor(buf);
 
-    auto eof = [&](const char *p) {
-        return remaining(p) == 0;
-    };
+    do {
+        int c;
+        size_t beg = cursor;
+        while ((c = cursor.next()) != StreamCursor::Eof && c != ',')
+            cursor.advance(1);
 
-    const char *p = static_cast<const char *>(memchr(str, ',', len));
-    const char *begin = str;
-    if (p == NULL) {
-        mediaRange_.push_back(Mime::MediaType::fromRaw(str, len));
-    } else {
-        do {
+        cursor.advance(1);
 
-            const size_t mimeLen = p - begin;
-            mediaRange_.push_back(Mime::MediaType::fromRaw(begin, mimeLen));
+        const size_t mimeLen = cursor.diff(beg);
 
-            while (!eof(p) && (*p == ',' || *p == ' ')) ++p;
-            if (eof(p)) throw std::runtime_error("Invalid format for Accept header");
-            begin = p;
+        mediaRange_.push_back(Mime::MediaType::fromRaw(cursor.offset(beg), mimeLen));
 
-            p = static_cast<const char *>(memchr(p, ',', remaining(p)));
+        if (!cursor.eof()) {
+            if (!cursor.advance(1))
+                throw std::runtime_error("Ill-formed Accept header");
 
-        } while (p != NULL);
+            if ((c = cursor.next()) == StreamCursor::Eof || c == ',')
+                throw std::runtime_error("Ill-formed Accept header");
 
-        mediaRange_.push_back(Mime::MediaType::fromRaw(begin, remaining(begin)));
-    }
+            while (!cursor.eof() && cursor.current() == ' ')
+                cursor.advance(1);
+        }
 
+    } while (!cursor.eof());
 }
 
 void

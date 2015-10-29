@@ -21,11 +21,13 @@ namespace {
 }
 
 RegisterHeader(Accept);
+RegisterHeader(Allow);
 RegisterHeader(CacheControl);
 RegisterHeader(ContentEncoding);
 RegisterHeader(ContentLength);
 RegisterHeader(ContentType);
 RegisterHeader(Date);
+RegisterHeader(Expect);
 RegisterHeader(Host);
 RegisterHeader(Server);
 RegisterHeader(UserAgent);

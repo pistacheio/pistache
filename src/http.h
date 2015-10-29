@@ -13,6 +13,7 @@
 #include "net.h"
 #include "http_headers.h"
 #include "http_defs.h"
+#include "stream.h"
 
 namespace Net {
 
@@ -54,71 +55,6 @@ namespace Private {
 
     struct Parser {
 
-        struct Buffer {
-            Buffer();
-
-            char data[Const::MaxBuffer];
-            size_t len;
-
-            void reset();
-        };
-
-        struct Cursor {
-
-            struct Revert {
-                Revert(Cursor& cursor)
-                    : cursor(cursor)
-                    , pos(cursor.value)
-                    , active(true)
-                { }
-
-                void revert() {
-                    cursor.value = pos;
-                }
-
-                void ignore() {
-                    active = false;
-                }
-
-                ~Revert() {
-                    if (active) cursor.value = pos;
-                }
-
-                Cursor& cursor;
-
-                size_t pos;
-                bool active;
-            };
-
-            static constexpr int Eof = -1;
-
-            Cursor(const Buffer &buffer, size_t initialPos = 0)
-                : buff(buffer)
-                , value(initialPos)
-            { }
-
-            bool advance(size_t count);
-
-            operator size_t() const { return value; }
-
-            bool eol() const;
-            int next() const;
-            char current() const;
-
-            const char *offset() const;
-            const char *offset(size_t off) const;
-
-            size_t diff(size_t other) const;
-            size_t diff(const Cursor& other) const;
-            size_t remaining() const;
-
-            void reset();
-
-        private:
-            const Buffer& buff;
-            size_t value;
-        };
-
         enum class State { Again, Next, Done };
 
         struct Step {
@@ -126,7 +62,7 @@ namespace Private {
                 : request(request)
             { }
 
-            virtual State apply(Cursor& cursor) = 0;
+            virtual State apply(StreamCursor& cursor) = 0;
 
             void raise(const char* msg, Code code = Code::Bad_Request);
 
@@ -138,7 +74,7 @@ namespace Private {
                 : Step(request)
             { }
 
-            State apply(Cursor& cursor);
+            State apply(StreamCursor& cursor);
         };
 
         struct HeadersStep : public Step {
@@ -146,7 +82,7 @@ namespace Private {
                 : Step(request)
             { }
 
-            State apply(Cursor& cursor);
+            State apply(StreamCursor& cursor);
         };
 
         struct BodyStep : public Step {
@@ -155,7 +91,7 @@ namespace Private {
                 , bytesRead(0)
             { }
 
-            State apply(Cursor& cursor);
+            State apply(StreamCursor& cursor);
 
         private:
             size_t bytesRead;
@@ -191,8 +127,10 @@ namespace Private {
 
         State parse();
 
-        Buffer buffer;
-        Cursor cursor;
+       // Buffer buffer;
+       // Cursor cursor;
+        ArrayStreamBuf<Const::MaxBuffer> buffer;
+        StreamCursor cursor;
 
         Request request;
 
