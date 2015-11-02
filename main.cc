@@ -8,27 +8,27 @@
 using namespace std;
 
 class MyHandler : public Net::Http::Handler {
-    void onRequest(const Net::Http::Request& req, Net::Tcp::Peer& peer) {
-        if (req.resource == "/ping") {
-            if (req.method == Net::Http::Method::Get) {
+    void onRequest(const Net::Http::Request& req, Net::Http::Response response) {
+        if (req.resource() == "/ping") {
+            if (req.method() == Net::Http::Method::Get) {
 
                 using namespace Net::Http;
 
-                Net::Http::Response response(Net::Http::Code::Ok, "PONG");
-                response.headers
+                response.headers()
                     .add(std::make_shared<Header::Server>("lys"))
                     .add(std::make_shared<Header::ContentType>(MIME(Text, Plain)));
 
-                response.writeTo(peer);
+                response.send(Net::Http::Code::Ok, "PONG");
 
             }
         }
-        else if (req.resource == "/echo") {
-            if (req.method == Net::Http::Method::Post) {
-                Net::Http::Response response(Net::Http::Code::Ok, req.body);
-
-                response.writeTo(peer);
+        else if (req.resource() == "/echo") {
+            if (req.method() == Net::Http::Method::Post) {
+                response.send(Net::Http::Code::Ok, req.body());
             }
+        }
+        else if (req.resource() == "/exception") {
+            throw std::runtime_error("Exception thrown in the handler");
         }
     }
 };

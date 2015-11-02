@@ -118,8 +118,8 @@ IoWorker::pin(const CpuSet& set) {
     }
 }
 
-std::shared_ptr<Peer>
-IoWorker::getPeer(Fd fd) const
+std::shared_ptr<Peer>&
+IoWorker::getPeer(Fd fd)
 {
     std::unique_lock<std::mutex> guard(peersMutex);
     auto it = peers.find(fd);
@@ -130,8 +130,8 @@ IoWorker::getPeer(Fd fd) const
     return it->second;
 }
 
-std::shared_ptr<Peer>
-IoWorker::getPeer(Polling::Tag tag) const
+std::shared_ptr<Peer>&
+IoWorker::getPeer(Polling::Tag tag)
 {
     return getPeer(tag.value());
 }
@@ -153,11 +153,11 @@ IoWorker::handleIncoming(const std::shared_ptr<Peer>& peer) {
         if (bytes == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if (totalBytes > 0) {
-                    handler_->onInput(buffer, totalBytes, *peer);
+                    handler_->onInput(buffer, totalBytes, peer);
                 }
             } else {
                 if (errno == ECONNRESET) {
-                    handler_->onDisconnection(*peer);
+                    handler_->onDisconnection(peer);
                     close(fd);
                 }
                 else {
@@ -167,7 +167,7 @@ IoWorker::handleIncoming(const std::shared_ptr<Peer>& peer) {
             break;
         }
         else if (bytes == 0) {
-            handler_->onDisconnection(*peer);
+            handler_->onDisconnection(peer);
             close(fd);
             break;
         }
@@ -192,7 +192,7 @@ IoWorker::handleNewPeer(const std::shared_ptr<Peer>& peer)
         peers.insert(std::make_pair(fd, peer));
     }
 
-    handler_->onConnection(*peer);
+    handler_->onConnection(peer);
     poller.addFd(fd, NotifyOn::Read, Polling::Tag(fd), Polling::Mode::Edge);
 }
 
@@ -226,7 +226,8 @@ IoWorker::run() {
                     }
                 } else {
                     if (event.flags.hasFlag(NotifyOn::Read)) {
-                        handleIncoming(getPeer(event.tag));
+                        auto& peer = getPeer(event.tag);
+                        handleIncoming(peer);
                     }
                 }
             }
@@ -247,11 +248,11 @@ Handler::~Handler()
 { }
 
 void
-Handler::onConnection(Tcp::Peer& peer) {
+Handler::onConnection(const std::shared_ptr<Tcp::Peer>& peer) {
 }
 
 void
-Handler::onDisconnection(Tcp::Peer& peer) {
+Handler::onDisconnection(const std::shared_ptr<Tcp::Peer>& peer) {
 }
 
 Listener::Listener()

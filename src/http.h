@@ -14,88 +14,127 @@
 #include "http_headers.h"
 #include "http_defs.h"
 #include "stream.h"
+#include "mime.h"
 
 namespace Net {
 
 namespace Http {
 
+namespace Private {
+    class Parser;
+    class RequestLineStep;
+    class HeadersStep;
+    class BodyStep;
+}
+
 // 4. HTTP Message
 class Message {
 public:
     Message();
-    Version version;
+    Version version_;
 
-    Header::Collection headers;
-    std::string body;
+    Header::Collection headers_;
+    std::string body_;
 };
 
 // 5. Request
-class Request : public Message {
+class Request : private Message {
 public:
+    friend class Private::RequestLineStep;
+    friend class Private::HeadersStep;
+    friend class Private::BodyStep;
+    friend class Private::Parser;
+
     Request();
 
-    Method method;
-    std::string resource;
-};
+    Version version() const;
+    Method method() const;
+    std::string resource() const;
 
-// 6. Response
-class Response : public Message {
-public:
-    Response(int code, std::string body);
-    Response(Code code, std::string body);
+    std::string body() const;
 
-    void writeTo(Tcp::Peer& peer);
-    std::string mimeType;
+    const Header::Collection& headers() const;
 
 private:
-    int code_;
+    Method method_;
+    std::string resource_;
+};
+
+class Handler;
+
+// 6. Response
+class Response : private Message {
+public:
+    friend class Handler;
+
+    Response(const Response& other) = delete;
+    Response& operator=(const Response& other) = delete;
+
+    Response(Response&& other) = default;
+    Response& operator=(Response&& other) = default;
+
+    Header::Collection& headers();
+    const Header::Collection& headers() const;
+
+    void setMime(const Mime::MediaType& mime);
+
+    ssize_t send(Code code);
+    ssize_t send(Code code, const std::string& body, const Mime::MediaType &mime = Mime::MediaType());
+
+private:
+    Response();
+
+    std::shared_ptr<Tcp::Peer> peer() const;
+
+    void associatePeer(const std::shared_ptr<Tcp::Peer>& peer);
+    std::weak_ptr<Tcp::Peer> peer_;
 };
 
 namespace Private {
 
+    enum class State { Again, Next, Done };
+
+    struct Step {
+        Step(Request* request)
+            : request(request)
+        { }
+
+        virtual State apply(StreamCursor& cursor) = 0;
+
+        void raise(const char* msg, Code code = Code::Bad_Request);
+
+        Request *request;
+    };
+
+    struct RequestLineStep : public Step {
+        RequestLineStep(Request* request)
+            : Step(request)
+        { }
+
+        State apply(StreamCursor& cursor);
+    };
+
+    struct HeadersStep : public Step {
+        HeadersStep(Request* request)
+            : Step(request)
+        { }
+
+        State apply(StreamCursor& cursor);
+    };
+
+    struct BodyStep : public Step {
+        BodyStep(Request* request)
+            : Step(request)
+            , bytesRead(0)
+        { }
+
+        State apply(StreamCursor& cursor);
+
+    private:
+        size_t bytesRead;
+    };
+
     struct Parser {
-
-        enum class State { Again, Next, Done };
-
-        struct Step {
-            Step(Request* request)
-                : request(request)
-            { }
-
-            virtual State apply(StreamCursor& cursor) = 0;
-
-            void raise(const char* msg, Code code = Code::Bad_Request);
-
-            Request *request;
-        };
-
-        struct RequestLineStep : public Step {
-            RequestLineStep(Request* request)
-                : Step(request)
-            { }
-
-            State apply(StreamCursor& cursor);
-        };
-
-        struct HeadersStep : public Step {
-            HeadersStep(Request* request)
-                : Step(request)
-            { }
-
-            State apply(StreamCursor& cursor);
-        };
-
-        struct BodyStep : public Step {
-            BodyStep(Request* request)
-                : Step(request)
-                , bytesRead(0)
-            { }
-
-            State apply(StreamCursor& cursor);
-
-        private:
-            size_t bytesRead;
-        };
 
         Parser()
             : contentLength(-1)
@@ -127,8 +166,6 @@ namespace Private {
 
         State parse();
 
-       // Buffer buffer;
-       // Cursor cursor;
         ArrayStreamBuf<Const::MaxBuffer> buffer;
         StreamCursor cursor;
 
@@ -147,16 +184,16 @@ namespace Private {
 
 class Handler : public Net::Tcp::Handler {
 public:
-    void onInput(const char* buffer, size_t len, Tcp::Peer& peer);
+    void onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer>& peer);
     void onOutput();
 
-    void onConnection(Tcp::Peer& peer);
-    void onDisconnection(Tcp::Peer& peer);
+    void onConnection(const std::shared_ptr<Tcp::Peer>& peer);
+    void onDisconnection(const std::shared_ptr<Tcp::Peer>& peer);
 
-    virtual void onRequest(const Request& request, Tcp::Peer& peer) = 0;
+    virtual void onRequest(const Request& request, Response response) = 0;
 
 private:
-    Private::Parser& getParser(Tcp::Peer& peer) const;
+    Private::Parser& getParser(const std::shared_ptr<Tcp::Peer>& peer) const;
 };
 
 class Endpoint {

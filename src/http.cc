@@ -32,12 +32,12 @@ static constexpr const char* ParserData = "__Parser";
 namespace Private {
 
     void
-    Parser::Step::raise(const char* msg, Code code /* = Code::Bad_Request */) {
+    Step::raise(const char* msg, Code code /* = Code::Bad_Request */) {
         throw HttpError(code, msg);
     }
 
-    Parser::State
-    Parser::RequestLineStep::apply(StreamCursor& cursor) {
+    State
+    RequestLineStep::apply(StreamCursor& cursor) {
         StreamCursor::Revert revert(cursor);
 
         // Method
@@ -59,7 +59,7 @@ namespace Private {
         bool found = false;
         for (const auto& method: Methods) {
             if (match_raw(method.str, method.len, cursor)) {
-                request->method = method.repr;
+                request->method_ = method.repr;
                 found = true;
                 break;
             }
@@ -83,7 +83,7 @@ namespace Private {
             if (!cursor.advance(1)) return State::Again;
         }
 
-        request->resource = std::string(cursor.offset(start), cursor.diff(start) + 1);
+        request->resource_ = std::string(cursor.offset(start), cursor.diff(start) + 1);
         if ((n = cursor.next()) == StreamCursor::Eof) return State::Again;
 
         if (n != ' ')
@@ -100,10 +100,10 @@ namespace Private {
 
         const size_t diff = cursor.diff(start);
         if (strncmp(cursor.offset(start), "HTTP/1.0", diff) == 0) {
-            request->version = Version::Http10;
+            request->version_ = Version::Http10;
         }
         else if (strncmp(cursor.offset(start), "HTTP/1.1", diff) == 0) {
-            request->version = Version::Http11;
+            request->version_ = Version::Http11;
         }
         else {
             raise("Encountered invalid HTTP version");
@@ -116,8 +116,8 @@ namespace Private {
 
     }
 
-    Parser::State
-    Parser::HeadersStep::apply(StreamCursor& cursor) {
+    State
+    HeadersStep::apply(StreamCursor& cursor) {
         StreamCursor::Revert revert(cursor);
 
         while (!cursor.eol()) {
@@ -147,11 +147,11 @@ namespace Private {
             if (Header::Registry::isRegistered(name)) {
                 std::shared_ptr<Header::Header> header = Header::Registry::makeHeader(name);
                 header->parseRaw(cursor.offset(start), cursor.diff(start));
-                request->headers.add(header);
+                request->headers_.add(header);
             }
             else {
                 std::string value(cursor.offset(start), cursor.diff(start));
-                request->headers.addRaw(Header::Raw(std::move(name), std::move(value)));
+                request->headers_.addRaw(Header::Raw(std::move(name), std::move(value)));
             }
 
             // CRLF
@@ -161,13 +161,13 @@ namespace Private {
         }
 
         revert.ignore();
-        return Parser::State::Next;
+        return State::Next;
     }
 
-    Parser::State
-    Parser::BodyStep::apply(StreamCursor& cursor) {
-        auto cl = request->headers.tryGet<Header::ContentLength>();
-        if (!cl) return Parser::State::Done;
+    State
+    BodyStep::apply(StreamCursor& cursor) {
+        auto cl = request->headers_.tryGet<Header::ContentLength>();
+        if (!cl) return State::Done;
 
         auto contentLength = cl->value();
         // We already started to read some bytes but we got an incomplete payload
@@ -181,14 +181,14 @@ namespace Private {
             if (!cursor.advance(remaining)) {
                 const size_t available = cursor.remaining();
 
-                request->body.append(cursor.offset(start), available);
+                request->body_.append(cursor.offset(start), available);
                 bytesRead += available;
 
                 cursor.advance(available);
                 return State::Again;
             }
             else {
-                request->body.append(cursor.offset(), remaining);
+                request->body_.append(cursor.offset(), remaining);
             }
 
         }
@@ -196,7 +196,7 @@ namespace Private {
         else {
             if (!cursor.advance(2)) return State::Again;
 
-            request->body.reserve(contentLength);
+            request->body_.reserve(contentLength);
 
             auto start = cursor;
 
@@ -204,21 +204,21 @@ namespace Private {
             if (!cursor.advance(contentLength)) {
                 const size_t available = cursor.remaining();
 
-                request->body.append(cursor.offset(start), available);
+                request->body_.append(cursor.offset(start), available);
                 bytesRead += available;
 
                 cursor.advance(available);
                 return State::Again;
             }
 
-            request->body.append(cursor.offset(start), contentLength);
+            request->body_.append(cursor.offset(start), contentLength);
         }
 
         bytesRead = 0;
-        return Parser::State::Done;
+        return State::Done;
     }
 
-    Parser::State
+    State
     Parser::parse() {
         State state = State::Again;
         do {
@@ -245,88 +245,147 @@ namespace Private {
 
         currentStep = 0;
 
-        request.headers.clear();
-        request.body.clear();
-        request.resource.clear();
+        request.headers_.clear();
+        request.body_.clear();
+        request.resource_.clear();
     }
 
 } // namespace Private
 
 Message::Message()
-    : version(Version::Http11)
+    : version_(Version::Http11)
 { }
 
 Request::Request()
     : Message()
 { }
 
-Response::Response(int code, std::string body)
-{
-    this->body = std::move(body);
-    code_ = code;
+Version
+Request::version() const {
+    return version_;
 }
 
-Response::Response(Code code, std::string body)
-    : Message()
-{
-    this->body = std::move(body);
-    code_ = static_cast<int>(code);
+Method
+Request::method() const {
+    return method_;
 }
+
+std::string
+Request::resource() const {
+    return resource_;
+}
+
+std::string
+Request::body() const {
+    return body_;
+}
+
+const Header::Collection&
+Request::headers() const {
+    return headers_;
+}
+
+Response::Response()
+    : Message()
+{ }
 
 void
-Response::writeTo(Tcp::Peer& peer)
+Response::associatePeer(const std::shared_ptr<Tcp::Peer>& peer)
 {
-    int fd = peer.fd();
+    if (peer_.use_count() > 0)
+        throw std::runtime_error("A peer was already associated to the response");
+
+    peer_ = peer;
+}
+
+ssize_t
+Response::send(Code code) {
+    return send(code, "");
+}
+
+ssize_t
+Response::send(Code code, const std::string& body, const Mime::MediaType& mime)
+{
+    int fd = peer()->fd();
 
     char buffer[Const::MaxBuffer];
     Io::OutArrayBuf obuf(buffer, Io::Init::ZeroOut);
 
     std::ostream stream(&obuf);
     stream << "HTTP/1.1 ";
-    stream << code_;
+    stream << static_cast<int>(code);
     stream << ' ';
-    stream << static_cast<Code>(code_);
+    stream << code;
     stream << crlf;
 
-    for (const auto& header: headers.list()) {
+    for (const auto& header: headers_.list()) {
         stream << header->name() << ": ";
         header->write(stream);
         stream << crlf;
     }
 
-    stream << "Content-Length: " << body.size() << crlf;
-    stream << crlf;
+    if (!body.empty()) {
+        stream << "Content-Length: " << body.size() << crlf;
+        stream << crlf;
 
-    stream << body;
+        stream << body;
+    }
 
-    ssize_t bytes = send(fd, buffer, obuf.len(), 0);
+    ssize_t bytes = ::send(fd, buffer, obuf.len(), 0);
+    return bytes;
 }
 
 void
-Handler::onInput(const char* buffer, size_t len, Tcp::Peer& peer) {
+Response::setMime(const Mime::MediaType& mime)
+{
+    headers_.add(std::make_shared<Header::ContentType>(mime));
+}
+
+Header::Collection&
+Response::headers() {
+    return headers_;
+}
+
+const Header::Collection&
+Response::headers() const {
+    return headers_;
+}
+
+std::shared_ptr<Tcp::Peer>
+Response::peer() const {
+    if (peer_.expired()) {
+        throw std::runtime_error("Broken pipe");
+    }
+
+    return peer_.lock();
+}
+
+void
+Handler::onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer>& peer) {
     try {
         auto& parser = getParser(peer);
-       // scope (failure), {
-       //     parser.reset();
-       // };
         if (!parser.feed(buffer, len)) {
             parser.reset();
             throw HttpError(Code::Request_Entity_Too_Large, "Request exceeded maximum buffer size");
         }
 
         auto state = parser.parse();
-        if (state == Private::Parser::State::Done) {
-            onRequest(parser.request, peer);
+        if (state == Private::State::Done) {
+            Response response;
+            response.associatePeer(peer);
+            onRequest(parser.request, std::move(response));
             parser.reset();
         }
     } catch (const HttpError &err) {
-        Response response(err.code(), err.reason());
-        response.writeTo(peer);
+        Response response;
+        response.associatePeer(peer);
+        response.send(static_cast<Code>(err.code()), err.reason());
         getParser(peer).reset();
     }
     catch (const std::exception& e) {
-        Response response(Code::Internal_Server_Error, e.what());
-        response.writeTo(peer);
+        Response response;
+        response.associatePeer(peer);
+        response.send(Code::Internal_Server_Error, e.what());
         getParser(peer).reset();
     }
 }
@@ -336,17 +395,17 @@ Handler::onOutput() {
 }
 
 void
-Handler::onConnection(Tcp::Peer& peer) {
-    peer.putData(ParserData, std::make_shared<Private::Parser>());
+Handler::onConnection(const std::shared_ptr<Tcp::Peer>& peer) {
+    peer->putData(ParserData, std::make_shared<Private::Parser>());
 }
 
 void
-Handler::onDisconnection(Tcp::Peer& peer) {
+Handler::onDisconnection(const shared_ptr<Tcp::Peer>& peer) {
 }
 
 Private::Parser&
-Handler::getParser(Tcp::Peer& peer) const {
-    return *peer.getData<Private::Parser>(ParserData);
+Handler::getParser(const std::shared_ptr<Tcp::Peer>& peer) const {
+    return *peer->getData<Private::Parser>(ParserData);
 }
 
 Endpoint::Endpoint()

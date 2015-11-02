@@ -61,8 +61,8 @@ private:
 
     CpuSet pins;
 
-    std::shared_ptr<Peer> getPeer(Fd fd) const;
-    std::shared_ptr<Peer> getPeer(Polling::Tag tag) const;
+    std::shared_ptr<Peer>& getPeer(Fd fd);
+    std::shared_ptr<Peer>& getPeer(Polling::Tag tag);
 
     void handleIncoming(const std::shared_ptr<Peer>& peer);
     void handleMailbox();
@@ -108,11 +108,11 @@ public:
     Handler();
     ~Handler();
 
-    virtual void onInput(const char *buffer, size_t len, Tcp::Peer& peer) = 0;
+    virtual void onInput(const char *buffer, size_t len, const std::shared_ptr<Tcp::Peer>& peer) = 0;
     virtual void onOutput() = 0;
 
-    virtual void onConnection(Tcp::Peer& peer);
-    virtual void onDisconnection(Tcp::Peer& peer);
+    virtual void onConnection(const std::shared_ptr<Tcp::Peer>& peer);
+    virtual void onDisconnection(const std::shared_ptr<Tcp::Peer>& peer);
 
 };
 
