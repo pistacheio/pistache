@@ -87,6 +87,27 @@ public:
 
     static constexpr int Eof = -1;
 
+    struct Token {
+        Token(StreamCursor& cursor)
+            : cursor(cursor)
+            , pos(cursor.value)
+        { }
+
+        size_t start() const { return pos; }
+        size_t end() const {
+            return cursor.value;
+        }
+
+        std::string text() {
+            const char *beg = cursor.offset(pos);
+            return std::string(beg, end() - start());
+        }
+
+    private:
+        StreamCursor& cursor;
+        size_t pos;
+    };
+
     struct Revert {
         Revert(StreamCursor& cursor)
             : cursor(cursor)
@@ -136,4 +157,12 @@ private:
     size_t value;
 };
 
+enum class CaseSensitivity {
+    Sensitive, Insensitive
+};
+
 bool match_raw(const void* buf, size_t len, StreamCursor& cursor);
+bool match_literal(char c, StreamCursor& cursor, CaseSensitivity cs = CaseSensitivity::Insensitive);
+bool match_until(char c, StreamCursor& cursor, CaseSensitivity cs = CaseSensitivity::Insensitive);
+bool match_until(std::initializer_list<char> chars, StreamCursor& cursor, CaseSensitivity cs = CaseSensitivity::Insensitive);
+bool match_double(double* val, StreamCursor& cursor);

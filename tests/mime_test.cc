@@ -116,7 +116,6 @@ TEST(mime_test, valid_parsing_test) {
     });
 }
 
-
 TEST(mime_test, invalid_parsing) {
     ASSERT_THROW(MediaType::fromString("applicationjson"), HttpError);
     ASSERT_THROW(MediaType::fromString("my/json"), HttpError);

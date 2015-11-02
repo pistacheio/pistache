@@ -4,6 +4,8 @@
 */
 
 #include "stream.h"
+#include <algorithm>
+#include <iostream>
 
 void
 BasicStreamBuf::setArea(const char* begin, const char* end, const char* brk) {
@@ -103,4 +105,62 @@ match_raw(const void* buf, size_t len, StreamCursor& cursor) {
     }
 
     return false;
+}
+
+bool
+match_literal(char c, StreamCursor& cursor, CaseSensitivity cs) {
+    if (cursor.eof())
+        return false;
+
+    char lhs = (cs == CaseSensitivity::Sensitive ? c : std::tolower(c));
+    char rhs = (cs == CaseSensitivity::Insensitive ? cursor.current() : std::tolower(cursor.current()));
+
+    if (lhs == rhs) {
+        cursor.advance(1);
+        return true;
+    }
+
+    return false;
+}
+
+bool
+match_until(char c, StreamCursor& cursor, CaseSensitivity cs) {
+    return match_until( { c }, cursor, cs);
+}
+
+bool
+match_until(std::initializer_list<char> chars, StreamCursor& cursor, CaseSensitivity cs) {
+    if (cursor.eof())
+        return false;
+
+    auto find = [&](char val) {
+        for (auto c: chars) {
+            char lhs = cs == CaseSensitivity::Sensitive ? c : std::tolower(c);
+            char rhs = cs == CaseSensitivity::Insensitive ? val : std::tolower(val);
+
+            if (lhs == rhs) return true;
+        }
+
+        return false;
+    };
+
+    while (!cursor.eof()) {
+        const char c = cursor.current();
+        if (find(c)) return true;
+        cursor.advance(1);
+    }
+
+    return false;
+}
+
+bool
+match_double(double* val, StreamCursor &cursor) {
+    // @Todo: strtod does not support a length argument
+    char *end;
+    *val = strtod(cursor.offset(), &end);
+    if (end == cursor.offset())
+        return false;
+
+    cursor.advance(static_cast<ptrdiff_t>(end - cursor.offset()));
+    return true;
 }

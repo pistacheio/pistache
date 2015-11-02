@@ -53,14 +53,6 @@ MediaType::fromRaw(const char* str, size_t len) {
 
 void
 MediaType::parseRaw(const char* str, size_t len) {
-    auto eof = [&](const char *p) {
-        return p - str == len;
-    };
-
-    auto offset = [&](const char* ptr) {
-        return static_cast<size_t>(ptr - str);
-    };
-
     auto raise = [&](const char* str) {
         // TODO: eventually, we should throw a more generic exception
         // that could then be catched in lower stack frames to rethrow
@@ -68,17 +60,8 @@ MediaType::parseRaw(const char* str, size_t len) {
         throw HttpError(Http::Code::Unsupported_Media_Type, str);
     };
 
-    // Macro to ensure that we do not overflow when comparing strings
-    // The trick here is to use sizeof on a raw string literal of type
-    // const char[N] instead of strlen to avoid additional
-    // runtime computation
-    #define MAX_SIZE(s) std::min(sizeof(s) - 1, len - offset(p))
-
-    // Parse type
-    const char *p = static_cast<const char *>(memchr(str, '/', len));
-    if (p == NULL) {
-        raise("Malformated Media Type");
-    }
+    StreamBuf buf(str, len);
+    StreamCursor cursor(buf);
 
     raw_ = string(str, len);
 
@@ -93,10 +76,10 @@ MediaType::parseRaw(const char* str, size_t len) {
     //
     // Watch out, this pattern is repeated throughout the function
     do {
-#define TYPE(val, s)                            \
-        if (memcmp(str, s, MAX_SIZE(s)) == 0) { \
-            top = Type::val;                    \
-            break;                              \
+#define TYPE(val, s)                              \
+        if (match_raw(s, sizeof s - 1, cursor)) { \
+            top = Type::val;                      \
+            break;                                \
         }
         MIME_TYPES
 #undef TYPE
@@ -105,21 +88,25 @@ MediaType::parseRaw(const char* str, size_t len) {
 
     top_ = top;
 
+    if (!match_literal('/', cursor))
+        raise("Malformed Media Type, expected a '/' after the top type");
+
+    if (cursor.eof())
+        raise("Malformed Media type, missing subtype");
+
     // Parse subtype
     Mime::Subtype sub;
-    ++p;
 
-    if (eof(p)) raise("Malformed Media Type");
+    StreamCursor::Token subToken(cursor);
 
-    if (memcmp(p, "vnd.", MAX_SIZE("vnd.")) == 0) {
+    if (match_raw("vnd.", 4, cursor)) {
         sub = Subtype::Vendor;
     } else {
         do {
-#define SUB_TYPE(val, s)                          \
-            if (memcmp(p, s, MAX_SIZE(s)) == 0) { \
-                sub = Subtype::val;               \
-                p += sizeof(s) - 1;               \
-                break;                            \
+#define SUB_TYPE(val, s)                              \
+            if (match_raw(s, sizeof s - 1, cursor)) { \
+                sub = Subtype::val;                   \
+                break;                                \
             }
             MIME_SUBTYPES
 #undef SUB_TYPE
@@ -128,29 +115,28 @@ MediaType::parseRaw(const char* str, size_t len) {
     }
 
     if (sub == Subtype::Ext || sub == Subtype::Vendor) {
-        rawSubIndex.beg = offset(p);
-        while (!eof(p) && (*p != ';' && *p != '+')) ++p;
-        rawSubIndex.end = offset(p) - 1;
+        (void) match_until({ ';', '+' }, cursor);
+        rawSubIndex.beg = subToken.start();
+        rawSubIndex.end = subToken.end() - 1;
     }
 
     sub_ = sub;
 
-    if (eof(p)) return;
+    if (cursor.eof()) return;
 
     // Parse suffix
     Mime::Suffix suffix = Suffix::None;
-    if (*p == '+') {
+    if (match_literal('+', cursor)) {
 
-        ++p;
+        if (cursor.eof()) raise("Malformed Media Type, expected suffix, got EOF");
 
-        if (eof(p)) raise("Malformed Media Type");
+        StreamCursor::Token suffixToken(cursor);
 
         do {
-#define SUFFIX(val, s, _)                         \
-            if (memcmp(p, s, MAX_SIZE(s)) == 0) { \
-                suffix = Suffix::val;             \
-                p += sizeof(s) - 1;               \
-                break;                            \
+#define SUFFIX(val, s, _)                             \
+            if (match_raw(s, sizeof s - 1, cursor)) { \
+                suffix = Suffix::val;                 \
+                break;                                \
             }
             MIME_SUFFIXES
 #undef SUFFIX
@@ -158,65 +144,53 @@ MediaType::parseRaw(const char* str, size_t len) {
         } while (0);
 
         if (suffix == Suffix::Ext) {
-            rawSuffixIndex.beg = offset(p);
-            while (!eof(p) && (*p != ';' && *p != '+')) ++p;
-            rawSuffixIndex.end = offset(p) - 1;
+            (void) match_until({ ';', '+' }, cursor);
+            rawSuffixIndex.beg = suffixToken.start();
+            rawSuffixIndex.end = suffixToken.end() - 1;
         }
 
         suffix_ = suffix;
     }
 
     // Parse parameters
-    while (!eof(p)) {
+    while (!cursor.eof()) {
 
-        if (*p == ';' || *p == ' ') {
-            if (eof(p + 1)) raise("Malformed Media Type");
-            ++p;
+        if (cursor.current() == ';' || cursor.current() == ' ') {
+            if (cursor.next() == StreamCursor::Eof)
+                raise("Malformed Media Type, expected parameter got EOF");
+            cursor.advance(1);
         }
 
-        else if (*p == 'q') {
-            ++p;
+        else if (match_literal('q', cursor)) {
 
-            if (eof(p)) {
-                raise("Invalid quality factor");
-            }
+            if (cursor.eof()) raise("Invalid quality factor");
 
-            if (*p == '=') {
-                char *end;
-                double val = strtod(p + 1, &end);
-                if (!eof(end) && *end != ';' && *end != ' ') {
+            if (match_literal('=', cursor)) {
+                double val;
+                if (!match_double(&val, cursor))
                     raise("Invalid quality factor");
-                }
                 q_ = Some(Q::fromFloat(val));
-                p = end;
             }
             else {
-                raise("Invalid quality factor");
+                raise("Missing quality factor");
             }
         }
         else {
-            const char *begin = p;
-            while (!eof(p) && *p != '=') ++p;
+            StreamCursor::Token keyToken(cursor);
+            (void) match_until('=', cursor);
 
-            if (eof(p)) raise("Unfinished Media Type parameter");
-            const char *end = p;
-            ++p;
-            if (eof(p)) raise("Unfinished Media Type parameter");
+            if (cursor.eof() || cursor.next() == StreamCursor::Eof)
+                raise("Unfinished Media Type parameter");
 
-            std::string key(begin, end);
+            std::string key = keyToken.text();
+            cursor.advance(1);
 
-            begin = p;
-            while (!eof(p) && *p != ' ' && *p != ';') ++p;
-
-            std::string value(begin, p);
-
-            params.insert(std::make_pair(std::move(key), std::move(value)));
-
+            StreamCursor::Token valueToken(cursor);
+            (void) match_until({ ' ', ';' }, cursor);
+            params.insert(std::make_pair(std::move(key), valueToken.text()));
         }
 
     }
-
-    #undef MAX_SIZE
 
 }
 
@@ -275,8 +249,8 @@ MediaType::toString() const {
         }
     };
 
-    // @Improvement: allocating and concatenating many small strings is probably slow
     std::string res;
+    res.reserve(128);
     res += topString(top_);
     res += "/";
     res += subString(sub_);
