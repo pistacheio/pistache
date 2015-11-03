@@ -173,6 +173,7 @@ public:
     void setParam(std::string name, std::string value);
 
     std::string toString() const;
+    bool isValid() const;
 private:
 
     Mime::Type top_;

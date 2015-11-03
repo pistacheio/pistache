@@ -6,6 +6,7 @@
 #include "peer.h"
 #include <iostream>
 #include <stdexcept>
+#include <sys/socket.h>
 
 namespace Net {
 
@@ -73,6 +74,12 @@ Peer::tryGetData(std::string(name)) const {
 
     return it->second;
 }
+
+ssize_t
+Peer::send(const void* buf, size_t len) {
+    return ::send(fd_, buf, len, 0);
+}
+
 
 std::ostream& operator<<(std::ostream& os, const Peer& peer) {
     const auto& addr = peer.address();

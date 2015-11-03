@@ -237,6 +237,7 @@ public:
     void write(std::ostream& os) const;
 
     Mime::MediaType mime() const { return mime_; }
+    void setMime(const Mime::MediaType& mime) { mime_ = mime; }
 
 private:
     Mime::MediaType mime_;

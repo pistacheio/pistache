@@ -37,6 +37,22 @@ public:
     std::string body_;
 };
 
+namespace Uri {
+    typedef std::string Fragment;
+
+    class Query {
+    public:
+        Query();
+        Query(std::initializer_list<std::pair<const std::string, std::string>> params);
+
+        void add(std::string name, std::string value);
+        Optional<std::string> get(const std::string& name) const;
+
+    private:
+        std::unordered_map<std::string, std::string> params;
+    };
+} // namespace Uri
+
 // 5. Request
 class Request : private Message {
 public:
@@ -54,10 +70,12 @@ public:
     std::string body() const;
 
     const Header::Collection& headers() const;
+    const Uri::Query& query() const;
 
 private:
     Method method_;
     std::string resource_;
+    Uri::Query query_;
 };
 
 class Handler;

@@ -45,6 +45,8 @@ public:
         return std::static_pointer_cast<T>(data);
     }
 
+    ssize_t send(const void* buf, size_t len);
+
 private:
 
     Address addr;

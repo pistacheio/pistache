@@ -98,9 +98,17 @@ public:
             return cursor.value;
         }
 
+        size_t size() const {
+            return cursor.value - pos;
+        }
+
         std::string text() {
             const char *beg = cursor.offset(pos);
-            return std::string(beg, end() - start());
+            return std::string(beg, size());
+        }
+
+        const char* rawText() const {
+            return cursor.offset(pos);
         }
 
     private:

@@ -27,6 +27,17 @@ std::basic_ostream<CharT, Traits>& crlf(std::basic_ostream<CharT, Traits>& os) {
     os.write(CRLF, 2);
 }
 
+template<typename H, typename Stream, typename... Args>
+typename std::enable_if<Header::IsHeader<H>::value, void>::type
+writeHeader(Stream& stream, Args&& ...args) {
+    H header(std::forward<Args>(args)...);
+
+    stream << H::Name << ": ";
+    header.write(stream);
+
+    stream << crlf;
+}
+
 static constexpr const char* ParserData = "__Parser";
 
 namespace Private {
@@ -77,32 +88,54 @@ namespace Private {
 
         if (!cursor.advance(1)) return State::Again;
 
-        size_t start = cursor;
-
-        while ((n = cursor.next()) != StreamCursor::Eof && n != ' ') {
+        StreamCursor::Token resToken(cursor);
+        while ((n = cursor.current()) != '?' && n != ' ')
             if (!cursor.advance(1)) return State::Again;
+
+        request->resource_ = resToken.text();
+
+        // Query parameters of the Uri
+        if (n == '?') {
+            if (!cursor.advance(1)) return State::Again;
+
+            while ((n = cursor.current()) != ' ') {
+                StreamCursor::Token keyToken(cursor);
+                if (!match_until('=', cursor))
+                    return State::Again;
+
+                std::string key = keyToken.text();
+
+                if (!cursor.advance(1)) return State::Again;
+
+                StreamCursor::Token valueToken(cursor);
+                if (!match_until({ ' ', '&' }, cursor))
+                    return State::Again;
+
+                std::string value = valueToken.text();
+                request->query_.add(std::move(key), std::move(value));
+                if (cursor.current() == '&') {
+                    if (!cursor.advance(1)) return State::Again;
+                }
+            }
         }
 
-        request->resource_ = std::string(cursor.offset(start), cursor.diff(start) + 1);
-        if ((n = cursor.next()) == StreamCursor::Eof) return State::Again;
-
-        if (n != ' ')
-            raise("Malformed HTTP request after Request-URI");
+        // @Todo: Fragment
 
         // SP
-        if (!cursor.advance(2)) return State::Again;
+        if (!cursor.advance(1)) return State::Again;
 
         // HTTP-Version
-        start = cursor;
+        StreamCursor::Token versionToken(cursor);
 
         while (!cursor.eol())
             if (!cursor.advance(1)) return State::Again;
 
-        const size_t diff = cursor.diff(start);
-        if (strncmp(cursor.offset(start), "HTTP/1.0", diff) == 0) {
+        const char* ver = versionToken.rawText();
+        const size_t size = versionToken.size();
+        if (strncmp(ver, "HTTP/1.0", size) == 0) {
             request->version_ = Version::Http10;
         }
-        else if (strncmp(cursor.offset(start), "HTTP/1.1", diff) == 0) {
+        else if (strncmp(ver, "HTTP/1.1", size) == 0) {
             request->version_ = Version::Http11;
         }
         else {
@@ -256,6 +289,31 @@ Message::Message()
     : version_(Version::Http11)
 { }
 
+namespace Uri {
+
+    Query::Query()
+    { }
+
+    Query::Query(std::initializer_list<std::pair<const std::string, std::string>> params)
+        : params(params)
+    { }
+
+    void
+    Query::add(std::string name, std::string value) {
+        params.insert(std::make_pair(std::move(name), std::move(value)));
+    }
+
+    Optional<std::string>
+    Query::get(const std::string& name) const {
+        auto it = params.find(name);
+        if (it == std::end(params))
+            return None();
+
+        return Some(it->second);
+    }
+
+} // namespace Uri
+
 Request::Request()
     : Message()
 { }
@@ -285,6 +343,11 @@ Request::headers() const {
     return headers_;
 }
 
+const Uri::Query&
+Request::query() const {
+    return query_;
+}
+
 Response::Response()
     : Message()
 { }
@@ -306,8 +369,6 @@ Response::send(Code code) {
 ssize_t
 Response::send(Code code, const std::string& body, const Mime::MediaType& mime)
 {
-    int fd = peer()->fd();
-
     char buffer[Const::MaxBuffer];
     Io::OutArrayBuf obuf(buffer, Io::Init::ZeroOut);
 
@@ -318,6 +379,15 @@ Response::send(Code code, const std::string& body, const Mime::MediaType& mime)
     stream << code;
     stream << crlf;
 
+    if (mime.isValid()) {
+        auto contentType = headers_.tryGet<Header::ContentType>();
+        if (contentType)
+            contentType->setMime(mime);
+        else {
+            writeHeader<Header::ContentType>(stream, mime);
+        }
+    }
+
     for (const auto& header: headers_.list()) {
         stream << header->name() << ": ";
         header->write(stream);
@@ -325,14 +395,15 @@ Response::send(Code code, const std::string& body, const Mime::MediaType& mime)
     }
 
     if (!body.empty()) {
-        stream << "Content-Length: " << body.size() << crlf;
+        writeHeader<Header::ContentLength>(stream, body.size());
         stream << crlf;
-
         stream << body;
     }
+    else {
+        stream << crlf;
+    }
 
-    ssize_t bytes = ::send(fd, buffer, obuf.len(), 0);
-    return bytes;
+    return peer()->send(buffer, obuf.len());
 }
 
 void

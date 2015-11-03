@@ -24,7 +24,7 @@ class MyHandler : public Net::Http::Handler {
         }
         else if (req.resource() == "/echo") {
             if (req.method() == Net::Http::Method::Post) {
-                response.send(Net::Http::Code::Ok, req.body());
+                response.send(Net::Http::Code::Ok, req.body(), MIME(Text, Plain));
             }
         }
         else if (req.resource() == "/exception") {

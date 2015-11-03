@@ -271,6 +271,11 @@ MediaType::toString() const {
     return res;
 }
 
+bool
+MediaType::isValid() const {
+    return top_ != Type::None && sub_ != Subtype::None;
+}
+
 } // namespace Mime
 
 } // namespace Http
