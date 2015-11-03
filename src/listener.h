@@ -79,7 +79,9 @@ public:
     Listener();
 
     Listener(const Address& address);
-    void init(size_t workers, Flags<Options> options = Options::None);
+    void init(
+            size_t workers, Flags<Options> options = Options::None,
+            int backlog = Const::MaxBacklog);
     void setHandler(const std::shared_ptr<Handler>& handler);
 
     bool bind();
@@ -96,6 +98,7 @@ public:
 private: 
     Address addr_; 
     int listen_fd;
+    int backlog_;
     std::vector<std::unique_ptr<IoWorker>> ioGroup;
     Flags<Options> options_;
     std::shared_ptr<Handler> handler_;

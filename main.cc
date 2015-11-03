@@ -46,6 +46,10 @@ int main(int argc, char *argv[]) {
     cout << "Cores = " << hardware_concurrency() << endl;
 
     Net::Http::Endpoint server(addr);
+    auto opts = Net::Http::Endpoint::options()
+        .threads(2)
+        .flags(Net::Tcp::Options::InstallSignalHandler);
+    server.init(opts);
     server.setHandler(std::make_shared<MyHandler>());
 
     server.serve();

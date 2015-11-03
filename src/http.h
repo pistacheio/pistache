@@ -216,11 +216,34 @@ private:
 
 class Endpoint {
 public:
+
+    struct Options {
+        friend class Endpoint;
+
+        Options& threads(int val);
+        Options& flags(Flags<Tcp::Options> flags);
+        Options& backlog(int val);
+
+    private:
+        int threads_;
+        Flags<Tcp::Options> flags_;
+        int backlog_;
+        Options();
+    };
     Endpoint();
     Endpoint(const Net::Address& addr);
 
+    template<typename... Args>
+    void initArgs(Args&& ...args) {
+        listener.init(std::forward<Args>(args)...);
+    }
+
+    void init(const Options& options);
+
     void setHandler(const std::shared_ptr<Handler>& handler);
     void serve();
+
+    static Options options();
 
 private:
     std::shared_ptr<Handler> handler_;

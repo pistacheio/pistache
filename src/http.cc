@@ -479,12 +479,39 @@ Handler::getParser(const std::shared_ptr<Tcp::Peer>& peer) const {
     return *peer->getData<Private::Parser>(ParserData);
 }
 
+Endpoint::Options::Options()
+    : threads_(1)
+{ }
+
+Endpoint::Options&
+Endpoint::Options::threads(int val) {
+    threads_ = val;
+    return *this;
+}
+
+Endpoint::Options&
+Endpoint::Options::flags(Flags<Tcp::Options> flags) {
+    flags_ = flags;
+    return *this;
+}
+
+Endpoint::Options&
+Endpoint::Options::backlog(int val) {
+    backlog_ = val;
+    return *this;
+}
+
 Endpoint::Endpoint()
 { }
 
 Endpoint::Endpoint(const Net::Address& addr)
     : listener(addr)
 { }
+
+void
+Endpoint::init(const Endpoint::Options& options) {
+    listener.init(options.threads_, options.flags_);
+}
 
 void
 Endpoint::setHandler(const std::shared_ptr<Handler>& handler) {
@@ -497,14 +524,6 @@ Endpoint::serve()
     if (!handler_)
         throw std::runtime_error("Must call setHandler() prior to serve()");
 
-    listener.init(4, Tcp::Options::InstallSignalHandler);
-#if 1
-    listener.pinWorker(0, CpuSet { 0 } );
-    listener.pinWorker(1, CpuSet { 1 } );
-    listener.pinWorker(2, CpuSet { 2 } );
-    listener.pinWorker(3, CpuSet { 3 } );
-#endif
-
     listener.setHandler(handler_);
 
     if (listener.bind()) { 
@@ -514,6 +533,10 @@ Endpoint::serve()
     }
 }
 
+Endpoint::Options
+Endpoint::options() {
+    return Options();
+}
 
 
 } // namespace Http

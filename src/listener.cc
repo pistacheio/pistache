@@ -257,23 +257,26 @@ Handler::onDisconnection(const std::shared_ptr<Tcp::Peer>& peer) {
 
 Listener::Listener()
     : listen_fd(-1)
+    , backlog_(Const::MaxBacklog)
 { }
 
 Listener::Listener(const Address& address)
     : addr_(address)
     , listen_fd(-1)
+    , backlog_(Const::MaxBacklog)
 {
 }
 
 
 void
-Listener::init(size_t workers, Flags<Options> options)
+Listener::init(size_t workers, Flags<Options> options, int backlog)
 {
     if (workers > hardware_concurrency()) {
         // Log::warning() << "More workers than available cores"
     }
 
     options_ = options;
+    backlog_ = backlog;
 
     if (options_.hasFlag(Options::InstallSignalHandler)) {
         if (signal(SIGINT, handle_sigint) == SIG_ERR) {
@@ -354,7 +357,7 @@ Listener::bind(const Address& address) {
             continue;
         }
 
-        TRY(::listen(fd, Const::MaxBacklog));
+        TRY(::listen(fd, backlog_));
     }
 
 
