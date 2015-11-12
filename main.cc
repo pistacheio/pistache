@@ -18,7 +18,9 @@ class MyHandler : public Net::Http::Handler {
                     .add(std::make_shared<Header::Server>("lys"))
                     .add(std::make_shared<Header::ContentType>(MIME(Text, Plain)));
 
-                response.send(Net::Http::Code::Ok, "PONG");
+                response.send(Net::Http::Code::Ok, "PONG").then([](ssize_t  bytes) {
+                    std::cout << "Sent total of " << bytes << " bytes" << std::endl;
+                }, Async::IgnoreException);
 
             }
         }

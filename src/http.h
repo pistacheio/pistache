@@ -15,6 +15,7 @@
 #include "http_defs.h"
 #include "stream.h"
 #include "mime.h"
+#include "async.h"
 
 namespace Net {
 
@@ -96,8 +97,8 @@ public:
 
     void setMime(const Mime::MediaType& mime);
 
-    ssize_t send(Code code);
-    ssize_t send(Code code, const std::string& body, const Mime::MediaType &mime = Mime::MediaType());
+    Async::Promise<ssize_t> send(Code code);
+    Async::Promise<ssize_t> send(Code code, const std::string& body, const Mime::MediaType &mime = Mime::MediaType());
 
 private:
     Response();
@@ -203,7 +204,6 @@ namespace Private {
 class Handler : public Net::Tcp::Handler {
 public:
     void onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer>& peer);
-    void onOutput();
 
     void onConnection(const std::shared_ptr<Tcp::Peer>& peer);
     void onDisconnection(const std::shared_ptr<Tcp::Peer>& peer);

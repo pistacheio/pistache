@@ -4,6 +4,8 @@
 */
 
 #include "peer.h"
+#include "async.h"
+#include "io.h"
 #include <iostream>
 #include <stdexcept>
 #include <sys/socket.h>
@@ -75,9 +77,9 @@ Peer::tryGetData(std::string(name)) const {
     return it->second;
 }
 
-ssize_t
+Async::Promise<ssize_t>
 Peer::send(const void* buf, size_t len) {
-    return ::send(fd_, buf, len, 0);
+    return io->asyncWrite(fd_, buf, len);
 }
 
 

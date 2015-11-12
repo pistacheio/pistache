@@ -8,6 +8,7 @@
 
 #include "net.h"
 #include "os.h"
+#include "async.h"
 #include <string>
 #include <iostream>
 #include <memory>
@@ -17,8 +18,12 @@ namespace Net {
 
 namespace Tcp {
 
+class IoWorker;
+
 class Peer {
 public:
+    friend class IoWorker;
+
     Peer();
     Peer(const Address& addr);
 
@@ -45,9 +50,10 @@ public:
         return std::static_pointer_cast<T>(data);
     }
 
-    ssize_t send(const void* buf, size_t len);
+    Async::Promise<ssize_t> send(const void* buf, size_t len);
 
 private:
+    IoWorker* io;
 
     Address addr;
     std::string hostname_;

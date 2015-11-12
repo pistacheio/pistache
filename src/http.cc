@@ -361,12 +361,12 @@ Response::associatePeer(const std::shared_ptr<Tcp::Peer>& peer)
     peer_ = peer;
 }
 
-ssize_t
+Async::Promise<ssize_t>
 Response::send(Code code) {
     return send(code, "");
 }
 
-ssize_t
+Async::Promise<ssize_t>
 Response::send(Code code, const std::string& body, const Mime::MediaType& mime)
 {
     char buffer[Const::MaxBuffer];
@@ -459,10 +459,6 @@ Handler::onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer
         response.send(Code::Internal_Server_Error, e.what());
         getParser(peer).reset();
     }
-}
-
-void
-Handler::onOutput() {
 }
 
 void
