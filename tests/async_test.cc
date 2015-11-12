@@ -30,6 +30,7 @@ TEST(async_test, basic_test) {
     p1.then([&](int v) { val = v; }, Async::NoExcept);
     ASSERT_EQ(val, 10);
 
+
     {
         Async::Promise<int> p2 = doAsync(10);
         p2.then([](int result) { ASSERT_EQ(result, 20); },
@@ -58,7 +59,6 @@ TEST(async_test, chain_test) {
 
     p1
      .then([](int result) { return result * 2; }, Async::NoExcept)
-     ->chain()
      .then([](int result) { std::cout << "Result = " << result << std::endl; },
              Async::NoExcept);
 
@@ -67,13 +67,10 @@ TEST(async_test, chain_test) {
             resolve(10);
     });
 
-#if 0
     p2
-     .then([](int result) { return result * 2.0; }, Async::IgnoreException)
-     ->chain()
+     .then([](int result) { return result * 2.2901; }, Async::IgnoreException)
      .then([](double result) { std::cout << "Result = " << result << std::endl; },
              Async::IgnoreException);
-#endif
 
 }
 
