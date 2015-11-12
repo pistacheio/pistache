@@ -30,9 +30,11 @@ TEST(async_test, basic_test) {
     p1.then([&](int v) { val = v; }, Async::NoExcept);
     ASSERT_EQ(val, 10);
 
-    Async::Promise<int> p2 = doAsync(10);
-    p2.then([](int result) { ASSERT_EQ(result, 20); },
-            Async::NoExcept);
+    {
+        Async::Promise<int> p2 = doAsync(10);
+        p2.then([](int result) { ASSERT_EQ(result, 20); },
+                Async::NoExcept);
+    }
 
     std::this_thread::sleep_for(std::chrono::seconds(2));
 

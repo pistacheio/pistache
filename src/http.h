@@ -107,6 +107,7 @@ private:
 
     void associatePeer(const std::shared_ptr<Tcp::Peer>& peer);
     std::weak_ptr<Tcp::Peer> peer_;
+    char buffer_[Const::MaxBuffer];
 };
 
 namespace Private {

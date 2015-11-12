@@ -76,27 +76,11 @@ namespace Async {
         struct Core {
             Core(State state)
                 : state(state)
-                , promise(nullptr)
             { }
 
             State state;
             std::exception_ptr exc;
-            PromiseBase* promise;
             std::vector<std::shared_ptr<Request>> requests;
-
-            void attach(PromiseBase* p) {
-                if (promise)
-                    throw Error("Trying to double-attach a Promise");
-
-                promise = p;
-            }
-
-            void detach() {
-                if (!promise)
-                    throw Error("Trying to detach a non attached Promise");
-
-                promise = nullptr;
-            }
 
             virtual void* memory() = 0;
         };
@@ -112,9 +96,6 @@ namespace Async {
         template<typename Arg>
         bool operator()(Arg&& arg) {
             typedef typename std::remove_reference<Arg>::type Type;
-
-            auto promise = core_->promise;
-            if (!promise) return false;
 
             if (core_->state != State::Pending)
                 throw Error("Attempt to resolve a fulfilled promise");
@@ -142,10 +123,6 @@ namespace Async {
 
         template<typename Exc>
         bool operator()(Exc exc) {
-            auto promise = core_->promise;
-            if (!promise)
-                return false;
-
             if (core_->state != State::Pending)
                 throw Error("Attempt to reject a fulfilled promise");
 
@@ -196,7 +173,6 @@ namespace Async {
             , resolver_(core_)
             , rejection_(core_)
         { 
-            core_->attach(this);
             func(resolver_, rejection_);
         }
 
@@ -208,7 +184,6 @@ namespace Async {
 
         ~Promise()
         {
-            core_->detach();
         }
 
         bool isPending() const { return core_->state == State::Pending; }
@@ -273,7 +248,6 @@ namespace Async {
           , resolver_(core)
           , rejection_(core)
         {
-            core_->attach(this);
         }
 
 

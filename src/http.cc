@@ -369,8 +369,7 @@ Response::send(Code code) {
 Async::Promise<ssize_t>
 Response::send(Code code, const std::string& body, const Mime::MediaType& mime)
 {
-    char buffer[Const::MaxBuffer];
-    Io::OutArrayBuf obuf(buffer, Io::Init::ZeroOut);
+    Io::OutArrayBuf obuf(buffer_, Io::Init::ZeroOut);
 
     std::ostream stream(&obuf);
     stream << "HTTP/1.1 ";
@@ -403,7 +402,7 @@ Response::send(Code code, const std::string& body, const Mime::MediaType& mime)
         stream << crlf;
     }
 
-    return peer()->send(buffer, obuf.len());
+    return peer()->send(buffer_, obuf.len());
 }
 
 void
