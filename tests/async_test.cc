@@ -17,7 +17,6 @@ Async::Promise<int> doAsync(int N)
     return promise;
 }
 
-
 TEST(async_test, basic_test) {
     Async::Promise<int> p1(
         [](Async::Resolver& resolv, Async::Rejection& reject) {
@@ -157,5 +156,71 @@ TEST(async_test, chain_test) {
             ASSERT_THROW(std::rethrow_exception(exc), std::runtime_error);
         });
 
+    auto p5 = doAsync(10);
+    p5
+        .then([](int result) { return result * 3.51; }, Async::NoExcept)
+        .then([](double result) { ASSERT_EQ(result, 20 * 3.51); }, Async::NoExcept);
+
+    auto p6 = doAsync(20);
+    p6
+        .then([](int result) { return doAsync(result - 5); }, Async::NoExcept)
+        .then([](int result) { ASSERT_EQ(result, 70); }, Async::NoExcept);
+
+    std::this_thread::sleep_for(std::chrono::seconds(2));
 }
 
+TEST(async_test, when_all) {
+    auto p1 = Async::Promise<int>::resolved(10);
+    int p2 = 123;
+    auto p3 = Async::Promise<std::string>::resolved("Hello");
+    auto p4 = Async::Promise<void>::resolved();
+
+    bool resolved { false };
+
+    Async::whenAll(p1, p2, p3).then([&](const std::tuple<int, int, std::string>& results) {
+        resolved = true;
+        ASSERT_EQ(std::get<0>(results), 10);
+        ASSERT_EQ(std::get<1>(results), 123);
+        ASSERT_EQ(std::get<2>(results), "Hello");
+    }, Async::NoExcept);
+
+    ASSERT_TRUE(resolved);
+
+    std::vector<Async::Promise<int>> vec;
+    vec.push_back(std::move(p1));
+    vec.push_back(Async::Promise<int>::resolved(p2));
+
+    resolved = false;
+
+    Async::whenAll(std::begin(vec), std::end(vec)).then([&](const std::vector<int>& results) {
+        resolved = true;
+        ASSERT_EQ(results.size(), 2);
+        ASSERT_EQ(results[0], 10);
+        ASSERT_EQ(results[1], 123);
+    },
+    Async::NoExcept);
+
+    ASSERT_TRUE(resolved);
+
+    auto p5 = doAsync(10);
+    auto p6 = p5.then([](int result) { return result * 3.1415; }, Async::NoExcept);
+
+    resolved = false;
+
+    Async::whenAll(p5, p6).then([&](std::tuple<int, double> results) {
+        ASSERT_EQ(std::get<0>(results), 20);
+        ASSERT_EQ(std::get<1>(results), 20 * 3.1415);
+        resolved = true;
+    }, Async::NoExcept);
+
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+    ASSERT_TRUE(resolved);
+
+    // @Todo: does not compile yet. Figure out why it does not compile with void
+    // promises
+#if 0
+    Async::whenAll(p3, p4).then([](const std::tuple<std::string, void>& results) {
+    }, Async::NoExcept);
+#endif
+
+}
