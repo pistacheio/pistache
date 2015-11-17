@@ -49,6 +49,14 @@ TEST(async_test, basic_test) {
         ASSERT_THROW(std::rethrow_exception(eptr), std::runtime_error);
     });
 
+    auto p4 = Async::Promise<int>::resolved(10);
+    ASSERT_TRUE(p4.isFulfilled());
+
+    auto p5 = Async::Promise<void>::resolved();
+    ASSERT_TRUE(p5.isFulfilled());
+
+    auto p6 = Async::Promise<int>::rejected(std::invalid_argument("Invalid"));
+    ASSERT_TRUE(p6.isRejected());
 }
 
 TEST(async_test, void_promise) {

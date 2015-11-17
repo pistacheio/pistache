@@ -458,6 +458,7 @@ namespace Async {
         typedef std::function<void (Resolver&, Rejection&)> ResolveFunc;
         typedef Private::CoreT<T> Core;
 
+
         Promise(ResolveFunc func)
             : core_(std::make_shared<Core>())
             , resolver_(core_)
@@ -474,6 +475,40 @@ namespace Async {
 
         ~Promise()
         {
+        }
+
+        template<typename U>
+        static
+        Promise<T>
+        resolved(U&& value) {
+            static_assert(!std::is_void<T>::value,
+                         "Can not resolve a void promise with parameters");
+            static_assert(std::is_same<T, U>::value || std::is_convertible<U, T>::value,
+                         "Incompatible value type");
+
+            auto core = std::make_shared<Core>();
+            core->template construct<T>(std::forward<U>(value));
+            return Promise<T>(std::move(core));
+        }
+
+        static
+        Promise<void>
+        resolved() {
+            static_assert(std::is_void<T>::value,
+                         "Resolving a non-void promise requires parameters");
+
+            auto core = std::make_shared<Core>();
+            core->state = State::Fulfilled;
+            return Promise<T>(std::move(core));
+        }
+
+        template<typename Exc>
+        static Promise<T>
+        rejected(Exc exc) {
+            auto core = std::make_shared<Core>();
+            core->exc = std::make_exception_ptr(exc);
+            core->state = State::Rejected;
+            return Promise<T>(std::move(core));
         }
 
         bool isPending() const { return core_->state == State::Pending; }
@@ -527,6 +562,12 @@ namespace Async {
           , rejection_(core_)
         {
         }
+
+        Promise(std::shared_ptr<Core>&& core)
+          : core_(core)
+          , resolver_(core_)
+          , rejection_(core_)
+        { }
 
         template<typename ResolveFunc>
         void thenStaticChecks(std::true_type /* is_void */) {
