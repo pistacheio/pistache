@@ -37,19 +37,6 @@ namespace Async {
         Pending, Fulfilled, Rejected
     };
 
-    namespace Private {
-        struct IgnoreException {
-            void operator()(std::exception_ptr) const { }
-        };
-
-        struct NoExcept {
-            void operator()(std::exception_ptr) const { std::terminate(); }
-        };
-    }
-
-    static constexpr Private::IgnoreException IgnoreException;
-    static constexpr Private::NoExcept NoExcept;
-
     template<typename T> class Promise;
 
     class PromiseBase {
@@ -62,15 +49,57 @@ namespace Async {
         bool isSettled() const { return isFulfilled() || isRejected(); }
     };
 
+    namespace detail {
+        template<typename Func, typename T>
+        struct IsCallable {
+
+            template<typename U>
+            static auto test(U *) -> decltype(std::declval<Func>()(std::declval<U>()), std::true_type());
+
+            template<typename U>
+            static auto test(...) -> std::false_type;
+
+            static constexpr bool value = std::is_same<decltype(test<T>(0)), std::true_type>::value;
+        };
+
+        template<typename Func>
+        struct FunctionTrait : public FunctionTrait<decltype(&Func::operator())> { };
+
+        template<typename R, typename Class, typename... Args>
+        struct FunctionTrait<R (Class::*)(Args...) const> {
+            typedef R ReturnType;
+
+            static constexpr size_t ArgsCount = sizeof...(Args);
+        };
+
+        template<typename T>
+        struct RemovePromise {
+            typedef T Type;
+        };
+
+        template<typename T>
+        struct RemovePromise<Promise<T>> {
+            typedef T Type;
+        };
+
+    }
+
     namespace Private {
 
+        struct IgnoreException {
+            void operator()(std::exception_ptr) const { }
+        };
+
+        struct NoExcept {
+            void operator()(std::exception_ptr) const { std::terminate(); }
+        };
+
         class Core;
+
         class Request {
         public:
-
-            virtual void resolve(const std::shared_ptr<Private::Core>& core) = 0;
-            virtual void reject(const std::shared_ptr<Private::Core>& core) = 0;
-
+            virtual void resolve(const std::shared_ptr<Core>& core) = 0;
+            virtual void reject(const std::shared_ptr<Core>& core) = 0;
         };
 
         struct Core {
@@ -96,6 +125,251 @@ namespace Async {
                 state = State::Fulfilled;
             }
         };
+
+        template<typename T>
+        struct CoreT : public Core {
+            CoreT()
+                : Core(State::Pending)
+            { }
+
+            template<class Other>
+            struct Rebind {
+                typedef CoreT<Other> Type;
+            };
+
+            typedef typename std::aligned_storage<sizeof(T), alignof(T)>::type Storage;
+            Storage storage;
+
+            const T& value() const {
+                if (state != State::Fulfilled)
+                    throw Error("Attempted to take the value of a not fulfilled promise");
+
+                return *reinterpret_cast<const T*>(&storage);
+            }
+
+            bool isVoid() const { return false; }
+
+            void *memory() {
+                return &storage;
+            }
+        };
+
+        template<>
+        struct CoreT<void> : public Core {
+            CoreT()
+                : Core(State::Pending)
+            { }
+
+            bool isVoid() const { return true; }
+
+            void *memory() {
+                return nullptr;
+            }
+        };
+
+        template<typename T>
+        struct Continuable : public Request {
+            Continuable()
+                : resolveCount_(0)
+                , rejectCount_(0)
+            { }
+
+            void resolve(const std::shared_ptr<Core>& core) {
+                if (resolveCount_ >= 1)
+                    throw Error("Resolve must not be called more than once");
+
+                doResolve(coreCast(core));
+                ++resolveCount_;
+            }
+
+            void reject(const std::shared_ptr<Core>& core) {
+                if (rejectCount_ >= 1)
+                    throw Error("Reject must not be called more than once");
+
+                doReject(coreCast(core));
+                ++rejectCount_;
+            }
+
+            std::shared_ptr<CoreT<T>> coreCast(const std::shared_ptr<Core>& core) const {
+                return std::static_pointer_cast<CoreT<T>>(core);
+            }
+
+            virtual void doResolve(const std::shared_ptr<CoreT<T>>& core) const = 0;
+            virtual void doReject(const std::shared_ptr<CoreT<T>>& core) const = 0;
+
+            size_t resolveCount_;
+            size_t rejectCount_;
+        };
+
+        template<typename T, typename ResolveFunc, typename RejectFunc>
+        struct ThenContinuation : public Continuable<T> {
+            ThenContinuation(
+                    ResolveFunc&& resolveFunc, RejectFunc&& rejectFunc)
+                : resolveFunc_(std::forward<ResolveFunc>(resolveFunc))
+                , rejectFunc_(std::forward<RejectFunc>(rejectFunc))
+            { 
+            }
+
+            void doResolve(const std::shared_ptr<CoreT<T>>& core) const {
+                doResolveImpl(core, std::is_void<T>());
+            }
+
+            void doReject(const std::shared_ptr<CoreT<T>>& core) const {
+                rejectFunc_(core->exc);
+            }
+
+            void doResolveImpl(const std::shared_ptr<CoreT<T>>& core, std::true_type /* is_void */) const {
+                resolveFunc_();
+            }
+
+            void doResolveImpl(const std::shared_ptr<CoreT<T>>& core, std::false_type /* is_void */) const {
+                resolveFunc_(core->value());
+            }
+
+            ResolveFunc resolveFunc_;
+            RejectFunc rejectFunc_;
+        };
+
+        template<typename T, typename ResolveFunc, typename RejectFunc, typename Return>
+        struct ThenReturnContinuation : public Continuable<T> {
+            ThenReturnContinuation(
+                    const std::shared_ptr<Core>& chain,
+                    ResolveFunc&& resolveFunc, RejectFunc&& rejectFunc)
+                : chain_(chain)
+                , resolveFunc_(std::forward<ResolveFunc>(resolveFunc))
+                , rejectFunc_(std::forward<RejectFunc>(rejectFunc))
+            {
+            }
+
+            void doResolve(const std::shared_ptr<CoreT<T>>& core) const {
+                doResolveImpl(core, std::is_void<T>());
+            }
+
+            void doReject(const std::shared_ptr<CoreT<T>>& core) const {
+                rejectFunc_(core->exc);
+            }
+
+            void doResolveImpl(const std::shared_ptr<CoreT<T>>& core, std::true_type /* is_void */) const {
+                auto ret = resolveFunc_();
+                chain_->construct<decltype(ret)>(std::move(ret));
+            }
+
+            void doResolveImpl(const std::shared_ptr<CoreT<T>>& core, std::false_type /* is_void */) const {
+                auto ret = resolveFunc_(core->value());
+                chain_->construct<decltype(ret)>(std::move(ret));
+            }
+
+            std::shared_ptr<Core> chain_;
+            ResolveFunc resolveFunc_;
+            RejectFunc rejectFunc_;
+        };
+
+        template<typename T, typename ResolveFunc, typename RejectFunc>
+        struct ThenChainContinuation : public Continuable<T> {
+            ThenChainContinuation(
+                    const std::shared_ptr<Core>& chain,
+                    ResolveFunc&& resolveFunc, RejectFunc&& rejectFunc)
+                : chain_(chain)
+                , resolveFunc_(std::forward<ResolveFunc>(resolveFunc))
+                , rejectFunc_(std::forward<RejectFunc>(rejectFunc))
+            { 
+            }
+
+            void doResolve(const std::shared_ptr<CoreT<T>>& core) const {
+                doResolveImpl(core, std::is_void<T>());
+            }
+
+            void doReject(const std::shared_ptr<CoreT<T>>& core) const {
+                rejectFunc_(core->exc);
+            }
+
+            void doResolveImpl(const std::shared_ptr<CoreT<T>>& core, std::true_type /* is_void */) const {
+                auto promise = resolveFunc_();
+                finishResolve(promise);
+            }
+
+            void doResolveImpl(const std::shared_ptr<CoreT<T>>& core, std::false_type /* is_void */) const {
+                auto promise = resolveFunc_(core->value());
+                finishResolve(promise);
+            }
+
+            template<typename P>
+            void finishResolve(P& promise) const {
+                auto chainer = makeChainer(promise);
+                promise.then(std::move(chainer), [=](std::exception_ptr exc) {
+                    chain_->exc = std::move(exc);
+                    chain_->state = State::Rejected;
+                });
+            }
+
+            std::shared_ptr<Core> chain_;
+            ResolveFunc resolveFunc_;
+            RejectFunc rejectFunc_;
+
+            template<typename PromiseType>
+            struct Chainer {
+                Chainer(const std::shared_ptr<Private::Core>& core)
+                    : chainCore(core)
+                { }
+
+                void operator()(const PromiseType& val) const {
+                    chainCore->construct<PromiseType>(val);
+                }
+
+                std::shared_ptr<Core> chainCore;
+            };
+
+            template<
+                typename Promise,
+                typename Type = typename detail::RemovePromise<Promise>::Type>
+            Chainer<Type>
+            makeChainer(const Promise&) const {
+                return Chainer<Type>(chain_);
+            }
+
+        };
+
+        template<typename T, typename ResolveFunc>
+            struct ContinuationFactory : public ContinuationFactory<T, decltype(&ResolveFunc::operator())> { };
+
+        template<typename T, typename R, typename Class, typename... Args>
+        struct ContinuationFactory<T, R (Class::*)(Args...) const> {
+            template<typename ResolveFunc, typename RejectFunc>
+            static Continuable<T>* create(
+                    const std::shared_ptr<Core>& chain,
+                    ResolveFunc&& resolveFunc, RejectFunc&& rejectFunc) {
+                return new ThenReturnContinuation<T, ResolveFunc, RejectFunc, R>(
+                        chain,
+                        std::forward<ResolveFunc>(resolveFunc),
+                        std::forward<RejectFunc>(rejectFunc));
+            }
+        };
+
+        template<typename T, typename Class, typename... Args>
+        struct ContinuationFactory<T, void (Class::*)(Args ...) const> {
+            template<typename ResolveFunc, typename RejectFunc>
+            static Continuable<T>* create(
+                    const std::shared_ptr<Private::Core>& chain,
+                    ResolveFunc&& resolveFunc, RejectFunc&& rejectFunc) {
+                return new ThenContinuation<T, ResolveFunc, RejectFunc>(
+                        std::forward<ResolveFunc>(resolveFunc),
+                        std::forward<RejectFunc>(rejectFunc));
+            }
+        };
+
+        template<typename T, typename U, typename Class, typename... Args>
+        struct ContinuationFactory<T, Promise<U> (Class::*)(Args...) const> {
+            template<typename ResolveFunc, typename RejectFunc>
+            static Continuable<T>* create(
+                    const std::shared_ptr<Private::Core>& chain,
+                    ResolveFunc&& resolveFunc, RejectFunc&& rejectFunc) {
+                return new ThenChainContinuation<T, ResolveFunc, RejectFunc>(
+                        chain,
+                        std::forward<ResolveFunc>(resolveFunc),
+                        std::forward<RejectFunc>(rejectFunc));
+            }
+        };
+
 
     }
 
@@ -172,40 +446,8 @@ namespace Async {
 
     };
 
-    namespace detail {
-        template<typename Func, typename T>
-        struct IsCallable {
-
-            template<typename U>
-            static auto test(U *) -> decltype(std::declval<Func>()(std::declval<U>()), std::true_type());
-
-            template<typename U>
-            static auto test(...) -> std::false_type;
-
-            static constexpr bool value = std::is_same<decltype(test<T>(0)), std::true_type>::value;
-        };
-
-        template<typename Func>
-        struct FunctionTrait : public FunctionTrait<decltype(&Func::operator())> { };
-
-        template<typename R, typename Class, typename... Args>
-        struct FunctionTrait<R (Class::*)(Args...) const> {
-            typedef R ReturnType;
-
-            static constexpr size_t ArgsCount = sizeof...(Args);
-        };
-
-        template<typename T>
-        struct RemovePromise {
-            typedef T Type;
-        };
-
-        template<typename T>
-        struct RemovePromise<Promise<T>> {
-            typedef T Type;
-        };
-
-    }
+    static constexpr Private::IgnoreException IgnoreException;
+    static constexpr Private::NoExcept NoExcept;
 
     template<typename T>
     class Promise : public PromiseBase
@@ -214,9 +456,10 @@ namespace Async {
         template<typename U> friend class Promise;
 
         typedef std::function<void (Resolver&, Rejection&)> ResolveFunc;
+        typedef Private::CoreT<T> Core;
 
         Promise(ResolveFunc func)
-            : core_(std::make_shared<CoreT>())
+            : core_(std::make_shared<Core>())
             , resolver_(core_)
             , rejection_(core_)
         { 
@@ -246,13 +489,13 @@ namespace Async {
                 >::Type
               >
         {
-            static_assert(detail::IsCallable<ResolveFunc, T>::value, "Function is not compatible with underlying promise type");
 
-           typedef typename detail::RemovePromise<
-                typename detail::FunctionTrait<ResolveFunc>::ReturnType
-           >::Type RetType;
+            thenStaticChecks<ResolveFunc>(std::is_void<T>());
+            typedef typename detail::RemovePromise<
+                 typename detail::FunctionTrait<ResolveFunc>::ReturnType
+            >::Type RetType;
 
-           Promise<RetType> promise;
+            Promise<RetType> promise;
 
             // Due to how template argument deduction works on universal references, we need to remove any reference from
             // the deduced function type, fun fun fun
@@ -260,7 +503,7 @@ namespace Async {
             typedef typename std::remove_reference<RejectFunc>::type RejectFuncType;
 
             std::shared_ptr<Private::Request> req;
-            req.reset(ContinuationFactory<ResolveFuncType>::create(
+            req.reset(Private::ContinuationFactory<T, ResolveFuncType>::create(
                           promise.core_,
                           std::forward<ResolveFunc>(resolveFunc),
                           std::forward<RejectFunc>(rejectFunc)));
@@ -278,454 +521,26 @@ namespace Async {
         }
 
     private:
-        template<typename U>
-        struct Core : public Private::Core {
-            Core()
-                : Private::Core(State::Pending)
-            { }
-
-            template<class Other>
-            struct Rebind {
-                typedef Core<Other> Type;
-            };
-
-            typedef typename std::aligned_storage<sizeof(U), alignof(U)>::type Storage;
-            Storage storage;
-
-            const U& value() const {
-                if (state != State::Fulfilled)
-                    throw Error("Attempted to take the value of a not fulfilled promise");
-
-                return *reinterpret_cast<const U*>(&storage);
-            }
-
-            bool isVoid() const { return false; }
-
-            void *memory() {
-                return &storage;
-            }
-        };
-
-        typedef Core<T> CoreT;
-
         Promise()
-          : core_(std::make_shared<Core<T>>())
+          : core_(std::make_shared<Core>())
           , resolver_(core_)
           , rejection_(core_)
         {
         }
 
-        struct Continuable : public Private::Request {
-            Continuable()
-                : resolveCount_(0)
-                , rejectCount_(0)
-            { }
-
-            void resolve(const std::shared_ptr<Private::Core>& core) {
-                if (resolveCount_ >= 1)
-                    throw Error("Resolve must not be called more than once");
-
-                doResolve(coreCast(core));
-                ++resolveCount_;
-            }
-
-            void reject(const std::shared_ptr<Private::Core>& core) {
-                if (rejectCount_ >= 1)
-                    throw Error("Reject must not be called more than once");
-
-                doReject(coreCast(core));
-                ++rejectCount_;
-            }
-
-            std::shared_ptr<CoreT> coreCast(const std::shared_ptr<Private::Core>& core) const {
-                return std::static_pointer_cast<CoreT>(core);
-            }
-
-            virtual void doResolve(const std::shared_ptr<CoreT>& core) const = 0;
-            virtual void doReject(const std::shared_ptr<CoreT>& core) const = 0;
-
-            size_t resolveCount_;
-            size_t rejectCount_;
-        };
-
-        template<typename ResolveFunc, typename RejectFunc>
-        struct ThenContinuation : public Continuable {
-            ThenContinuation(
-                    ResolveFunc&& resolveFunc, RejectFunc&& rejectFunc)
-                : resolveFunc_(std::forward<ResolveFunc>(resolveFunc))
-                , rejectFunc_(std::forward<RejectFunc>(rejectFunc))
-            { 
-            }
-
-            void doResolve(const std::shared_ptr<CoreT>& core) const {
-                resolveFunc_(core->value());
-            }
-
-            void doReject(const std::shared_ptr<CoreT>& core) const {
-                rejectFunc_(core->exc);
-            }
-
-            ResolveFunc resolveFunc_;
-            RejectFunc rejectFunc_;
-        };
-
-        template<typename ResolveFunc, typename RejectFunc, typename Return>
-        struct ThenReturnContinuation : public Continuable {
-            ThenReturnContinuation(
-                    const std::shared_ptr<Private::Core>& chain,
-                    ResolveFunc&& resolveFunc, RejectFunc&& rejectFunc)
-                : chain_(chain)
-                , resolveFunc_(std::forward<ResolveFunc>(resolveFunc))
-                , rejectFunc_(std::forward<RejectFunc>(rejectFunc))
-            {
-            }
-
-            void doResolve(const std::shared_ptr<CoreT>& core) const {
-                auto ret = resolveFunc_(core->value());
-                chain_->construct<decltype(ret)>(std::move(ret));
-            }
-
-            void doReject(const std::shared_ptr<CoreT>& core) const {
-                rejectFunc_(core->exc);
-            }
-
-            std::shared_ptr<Private::Core> chain_;
-            ResolveFunc resolveFunc_;
-            RejectFunc rejectFunc_;
-        };
-
-        template<typename ResolveFunc, typename RejectFunc>
-        struct ThenChainContinuation : public Continuable {
-            ThenChainContinuation(
-                    const std::shared_ptr<Private::Core>& chain,
-                    ResolveFunc&& resolveFunc, RejectFunc&& rejectFunc)
-                : chain_(chain)
-                , resolveFunc_(std::forward<ResolveFunc>(resolveFunc))
-                , rejectFunc_(std::forward<RejectFunc>(rejectFunc))
-            { 
-            }
-
-            void doResolve(const std::shared_ptr<CoreT>& core) const {
-                auto promise = resolveFunc_(core->value());
-                auto chainer = makeChainer(promise);
-                promise.then(std::move(chainer), [=](std::exception_ptr exc) {
-                    chain_->exc = std::move(exc);
-                    chain_->state = State::Rejected;
-                });
-            }
-
-            void doReject(const std::shared_ptr<CoreT>& core) const {
-                rejectFunc_(core->exc);
-            }
-
-            std::shared_ptr<Private::Core> chain_;
-            ResolveFunc resolveFunc_;
-            RejectFunc rejectFunc_;
-
-            template<typename PromiseType>
-            struct Chainer {
-                Chainer(const std::shared_ptr<Private::Core>& core)
-                    : chainCore(core)
-                { }
-
-                void operator()(const PromiseType& val) const {
-                    chainCore->construct<PromiseType>(val);
-                }
-
-                std::shared_ptr<Private::Core> chainCore;
-            };
-
-            template<
-                typename Promise,
-                typename Type = typename detail::RemovePromise<Promise>::Type>
-            Chainer<Type>
-            makeChainer(const Promise&) const {
-                return Chainer<Type>(chain_);
-            }
-
-        };
-
         template<typename ResolveFunc>
-            struct ContinuationFactory : public ContinuationFactory<decltype(&ResolveFunc::operator())> { };
-
-        template<typename R, typename Class, typename... Args>
-        struct ContinuationFactory<R (Class::*)(Args...) const> {
-            template<typename ResolveFunc, typename RejectFunc>
-            static Continuable *create(
-                    const std::shared_ptr<Private::Core>& chain,
-                    ResolveFunc&& resolveFunc, RejectFunc&& rejectFunc) {
-                return new ThenReturnContinuation<ResolveFunc, RejectFunc, R>(
-                        chain,
-                        std::forward<ResolveFunc>(resolveFunc),
-                        std::forward<RejectFunc>(rejectFunc));
-            }
-        };
-
-        template<typename Class, typename... Args>
-        struct ContinuationFactory<void (Class::*)(Args ...) const> {
-            template<typename ResolveFunc, typename RejectFunc>
-            static Continuable *create(
-                    const std::shared_ptr<Private::Core>& chain,
-                    ResolveFunc&& resolveFunc, RejectFunc&& rejectFunc) {
-                return new ThenContinuation<ResolveFunc, RejectFunc>(
-                        std::forward<ResolveFunc>(resolveFunc),
-                        std::forward<RejectFunc>(rejectFunc));
-            }
-        };
-
-        template<typename U, typename Class, typename... Args>
-        struct ContinuationFactory<Promise<U> (Class::*)(Args...) const> {
-            template<typename ResolveFunc, typename RejectFunc>
-            static Continuable* create(
-                    const std::shared_ptr<Private::Core>& chain,
-                    ResolveFunc&& resolveFunc, RejectFunc&& rejectFunc) {
-                return new ThenChainContinuation<ResolveFunc, RejectFunc>(
-                        chain,
-                        std::forward<ResolveFunc>(resolveFunc),
-                        std::forward<RejectFunc>(rejectFunc));
-            }
-        };
-
-        std::shared_ptr<CoreT> core_;
-        Resolver resolver_;
-        Rejection rejection_;
-    };
-
-    template<>
-    class Promise<void> : public PromiseBase
-    {
-    public:
-
-        template<typename U> friend class Promise;
-
-        typedef std::function<void (Resolver&, Rejection&)> ResolveFunc;
-
-        Promise(ResolveFunc func)
-            : core_(std::make_shared<VoidCore>())
-            , resolver_(core_)
-            , rejection_(core_)
-        { 
-            func(resolver_, rejection_);
-        }
-
-        bool isPending() const {
-            return core_->state == State::Pending;
-        }
-
-        bool isFulfilled() const {
-            return core_->state == State::Fulfilled;
-        }
-
-        bool isRejected() const {
-            return core_->state == State::Rejected;
-        }
-
-        template<typename ResolveFunc, typename RejectFunc>
-        auto then(ResolveFunc&& resolveFunc, RejectFunc&& rejectFunc)
-            -> Promise<
-                typename detail::RemovePromise<
-                    typename detail::FunctionTrait<ResolveFunc>::ReturnType
-                >::Type
-              >
-        {
+        void thenStaticChecks(std::true_type /* is_void */) {
             static_assert(detail::FunctionTrait<ResolveFunc>::ArgsCount == 0,
                           "Continuation function of a void promise should not take any argument");
-
-           typedef typename detail::RemovePromise<
-                typename detail::FunctionTrait<ResolveFunc>::ReturnType
-           >::Type RetType;
-
-           Promise<RetType> promise;
-
-            typedef typename std::remove_reference<ResolveFunc>::type ResolveFuncType;
-            typedef typename std::remove_reference<RejectFunc>::type RejectFuncType;
-
-            std::shared_ptr<Private::Request> req;
-            req.reset(ContinuationFactory<ResolveFuncType>::create(
-                          promise.core_,
-                          std::forward<ResolveFunc>(resolveFunc),
-                          std::forward<RejectFunc>(rejectFunc)));
-
-            if (isFulfilled()) {
-                req->resolve(core_);
-            }
-            else if (isRejected()) {
-                req->reject(core_);
-            }
-
-           core_->requests.push_back(req);
-
-           return promise;
         }
 
-    private:
-
-        Promise()
-          : core_(std::make_shared<VoidCore>())
-          , resolver_(core_)
-          , rejection_(core_)
-        { }
-
-        struct VoidCore : public Private::Core {
-            VoidCore() :
-                Private::Core(State::Pending)
-            { }
-
-            bool isVoid() const { return true; }
-
-            void *memory() { return nullptr; }
-        };
-
-        /* TODO: Crazy code duplication between Promise<T> and its void specialization.
-         *
-         * Find a way to get rid of the duplication but still presevering encapsulation
-         */
-        struct Continuable : public Private::Request {
-            Continuable()
-                : resolveCount_(0)
-                , rejectCount_(0)
-            { }
-
-            void resolve(const std::shared_ptr<Private::Core>& core) {
-                if (resolveCount_ >= 1)
-                    throw Error("Resolve must not be called more than once");
-
-                doResolve(coreCast(core));
-                ++resolveCount_;
-            }
-
-            void reject(const std::shared_ptr<Private::Core>& core) {
-                if (rejectCount_ >= 1)
-                    throw Error("Reject must not be called more than once");
-
-                doReject(coreCast(core));
-                ++rejectCount_;
-            }
-
-            std::shared_ptr<VoidCore> coreCast(const std::shared_ptr<Private::Core>& core) const {
-                return std::static_pointer_cast<VoidCore>(core);
-            }
-
-            virtual void doResolve(const std::shared_ptr<VoidCore>& core) const = 0;
-            virtual void doReject(const std::shared_ptr<VoidCore>& core) const = 0;
-
-            size_t resolveCount_;
-            size_t rejectCount_;
-        };
-
-        template<typename ResolveFunc, typename RejectFunc>
-        struct ThenContinuation : public Continuable {
-            ThenContinuation(
-                    ResolveFunc&& resolveFunc, RejectFunc&& rejectFunc)
-                : resolveFunc_(std::forward<ResolveFunc>(resolveFunc))
-                , rejectFunc_(std::forward<RejectFunc>(rejectFunc))
-            { 
-            }
-
-            void doResolve(const std::shared_ptr<VoidCore>& core) const {
-                resolveFunc_();
-            }
-
-            void doReject(const std::shared_ptr<VoidCore>& core) const {
-                rejectFunc_(core->exc);
-            }
-
-            ResolveFunc resolveFunc_;
-            RejectFunc rejectFunc_;
-        };
-
-        template<typename ResolveFunc, typename RejectFunc, typename Return>
-        struct ThenReturnContinuation : public Continuable {
-            ThenReturnContinuation(
-                    const std::shared_ptr<Private::Core>& chain,
-                    ResolveFunc&& resolveFunc, RejectFunc&& rejectFunc)
-                : chain_(chain)
-                , resolveFunc_(std::forward<ResolveFunc>(resolveFunc))
-                , rejectFunc_(std::forward<RejectFunc>(rejectFunc))
-            {
-            }
-
-            void doResolve(const std::shared_ptr<VoidCore>& core) const {
-                auto ret = resolveFunc_();
-                chain_->construct<decltype(ret)>(std::move(ret));
-            }
-
-            void doReject(const std::shared_ptr<VoidCore>& core) const {
-                rejectFunc_(core->exc);
-            }
-
-            std::shared_ptr<Private::Core> chain_;
-            ResolveFunc resolveFunc_;
-            RejectFunc rejectFunc_;
-        };
-
-        template<typename ResolveFunc, typename RejectFunc>
-        struct ThenChainContinuation : public Continuable {
-            ThenChainContinuation(
-                    const std::shared_ptr<Private::Core>& chain,
-                    ResolveFunc&& resolveFunc, RejectFunc&& rejectFunc)
-                : chain_(chain)
-                , resolveFunc_(std::forward<ResolveFunc>(resolveFunc))
-                , rejectFunc_(std::forward<RejectFunc>(rejectFunc))
-            { 
-            }
-
-            void doResolve(const std::shared_ptr<VoidCore>& core) const {
-                auto promise = resolveFunc_();
-            }
-
-            void doReject(const std::shared_ptr<VoidCore>& core) const {
-                rejectFunc_(core->exc);
-            }
-
-            std::shared_ptr<Private::Core> chain_;
-            ResolveFunc resolveFunc_;
-            RejectFunc rejectFunc_;
-
-        };
-
         template<typename ResolveFunc>
-            struct ContinuationFactory : public ContinuationFactory<decltype(&ResolveFunc::operator())> { };
+        void thenStaticChecks(std::false_type /* is_void */) {
+            static_assert(detail::IsCallable<ResolveFunc, T>::value,
+                        "Function is not compatible with underlying promise type");
+        }
 
-        template<typename R, typename Class, typename... Args>
-        struct ContinuationFactory<R (Class::*)(Args...) const> {
-            template<typename ResolveFunc, typename RejectFunc>
-            static Continuable *create(
-                    const std::shared_ptr<Private::Core>& chain,
-                    ResolveFunc&& resolveFunc, RejectFunc&& rejectFunc) {
-                return new ThenReturnContinuation<ResolveFunc, RejectFunc, R>(
-                        chain,
-                        std::forward<ResolveFunc>(resolveFunc),
-                        std::forward<RejectFunc>(rejectFunc));
-            }
-        };
-
-        template<typename Class, typename... Args>
-        struct ContinuationFactory<void (Class::*)(Args ...) const> {
-            template<typename ResolveFunc, typename RejectFunc>
-            static Continuable *create(
-                    const std::shared_ptr<Private::Core>& chain,
-                    ResolveFunc&& resolveFunc, RejectFunc&& rejectFunc) {
-                return new ThenContinuation<ResolveFunc, RejectFunc>(
-                        std::forward<ResolveFunc>(resolveFunc),
-                        std::forward<RejectFunc>(rejectFunc));
-            }
-        };
-
-        template<typename U, typename Class, typename... Args>
-        struct ContinuationFactory<Promise<U> (Class::*)(Args...) const> {
-            template<typename ResolveFunc, typename RejectFunc>
-            static Continuable* create(
-                    const std::shared_ptr<Private::Core>& chain,
-                    ResolveFunc&& resolveFunc, RejectFunc&& rejectFunc) {
-                return new ThenChainContinuation<ResolveFunc, RejectFunc>(
-                        chain,
-                        std::forward<ResolveFunc>(resolveFunc),
-                        std::forward<RejectFunc>(rejectFunc));
-            }
-        };
-
-        std::shared_ptr<VoidCore> core_;
+        std::shared_ptr<Core> core_;
         Resolver resolver_;
         Rejection rejection_;
     };
