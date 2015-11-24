@@ -18,3 +18,7 @@ add_library(net ${SOURCE_FILES})
 include_directories (${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(net pthread)
+
+file(GLOB HEADER_FILES "*.h")
+install(FILES ${HEADER_FILES} DESTINATION include/rest)
+install(TARGETS net DESTINATION lib)
