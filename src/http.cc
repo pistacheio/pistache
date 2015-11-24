@@ -350,6 +350,8 @@ Request::query() const {
 
 Response::Response()
     : Message()
+    , bufSize(Const::MaxBuffer << 1)
+    , buffer_(new char[bufSize])
 { }
 
 void
@@ -369,40 +371,52 @@ Response::send(Code code) {
 Async::Promise<ssize_t>
 Response::send(Code code, const std::string& body, const Mime::MediaType& mime)
 {
-    Io::OutArrayBuf obuf(buffer_, Io::Init::ZeroOut);
+
+    char *beg = buffer_.get();
+    Io::OutArrayBuf obuf(beg, beg + bufSize, Io::Init::ZeroOut);
 
     std::ostream stream(&obuf);
-    stream << "HTTP/1.1 ";
-    stream << static_cast<int>(code);
-    stream << ' ';
-    stream << code;
-    stream << crlf;
+#define OUT(...) \
+    do { \
+        __VA_ARGS__; \
+        if (!stream) { \
+            return Async::Promise<ssize_t>::rejected(Net::Error("Could not write to stream: insufficient space")); \
+        } \
+    } while (0);
+
+    OUT(stream << "HTTP/1.1 ");
+    OUT(stream << static_cast<int>(code));
+    OUT(stream << ' ');
+    OUT(stream << code);
+    OUT(stream << crlf);
 
     if (mime.isValid()) {
         auto contentType = headers_.tryGet<Header::ContentType>();
         if (contentType)
             contentType->setMime(mime);
         else {
-            writeHeader<Header::ContentType>(stream, mime);
+            OUT(writeHeader<Header::ContentType>(stream, mime));
         }
     }
 
     for (const auto& header: headers_.list()) {
-        stream << header->name() << ": ";
-        header->write(stream);
-        stream << crlf;
+        OUT(stream << header->name() << ": ");
+        OUT(header->write(stream));
+        OUT(stream << crlf);
     }
 
     if (!body.empty()) {
-        writeHeader<Header::ContentLength>(stream, body.size());
-        stream << crlf;
-        stream << body;
+        OUT(writeHeader<Header::ContentLength>(stream, body.size()));
+        OUT(stream << crlf);
+        OUT(stream << body);
     }
     else {
-        stream << crlf;
+        OUT(stream << crlf);
     }
 
-    return peer()->send(buffer_, obuf.len());
+#undef OUT
+
+    return peer()->send(buffer_.get(), obuf.len());
 }
 
 void

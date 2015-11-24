@@ -19,7 +19,7 @@ class MyHandler : public Net::Http::Handler {
                     .add(std::make_shared<Header::ContentType>(MIME(Text, Plain)));
 
                 response.send(Net::Http::Code::Ok, "PONG").then([](ssize_t  bytes) {
-                    std::cout << "Sent total of " << bytes << " bytes" << std::endl;
+                    //std::cout << "Sent total of " << bytes << " bytes" << std::endl;
                 }, Async::IgnoreException);
 
             }

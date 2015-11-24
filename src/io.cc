@@ -189,6 +189,24 @@ IoWorker::run() {
                         handleIncoming(peer);
                     }
                     else if (event.flags.hasFlag(NotifyOn::Write)) {
+                        auto fd = event.tag.value();
+                        auto it = toWrite.find(fd);
+                        if (it == std::end(toWrite)) {
+                            throw std::runtime_error("Assertion Error: could not find write data");
+                        }
+
+                        auto &write = it->second;
+                        ssize_t bytes = ::send(fd, write.buf, write.len, 0);
+                        if (bytes < 0) {
+                            write.reject(Net::Error::system("Could not write data"));
+                        }
+
+                        else if (bytes < write.len) {
+                            write.reject(Net::Error("Failed to write: could not write all bytes"));
+                        }
+                        else {
+                            write.resolve(bytes);
+                        }
                     }
                 }
             }
@@ -201,20 +219,37 @@ IoWorker::run() {
 Async::Promise<ssize_t>
 IoWorker::asyncWrite(Fd fd, const void* buf, size_t len) {
     return Async::Promise<ssize_t>([=](Async::Resolver& resolve, Async::Rejection& reject) {
-        ssize_t bytes = ::send(fd, buf, len, 0);
-        if (bytes < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                toWrite.insert(
-                        std::make_pair(fd, 
-                            OnHoldWrite(std::move(resolve), std::move(reject), buf, len)));
-                poller.addFdOneShot(fd, NotifyOn::Write, Polling::Tag(fd));
+
+        auto it = toWrite.find(fd);
+        if (it != std::end(toWrite)) {
+            reject(Net::Error("Multiple writes on the same fd"));
+            return;
+        }
+
+        ssize_t totalWritten = 0;
+        for (;;) {
+            auto *bufPtr = static_cast<const char *>(buf) + totalWritten;
+            auto bufLen = len - totalWritten;
+            ssize_t bytesWritten = ::send(fd, bufPtr, bufLen, 0);
+            if (bytesWritten < 0) {
+                if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                    toWrite.insert(
+                            std::make_pair(fd, 
+                                OnHoldWrite(std::move(resolve), std::move(reject), bufPtr, bufLen)));
+                    poller.addFdOneShot(fd, NotifyOn::Write, Polling::Tag(fd));
+                }
+                else {
+                    reject(Net::Error::system("Could not write data"));
+                }
+                break;
             }
             else {
-                reject(std::runtime_error("send"));
+                totalWritten += bytesWritten;
+                if (totalWritten == len) {
+                    resolve(totalWritten);
+                    break;
+                }
             }
-        }
-        else {
-            resolve(bytes);
         }
     });
 }

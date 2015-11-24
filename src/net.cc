@@ -106,5 +106,24 @@ Port Address::port() const {
     return port_;
 }
 
+Error::Error(const char* message)
+    : std::runtime_error(message)
+{ }
+
+Error::Error(std::string message)
+    : std::runtime_error(std::move(message))
+{ }
+
+Error
+Error::system(const char* message) {
+    const char *err = strerror(errno);
+
+    std::string str(message);
+    str += ':';
+    str += err;
+
+    return Error(std::move(str));
+
+}
 
 } // namespace Net

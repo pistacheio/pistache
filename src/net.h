@@ -7,6 +7,7 @@
 #pragma once
 #include <string>
 #include <sys/socket.h>
+#include <stdexcept>
 
 #ifndef _KERNEL_FASTOPEN
 #define _KERNEL_FASTOPEN
@@ -67,6 +68,13 @@ public:
 private:
     std::string host_;
     Port port_;
+};
+
+class Error : public std::runtime_error {
+public:
+    Error(const char* message);
+    Error(std::string message);
+    static Error system(const char* message);
 };
 
 } // namespace Net
