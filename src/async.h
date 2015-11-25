@@ -758,10 +758,23 @@ namespace Async {
         >
     >
     Promise<Results> whenAll(Args&& ...args) {
-        return Promise<Results>([&](Resolver& resolver, Rejection& rejection) {
-            Impl::WhenAll impl(resolver, rejection);
-            impl(std::forward<Args>(args)...);
+        // As ugly as it looks, this is needed to bypass a bug of gcc < 4.9
+        // whereby template parameters pack inside a lambda expression are not
+        // captured correctly and can not be expanded inside the lambda.
+        Resolver* resolve;
+        Rejection* reject;
+
+        Promise<Results> promise([&](Resolver& resolver, Rejection& rejection) {
+            resolve = &resolver;
+            reject = &rejection;
         });
+
+        Impl::WhenAll impl(*resolve, *reject);
+        // So we capture everything we need inside the lambda and then call the
+        // implementation and expand the parameters pack here
+        impl(std::forward<Args>(args)...);
+
+        return promise;
     }
 
     template<

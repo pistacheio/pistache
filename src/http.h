@@ -89,8 +89,11 @@ public:
     Response(const Response& other) = delete;
     Response& operator=(const Response& other) = delete;
 
-    Response(Response&& other) = default;
-    Response& operator=(Response&& other) = default;
+    // C++11: std::weak_ptr move constructor is C++14 only so the default
+    // version of move constructor / assignement operator does not work and we
+    // have to define it ourself
+    Response(Response&& other);
+    Response& operator=(Response&& other);
 
     Header::Collection& headers();
     const Header::Collection& headers() const;
@@ -108,7 +111,7 @@ private:
     void associatePeer(const std::shared_ptr<Tcp::Peer>& peer);
     std::weak_ptr<Tcp::Peer> peer_;
 
-    size_t bufSize;
+    size_t bufSize_;
     std::unique_ptr<char[]> buffer_;
 
 };

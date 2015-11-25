@@ -350,9 +350,24 @@ Request::query() const {
 
 Response::Response()
     : Message()
-    , bufSize(Const::MaxBuffer << 1)
-    , buffer_(new char[bufSize])
+    , bufSize_(Const::MaxBuffer << 1)
+    , buffer_(new char[bufSize_])
 { }
+
+Response::Response(Response&& other)
+    : peer_(other.peer_)
+    , bufSize_(other.bufSize_)
+    , buffer_(std::move(other.buffer_))
+{ }
+
+Response&
+Response::operator=(Response&& other) {
+    peer_ = other.peer_;
+    bufSize_ = other.bufSize_;
+    buffer_ = std::move(other.buffer_);
+
+    return *this;
+}
 
 void
 Response::associatePeer(const std::shared_ptr<Tcp::Peer>& peer)
@@ -373,7 +388,7 @@ Response::send(Code code, const std::string& body, const Mime::MediaType& mime)
 {
 
     char *beg = buffer_.get();
-    Io::OutArrayBuf obuf(beg, beg + bufSize, Io::Init::ZeroOut);
+    Io::OutArrayBuf obuf(beg, beg + bufSize_, Io::Init::ZeroOut);
 
     std::ostream stream(&obuf);
 #define OUT(...) \
