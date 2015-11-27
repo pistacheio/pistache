@@ -60,8 +60,8 @@ MediaType::parseRaw(const char* str, size_t len) {
         throw HttpError(Http::Code::Unsupported_Media_Type, str);
     };
 
-    StreamBuf buf(str, len);
-    StreamCursor cursor(buf);
+    RawStreamBuf<char> buf(const_cast<char *>(str), len);
+    StreamCursor cursor(&buf);
 
     raw_ = string(str, len);
 
@@ -156,7 +156,8 @@ MediaType::parseRaw(const char* str, size_t len) {
     while (!cursor.eof()) {
 
         if (cursor.current() == ';' || cursor.current() == ' ') {
-            if (cursor.next() == StreamCursor::Eof)
+            int c;
+            if ((c = cursor.next()) == StreamCursor::Eof || c == 0)
                 raise("Malformed Media Type, expected parameter got EOF");
             cursor.advance(1);
         }
@@ -179,7 +180,8 @@ MediaType::parseRaw(const char* str, size_t len) {
             StreamCursor::Token keyToken(cursor);
             (void) match_until('=', cursor);
 
-            if (cursor.eof() || cursor.next() == StreamCursor::Eof)
+            int c;
+            if (cursor.eof() || (c = cursor.next()) == StreamCursor::Eof || c == 0)
                 raise("Unfinished Media Type parameter");
 
             std::string key = keyToken.text();

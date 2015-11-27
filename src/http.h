@@ -9,6 +9,7 @@
 #include <type_traits>
 #include <stdexcept>
 #include <array>
+#include <sstream>
 #include "listener.h"
 #include "net.h"
 #include "http_headers.h"
@@ -32,7 +33,15 @@ namespace Private {
 class Message {
 public:
     Message();
+
+    Message(const Message& other) = default;
+    Message& operator=(const Message& other) = default;
+
+    Message(Message&& other) = default;
+    Message& operator=(Message&& other) = default;
+
     Version version_;
+    Code code_;
 
     Header::Collection headers_;
     std::string body_;
@@ -81,39 +90,163 @@ private:
 
 class Handler;
 
+class ResponseWriter : private Message {
+public:
+    ResponseWriter(const ResponseWriter& other) = delete;
+    ResponseWriter& operator=(const ResponseWriter& other) = delete;
+
+    ResponseWriter(ResponseWriter&& other)
+        : Message(std::move(other))
+        , peer_(std::move(other.peer_))
+        , stream_(std::move(other.stream_))
+    { }
+
+    ResponseWriter& operator=(ResponseWriter&& other) {
+        Message::operator=(std::move(other));
+        peer_ = std::move(other.peer_);
+        stream_ = std::move(other.stream_);
+
+        return *this;
+    }
+
+    friend class Response;
+
+    const Header::Collection& headers() const {
+        return headers_;
+    }
+
+    Code code() const {
+        return code_;
+    }
+
+    std::streambuf* rdbuf() {
+        return &stream_;
+    }
+
+    operator std::streambuf*() {
+        return &stream_;
+    }
+
+    Async::Promise<ssize_t> send();
+
+private:
+    ResponseWriter(Message&& other, size_t size, std::weak_ptr<Tcp::Peer> peer)
+        : Message(std::move(other))
+        , stream_(size)
+        , peer_(peer)
+    {
+    }
+
+    ResponseWriter(const Message& other, size_t size, std::weak_ptr<Tcp::Peer> peer)
+        : Message(other)
+        , stream_(size)
+        , peer_(peer)
+    {
+    }
+
+    std::shared_ptr<Tcp::Peer> peer() const {
+        if (peer_.expired()) {
+            throw std::runtime_error("Broken pipe");
+        }
+
+        return peer_.lock();
+    }
+
+    void writeStatusLine();
+    void writeHeaders();
+
+    NetworkStream stream_;
+    std::weak_ptr<Tcp::Peer> peer_;
+};
+
 // 6. Response
 class Response : private Message {
 public:
     friend class Handler;
 
-    Response(const Response& other) = delete;
-    Response& operator=(const Response& other) = delete;
+    static constexpr size_t DefaultStreamSize = 512;
 
     // C++11: std::weak_ptr move constructor is C++14 only so the default
     // version of move constructor / assignement operator does not work and we
     // have to define it ourself
-    Response(Response&& other);
-    Response& operator=(Response&& other);
+    Response(Response&& other)
+        : Message(std::move(other))
+        , peer_(other.peer_)
+    { }
+    Response& operator=(Response&& other) {
+        peer_ = other.peer_;
+        return *this;
+    }
 
-    Header::Collection& headers();
-    const Header::Collection& headers() const;
+    const Header::Collection& headers() const {
+        return headers_;
+    }
 
-    void setMime(const Mime::MediaType& mime);
+    Header::Collection& headers() {
+        return headers_;
+    }
 
-    Async::Promise<ssize_t> send(Code code);
-    Async::Promise<ssize_t> send(Code code, const std::string& body, const Mime::MediaType &mime = Mime::MediaType());
+    Code code() const {
+        return code_;
+    }
+
+    void setMime(const Mime::MediaType& mime) {
+        headers().add(std::make_shared<Header::ContentType>(mime));
+    }
+
+    Async::Promise<ssize_t> send(Code code) {
+        return send(code, "");
+    }
+    Async::Promise<ssize_t> send(
+            Code code,
+            const std::string& body,
+            const Mime::MediaType &mime = Mime::MediaType())
+    {
+        code_ = code;
+
+        if (mime.isValid()) {
+            auto contentType = headers_.tryGet<Header::ContentType>();
+            if (contentType)
+                contentType->setMime(mime);
+            else
+                headers_.add(std::make_shared<Header::ContentType>(mime));
+        }
+
+        ResponseWriter w(*this, body.size(), peer_);
+        std::ostream os(w);
+        os << body;
+        if (!os)
+            return Async::Promise<ssize_t>::rejected(Error("Response exceeded buffer size"));
+        return w.send();
+    }
+
+    ResponseWriter
+    writer(Code code, size_t size = DefaultStreamSize) {
+        code_ = code;
+        return ResponseWriter(std::move(*this), size, peer_);
+    }
 
 private:
-    Response();
+    Response()
+        : Message()
+    { }
 
-    std::shared_ptr<Tcp::Peer> peer() const;
+    std::shared_ptr<Tcp::Peer> peer() const {
+        if (peer_.expired()) {
+            throw std::runtime_error("Broken pipe");
+        }
 
-    void associatePeer(const std::shared_ptr<Tcp::Peer>& peer);
+        return peer_.lock();
+    }
+
+    void associatePeer(const std::shared_ptr<Tcp::Peer>& peer) {
+        if (peer_.use_count() > 0)
+            throw std::runtime_error("A peer was already associated to the response");
+
+        peer_ = peer;
+    }
+
     std::weak_ptr<Tcp::Peer> peer_;
-
-    size_t bufSize_;
-    std::unique_ptr<char[]> buffer_;
-
 };
 
 namespace Private {
@@ -165,7 +298,7 @@ namespace Private {
         Parser()
             : contentLength(-1)
             , currentStep(0)
-            , cursor(buffer)
+            , cursor(&buffer)
         {
             allSteps[0].reset(new RequestLineStep(&request));
             allSteps[1].reset(new HeadersStep(&request));
@@ -175,7 +308,7 @@ namespace Private {
         Parser(const char* data, size_t len)
             : contentLength(-1)
             , currentStep(0)
-            , cursor(buffer)
+            , cursor(&buffer)
         {
             allSteps[0].reset(new RequestLineStep(&request));
             allSteps[1].reset(new HeadersStep(&request));

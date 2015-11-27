@@ -7,40 +7,45 @@
 #include <algorithm>
 #include <iostream>
 
+NetworkStream::int_type
+NetworkStream::overflow(NetworkStream::int_type ch) {
+    if (!traits_type::eq_int_type(ch, traits_type::eof())) {
+        const auto size = data_.size();
+        if (size < maxSize_) {
+            reserve(size * 2);
+            *pptr() = ch;
+            pbump(1);
+            return traits_type::not_eof(ch);
+        }
+    }
+
+    return traits_type::eof();
+}
+
 void
-BasicStreamBuf::setArea(const char* begin, const char* end, const char* brk) {
-    this->begin = begin;
-    this->end = end;
-    this->brk = brk;
+NetworkStream::reserve(size_t size)
+{
+    if (size > maxSize_) size = maxSize_;
+    const size_t oldSize = data_.size();
+    data_.resize(size);
+    this->setp(&data_[0] + oldSize, &data_[0] + size);
 }
-
-StreamBuf::StreamBuf(const char* begin, const char* end) {
-    setArea(begin, end, end);
-}
-
-StreamBuf::StreamBuf(const char *begin, const char* end, const char* brk) {
-    setArea(begin, end, brk);
-}
-
-StreamBuf::StreamBuf(const char* begin, size_t len) {
-   setArea(begin, begin + len, begin + len);
-} 
 
 bool
 StreamCursor::advance(size_t count) {
-    if (value + count > buf.totalAvailable())
+    if (count > buf->in_avail())
         return false;
 
-    else if (value + count > buf.breakAvailable())
-        return false;
+    for (size_t i = 0; i < count; ++i) {
+        buf->sbumpc();
+    }
 
-    value += count;
     return true;
 }
 
 bool
 StreamCursor::eol() const {
-    return buf.begin[value] == CR && next() == LF;
+    return buf->sgetc() == CR && next() == LF;
 }
 
 bool
@@ -50,48 +55,45 @@ StreamCursor::eof() const {
 
 int
 StreamCursor::next() const {
-    if (value + 1 >= buf.totalAvailable())
+    if (buf->in_avail() < 1)
         return Eof;
 
-    else if (value + 1 > buf.breakAvailable())
-        return Eof;
-
-    return buf.begin[value + 1];
+    return buf->snext();
 }
 
 char
 StreamCursor::current() const {
-    return buf.begin[value];
+    return buf->sgetc();
 }
 
 const char*
 StreamCursor::offset() const {
-    return buf.begin + value;
+    return buf->curptr();
 }
 
 const char*
 StreamCursor::offset(size_t off) const {
-    return buf.begin + off;
+    return buf->begptr() + off;
 }
 
 size_t
 StreamCursor::diff(size_t other) const {
-    return value - other;
+    return buf->position() - other;
 }
 
 size_t
 StreamCursor::diff(const StreamCursor& other) const {
-    return other.value - value;
+    return other.buf->position() - buf->position();
 }
 
 size_t
 StreamCursor::remaining() const {
-    return buf.breakAvailable() - value;
+    return buf->in_avail();
 }
 
 void
 StreamCursor::reset() {
-    value = 0;
+    buf->reset();
 }
 
 bool

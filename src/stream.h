@@ -9,43 +9,78 @@
 #include <cstddef>
 #include <stdexcept>
 #include <cstring>
+#include <streambuf>
+#include <vector>
+#include <limits>
 
 static constexpr char CR = 0xD;
 static constexpr char LF = 0xA;
 
-class BasicStreamBuf {
+template<typename CharT = char>
+class StreamBuf : public std::basic_streambuf<CharT> {
 public:
-    friend class StreamCursor;
+    typedef std::basic_streambuf<CharT> Base;
+    typedef typename Base::traits_type traits_type;
 
-    size_t totalAvailable() const { return end - begin; }
-    size_t breakAvailable() const { return brk - begin; }
+    void setArea(char* begin, char *current, char *end) {
+        this->setg(begin, current, end);
+    }
 
-protected:
-    BasicStreamBuf() { }
+    CharT *begptr() const {
+        return this->eback();
+    }
 
-    void setArea(const char *begin, const char *end, const char* brk);
+    CharT* curptr() const {
+        return this->gptr();
+    }
 
-private:
-    const char *begin;
-    const char *brk;
-    const char *end;
+    CharT* endptr() const {
+        return this->egptr();
+    }
+
+    size_t position() const {
+        return this->gptr() - this->eback();
+    }
+
+    void reset() {
+        this->setg(nullptr, nullptr, nullptr);
+    }
+
+    typename Base::int_type snext() const {
+        if (this->gptr() == this->egptr()) {
+            return traits_type::eof();
+        }
+
+        const CharT* gptr = this->gptr();
+        return *(gptr + 1);
+    }
+
 };
 
-class StreamBuf : public BasicStreamBuf {
+template<typename CharT = char>
+class RawStreamBuf : public StreamBuf<CharT> {
 public:
-    StreamBuf(const char* begin, const char* end);
-    StreamBuf(const char *begin, const char* end, const char* brk);
-    StreamBuf(const char* begin, size_t len);
+    typedef StreamBuf<CharT> Base;
+
+    RawStreamBuf(char* begin, char* end) {
+        Base::setg(begin, begin, end);
+    }
+    RawStreamBuf(char* begin, size_t len) {
+        Base::setg(begin, begin, begin + len);
+    }
+
 };
 
-template<size_t N>
-class ArrayStreamBuf : public BasicStreamBuf {
+template<size_t N, typename CharT = char>
+class ArrayStreamBuf : public StreamBuf<CharT> {
 public:
+    typedef StreamBuf<CharT> Base;
+
     ArrayStreamBuf()
       : size(0)
     {
         memset(bytes, 0, N);
-        setArea(bytes, bytes, bytes);
+        Base::setg(bytes, bytes, bytes);
     }
 
     template<size_t M>
@@ -53,7 +88,7 @@ public:
         static_assert(M <= N, "Source array exceeds maximum capacity");
         memcpy(bytes, arr, M);
         size = M;
-        setArea(bytes, bytes + N, bytes + M);
+        Base::setg(bytes, bytes, bytes + M);
     }
 
     bool feed(const char* data, size_t len) {
@@ -62,15 +97,15 @@ public:
         }
 
         memcpy(bytes + size, data, len);
+        Base::setg(bytes, bytes + size, bytes + size + len);
         size += len;
-        setArea(bytes, bytes + N, bytes + size);
         return true;
     }
 
     void reset() {
         memset(bytes, 0, N);
         size = 0;
-        setArea(bytes, bytes, bytes);
+        Base::setg(bytes, bytes, bytes);
     }
 
 private:
@@ -78,58 +113,123 @@ private:
     size_t size;
 };
 
+class NetworkStream : public StreamBuf<char> {
+public:
+    struct Buffer {
+        Buffer(const void *data, size_t len)
+            : data(data)
+            , len(len)
+        { }
+
+        const void* data;
+        const size_t len;
+    };
+
+    typedef StreamBuf<char> Base;
+    typedef typename Base::traits_type traits_type;
+    typedef typename Base::int_type int_type;
+
+    NetworkStream(
+            size_t size,
+            size_t maxSize = std::numeric_limits<uint32_t>::max())
+        : maxSize_(maxSize)
+    {
+        reserve(size);
+    }
+
+    NetworkStream(const NetworkStream& other) = delete;
+    NetworkStream& operator=(const NetworkStream& other) = delete;
+
+    NetworkStream(NetworkStream&& other)
+       : maxSize_(other.maxSize_)
+       , data_(std::move(other.data_)) {
+           setp(other.pptr(), other.epptr());
+           other.setp(nullptr, nullptr);
+    }
+
+    NetworkStream& operator=(NetworkStream&& other) {
+        maxSize_ = other.maxSize_;
+        data_ = std::move(other.data_);
+        setp(other.pptr(), other.epptr());
+        other.setp(nullptr, nullptr);
+        return *this;
+    }
+
+    Buffer buffer() const {
+        return Buffer(data_.data(), pptr() - &data_[0]);
+    }
+
+protected:
+    int_type overflow(int_type ch);
+
+private:
+    void reserve(size_t size);
+
+    size_t maxSize_;
+    std::vector<char> data_;
+};
+
 class StreamCursor {
 public:
-    StreamCursor(const BasicStreamBuf& buf, size_t initialPos = 0)
+    StreamCursor(StreamBuf<char>* buf, size_t initialPos = 0)
         : buf(buf)
-        , value(initialPos)
-    { }
+    {
+        advance(initialPos);
+    }
 
     static constexpr int Eof = -1;
 
     struct Token {
         Token(StreamCursor& cursor)
             : cursor(cursor)
-            , pos(cursor.value)
+            , position(cursor.buf->position())
+            , eback(cursor.buf->begptr())
+            , gptr(cursor.buf->curptr())
+            , egptr(cursor.buf->endptr())
         { }
 
-        size_t start() const { return pos; }
+        size_t start() const { return position; }
+
         size_t end() const {
-            return cursor.value;
+            return cursor.buf->position();
         }
 
         size_t size() const {
-            return cursor.value - pos;
+            return end() - start();
         }
 
         std::string text() {
-            const char *beg = cursor.offset(pos);
-            return std::string(beg, size());
+            return std::string(gptr, size());
         }
 
         const char* rawText() const {
-            return cursor.offset(pos);
+            return gptr;
         }
 
     private:
         StreamCursor& cursor;
-        size_t pos;
+        size_t position;
+        char *eback;
+        char *gptr;
+        char *egptr;
     };
 
     struct Revert {
         Revert(StreamCursor& cursor)
             : cursor(cursor)
-            , pos(cursor.value)
+            , eback(cursor.buf->begptr())
+            , gptr(cursor.buf->curptr())
+            , egptr(cursor.buf->endptr())
             , active(true)
         { }
 
         ~Revert() {
             if (active)
-                cursor.value = pos;
+                revert();
         }
 
         void revert() {
-            cursor.value = pos;
+            cursor.buf->setArea(eback, gptr, egptr);
         }
 
         void ignore() {
@@ -138,12 +238,15 @@ public:
 
     private:
         StreamCursor& cursor;
-        size_t pos;
+        char *eback;
+        char *gptr;
+        char *egptr;
         bool active;
+
     };
 
     bool advance(size_t count);
-    operator size_t() const { return value; }
+    operator size_t() const { return buf->position(); }
 
     bool eol() const;
     bool eof() const;
@@ -160,10 +263,10 @@ public:
 
     void reset();
 
-private:
-    const BasicStreamBuf& buf;
-    size_t value;
+public:
+    StreamBuf<char>* buf;
 };
+
 
 enum class CaseSensitivity {
     Sensitive, Insensitive

@@ -207,21 +207,23 @@ namespace Private {
         if (bytesRead > 0) {
             // How many bytes do we still need to read ?
             const size_t remaining = contentLength - bytesRead;
-            auto start = cursor;
+
+            StreamCursor::Token token(cursor);
+            const size_t available = cursor.remaining();
 
             // Could be refactored in a single function / lambda but I'm too lazy
             // for that right now
-            if (!cursor.advance(remaining)) {
-                const size_t available = cursor.remaining();
+            if (available < remaining) {
+                cursor.advance(available);
+                request->body_ += token.text();
 
-                request->body_.append(cursor.offset(start), available);
                 bytesRead += available;
 
-                cursor.advance(available);
                 return State::Again;
             }
             else {
-                request->body_.append(cursor.offset(), remaining);
+                cursor.advance(remaining);
+                request->body_ += token.text();
             }
 
         }
@@ -231,20 +233,18 @@ namespace Private {
 
             request->body_.reserve(contentLength);
 
-            auto start = cursor;
-
+            StreamCursor::Token token(cursor);
+            const size_t available = cursor.remaining();
             // We have an incomplete body, read what we can
-            if (!cursor.advance(contentLength)) {
-                const size_t available = cursor.remaining();
-
-                request->body_.append(cursor.offset(start), available);
-                bytesRead += available;
-
+            if (available < contentLength) {
                 cursor.advance(available);
+                request->body_ += token.text();
+                bytesRead += available;
                 return State::Again;
             }
 
-            request->body_.append(cursor.offset(start), contentLength);
+            cursor.advance(contentLength);
+            request->body_ = token.text();
         }
 
         bytesRead = 0;
@@ -348,115 +348,52 @@ Request::query() const {
     return query_;
 }
 
-Response::Response()
-    : Message()
-    , bufSize_(Const::MaxBuffer << 1)
-    , buffer_(new char[bufSize_])
-{ }
-
-Response::Response(Response&& other)
-    : peer_(other.peer_)
-    , bufSize_(other.bufSize_)
-    , buffer_(std::move(other.buffer_))
-{ }
-
-Response&
-Response::operator=(Response&& other) {
-    peer_ = other.peer_;
-    bufSize_ = other.bufSize_;
-    buffer_ = std::move(other.buffer_);
-
-    return *this;
+void
+ResponseWriter::writeStatusLine() {
 }
 
 void
-Response::associatePeer(const std::shared_ptr<Tcp::Peer>& peer)
-{
-    if (peer_.use_count() > 0)
-        throw std::runtime_error("A peer was already associated to the response");
+ResponseWriter::writeHeaders() {
+    std::ostream os(&stream_);
 
-    peer_ = peer;
 }
 
 Async::Promise<ssize_t>
-Response::send(Code code) {
-    return send(code, "");
-}
-
-Async::Promise<ssize_t>
-Response::send(Code code, const std::string& body, const Mime::MediaType& mime)
+ResponseWriter::send()
 {
+    auto body = stream_.buffer();
 
-    char *beg = buffer_.get();
-    Io::OutArrayBuf obuf(beg, beg + bufSize_, Io::Init::ZeroOut);
+    NetworkStream stream(512 + body.len);
+    std::ostream os(&stream);
 
-    std::ostream stream(&obuf);
 #define OUT(...) \
     do { \
         __VA_ARGS__; \
-        if (!stream) { \
-            return Async::Promise<ssize_t>::rejected(Net::Error("Could not write to stream: insufficient space")); \
+        if (!os) { \
+            return Async::Promise<ssize_t>::rejected(Error("Response exceeded buffer size")); \
         } \
     } while (0);
 
-    OUT(stream << "HTTP/1.1 ");
-    OUT(stream << static_cast<int>(code));
-    OUT(stream << ' ');
-    OUT(stream << code);
-    OUT(stream << crlf);
-
-    if (mime.isValid()) {
-        auto contentType = headers_.tryGet<Header::ContentType>();
-        if (contentType)
-            contentType->setMime(mime);
-        else {
-            OUT(writeHeader<Header::ContentType>(stream, mime));
-        }
-    }
+    OUT(os << "HTTP/1.1 ");
+    OUT(os << static_cast<int>(code_));
+    OUT(os << ' ');
+    OUT(os << code_);
+    OUT(os << crlf);
 
     for (const auto& header: headers_.list()) {
-        OUT(stream << header->name() << ": ");
-        OUT(header->write(stream));
-        OUT(stream << crlf);
+        OUT(os << header->name() << ": ");
+        OUT(header->write(os));
+        OUT(os << crlf);
     }
 
-    if (!body.empty()) {
-        OUT(writeHeader<Header::ContentLength>(stream, body.size()));
-        OUT(stream << crlf);
-        OUT(stream << body);
-    }
-    else {
-        OUT(stream << crlf);
-    }
+    OUT(writeHeader<Header::ContentLength>(os, body.len));
+    OUT(os << crlf);
 
-#undef OUT
+    OUT(os.write(static_cast<const char *>(body.data), body.len));
 
-    return peer()->send(buffer_.get(), obuf.len());
-}
+    auto buf = stream.buffer();
 
-void
-Response::setMime(const Mime::MediaType& mime)
-{
-    headers_.add(std::make_shared<Header::ContentType>(mime));
-}
-
-Header::Collection&
-Response::headers() {
-    return headers_;
-}
-
-const Header::Collection&
-Response::headers() const {
-    return headers_;
-}
-
-std::shared_ptr<Tcp::Peer>
-Response::peer() const {
-    if (peer_.expired()) {
-        throw std::runtime_error("Broken pipe");
-    }
-
-    return peer_.lock();
+    return peer()->send(buf.data, buf.len);
 }
 
 void

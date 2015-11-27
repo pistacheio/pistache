@@ -118,8 +118,8 @@ CacheControl::parseRaw(const char* str, size_t len) {
 
 #undef VALUE
 
-    StreamBuf buf(str, len);
-    StreamCursor cursor(buf);
+    RawStreamBuf<> buf(const_cast<char *>(str), len);
+    StreamCursor cursor(&buf);
 
     const char *begin = str;
     auto memsize = [&](size_t s) {
@@ -328,8 +328,8 @@ UserAgent::write(std::ostream& os) const {
 void
 Accept::parseRaw(const char *str, size_t len) {
 
-    StreamBuf buf(str, len);
-    StreamCursor cursor(buf);
+    RawStreamBuf<char> buf(const_cast<char *>(str), len);
+    StreamCursor cursor(&buf);
 
     do {
         int c;
@@ -347,7 +347,7 @@ Accept::parseRaw(const char *str, size_t len) {
             if (!cursor.advance(1))
                 throw std::runtime_error("Ill-formed Accept header");
 
-            if ((c = cursor.next()) == StreamCursor::Eof || c == ',')
+            if ((c = cursor.next()) == StreamCursor::Eof || c == ',' || c == 0)
                 throw std::runtime_error("Ill-formed Accept header");
 
             while (!cursor.eof() && cursor.current() == ' ')
