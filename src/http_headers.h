@@ -53,6 +53,14 @@ public:
     Collection& add(const std::shared_ptr<Header>& header);
     Collection& addRaw(const Raw& raw);
 
+    template<typename H, typename ...Args>
+    typename std::enable_if<
+                IsHeader<H>::value, Collection&
+             >::type
+    add(Args&& ...args) {
+        return add(std::make_shared<H>(std::forward<Args>(args)...));
+    }
+
     std::shared_ptr<const Header> get(const std::string& name) const;
     std::shared_ptr<Header> get(const std::string& name);
     Raw getRaw(const std::string& name) const;

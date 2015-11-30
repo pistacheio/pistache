@@ -15,8 +15,8 @@ class MyHandler : public Net::Http::Handler {
                 using namespace Net::Http;
 
                 response.headers()
-                    .add(std::make_shared<Header::Server>("lys"))
-                    .add(std::make_shared<Header::ContentType>(MIME(Text, Plain)));
+                    .add<Header::Server>("lys")
+                    .add<Header::ContentType>(MIME(Text, Plain));
 
                 auto w = response.beginWrite(Net::Http::Code::Ok);
 
