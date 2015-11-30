@@ -119,6 +119,10 @@ public:
         return code_;
     }
 
+    void setCode(Code code) {
+        code_ = code;
+    }
+
     std::streambuf* rdbuf() {
         return &stream_;
     }
@@ -191,7 +195,11 @@ public:
     }
 
     void setMime(const Mime::MediaType& mime) {
-        headers().add(std::make_shared<Header::ContentType>(mime));
+        auto ct = headers_.tryGet<Header::ContentType>();
+        if (ct)
+            ct->setMime(mime);
+        else
+            headers_.add(std::make_shared<Header::ContentType>(mime));
     }
 
     Async::Promise<ssize_t> send(Code code) {
@@ -220,8 +228,9 @@ public:
         return w.send();
     }
 
+    /* @Revisit: not sure about the name yet */
     ResponseWriter
-    writer(Code code, size_t size = DefaultStreamSize) {
+    beginWrite(Code code = Code::Ok, size_t size = DefaultStreamSize) {
         code_ = code;
         return ResponseWriter(std::move(*this), size, peer_);
     }

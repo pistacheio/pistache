@@ -18,7 +18,7 @@ class MyHandler : public Net::Http::Handler {
                     .add(std::make_shared<Header::Server>("lys"))
                     .add(std::make_shared<Header::ContentType>(MIME(Text, Plain)));
 
-                auto w = response.writer(Net::Http::Code::Ok);
+                auto w = response.beginWrite(Net::Http::Code::Ok);
 
                 std::ostream os(w);
                 os << "PONG";
