@@ -61,7 +61,7 @@ TEST(async_test, basic_test) {
 TEST(async_test, error_test) {
     Async::Promise<int> p1(
         [](Async::Resolver& resolve, Async::Rejection& reject) {
-            ASSERT_THROW(resolve(10.5), Async::Error);
+            ASSERT_THROW(resolve(10.5), Async::BadType);
     });
 }
 

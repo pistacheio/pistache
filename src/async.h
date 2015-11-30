@@ -22,6 +22,22 @@ namespace Async {
         explicit Error(const std::string& what) : std::runtime_error(what) { }
     };
 
+    class BadType : public Error {
+    public:
+        BadType(TypeId id)
+            : Error("Argument type can not be used to resolve the promise "
+                  " (TypeId does not match)")
+            , id_(std::move(id))
+        { }
+
+      TypeId typeId() const {
+          return id_;
+      }
+
+    private:
+        TypeId id_;
+    };
+
     /*
       - Direct: The continuation will be directly called in the context
         of the same thread
@@ -140,7 +156,7 @@ namespace Async {
                     throw Error("Can not construct a void core");
 
                 if (id != TypeId::of<T>()) {
-                    throw Error("Bad value type");
+                    throw BadType(id);
                 }
 
                 void *mem = memory();
