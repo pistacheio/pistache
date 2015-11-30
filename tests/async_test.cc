@@ -58,6 +58,13 @@ TEST(async_test, basic_test) {
     ASSERT_TRUE(p6.isRejected());
 }
 
+TEST(async_test, error_test) {
+    Async::Promise<int> p1(
+        [](Async::Resolver& resolve, Async::Rejection& reject) {
+            ASSERT_THROW(resolve(10.5), Async::Error);
+    });
+}
+
 TEST(async_test, void_promise) {
     Async::Promise<void> p1(
         [](Async::Resolver& resolve, Async::Rejection& reject) {

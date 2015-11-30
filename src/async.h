@@ -12,6 +12,7 @@
 #include <memory>
 #include <atomic>
 #include "optional.h"
+#include "typeid.h"
 
 namespace Async {
 
@@ -119,13 +120,15 @@ namespace Async {
         };
 
         struct Core {
-            Core(State state)
+            Core(State state, TypeId id)
                 : state(state)
+                , id(id)
             { }
 
             State state;
             std::exception_ptr exc;
             std::vector<std::shared_ptr<Request>> requests;
+            TypeId id;
 
             virtual void* memory() = 0;
 
@@ -136,16 +139,21 @@ namespace Async {
                 if (isVoid())
                     throw Error("Can not construct a void core");
 
+                if (id != TypeId::of<T>()) {
+                    throw Error("Bad value type");
+                }
+
                 void *mem = memory();
                 new (mem) T(std::forward<Args>(args)...);
                 state = State::Fulfilled;
             }
+
         };
 
         template<typename T>
         struct CoreT : public Core {
             CoreT()
-                : Core(State::Pending)
+                : Core(State::Pending, TypeId::of<T>())
             { }
 
             template<class Other>
@@ -173,7 +181,7 @@ namespace Async {
         template<>
         struct CoreT<void> : public Core {
             CoreT()
-                : Core(State::Pending)
+                : Core(State::Pending, TypeId::of<void>())
             { }
 
             bool isVoid() const { return true; }
