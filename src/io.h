@@ -39,6 +39,13 @@ public:
     void pin(const CpuSet& set);
 
     void shutdown();
+    template<typename Duration>
+    void setTimeout(Duration timeout, Async::Resolver resolve, Async::Rejection reject) {
+        setTimeoutMs(std::chrono::duration_cast<std::chrono::milliseconds>(timeout), 
+                   std::move(resolve),
+                   std::move(reject));
+    }
+
 
 private:
     struct OnHoldWrite {
@@ -57,11 +64,33 @@ private:
         size_t len;   
     };
 
+    void
+    setTimeoutMs(std::chrono::milliseconds value, Async::Resolver, Async::Rejection reject);
+
+    struct Timeout {
+        Timeout(std::chrono::milliseconds value,
+                Async::Resolver resolve,
+                Async::Rejection reject)
+          : value(value)
+          , resolve(std::move(resolve))
+          , reject(std::move(reject))  {
+        } 
+
+        std::chrono::milliseconds value;
+
+        Async::Resolver resolve;
+        Async::Rejection reject;
+    };
+
     Polling::Epoll poller;
     std::unique_ptr<std::thread> thread;
     mutable std::mutex peersMutex;
     std::unordered_map<Fd, std::shared_ptr<Peer>> peers;
     std::unordered_map<Fd, OnHoldWrite> toWrite;
+
+    Optional<Timeout> timeout;
+    Fd timerFd;
+
     std::shared_ptr<Handler> handler_;
     Flags<Options> options_;
 
@@ -73,6 +102,7 @@ private:
     Async::Promise<ssize_t> asyncWrite(Fd fd, const void *buf, size_t len);
 
     void handleIncoming(const std::shared_ptr<Peer>& peer);
+    void handleTimeout();
     void run();
 
 };

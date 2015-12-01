@@ -131,7 +131,7 @@ public:
         return &stream_;
     }
 
-    Async::Promise<ssize_t> send();
+    Async::Promise<ssize_t> send() const;
 
 private:
     ResponseWriter(Message&& other, size_t size, std::weak_ptr<Tcp::Peer> peer)
@@ -156,9 +156,6 @@ private:
         return peer_.lock();
     }
 
-    void writeStatusLine();
-    void writeHeaders();
-
     NetworkStream stream_;
     std::weak_ptr<Tcp::Peer> peer_;
 };
@@ -181,6 +178,8 @@ public:
         peer_ = other.peer_;
         return *this;
     }
+
+    Response(const Response& other) = default;
 
     const Header::Collection& headers() const {
         return headers_;
@@ -234,6 +233,8 @@ public:
         code_ = code;
         return ResponseWriter(std::move(*this), size, peer_);
     }
+
+    Async::Promise<Response *> timeoutAfter(std::chrono::milliseconds timeout);
 
 private:
     Response()

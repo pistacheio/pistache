@@ -348,18 +348,33 @@ Request::query() const {
     return query_;
 }
 
-void
-ResponseWriter::writeStatusLine() {
-}
+Async::Promise<Response *>
+Response::timeoutAfter(std::chrono::milliseconds timeout)
+{
+#if 0
+    Async::Promise<uint64_t> promise([=](Async::Resolver& resolve, Async::Rejection& reject) {
+       peer()->io()->setTimeout(timeout, resolve, reject);
+   }); 
 
-void
-ResponseWriter::writeHeaders() {
-    std::ostream os(&stream_);
+    promise.then([=](uint64_t) {
+        send(Code::Bad_Request, "A timeout occured");
+    }, Async::NoExcept);
 
+    return promise;
+#endif
+    Async::Promise<uint64_t> promise([=](Async::Resolver& resolve, Async::Rejection& reject) {
+       peer()->io()->setTimeout(timeout, resolve, reject);
+   }); 
+
+    return promise.then([=](uint64_t) {
+        auto p = Async::Promise<Response *>::resolved(this);
+
+        return p;
+    }, Async::NoExcept);
 }
 
 Async::Promise<ssize_t>
-ResponseWriter::send()
+ResponseWriter::send() const
 {
     auto body = stream_.buffer();
 

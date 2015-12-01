@@ -9,6 +9,7 @@
 #include "listener.h"
 #include "peer.h"
 #include "os.h"
+#include <sys/timerfd.h>
 
 namespace Net {
 
@@ -35,6 +36,8 @@ To *message_cast(const std::unique_ptr<Message>& from)
 }
 
 IoWorker::IoWorker() {
+    timerFd = TRY_RET(timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK));
+    poller.addFd(timerFd, Polling::NotifyOn::Read, Polling::Tag(timerFd));
 }
 
 IoWorker::~IoWorker() {
@@ -68,6 +71,36 @@ IoWorker::pin(const CpuSet& set) {
         auto handle = thread->native_handle();
         pthread_setaffinity_np(handle, sizeof (cpuset), &cpuset);
     }
+}
+
+void
+IoWorker::setTimeoutMs(
+        std::chrono::milliseconds value,
+        Async::Resolver resolve, Async::Rejection reject)
+{
+    itimerspec spec;
+    spec.it_interval.tv_sec = 0;
+    spec.it_interval.tv_nsec = 0;
+
+    if (value.count() < 1000) {
+        spec.it_value.tv_sec = 0;
+        spec.it_value.tv_nsec
+            = std::chrono::duration_cast<std::chrono::nanoseconds>(value).count();
+    } else {
+        spec.it_value.tv_sec
+            = std::chrono::duration_cast<std::chrono::seconds>(value).count();
+        spec.it_value.tv_nsec = 0;
+    }
+
+
+    int res = timerfd_settime(timerFd, 0, &spec, 0);
+    if (res == -1) {
+        reject(Error::system("Could not set timer time"));
+        return;
+    }
+
+    timeout = Some(Timeout(value, std::move(resolve), std::move(reject)));
+
 }
 
 void
@@ -149,7 +182,7 @@ IoWorker::handleNewPeer(const std::shared_ptr<Peer>& peer)
         peers.insert(std::make_pair(fd, peer));
     }
 
-    peer->io = this;
+    peer->io_ = this;
 
     handler_->onConnection(peer);
     poller.addFd(fd, NotifyOn::Read, Polling::Tag(fd), Polling::Mode::Edge);
@@ -184,9 +217,14 @@ IoWorker::run() {
                         return;
                     }
                 } else {
-                    auto& peer = getPeer(event.tag);
                     if (event.flags.hasFlag(NotifyOn::Read)) {
-                        handleIncoming(peer);
+                        auto fd = event.tag.value();
+                        if (fd == timerFd) {
+                            handleTimeout();
+                        } else {
+                            auto& peer = getPeer(event.tag);
+                            handleIncoming(peer);
+                        }
                     }
                     else if (event.flags.hasFlag(NotifyOn::Write)) {
                         auto fd = event.tag.value();
@@ -212,6 +250,29 @@ IoWorker::run() {
             }
             timeout = std::chrono::milliseconds(0);
             break;
+        }
+    }
+}
+
+void
+IoWorker::handleTimeout() {
+
+    auto& entry = timeout.unsafeGet();
+
+    uint64_t numWakeups;
+    int res = ::read(timerFd, &numWakeups, sizeof numWakeups);
+    if (res == -1) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+            return;
+        else
+            entry.reject(Error::system("Could not read timerfd"));
+    } else {
+        if (res != sizeof(numWakeups)) {
+            entry.reject(Error("Read invalid number of bytes for timer fd: "
+                        + std::to_string(timerFd)));
+        }
+        else {
+            entry.resolve(numWakeups);
         }
     }
 }

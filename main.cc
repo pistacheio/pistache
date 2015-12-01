@@ -7,6 +7,16 @@
 
 using namespace std;
 
+struct ExceptionPrinter {
+    void operator()(std::exception_ptr exc) const {
+        try {
+            std::rethrow_exception(exc);
+        } catch (const std::exception& e) {
+            std::cerr << "An exception occured: " << e.what() << std::endl;
+        }
+    }
+};
+
 class MyHandler : public Net::Http::Handler {
     void onRequest(const Net::Http::Request& req, Net::Http::Response response) {
         if (req.resource() == "/ping") {
@@ -36,6 +46,13 @@ class MyHandler : public Net::Http::Handler {
         }
         else if (req.resource() == "/exception") {
             throw std::runtime_error("Exception thrown in the handler");
+        }
+        else if (req.resource() == "/timeout") {
+            response
+                .timeoutAfter(std::chrono::seconds(1))
+                .then([=](Net::Http::Response *response) {
+                    response->send(Net::Http::Code::Bad_Request, "Timeout occured");
+            }, Async::NoExcept);
         }
     }
 };
