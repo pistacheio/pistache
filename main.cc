@@ -18,7 +18,11 @@ struct ExceptionPrinter {
 };
 
 class MyHandler : public Net::Http::Handler {
-    void onRequest(const Net::Http::Request& req, Net::Http::Response response) {
+    void onRequest(
+            const Net::Http::Request& req,
+            Net::Http::Response response,
+            Net::Http::Timeout timeout) {
+
         if (req.resource() == "/ping") {
             if (req.method() == Net::Http::Method::Get) {
 
@@ -28,12 +32,10 @@ class MyHandler : public Net::Http::Handler {
                     .add<Header::Server>("lys")
                     .add<Header::ContentType>(MIME(Text, Plain));
 
-                auto w = response.beginWrite(Net::Http::Code::Ok);
-
-                std::ostream os(w);
+                std::ostream os(response.rdbuf());
                 os << "PONG";
 
-                w.send().then([](ssize_t bytes) {
+                response.send(Net::Http::Code::Ok).then([](ssize_t bytes) {
                     std::cout << "Sent total of " << bytes << " bytes" << std::endl;
                 }, Async::IgnoreException);
 
@@ -48,12 +50,14 @@ class MyHandler : public Net::Http::Handler {
             throw std::runtime_error("Exception thrown in the handler");
         }
         else if (req.resource() == "/timeout") {
-            response
-                .timeoutAfter(std::chrono::seconds(1))
-                .then([=](Net::Http::Response *response) {
-                    response->send(Net::Http::Code::Bad_Request, "Timeout occured");
-            }, Async::NoExcept);
+            timeout.arm(std::chrono::seconds(5));
         }
+    }
+
+    void onTimeout(const Net::Http::Request& req, Net::Http::Response response) {
+        response
+            .send(Net::Http::Code::Request_Timeout, "Timeout")
+            .then([=](ssize_t) { }, ExceptionPrinter());
     }
 };
 

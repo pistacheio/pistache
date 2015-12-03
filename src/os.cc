@@ -195,7 +195,7 @@ namespace Polling {
 
                 Event event(tag);
                 event.flags = toNotifyOn(ev->events);
-                events.push_back(tag);
+                events.push_back(event);
             }
         }
 
@@ -212,6 +212,8 @@ namespace Polling {
             events |= EPOLLOUT;
         if (interest.hasFlag(NotifyOn::Hangup))
             events |= EPOLLHUP;
+        if (interest.hasFlag(NotifyOn::Shutdown))
+            events |= EPOLLRDHUP;
 
         return events;
     }
@@ -226,6 +228,9 @@ namespace Polling {
             flags.setFlag(NotifyOn::Write);
         if (events & EPOLLHUP)
             flags.setFlag(NotifyOn::Hangup);
+        if (events & EPOLLRDHUP) {
+            flags.setFlag(NotifyOn::Shutdown);
+        }
 
         return flags;
     }

@@ -52,10 +52,6 @@ public:
 
     Async::Promise<ssize_t> send(const void* buf, size_t len);
 
-    IoWorker *io() {
-        return io_;
-    }
-
 private:
     IoWorker* io_;
 

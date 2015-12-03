@@ -71,7 +71,7 @@ public:
     friend class Private::BodyStep;
     friend class Private::Parser;
 
-    Request();
+    friend class Handler;
 
     Version version() const;
     Method method() const;
@@ -82,88 +82,33 @@ public:
     const Header::Collection& headers() const;
     const Uri::Query& query() const;
 
+    std::shared_ptr<Tcp::Peer> peer() const;
+
 private:
+    Request();
+
+    void associatePeer(const std::shared_ptr<Tcp::Peer>& peer) {
+        if (peer_.use_count() > 0)
+            throw std::runtime_error("A peer was already associated to the response");
+
+        peer_ = peer;
+    }
+
     Method method_;
     std::string resource_;
     Uri::Query query_;
+
+    std::weak_ptr<Tcp::Peer> peer_;
 };
 
 class Handler;
-
-class ResponseWriter : private Message {
-public:
-    ResponseWriter(const ResponseWriter& other) = delete;
-    ResponseWriter& operator=(const ResponseWriter& other) = delete;
-
-    ResponseWriter(ResponseWriter&& other)
-        : Message(std::move(other))
-        , peer_(std::move(other.peer_))
-        , stream_(std::move(other.stream_))
-    { }
-
-    ResponseWriter& operator=(ResponseWriter&& other) {
-        Message::operator=(std::move(other));
-        peer_ = std::move(other.peer_);
-        stream_ = std::move(other.stream_);
-
-        return *this;
-    }
-
-    friend class Response;
-
-    const Header::Collection& headers() const {
-        return headers_;
-    }
-
-    Code code() const {
-        return code_;
-    }
-
-    void setCode(Code code) {
-        code_ = code;
-    }
-
-    std::streambuf* rdbuf() {
-        return &stream_;
-    }
-
-    operator std::streambuf*() {
-        return &stream_;
-    }
-
-    Async::Promise<ssize_t> send() const;
-
-private:
-    ResponseWriter(Message&& other, size_t size, std::weak_ptr<Tcp::Peer> peer)
-        : Message(std::move(other))
-        , stream_(size)
-        , peer_(peer)
-    {
-    }
-
-    ResponseWriter(const Message& other, size_t size, std::weak_ptr<Tcp::Peer> peer)
-        : Message(other)
-        , stream_(size)
-        , peer_(peer)
-    {
-    }
-
-    std::shared_ptr<Tcp::Peer> peer() const {
-        if (peer_.expired()) {
-            throw std::runtime_error("Broken pipe");
-        }
-
-        return peer_.lock();
-    }
-
-    NetworkStream stream_;
-    std::weak_ptr<Tcp::Peer> peer_;
-};
+class Timeout;
 
 // 6. Response
 class Response : private Message {
 public:
     friend class Handler;
+    friend class Timeout;
 
     static constexpr size_t DefaultStreamSize = 512;
 
@@ -173,9 +118,13 @@ public:
     Response(Response&& other)
         : Message(std::move(other))
         , peer_(other.peer_)
+        , stream_(512)
+        , io_(other.io_)
     { }
     Response& operator=(Response&& other) {
+        Message::operator=(std::move(other));
         peer_ = other.peer_;
+        io_ = other.io_;
         return *this;
     }
 
@@ -202,7 +151,8 @@ public:
     }
 
     Async::Promise<ssize_t> send(Code code) {
-        return send(code, "");
+        code_ = code;
+        return putOnWire();
     }
     Async::Promise<ssize_t> send(
             Code code,
@@ -219,44 +169,92 @@ public:
                 headers_.add(std::make_shared<Header::ContentType>(mime));
         }
 
-        ResponseWriter w(*this, body.size(), peer_);
-        std::ostream os(w);
+        std::ostream os(&stream_);
         os << body;
+
         if (!os)
             return Async::Promise<ssize_t>::rejected(Error("Response exceeded buffer size"));
-        return w.send();
+
+        return putOnWire();
     }
 
-    /* @Revisit: not sure about the name yet */
-    ResponseWriter
-    beginWrite(Code code = Code::Ok, size_t size = DefaultStreamSize) {
-        code_ = code;
-        return ResponseWriter(std::move(*this), size, peer_);
-    }
 
-    Async::Promise<Response *> timeoutAfter(std::chrono::milliseconds timeout);
+    std::streambuf *rdbuf() {
+        return &stream_;
+    }
 
 private:
-    Response()
+    Response(Tcp::IoWorker* io)
         : Message()
+        , stream_(512)
+        , io_(io)
     { }
 
     std::shared_ptr<Tcp::Peer> peer() const {
-        if (peer_.expired()) {
-            throw std::runtime_error("Broken pipe");
-        }
+        if (peer_.expired())
+            throw std::runtime_error("Write failed: Broken pipe");
 
         return peer_.lock();
     }
 
-    void associatePeer(const std::shared_ptr<Tcp::Peer>& peer) {
+    template<typename Ptr>
+    void associatePeer(const Ptr& peer) {
         if (peer_.use_count() > 0)
             throw std::runtime_error("A peer was already associated to the response");
 
         peer_ = peer;
     }
 
+    Async::Promise<ssize_t> putOnWire() const;
+
     std::weak_ptr<Tcp::Peer> peer_;
+    NetworkStream stream_;
+    Tcp::IoWorker *io_;
+};
+
+class Timeout {
+public:
+
+    friend class Handler;
+
+    template<typename Duration>
+    void arm(Duration duration) {
+        Async::Promise<uint64_t> p([=](Async::Resolver& resolve, Async::Rejection& reject) {
+            io->armTimer(duration, resolve, reject);
+        });
+
+        p.then(
+            [=](uint64_t numWakeup) {
+                this->onTimeout(numWakeup);
+        },
+        [=](std::exception_ptr exc) {
+            std::rethrow_exception(exc);
+        });
+    }
+
+    void disarm() {
+        io->disarmTimer();
+    }
+
+private:
+    Timeout(Tcp::IoWorker* io,
+            Handler* handler,
+            const std::shared_ptr<Tcp::Peer>& peer,
+            const Request& request)
+        : io(io)
+        , handler(handler)
+        , peer(peer)
+        , request(request)
+    { }
+
+
+    void onTimeout(uint64_t numWakeup);
+
+    Handler* handler;
+    std::weak_ptr<Tcp::Peer> peer;
+    Request request;
+
+    Tcp::IoWorker *io;
 };
 
 namespace Private {
@@ -358,7 +356,9 @@ public:
     void onConnection(const std::shared_ptr<Tcp::Peer>& peer);
     void onDisconnection(const std::shared_ptr<Tcp::Peer>& peer);
 
-    virtual void onRequest(const Request& request, Response response) = 0;
+    virtual void onRequest(const Request& request, Response response, Timeout timeout) = 0;
+
+    virtual void onTimeout(const Request& request, Response response);
 
 private:
     Private::Parser& getParser(const std::shared_ptr<Tcp::Peer>& peer) const;

@@ -440,7 +440,7 @@ namespace Async {
         { }
 
         template<typename Arg>
-        bool operator()(Arg&& arg) {
+        bool operator()(Arg&& arg) const {
             typedef typename std::remove_reference<Arg>::type Type;
 
             if (core_->state != State::Pending)
@@ -461,7 +461,7 @@ namespace Async {
             return true;
         }
 
-        bool operator()() {
+        bool operator()() const {
             if (core_->state != State::Pending)
                 throw Error("Attempt to resolve a fulfilled promise");
 
@@ -488,7 +488,7 @@ namespace Async {
 
 
         template<typename Exc>
-        bool operator()(Exc exc) {
+        bool operator()(Exc exc) const {
             if (core_->state != State::Pending)
                 throw Error("Attempt to reject a fulfilled promise");
 

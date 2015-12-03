@@ -6,6 +6,7 @@
 
 #pragma once
 #include <type_traits>
+#include <climits>
 #include <iostream>
 
 // Looks like gcc 4.6 does not implement std::underlying_type
@@ -28,15 +29,31 @@ namespace detail {
     template<typename T> struct UnderlyingType {
         typedef typename TypeStorage<sizeof(T)>::Type Type;
     };
+
+    template<typename Enum>
+    struct HasNone {
+        template<typename U>
+        static auto test(U *) -> decltype(U::None, std::true_type());
+
+        template<typename U>
+        static auto test(...) -> std::false_type;
+
+        static constexpr bool value =
+            std::is_same<decltype(test<Enum>(0)), std::true_type>::value;
+    };
 }
 
 template<typename T>
 class Flags {
 public:
-    static_assert(std::is_enum<T>::value, "Flags only works with enumerations");
     typedef typename detail::UnderlyingType<T>::Type Type;
 
-    Flags() { }
+    static_assert(std::is_enum<T>::value, "Flags only works with enumerations");
+    static_assert(detail::HasNone<T>::value, "The enumartion needs a None value");
+    static_assert(static_cast<Type>(T::None) == 0, "None should be 0");
+
+    Flags() : val(T::None) {
+    }
 
     Flags(T val) : val(val)
     {
@@ -83,13 +100,12 @@ public:
 #undef DEFINE_BITWISE_OP
 
     bool hasFlag(T flag) const {
-        return static_cast<T>(
-                    static_cast<Type>(val) & static_cast<Type>(flag)
-               ) == flag;
+        return static_cast<Type>(val) & static_cast<Type>(flag);
     }
 
     Flags<T>& setFlag(T flag) {
-        return *this &= flag;
+        *this |= flag;
+        return *this;
     }
 
     Flags<T>& toggleFlag(T flag) {
@@ -115,3 +131,15 @@ private:
 #define DECLARE_FLAGS_OPERATORS(T) \
     DEFINE_BITWISE_OP(&, T) \
     DEFINE_BITWISE_OP(|, T)
+
+template<typename T>
+std::ostream& operator<<(std::ostream& os, Flags<T> flags) {
+    typedef typename detail::UnderlyingType<T>::Type UnderlyingType;
+
+    auto val = static_cast<UnderlyingType>(static_cast<T>(flags));
+    for (ssize_t i = (sizeof(UnderlyingType) * CHAR_BIT) - 1; i >= 0; --i) {
+        os << ((val >> i) & 0x1);
+    }
+
+    return os;
+}

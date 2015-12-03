@@ -49,6 +49,8 @@ IoWorker::~IoWorker() {
 void
 IoWorker::start(const std::shared_ptr<Handler>& handler, Flags<Options> options) {
     handler_ = handler;
+    handler_->io_ = this;
+
     options_ = options;
 
     thread.reset(new std::thread([this]() {
@@ -74,7 +76,7 @@ IoWorker::pin(const CpuSet& set) {
 }
 
 void
-IoWorker::setTimeoutMs(
+IoWorker::armTimer(
         std::chrono::milliseconds value,
         Async::Resolver resolve, Async::Rejection reject)
 {
@@ -99,8 +101,23 @@ IoWorker::setTimeoutMs(
         return;
     }
 
-    timeout = Some(Timeout(value, std::move(resolve), std::move(reject)));
+    timer = Some(Timer(value, std::move(resolve), std::move(reject)));
 
+}
+
+void
+IoWorker::disarmTimer()
+{
+    itimerspec spec;
+    spec.it_value.tv_sec = spec.it_value.tv_nsec = 0;
+    spec.it_interval.tv_sec = spec.it_interval.tv_nsec = 0;
+
+    int res = timerfd_settime(timerFd, 0, &spec, 0);
+
+    if (res == -1)
+        throw Error::system("Could not set timer time");
+
+    timer = None();
 }
 
 void
@@ -147,8 +164,7 @@ IoWorker::handleIncoming(const std::shared_ptr<Peer>& peer) {
                 }
             } else {
                 if (errno == ECONNRESET) {
-                    handler_->onDisconnection(peer);
-                    close(fd);
+                    handlePeerDisconnection(peer);
                 }
                 else {
                     throw std::runtime_error(strerror(errno));
@@ -157,8 +173,7 @@ IoWorker::handleIncoming(const std::shared_ptr<Peer>& peer) {
             break;
         }
         else if (bytes == 0) {
-            handler_->onDisconnection(peer);
-            close(fd);
+            handlePeerDisconnection(peer);
             break;
         }
 
@@ -185,9 +200,26 @@ IoWorker::handleNewPeer(const std::shared_ptr<Peer>& peer)
     peer->io_ = this;
 
     handler_->onConnection(peer);
-    poller.addFd(fd, NotifyOn::Read, Polling::Tag(fd), Polling::Mode::Edge);
+    poller.addFd(fd, NotifyOn::Read | NotifyOn::Shutdown, Polling::Tag(fd), Polling::Mode::Edge);
 }
 
+void
+IoWorker::handlePeerDisconnection(const std::shared_ptr<Peer>& peer)
+{
+    handler_->onDisconnection(peer);
+
+    int fd = peer->fd();
+    {
+        std::unique_lock<std::mutex> guard(peersMutex);
+        auto it = peers.find(fd);
+        if (it == std::end(peers))
+            throw std::runtime_error("Could not find peer to erase");
+
+        peers.erase(it);
+    }
+
+    close(fd);
+}
 
 void
 IoWorker::run() {
@@ -226,6 +258,9 @@ IoWorker::run() {
                             handleIncoming(peer);
                         }
                     }
+                    else if (event.flags.hasFlag(NotifyOn::Shutdown)) {
+                        handlePeerDisconnection(getPeer(event.tag));
+                    }
                     else if (event.flags.hasFlag(NotifyOn::Write)) {
                         auto fd = event.tag.value();
                         auto it = toWrite.find(fd);
@@ -257,24 +292,24 @@ IoWorker::run() {
 void
 IoWorker::handleTimeout() {
 
-    auto& entry = timeout.unsafeGet();
-
-    uint64_t numWakeups;
-    int res = ::read(timerFd, &numWakeups, sizeof numWakeups);
-    if (res == -1) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK)
-            return;
-        else
-            entry.reject(Error::system("Could not read timerfd"));
-    } else {
-        if (res != sizeof(numWakeups)) {
-            entry.reject(Error("Read invalid number of bytes for timer fd: "
-                        + std::to_string(timerFd)));
+    optionally_do(timer, [=](const Timer& entry) {
+        uint64_t numWakeups;
+        int res = ::read(timerFd, &numWakeups, sizeof numWakeups);
+        if (res == -1) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+                return;
+            else
+                entry.reject(Error::system("Could not read timerfd"));
+        } else {
+            if (res != sizeof(numWakeups)) {
+                entry.reject(Error("Read invalid number of bytes for timer fd: "
+                            + std::to_string(timerFd)));
+            }
+            else {
+                entry.resolve(numWakeups);
+            }
         }
-        else {
-            entry.resolve(numWakeups);
-        }
-    }
+    });
 }
 
 Async::Promise<ssize_t>

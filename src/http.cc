@@ -348,67 +348,60 @@ Request::query() const {
     return query_;
 }
 
-Async::Promise<Response *>
-Response::timeoutAfter(std::chrono::milliseconds timeout)
-{
-#if 0
-    Async::Promise<uint64_t> promise([=](Async::Resolver& resolve, Async::Rejection& reject) {
-       peer()->io()->setTimeout(timeout, resolve, reject);
-   }); 
+std::shared_ptr<Tcp::Peer>
+Request::peer() const {
+    auto p = peer_.lock();
 
-    promise.then([=](uint64_t) {
-        send(Code::Bad_Request, "A timeout occured");
-    }, Async::NoExcept);
+    if (!p) throw std::runtime_error("Failed to retrieve peer: Broken pipe");
 
-    return promise;
-#endif
-    Async::Promise<uint64_t> promise([=](Async::Resolver& resolve, Async::Rejection& reject) {
-       peer()->io()->setTimeout(timeout, resolve, reject);
-   }); 
-
-    return promise.then([=](uint64_t) {
-        auto p = Async::Promise<Response *>::resolved(this);
-
-        return p;
-    }, Async::NoExcept);
+    return p;
 }
 
 Async::Promise<ssize_t>
-ResponseWriter::send() const
+Response::putOnWire() const
 {
-    auto body = stream_.buffer();
+    try {
+        auto body = stream_.buffer();
 
-    NetworkStream stream(512 + body.len);
-    std::ostream os(&stream);
+        NetworkStream stream(512 + body.len);
+        std::ostream os(&stream);
 
 #define OUT(...) \
-    do { \
-        __VA_ARGS__; \
-        if (!os) { \
-            return Async::Promise<ssize_t>::rejected(Error("Response exceeded buffer size")); \
-        } \
-    } while (0);
+        do { \
+            __VA_ARGS__; \
+            if (!os) { \
+                return Async::Promise<ssize_t>::rejected(Error("Response exceeded buffer size")); \
+            } \
+        } while (0);
 
-    OUT(os << "HTTP/1.1 ");
-    OUT(os << static_cast<int>(code_));
-    OUT(os << ' ');
-    OUT(os << code_);
-    OUT(os << crlf);
-
-    for (const auto& header: headers_.list()) {
-        OUT(os << header->name() << ": ");
-        OUT(header->write(os));
+        OUT(os << "HTTP/1.1 ");
+        OUT(os << static_cast<int>(code_));
+        OUT(os << ' ');
+        OUT(os << code_);
         OUT(os << crlf);
+
+        for (const auto& header: headers_.list()) {
+            OUT(os << header->name() << ": ");
+            OUT(header->write(os));
+            OUT(os << crlf);
+        }
+
+        OUT(writeHeader<Header::ContentLength>(os, body.len));
+        OUT(os << crlf);
+
+        OUT(os.write(static_cast<const char *>(body.data), body.len));
+
+        auto buf = stream.buffer();
+
+        if (io_) {
+            io_->disarmTimer();
+        }
+
+        return peer()->send(buf.data, buf.len);
+
+    } catch (const std::runtime_error& e) {
+        return Async::Promise<ssize_t>::rejected(e);
     }
-
-    OUT(writeHeader<Header::ContentLength>(os, body.len));
-    OUT(os << crlf);
-
-    OUT(os.write(static_cast<const char *>(body.data), body.len));
-
-    auto buf = stream.buffer();
-
-    return peer()->send(buf.data, buf.len);
 }
 
 void
@@ -422,19 +415,23 @@ Handler::onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer
 
         auto state = parser.parse();
         if (state == Private::State::Done) {
-            Response response;
+            Response response(io());
             response.associatePeer(peer);
-            onRequest(parser.request, std::move(response));
+
+            Timeout timeout(io(), this, peer, parser.request);
+
+            parser.request.associatePeer(peer);
+            onRequest(parser.request, std::move(response), std::move(timeout));
             parser.reset();
         }
     } catch (const HttpError &err) {
-        Response response;
+        Response response(io());
         response.associatePeer(peer);
         response.send(static_cast<Code>(err.code()), err.reason());
         getParser(peer).reset();
     }
     catch (const std::exception& e) {
-        Response response;
+        Response response(io());
         response.associatePeer(peer);
         response.send(Code::Internal_Server_Error, e.what());
         getParser(peer).reset();
@@ -448,6 +445,20 @@ Handler::onConnection(const std::shared_ptr<Tcp::Peer>& peer) {
 
 void
 Handler::onDisconnection(const shared_ptr<Tcp::Peer>& peer) {
+}
+
+void
+Handler::onTimeout(const Request& request, Response response) {
+}
+
+void
+Timeout::onTimeout(uint64_t numWakeup) {
+    if (!peer.lock()) return;
+
+    Response response(io);
+    response.associatePeer(peer);
+
+    handler->onTimeout(request, std::move(response));
 }
 
 Private::Parser&

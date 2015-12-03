@@ -40,12 +40,14 @@ public:
 
     void shutdown();
     template<typename Duration>
-    void setTimeout(Duration timeout, Async::Resolver resolve, Async::Rejection reject) {
-        setTimeoutMs(std::chrono::duration_cast<std::chrono::milliseconds>(timeout), 
+
+    void armTimer(Duration timeout, Async::Resolver resolve, Async::Rejection reject) {
+        armTimer(std::chrono::duration_cast<std::chrono::milliseconds>(timeout), 
                    std::move(resolve),
                    std::move(reject));
     }
 
+    void disarmTimer();
 
 private:
     struct OnHoldWrite {
@@ -65,10 +67,10 @@ private:
     };
 
     void
-    setTimeoutMs(std::chrono::milliseconds value, Async::Resolver, Async::Rejection reject);
+    armTimer(std::chrono::milliseconds value, Async::Resolver, Async::Rejection reject);
 
-    struct Timeout {
-        Timeout(std::chrono::milliseconds value,
+    struct Timer {
+        Timer(std::chrono::milliseconds value,
                 Async::Resolver resolve,
                 Async::Rejection reject)
           : value(value)
@@ -88,7 +90,7 @@ private:
     std::unordered_map<Fd, std::shared_ptr<Peer>> peers;
     std::unordered_map<Fd, OnHoldWrite> toWrite;
 
-    Optional<Timeout> timeout;
+    Optional<Timer> timer;
     Fd timerFd;
 
     std::shared_ptr<Handler> handler_;
@@ -100,6 +102,8 @@ private:
     std::shared_ptr<Peer>& getPeer(Polling::Tag tag);
 
     Async::Promise<ssize_t> asyncWrite(Fd fd, const void *buf, size_t len);
+
+    void handlePeerDisconnection(const std::shared_ptr<Peer>& peer);
 
     void handleIncoming(const std::shared_ptr<Peer>& peer);
     void handleTimeout();

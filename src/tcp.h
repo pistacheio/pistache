@@ -28,8 +28,12 @@ enum class Options : uint64_t {
 
 DECLARE_FLAGS_OPERATORS(Options)
 
+class IoWorker;
+
 class Handler {
 public:
+    friend class IoWorker;
+
     Handler();
     ~Handler();
 
@@ -38,6 +42,11 @@ public:
     virtual void onConnection(const std::shared_ptr<Tcp::Peer>& peer);
     virtual void onDisconnection(const std::shared_ptr<Tcp::Peer>& peer);
 
+protected:
+    IoWorker *io() { return io_; }
+
+private:
+    IoWorker *io_;
 };
 
 } // namespace Tcp

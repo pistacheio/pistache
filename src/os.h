@@ -52,9 +52,12 @@ enum class Mode {
 };
 
 enum class NotifyOn {
-    Read,
-    Write,
-    Hangup
+    None = 0,
+
+    Read = 1,
+    Write = Read << 1,
+    Hangup = Write << 1,
+    Shutdown = Hangup << 1
 };
 
 DECLARE_FLAGS_OPERATORS(NotifyOn);
@@ -79,7 +82,7 @@ inline constexpr bool operator==(Tag lhs, Tag rhs) {
 }
 
 struct Event {
-    Event(Tag tag) :
+    explicit Event(Tag tag) :
         tag(tag)
     { }
 
