@@ -29,6 +29,12 @@ namespace Private {
     class BodyStep;
 }
 
+template< class CharT, class Traits>
+std::basic_ostream<CharT, Traits>& crlf(std::basic_ostream<CharT, Traits>& os) {
+    static constexpr char CRLF[] = {0xD, 0xA};
+    os.write(CRLF, 2);
+}
+
 // 4. HTTP Message
 class Message {
 public:
@@ -103,6 +109,136 @@ private:
 
 class Handler;
 class Timeout;
+class Response;
+
+class Timeout {
+public:
+
+    friend class Handler;
+
+    template<typename Duration>
+    void arm(Duration duration) {
+        Async::Promise<uint64_t> p([=](Async::Resolver& resolve, Async::Rejection& reject) {
+            io->armTimer(duration, resolve, reject);
+        });
+
+        p.then(
+            [=](uint64_t numWakeup) {
+                this->armed = false;
+                this->onTimeout(numWakeup);
+        },
+        [=](std::exception_ptr exc) {
+            std::rethrow_exception(exc);
+        });
+
+        armed = true;
+    }
+
+    void disarm() {
+        io->disarmTimer();
+        armed = false;
+    }
+
+    bool isArmed() const {
+        return armed;
+    }
+
+private:
+    Timeout(Tcp::IoWorker* io,
+            Handler* handler,
+            const std::shared_ptr<Tcp::Peer>& peer,
+            const Request& request)
+        : io(io)
+        , handler(handler)
+        , peer(peer)
+        , request(request)
+        , armed(false)
+    { }
+
+    void onTimeout(uint64_t numWakeup);
+
+    Handler* handler;
+    std::weak_ptr<Tcp::Peer> peer;
+    Request request;
+
+    Tcp::IoWorker *io;
+    bool armed;
+};
+
+class ResponseStream : private Message {
+public:
+    friend class Response;
+
+    template<typename T>
+    friend
+    ResponseStream& operator<<(ResponseStream& stream, const T& val);
+
+    const Header::Collection& headers() const {
+        return headers_;
+    }
+
+    Code code() const {
+        return code_;
+    }
+
+    void flush();
+    void ends();
+
+private:
+    ResponseStream(
+            Message&& other,
+            std::weak_ptr<Tcp::Peer> peer,
+            Tcp::IoWorker* io,
+            size_t streamSize)
+        : Message(std::move(other))
+        , peer_(std::move(peer))
+        , buf_(streamSize)
+        , io_(io)
+    {
+        writeStatusLine();
+        writeHeaders();
+    }
+
+    void writeStatusLine();
+    void writeHeaders();
+
+    std::shared_ptr<Tcp::Peer> peer() const {
+        if (peer_.expired())
+            throw std::runtime_error("Write failed: Broken pipe");
+
+        return peer_.lock();
+    }
+
+    std::weak_ptr<Tcp::Peer> peer_;
+    DynamicStreamBuf buf_;
+    Tcp::IoWorker* io_;
+};
+
+inline ResponseStream& ends(ResponseStream &stream) {
+    stream.ends();
+    return stream;
+}
+
+inline ResponseStream& flush(ResponseStream& stream) {
+    stream.flush();
+    return stream;
+}
+
+template<typename T>
+ResponseStream& operator<<(ResponseStream& stream, const T& val) {
+    Net::Size<T> size;
+
+    std::ostream os(&stream.buf_);
+    os << size(val) << crlf;
+    os << val << crlf;
+
+    return stream;
+}
+
+inline ResponseStream&
+operator<<(ResponseStream& stream, ResponseStream & (*func)(ResponseStream &)) {
+    return (*func)(stream);
+}
 
 // 6. Response
 class Response : private Message {
@@ -118,17 +254,16 @@ public:
     Response(Response&& other)
         : Message(std::move(other))
         , peer_(other.peer_)
-        , stream_(512)
+        , buf_(std::move(other.buf_))
         , io_(other.io_)
     { }
     Response& operator=(Response&& other) {
         Message::operator=(std::move(other));
-        peer_ = other.peer_;
+        peer_ = std::move(other.peer_);
         io_ = other.io_;
+        buf_ = std::move(other.buf_);
         return *this;
     }
-
-    Response(const Response& other) = default;
 
     const Header::Collection& headers() const {
         return headers_;
@@ -152,7 +287,7 @@ public:
 
     Async::Promise<ssize_t> send(Code code) {
         code_ = code;
-        return putOnWire();
+        return putOnWire("");
     }
     Async::Promise<ssize_t> send(
             Code code,
@@ -169,24 +304,20 @@ public:
                 headers_.add(std::make_shared<Header::ContentType>(mime));
         }
 
-        std::ostream os(&stream_);
-        os << body;
-
-        if (!os)
-            return Async::Promise<ssize_t>::rejected(Error("Response exceeded buffer size"));
-
-        return putOnWire();
+        return putOnWire(body);
     }
 
+    ResponseStream stream(Code code, size_t streamSize = DefaultStreamSize) {
+        code_ = code;
 
-    std::streambuf *rdbuf() {
-        return &stream_;
+        return ResponseStream(std::move(*this), peer_, io_, streamSize);
     }
+
 
 private:
     Response(Tcp::IoWorker* io)
         : Message()
-        , stream_(512)
+        , buf_(DefaultStreamSize)
         , io_(io)
     { }
 
@@ -205,57 +336,13 @@ private:
         peer_ = peer;
     }
 
-    Async::Promise<ssize_t> putOnWire() const;
+    Async::Promise<ssize_t> putOnWire(const std::string& body);
 
     std::weak_ptr<Tcp::Peer> peer_;
-    NetworkStream stream_;
+    DynamicStreamBuf buf_;
     Tcp::IoWorker *io_;
 };
 
-class Timeout {
-public:
-
-    friend class Handler;
-
-    template<typename Duration>
-    void arm(Duration duration) {
-        Async::Promise<uint64_t> p([=](Async::Resolver& resolve, Async::Rejection& reject) {
-            io->armTimer(duration, resolve, reject);
-        });
-
-        p.then(
-            [=](uint64_t numWakeup) {
-                this->onTimeout(numWakeup);
-        },
-        [=](std::exception_ptr exc) {
-            std::rethrow_exception(exc);
-        });
-    }
-
-    void disarm() {
-        io->disarmTimer();
-    }
-
-private:
-    Timeout(Tcp::IoWorker* io,
-            Handler* handler,
-            const std::shared_ptr<Tcp::Peer>& peer,
-            const Request& request)
-        : io(io)
-        , handler(handler)
-        , peer(peer)
-        , request(request)
-    { }
-
-
-    void onTimeout(uint64_t numWakeup);
-
-    Handler* handler;
-    std::weak_ptr<Tcp::Peer> peer;
-    Request request;
-
-    Tcp::IoWorker *io;
-};
 
 namespace Private {
 

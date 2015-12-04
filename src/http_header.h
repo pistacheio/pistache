@@ -56,11 +56,13 @@ constexpr uint64_t hash(const char* str)
 #endif
 
 // 3.5 Content Codings
+// 3.6 Transfer Codings
 enum class Encoding {
     Gzip,
     Compress,
     Deflate,
     Identity,
+    Chunked,
     Unknown
 };
 
@@ -180,26 +182,45 @@ private:
     std::vector<Http::CacheDirective> directives_;
 };
 
-
-class ContentEncoding : public Header {
+class EncodingHeader : public Header {
 public:
-    NAME("Content-Encoding")
-
-    ContentEncoding()
-       : encoding_(Encoding::Identity)
-    { }
-
-    explicit ContentEncoding(Encoding encoding)
-       : encoding_(encoding)
-    { }
 
     void parseRaw(const char* str, size_t len);
     void write(std::ostream& os) const;
 
-    Encoding encoding() const { return encoding_; }
+    Encoding encoding() const {
+        return encoding_;
+    }
+
+protected:
+    EncodingHeader(Encoding encoding)
+        : encoding_(encoding)
+    { }
 
 private:
     Encoding encoding_;
+};
+
+class ContentEncoding : public EncodingHeader {
+public:
+    NAME("Content-Encoding")
+
+    ContentEncoding()
+       : EncodingHeader(Encoding::Identity)
+    { }
+
+    explicit ContentEncoding(Encoding encoding)
+       : EncodingHeader(encoding)
+    { }
+};
+
+class TransferEncoding : public EncodingHeader {
+public:
+    NAME("Transfer-Encoding")
+
+    explicit TransferEncoding(Encoding encoding)
+       : EncodingHeader(encoding)
+    { }
 };
 
 class ContentLength : public Header {

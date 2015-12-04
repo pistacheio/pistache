@@ -21,12 +21,6 @@ namespace Net {
 
 namespace Http {
 
-template< class CharT, class Traits>
-std::basic_ostream<CharT, Traits>& crlf(std::basic_ostream<CharT, Traits>& os) {
-    static constexpr char CRLF[] = {0xD, 0xA};
-    os.write(CRLF, 2);
-}
-
 template<typename H, typename Stream, typename... Args>
 typename std::enable_if<Header::IsHeader<H>::value, void>::type
 writeHeader(Stream& stream, Args&& ...args) {
@@ -357,14 +351,79 @@ Request::peer() const {
     return p;
 }
 
+void
+ResponseStream::writeStatusLine() {
+    std::ostream os(&buf_);
+
+#define OUT(...) \
+    do { \
+        __VA_ARGS__; \
+        if (!os) { \
+            throw Error("Response exceeded buffer size"); \
+        } \
+    } while (0);
+
+    OUT(os << "HTTP/1.1 ");
+    OUT(os << static_cast<int>(code_));
+    OUT(os << ' ');
+    OUT(os << code_);
+    OUT(os << crlf);
+
+#undef OUT
+}
+
+void
+ResponseStream::writeHeaders() {
+    std::ostream os(&buf_);
+
+#define OUT(...) \
+    do { \
+        __VA_ARGS__; \
+        if (!os) { \
+            throw Error("Response exceeded buffer size"); \
+        } \
+    } while (0);
+
+    for (const auto& header: headers_.list()) {
+        OUT(os << header->name() << ": ");
+        OUT(header->write(os));
+        OUT(os << crlf);
+    }
+
+    OUT(writeHeader<Header::TransferEncoding>(os, Header::Encoding::Chunked));
+    OUT(os << crlf);
+
+#undef OUT
+
+}
+
+void
+ResponseStream::flush() {
+    io_->disarmTimer();
+    auto buf = buf_.buffer();
+    peer()->send(buf.data, buf.len);
+
+    buf_.clear();
+}
+
+void
+ResponseStream::ends() {
+    std::ostream os(&buf_);
+    os << "0" << crlf;
+    os << crlf;
+
+    if (!os) {
+        throw Error("Response exceeded buffer size");
+    }
+
+    flush();
+}
+
 Async::Promise<ssize_t>
-Response::putOnWire() const
+Response::putOnWire(const std::string& body)
 {
     try {
-        auto body = stream_.buffer();
-
-        NetworkStream stream(512 + body.len);
-        std::ostream os(&stream);
+        std::ostream os(&buf_);
 
 #define OUT(...) \
         do { \
@@ -386,18 +445,18 @@ Response::putOnWire() const
             OUT(os << crlf);
         }
 
-        OUT(writeHeader<Header::ContentLength>(os, body.len));
+        OUT(writeHeader<Header::ContentLength>(os, body.size()));
         OUT(os << crlf);
 
-        OUT(os.write(static_cast<const char *>(body.data), body.len));
+        os << body;
 
-        auto buf = stream.buffer();
+        auto buffer = buf_.buffer();
 
-        if (io_) {
-            io_->disarmTimer();
-        }
+        io_->disarmTimer();
 
-        return peer()->send(buf.data, buf.len);
+#undef OUT
+
+        return peer()->send(buffer.data, buffer.len);
 
     } catch (const std::runtime_error& e) {
         return Async::Promise<ssize_t>::rejected(e);

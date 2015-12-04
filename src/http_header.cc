@@ -31,6 +31,8 @@ const char* encodingString(Encoding encoding) {
         return "deflate";
     case Encoding::Identity:
         return "identity";
+    case Encoding::Chunked:
+        return "chunked";
     case Encoding::Unknown:
         return "unknown";
     }
@@ -362,7 +364,7 @@ Accept::write(std::ostream& os) const {
 }
 
 void
-ContentEncoding::parseRaw(const char* str, size_t len) {
+EncodingHeader::parseRaw(const char* str, size_t len) {
     // TODO: case-insensitive
     //
     if (!strncmp(str, "gzip", len)) {
@@ -377,13 +379,16 @@ ContentEncoding::parseRaw(const char* str, size_t len) {
     else if (!strncmp(str, "identity", len)) {
         encoding_ = Encoding::Identity;
     }
+    else if (!strncmp(str, "chunked", len)) {
+        encoding_ = Encoding::Chunked;
+    }
     else {
         encoding_ = Encoding::Unknown;
     }
 }
 
 void
-ContentEncoding::write(std::ostream& os) const {
+EncodingHeader::write(std::ostream& os) const {
     os << encodingString(encoding_);
 }
 

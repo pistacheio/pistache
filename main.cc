@@ -32,12 +32,11 @@ class MyHandler : public Net::Http::Handler {
                     .add<Header::Server>("lys")
                     .add<Header::ContentType>(MIME(Text, Plain));
 
-                std::ostream os(response.rdbuf());
-                os << "PONG";
-
-                response.send(Net::Http::Code::Ok).then([](ssize_t bytes) {
-                    std::cout << "Sent total of " << bytes << " bytes" << std::endl;
-                }, Async::IgnoreException);
+                auto stream = response.stream(Net::Http::Code::Ok);
+                stream << "PO";
+                stream << flush;
+                stream << "NG";
+                stream << ends;
 
             }
         }

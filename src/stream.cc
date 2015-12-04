@@ -7,8 +7,8 @@
 #include <algorithm>
 #include <iostream>
 
-NetworkStream::int_type
-NetworkStream::overflow(NetworkStream::int_type ch) {
+DynamicStreamBuf::int_type
+DynamicStreamBuf::overflow(DynamicStreamBuf::int_type ch) {
     if (!traits_type::eq_int_type(ch, traits_type::eof())) {
         const auto size = data_.size();
         if (size < maxSize_) {
@@ -23,7 +23,7 @@ NetworkStream::overflow(NetworkStream::int_type ch) {
 }
 
 void
-NetworkStream::reserve(size_t size)
+DynamicStreamBuf::reserve(size_t size)
 {
     if (size > maxSize_) size = maxSize_;
     const size_t oldSize = data_.size();

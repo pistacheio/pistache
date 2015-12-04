@@ -7,6 +7,7 @@
 #pragma once
 #include <string>
 #include <sys/socket.h>
+#include <cstring>
 #include <stdexcept>
 
 #ifndef _KERNEL_FASTOPEN
@@ -76,5 +77,68 @@ public:
     Error(std::string message);
     static Error system(const char* message);
 };
+
+template<typename T>
+struct Size { };
+
+template<typename T>
+size_t
+digitsCount(T val) {
+    size_t digits = 0;
+    while (val % 10) {
+        ++digits;
+
+        val /= 10;
+    }
+
+    return digits;
+}
+
+template<>
+struct Size<const char*> {
+    size_t operator()(const char *s) {
+        return std::strlen(s);
+    }
+};
+
+template<size_t N>
+struct Size<char[N]> {
+    constexpr size_t operator()(const char (&arr)[N]) {
+        // We omit the \0
+        return N - 1;
+    }
+};
+
+#define DEFINE_INTEGRAL_SIZE(Int) \
+    template<> \
+    struct Size<Int> { \
+        size_t operator()(Int val) { \
+            return digitsCount(val); \
+        } \
+    }
+
+DEFINE_INTEGRAL_SIZE(uint8_t);
+DEFINE_INTEGRAL_SIZE(int8_t);
+DEFINE_INTEGRAL_SIZE(uint16_t);
+DEFINE_INTEGRAL_SIZE(int16_t);
+DEFINE_INTEGRAL_SIZE(uint32_t);
+DEFINE_INTEGRAL_SIZE(int32_t);
+DEFINE_INTEGRAL_SIZE(uint64_t);
+DEFINE_INTEGRAL_SIZE(int64_t);
+
+template<>
+struct Size<bool> {
+    constexpr size_t operator()(bool) {
+        return 1;
+    }
+};
+
+template<>
+struct Size<char> {
+    constexpr size_t operator()(char) {
+        return 1;
+    }
+};
+
 
 } // namespace Net

@@ -113,7 +113,7 @@ private:
     size_t size;
 };
 
-class NetworkStream : public StreamBuf<char> {
+class DynamicStreamBuf : public StreamBuf<char> {
 public:
     struct Buffer {
         Buffer(const void *data, size_t len)
@@ -129,7 +129,7 @@ public:
     typedef typename Base::traits_type traits_type;
     typedef typename Base::int_type int_type;
 
-    NetworkStream(
+    DynamicStreamBuf(
             size_t size,
             size_t maxSize = std::numeric_limits<uint32_t>::max())
         : maxSize_(maxSize)
@@ -137,17 +137,17 @@ public:
         reserve(size);
     }
 
-    NetworkStream(const NetworkStream& other) = delete;
-    NetworkStream& operator=(const NetworkStream& other) = delete;
+    DynamicStreamBuf(const DynamicStreamBuf& other) = delete;
+    DynamicStreamBuf& operator=(const DynamicStreamBuf& other) = delete;
 
-    NetworkStream(NetworkStream&& other)
+    DynamicStreamBuf(DynamicStreamBuf&& other)
        : maxSize_(other.maxSize_)
        , data_(std::move(other.data_)) {
            setp(other.pptr(), other.epptr());
            other.setp(nullptr, nullptr);
     }
 
-    NetworkStream& operator=(NetworkStream&& other) {
+    DynamicStreamBuf& operator=(DynamicStreamBuf&& other) {
         maxSize_ = other.maxSize_;
         data_ = std::move(other.data_);
         setp(other.pptr(), other.epptr());
@@ -157,6 +157,11 @@ public:
 
     Buffer buffer() const {
         return Buffer(data_.data(), pptr() - &data_[0]);
+    }
+
+    void clear() {
+        data_.clear();
+        this->setp(&data_[0], &data_[0] + data_.capacity());
     }
 
 protected:
