@@ -287,7 +287,7 @@ public:
 
     Async::Promise<ssize_t> send(Code code) {
         code_ = code;
-        return putOnWire("");
+        return putOnWire(nullptr, 0);
     }
     Async::Promise<ssize_t> send(
             Code code,
@@ -304,7 +304,27 @@ public:
                 headers_.add(std::make_shared<Header::ContentType>(mime));
         }
 
-        return putOnWire(body);
+        return putOnWire(body.c_str(), body.size());
+    }
+
+    template<size_t N>
+    Async::Promise<ssize_t> send(
+            Code code,
+            const char (&arr)[N],
+            const Mime::MediaType& mime = Mime::MediaType())
+    {
+        /* @Refactor: code duplication */
+        code_ = code;
+
+        if (mime.isValid()) {
+            auto contentType = headers_.tryGet<Header::ContentType>();
+            if (contentType)
+                contentType->setMime(mime);
+            else
+                headers_.add(std::make_shared<Header::ContentType>(mime));
+        }
+
+        return putOnWire(arr, N - 1);
     }
 
     ResponseStream stream(Code code, size_t streamSize = DefaultStreamSize) {
@@ -336,7 +356,7 @@ private:
         peer_ = peer;
     }
 
-    Async::Promise<ssize_t> putOnWire(const std::string& body);
+    Async::Promise<ssize_t> putOnWire(const char* data, size_t len);
 
     std::weak_ptr<Tcp::Peer> peer_;
     DynamicStreamBuf buf_;

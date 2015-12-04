@@ -39,10 +39,10 @@ public:
     void pin(const CpuSet& set);
 
     void shutdown();
-    template<typename Duration>
 
+    template<typename Duration>
     void armTimer(Duration timeout, Async::Resolver resolve, Async::Rejection reject) {
-        armTimer(std::chrono::duration_cast<std::chrono::milliseconds>(timeout), 
+        armTimerMs(std::chrono::duration_cast<std::chrono::milliseconds>(timeout),
                    std::move(resolve),
                    std::move(reject));
     }
@@ -67,7 +67,7 @@ private:
     };
 
     void
-    armTimer(std::chrono::milliseconds value, Async::Resolver, Async::Rejection reject);
+    armTimerMs(std::chrono::milliseconds value, Async::Resolver, Async::Rejection reject);
 
     struct Timer {
         Timer(std::chrono::milliseconds value,

@@ -420,7 +420,7 @@ ResponseStream::ends() {
 }
 
 Async::Promise<ssize_t>
-Response::putOnWire(const std::string& body)
+Response::putOnWire(const char* data, size_t len)
 {
     try {
         std::ostream os(&buf_);
@@ -445,10 +445,13 @@ Response::putOnWire(const std::string& body)
             OUT(os << crlf);
         }
 
-        OUT(writeHeader<Header::ContentLength>(os, body.size()));
+        OUT(writeHeader<Header::ContentLength>(os, len));
+
         OUT(os << crlf);
 
-        os << body;
+        if (len > 0) {
+            OUT(os.write(data, len));
+        }
 
         auto buffer = buf_.buffer();
 

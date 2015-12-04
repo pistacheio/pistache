@@ -76,7 +76,7 @@ IoWorker::pin(const CpuSet& set) {
 }
 
 void
-IoWorker::armTimer(
+IoWorker::armTimerMs(
         std::chrono::milliseconds value,
         Async::Resolver resolve, Async::Rejection reject)
 {
