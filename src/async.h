@@ -353,8 +353,10 @@ namespace Async {
                     chain_->exc = std::move(exc);
                     chain_->state = State::Rejected;
 
+                    auto core = chain_;
+
                     for (const auto& req: chain_->requests) {
-                        req->reject(chain_);
+                        req->reject(core);
                     }
                 });
             }

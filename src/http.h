@@ -169,6 +169,22 @@ class ResponseStream : private Message {
 public:
     friend class Response;
 
+    ResponseStream(ResponseStream&& other)
+        : Message(std::move(other))
+        , peer_(std::move(other.peer_))
+        , buf_(std::move(other.buf_))
+        , io_(other.io_)
+    { }
+
+    ResponseStream& operator=(ResponseStream&& other) {
+        Message::operator=(std::move(other));
+        peer_ = std::move(other.peer_);
+        buf_ = std::move(other.buf_);
+        io_ = other.io_;
+
+        return *this;
+    }
+
     template<typename T>
     friend
     ResponseStream& operator<<(ResponseStream& stream, const T& val);
