@@ -437,6 +437,7 @@ namespace Async {
 
     class Resolver {
     public:
+
         Resolver(const std::shared_ptr<Private::Core> &core)
             : core_(core)
         { }
@@ -484,10 +485,10 @@ namespace Async {
 
     class Rejection {
     public:
+
         Rejection(const std::shared_ptr<Private::Core>& core)
             : core_(core)
         { }
-
 
         template<typename Exc>
         bool operator()(Exc exc) const {
@@ -508,8 +509,8 @@ namespace Async {
 
     };
 
-    static constexpr Private::IgnoreException IgnoreException;
-    static constexpr Private::NoExcept NoExcept;
+    static constexpr Private::IgnoreException IgnoreException{};
+    static constexpr Private::NoExcept NoExcept{};
 
     template<typename T>
     class Promise : public PromiseBase
@@ -812,34 +813,37 @@ namespace Async {
         typename Results = std::vector<ValueType>
     >
     Promise<Results> whenAll(Iterator first, Iterator last) {
+        /* @Security, assert that last >= first */
+
+        struct Data {
+        public:
+            Data(size_t total, Resolver resolver, Rejection rejection)
+                : total(total)
+                , resolved(0)
+                , rejected(false)
+                , resolve(resolver)
+                , reject(rejection)
+            {
+                results.resize(total);
+            }
+
+            const size_t total;
+            std::atomic<size_t> resolved;
+            std::atomic<bool> rejected;
+
+            Resolver resolve;
+            Rejection reject;
+
+            Results results;
+
+        };
+
         return Promise<Results>([=](Resolver& resolve, Rejection& rejection) {
-            struct Data {
-                Data(const size_t total,
-                     Resolver resolver,
-                     Rejection rejection)
-                 : total(total)
-                 , resolved(0)
-                 , rejected(false)
-                 , resolve(std::move(resolver))
-                 , reject(std::move(rejection))
-                {
-                    results.resize(total);
-                }
-
-                const size_t total;
-                std::atomic<size_t> resolved;
-                std::atomic<bool> rejected;
-
-                Results results;
-
-                Resolver resolve;
-                Rejection reject;
-            };
 
             auto data = std::make_shared<Data>(
-               std::distance(first, last),
-               resolve,
-               rejection
+               static_cast<size_t>(std::distance(first, last)),
+               std::move(resolve),
+               std::move(rejection)
             );
 
             size_t index = 0;

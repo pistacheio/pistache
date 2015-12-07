@@ -14,11 +14,14 @@
 #include <tuple>
 #include <functional>
 
+template<typename T> class Optional;
+
 namespace types {
     template<typename T>
     class Some {
     public:
-        template<typename U> friend class Optional; 
+        template<typename U> friend class ::Optional;
+
         Some(const T &val) : val_(val) { }
         Some(T &&val) : val_(std::move(val)) { }
 
@@ -155,6 +158,8 @@ public:
             }
             none_flag = NoneMarker;
         }
+
+        return *this;
     }
 
 

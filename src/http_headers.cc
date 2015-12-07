@@ -81,6 +81,7 @@ Collection::add(const std::shared_ptr<Header>& header) {
 Collection&
 Collection::addRaw(const Raw& raw) {
     rawHeaders.insert(std::make_pair(raw.name(), raw));
+    return *this;
 }
 
 std::shared_ptr<const Header>

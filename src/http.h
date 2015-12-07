@@ -33,6 +33,8 @@ template< class CharT, class Traits>
 std::basic_ostream<CharT, Traits>& crlf(std::basic_ostream<CharT, Traits>& os) {
     static constexpr char CRLF[] = {0xD, 0xA};
     os.write(CRLF, 2);
+
+    return os;
 }
 
 // 4. HTTP Message

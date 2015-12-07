@@ -308,8 +308,6 @@ public:
     NAME("Host");
 
     Host()
-     : host_()
-     , port_(-1)
     { }
 
     explicit Host(const std::string& host, Net::Port port = 80)

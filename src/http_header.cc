@@ -171,7 +171,7 @@ CacheControl::parseRaw(const char* str, size_t len) {
             }
 
             int c;
-            while ((c = cursor.current()) != StreamCursor::Eof && c == ',' || c == ' ')
+            while ((c = cursor.current()) != StreamCursor::Eof && (c == ',' || c == ' '))
                 cursor.advance(1);
         }
 
@@ -209,6 +209,8 @@ CacheControl::write(std::ostream& os) const {
                 return "min-fresh";
             case CacheDirective::SMaxAge:
                 return "s-maxage";
+            case CacheDirective::Ext:
+                return "";
         }
     };
 
@@ -219,8 +221,9 @@ CacheControl::write(std::ostream& os) const {
             case CacheDirective::MinFresh:
             case CacheDirective::SMaxAge:
                 return true;
+            default:
+                return false;
         }
-        return false;
     };
 
     for (std::vector<CacheDirective>::size_type i = 0; i < directives_.size(); ++i) {
@@ -312,7 +315,10 @@ Host::parse(const std::string& data) {
 void
 Host::write(std::ostream& os) const {
     os << host_;
-    if (port_ != -1) {
+    /* @Clarity @Robustness: maybe a found a literal different than zero
+       to represent a null port ?
+    */
+    if (port_ != 0) {
         os << ":" << port_;
     }
 }

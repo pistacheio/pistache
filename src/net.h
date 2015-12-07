@@ -96,14 +96,14 @@ digitsCount(T val) {
 
 template<>
 struct Size<const char*> {
-    size_t operator()(const char *s) {
+    size_t operator()(const char *s) const {
         return std::strlen(s);
     }
 };
 
 template<size_t N>
 struct Size<char[N]> {
-    constexpr size_t operator()(const char (&arr)[N]) {
+    constexpr size_t operator()(const char (&arr)[N]) const {
         // We omit the \0
         return N - 1;
     }
@@ -112,7 +112,7 @@ struct Size<char[N]> {
 #define DEFINE_INTEGRAL_SIZE(Int) \
     template<> \
     struct Size<Int> { \
-        size_t operator()(Int val) { \
+        size_t operator()(Int val) const { \
             return digitsCount(val); \
         } \
     }
@@ -128,14 +128,14 @@ DEFINE_INTEGRAL_SIZE(int64_t);
 
 template<>
 struct Size<bool> {
-    constexpr size_t operator()(bool) {
+    constexpr size_t operator()(bool) const {
         return 1;
     }
 };
 
 template<>
 struct Size<char> {
-    constexpr size_t operator()(char) {
+    constexpr size_t operator()(char) const {
         return 1;
     }
 };

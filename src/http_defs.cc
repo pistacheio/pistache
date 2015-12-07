@@ -25,6 +25,7 @@ namespace {
 
     bool parseAscTimeDate(std::tm& tm, const char* str, size_t len) {
         char *p = strptime(str, "%a %b  %d %H:%M:%S %Y", &tm);
+        return p != NULL;
     }
 } // anonymous namespace
 
@@ -139,6 +140,7 @@ std::ostream& operator<<(std::ostream& os, Method method) {
 
 std::ostream& operator<<(std::ostream& os, Code code) {
     os << codeString(code);
+    return os;
 }
 
 HttpError::HttpError(Code code, std::string reason)

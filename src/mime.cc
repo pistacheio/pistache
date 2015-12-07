@@ -228,6 +228,8 @@ MediaType::toString() const {
             return str;
         MIME_TYPES
 #undef TYPE
+        default:
+            return "";
         }
     };
 
@@ -238,6 +240,8 @@ MediaType::toString() const {
             return str;
         MIME_SUBTYPES
 #undef TYPE
+        default:
+            return "";
         }
     };
 
@@ -248,6 +252,8 @@ MediaType::toString() const {
             return "+" str;
         MIME_SUFFIXES
 #undef SUFFIX
+        default:
+            return "";
         }
     };
 
