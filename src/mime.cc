@@ -24,7 +24,7 @@ Q::toString() const {
         return "q=1";
 
     char buff[sizeof("q=0.99")];
-    memset(buff, sizeof buff, 0);
+    memset(buff, 0, sizeof buff);
     if (val_ % 10 == 0)
         snprintf(buff, sizeof buff, "q=%.1f", val_ / 100.0);
     else
