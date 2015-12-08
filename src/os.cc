@@ -204,7 +204,7 @@ namespace Polling {
 
     int
     Epoll::toEpollEvents(Flags<NotifyOn> interest) const {
-        int events;
+        int events = 0;
 
         if (interest.hasFlag(NotifyOn::Read))
             events |= EPOLLIN;

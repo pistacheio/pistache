@@ -54,10 +54,10 @@ enum class Mode {
 enum class NotifyOn {
     None = 0,
 
-    Read = 1,
-    Write = Read << 1,
-    Hangup = Write << 1,
-    Shutdown = Hangup << 1
+    Read     = 1,
+    Write    = Read << 1,
+    Hangup   = Read << 2,
+    Shutdown = Read << 3
 };
 
 DECLARE_FLAGS_OPERATORS(NotifyOn);
