@@ -342,6 +342,7 @@ Request::query() const {
     return query_;
 }
 
+#ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
 std::shared_ptr<Tcp::Peer>
 Request::peer() const {
     auto p = peer_.lock();
@@ -350,6 +351,7 @@ Request::peer() const {
 
     return p;
 }
+#endif
 
 void
 ResponseStream::writeStatusLine() {
@@ -482,7 +484,9 @@ Handler::onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer
 
             Timeout timeout(io(), this, peer, parser.request);
 
+#ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
             parser.request.associatePeer(peer);
+#endif
             onRequest(parser.request, std::move(response), std::move(timeout));
             parser.reset();
         }

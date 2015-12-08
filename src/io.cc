@@ -108,16 +108,18 @@ IoWorker::armTimerMs(
 void
 IoWorker::disarmTimer()
 {
-    itimerspec spec;
-    spec.it_value.tv_sec = spec.it_value.tv_nsec = 0;
-    spec.it_interval.tv_sec = spec.it_interval.tv_nsec = 0;
+    if (!timer.isEmpty()) {
+        itimerspec spec;
+        spec.it_value.tv_sec = spec.it_value.tv_nsec = 0;
+        spec.it_interval.tv_sec = spec.it_interval.tv_nsec = 0;
 
-    int res = timerfd_settime(timerFd, 0, &spec, 0);
+        int res = timerfd_settime(timerFd, 0, &spec, 0);
 
-    if (res == -1)
-        throw Error::system("Could not set timer time");
+        if (res == -1)
+            throw Error::system("Could not set timer time");
 
-    timer = None();
+        timer = None();
+    }
 }
 
 void

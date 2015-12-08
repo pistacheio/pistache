@@ -32,12 +32,15 @@ class MyHandler : public Net::Http::Handler {
                     .add<Header::Server>("lys")
                     .add<Header::ContentType>(MIME(Text, Plain));
 
+#if 0
                 auto stream = response.stream(Net::Http::Code::Ok);
                 stream << "PO";
                 stream << flush;
                 stream << "NG";
                 stream << ends;
+#endif
 
+                response.send(Code::Ok, "PONG");
             }
         }
         else if (req.resource() == "/echo") {
@@ -63,18 +66,24 @@ class MyHandler : public Net::Http::Handler {
 int main(int argc, char *argv[]) {
     Net::Port port(9080);
 
-    if (argc == 2) {
+    int thr = 2;
+
+    if (argc >= 2) {
         port = std::stol(argv[1]);
+
+        if (argc == 3)
+            thr = std::stol(argv[2]);
     }
 
     Net::Address addr(Net::Ipv4::any(), port);
     static constexpr size_t Workers = 4;
 
     cout << "Cores = " << hardware_concurrency() << endl;
+    cout << "Using " << thr << " threads" << endl;
 
     Net::Http::Endpoint server(addr);
     auto opts = Net::Http::Endpoint::options()
-        .threads(2)
+        .threads(thr)
         .flags(Net::Tcp::Options::InstallSignalHandler);
     server.init(opts);
     server.setHandler(std::make_shared<MyHandler>());
