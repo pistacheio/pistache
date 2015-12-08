@@ -350,12 +350,11 @@ namespace Async {
             void finishResolve(P& promise) const {
                 auto chainer = makeChainer(promise);
                 promise.then(std::move(chainer), [=](std::exception_ptr exc) {
-                    chain_->exc = std::move(exc);
-                    chain_->state = State::Rejected;
+                    auto core = this->chain_;
+                    core->exc = std::move(exc);
+                    core->state = State::Rejected;
 
-                    auto core = chain_;
-
-                    for (const auto& req: chain_->requests) {
+                    for (const auto& req: core->requests) {
                         req->reject(core);
                     }
                 });
