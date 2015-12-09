@@ -112,3 +112,19 @@ private:
 };
 
 } // namespace Polling
+
+class NotifyFd {
+public:
+    NotifyFd();
+
+    Polling::Tag tag() const;
+
+    void notify() const;
+
+    void read() const;
+    bool tryRead() const;
+
+private:
+    int event_fd;
+};
+

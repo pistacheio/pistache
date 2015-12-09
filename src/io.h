@@ -16,6 +16,8 @@
 #include <mutex>
 #include <memory>
 #include <unordered_map>
+#include <sys/time.h>
+#include <sys/resource.h>
 
 namespace Net {
 
@@ -48,6 +50,13 @@ public:
     }
 
     void disarmTimer();
+
+    Async::Promise<rusage> getLoad() {
+        return Async::Promise<rusage>([=](Async::Resolver& resolve, Async::Rejection& reject) {
+            this->load = Some(Load(std::move(resolve), std::move(reject)));
+            this->notifier.notify();
+        });
+    }
 
 private:
     struct OnHoldWrite {
@@ -84,6 +93,17 @@ private:
         Async::Rejection reject;
     };
 
+    struct Load {
+        Load(Async::Resolver resolve,
+             Async::Rejection reject)
+            : resolve(std::move(resolve))
+            , reject(std::move(reject))
+        { }
+
+        Async::Resolver resolve;
+        Async::Rejection reject;
+    };
+
     Polling::Epoll poller;
     std::unique_ptr<std::thread> thread;
     mutable std::mutex peersMutex;
@@ -91,7 +111,10 @@ private:
     std::unordered_map<Fd, OnHoldWrite> toWrite;
 
     Optional<Timer> timer;
+    Optional<Load> load;
     Fd timerFd;
+
+    NotifyFd notifier;
 
     std::shared_ptr<Handler> handler_;
     Flags<Options> options_;
@@ -107,6 +130,7 @@ private:
 
     void handleIncoming(const std::shared_ptr<Peer>& peer);
     void handleTimeout();
+    void handleNotify();
     void run();
 
 };

@@ -27,6 +27,9 @@ class Listener {
 public:
 
     Listener();
+    ~Listener() {
+        loadThread->join();
+    }
 
     Listener(const Address& address);
     void init(
@@ -53,7 +56,12 @@ private:
     Flags<Options> options_;
     std::shared_ptr<Handler> handler_;
 
+    std::atomic<bool> sh;
+
+    std::unique_ptr<std::thread> loadThread;
+
     void dispatchPeer(const std::shared_ptr<Peer>& peer);
+    void runLoadThread();
 };
 
 } // namespace Tcp

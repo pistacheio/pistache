@@ -175,6 +175,11 @@ Listener::bind(const Address& address) {
     for (auto& io: ioGroup) {
         io->start(handler_, options_);
     }
+
+    sh = false;
+    loadThread.reset(new std::thread([=]() {
+        this->runLoadThread();
+    }));
     
     return true;
 }
@@ -206,10 +211,52 @@ Listener::run() {
 }
 
 void
+Listener::runLoadThread() {
+    std::vector<rusage> lastUsages;
+
+    while (!sh) {
+        std::vector<Async::Promise<rusage>> loads;
+        loads.reserve(ioGroup.size());
+
+        for (const auto& io: ioGroup) {
+            loads.push_back(io->getLoad());
+        }
+
+        Async::whenAll(std::begin(loads), std::end(loads))
+              .then([&](const std::vector<rusage>& usages) {
+                    auto totalElapsed = [](rusage usage) {
+                        return (usage.ru_stime.tv_sec * 1e6 + usage.ru_stime.tv_usec)
+                             + (usage.ru_utime.tv_sec * 1e6 + usage.ru_utime.tv_usec);
+                    };
+
+                    if (lastUsages.empty()) lastUsages = usages;
+                    else {
+                        for (size_t i = 0; i < usages.size(); ++i) {
+                            auto last = lastUsages[i];
+                            const auto& usage = usages[i];
+
+                            auto now = totalElapsed(usage);
+                            auto time = now - totalElapsed(last);
+
+                            auto load = (time * 100.0) / 1e6;
+
+                            //printf("Total load for I/O thread %lu = %.3lf%%\n", i, load);
+
+                        }
+                        lastUsages = usages;
+                    }
+             }, Async::NoExcept);
+
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+}
+
+void
 Listener::shutdown() {
     for (auto &worker: ioGroup) {
         worker->shutdown();
     }
+    sh = true;
 }
 
 Address
