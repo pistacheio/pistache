@@ -229,5 +229,15 @@ TEST(async_test, when_all) {
     Async::whenAll(p3, p4).then([](const std::tuple<std::string, void>& results) {
     }, Async::NoExcept);
 #endif
+}
+
+TEST(async_test, rethrow_test) {
+    auto p1 = Async::Promise<void>([](Async::Resolver& resolve, Async::Rejection& reject) {
+        reject(std::runtime_error("Because"));
+    });
+
+    auto p2 = p1.then([]() { }, Async::Throw);
+
+    ASSERT_TRUE(p2.isRejected());
 
 }

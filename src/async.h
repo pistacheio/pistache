@@ -119,12 +119,26 @@ namespace Async {
 
     namespace Private {
 
+        struct InternalRethrow {
+            InternalRethrow(std::exception_ptr exc)
+                : exc(std::move(exc))
+            { }
+
+            std::exception_ptr exc;
+        };
+
         struct IgnoreException {
             void operator()(std::exception_ptr) const { }
         };
 
         struct NoExcept {
             void operator()(std::exception_ptr) const { std::terminate(); }
+        };
+
+        struct Throw {
+            void operator()(std::exception_ptr exc) const {
+                throw InternalRethrow(std::move(exc));
+            }
         };
 
         class Core;
@@ -209,8 +223,9 @@ namespace Async {
 
         template<typename T>
         struct Continuable : public Request {
-            Continuable()
-                : resolveCount_(0)
+            Continuable(const std::shared_ptr<Core>& chain)
+                : chain_(chain)
+                , resolveCount_(0)
                 , rejectCount_(0)
             { }
 
@@ -226,7 +241,16 @@ namespace Async {
                 if (rejectCount_ >= 1)
                     throw Error("Reject must not be called more than once");
 
-                doReject(coreCast(core));
+                try {
+                    doReject(coreCast(core));
+                } catch (const InternalRethrow& e) {
+                    chain_->exc = std::move(e.exc);
+                    chain_->state = State::Rejected;
+                    for (const auto& req: chain_->requests) {
+                        req->reject(chain_);
+                    }
+                }
+
                 ++rejectCount_;
             }
 
@@ -239,13 +263,16 @@ namespace Async {
 
             size_t resolveCount_;
             size_t rejectCount_;
+            std::shared_ptr<Core> chain_;
         };
 
         template<typename T, typename ResolveFunc, typename RejectFunc>
         struct ThenContinuation : public Continuable<T> {
             ThenContinuation(
+                    const std::shared_ptr<Core>& chain,
                     ResolveFunc&& resolveFunc, RejectFunc&& rejectFunc)
-                : resolveFunc_(std::forward<ResolveFunc>(resolveFunc))
+                : Continuable<T>(chain)
+                , resolveFunc_(std::forward<ResolveFunc>(resolveFunc))
                 , rejectFunc_(std::forward<RejectFunc>(rejectFunc))
             { 
             }
@@ -275,7 +302,7 @@ namespace Async {
             ThenReturnContinuation(
                     const std::shared_ptr<Core>& chain,
                     ResolveFunc&& resolveFunc, RejectFunc&& rejectFunc)
-                : chain_(chain)
+                : Continuable<T>(chain)
                 , resolveFunc_(std::forward<ResolveFunc>(resolveFunc))
                 , rejectFunc_(std::forward<RejectFunc>(rejectFunc))
             {
@@ -287,8 +314,8 @@ namespace Async {
 
             void doReject(const std::shared_ptr<CoreT<T>>& core) const {
                 rejectFunc_(core->exc);
-                for (const auto& req: chain_->requests) {
-                    req->reject(chain_);
+                for (const auto& req: this->chain_->requests) {
+                    req->reject(this->chain_);
                 }
             }
 
@@ -303,13 +330,12 @@ namespace Async {
             template<typename Ret>
             void finishResolve(Ret&& ret) const {
                 typedef typename std::remove_reference<Ret>::type CleanRet;
-                chain_->construct<CleanRet>(std::forward<Ret>(ret));
-                for (const auto& req: chain_->requests) {
-                    req->resolve(chain_);
+                this->chain_->template construct<CleanRet>(std::forward<Ret>(ret));
+                for (const auto& req: this->chain_->requests) {
+                    req->resolve(this->chain_);
                 }
             }
 
-            std::shared_ptr<Core> chain_;
             ResolveFunc resolveFunc_;
             RejectFunc rejectFunc_;
         };
@@ -319,7 +345,7 @@ namespace Async {
             ThenChainContinuation(
                     const std::shared_ptr<Core>& chain,
                     ResolveFunc&& resolveFunc, RejectFunc&& rejectFunc)
-                : chain_(chain)
+                : Continuable<T>(chain)
                 , resolveFunc_(std::forward<ResolveFunc>(resolveFunc))
                 , rejectFunc_(std::forward<RejectFunc>(rejectFunc))
             { 
@@ -360,7 +386,6 @@ namespace Async {
                 });
             }
 
-            std::shared_ptr<Core> chain_;
             ResolveFunc resolveFunc_;
             RejectFunc rejectFunc_;
 
@@ -385,7 +410,7 @@ namespace Async {
                 typename Type = typename detail::RemovePromise<Promise>::Type>
             Chainer<Type>
             makeChainer(const Promise&) const {
-                return Chainer<Type>(chain_);
+                return Chainer<Type>(this->chain_);
             }
 
         };
@@ -413,6 +438,7 @@ namespace Async {
                     const std::shared_ptr<Private::Core>& chain,
                     ResolveFunc&& resolveFunc, RejectFunc&& rejectFunc) {
                 return new ThenContinuation<T, ResolveFunc, RejectFunc>(
+                        chain,
                         std::forward<ResolveFunc>(resolveFunc),
                         std::forward<RejectFunc>(rejectFunc));
             }
@@ -510,6 +536,7 @@ namespace Async {
 
     static constexpr Private::IgnoreException IgnoreException{};
     static constexpr Private::NoExcept NoExcept{};
+    static constexpr Private::Throw Throw{};
 
     template<typename T>
     class Promise : public PromiseBase
