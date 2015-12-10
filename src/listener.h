@@ -26,10 +26,16 @@ void setSocketOptions(Fd fd, Flags<Options> options);
 class Listener {
 public:
 
+    struct Load {
+        typedef std::chrono::system_clock::time_point TimePoint;
+        double global;
+        std::vector<double> workers;
+
+        std::vector<rusage> raw;
+        TimePoint tick;
+    };
+
     Listener();
-    ~Listener() {
-        loadThread->join();
-    }
 
     Listener(const Address& address);
     void init(
@@ -40,8 +46,12 @@ public:
     bool bind();
     bool bind(const Address& adress);
 
+    bool isBound() const;
+
     void run();
     void shutdown();
+
+    Async::Promise<Load> requestLoad(const Load& old);
 
     Options options() const;
     Address address() const;
@@ -55,10 +65,6 @@ private:
     std::vector<std::unique_ptr<IoWorker>> ioGroup;
     Flags<Options> options_;
     std::shared_ptr<Handler> handler_;
-
-    std::atomic<bool> sh;
-
-    std::unique_ptr<std::thread> loadThread;
 
     void dispatchPeer(const std::shared_ptr<Peer>& peer);
     void runLoadThread();

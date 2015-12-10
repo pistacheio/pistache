@@ -530,6 +530,12 @@ public:
     void setHandler(const std::shared_ptr<Handler>& handler);
     void serve();
 
+    bool isBound() const {
+        return listener.isBound();
+    }
+
+    Async::Promise<Tcp::Listener::Load> requestLoad(const Tcp::Listener::Load& old);
+
     static Options options();
 
 private:

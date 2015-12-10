@@ -176,12 +176,12 @@ Listener::bind(const Address& address) {
         io->start(handler_, options_);
     }
 
-    sh = false;
-    loadThread.reset(new std::thread([=]() {
-        this->runLoadThread();
-    }));
-    
     return true;
+}
+
+bool
+Listener::isBound() const {
+    return g_listen_fd != -1;
 }
 
 void
@@ -211,52 +211,59 @@ Listener::run() {
 }
 
 void
-Listener::runLoadThread() {
-    std::vector<rusage> lastUsages;
-
-    while (!sh) {
-        std::vector<Async::Promise<rusage>> loads;
-        loads.reserve(ioGroup.size());
-
-        for (const auto& io: ioGroup) {
-            loads.push_back(io->getLoad());
-        }
-
-        Async::whenAll(std::begin(loads), std::end(loads))
-              .then([&](const std::vector<rusage>& usages) {
-                    auto totalElapsed = [](rusage usage) {
-                        return (usage.ru_stime.tv_sec * 1e6 + usage.ru_stime.tv_usec)
-                             + (usage.ru_utime.tv_sec * 1e6 + usage.ru_utime.tv_usec);
-                    };
-
-                    if (lastUsages.empty()) lastUsages = usages;
-                    else {
-                        for (size_t i = 0; i < usages.size(); ++i) {
-                            auto last = lastUsages[i];
-                            const auto& usage = usages[i];
-
-                            auto now = totalElapsed(usage);
-                            auto time = now - totalElapsed(last);
-
-                            auto load = (time * 100.0) / 1e6;
-
-                            //printf("Total load for I/O thread %lu = %.3lf%%\n", i, load);
-
-                        }
-                        lastUsages = usages;
-                    }
-             }, Async::NoExcept);
-
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-}
-
-void
 Listener::shutdown() {
     for (auto &worker: ioGroup) {
         worker->shutdown();
     }
-    sh = true;
+}
+
+Async::Promise<Listener::Load>
+Listener::requestLoad(const Listener::Load& old) {
+    std::vector<Async::Promise<rusage>> loads;
+    loads.reserve(ioGroup.size());
+
+    for (const auto& io: ioGroup) {
+        loads.push_back(io->getLoad());
+    }
+
+    return Async::whenAll(std::begin(loads), std::end(loads)).then([=](const std::vector<rusage>& usages) {
+
+        Load res;
+        res.raw = usages;
+
+        if (old.raw.empty()) {
+            res.global = 0.0;
+            for (size_t i = 0; i < ioGroup.size(); ++i) res.workers.push_back(0.0);
+        } else {
+
+            auto totalElapsed = [](rusage usage) {
+                return (usage.ru_stime.tv_sec * 1e6 + usage.ru_stime.tv_usec)
+                     + (usage.ru_utime.tv_sec * 1e6 + usage.ru_utime.tv_usec);
+            };
+
+            auto now = std::chrono::system_clock::now();
+            std::chrono::microseconds tick = now - old.tick;
+            res.tick = now;
+
+            for (size_t i = 0; i < usages.size(); ++i) {
+                auto last = old.raw[i];
+                const auto& usage = usages[i];
+
+                auto nowElapsed = totalElapsed(usage);
+                auto timeElapsed = nowElapsed - totalElapsed(last);
+
+                auto loadPct = (timeElapsed * 100.0) / tick.count();
+                res.workers.push_back(loadPct);
+                res.global += loadPct;
+
+            }
+
+            res.global /= usages.size();
+        }
+
+        return Async::Promise<Load>::resolved(std::move(res));
+
+     }, Async::NoExcept);
 }
 
 Address

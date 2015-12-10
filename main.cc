@@ -32,15 +32,11 @@ class MyHandler : public Net::Http::Handler {
                     .add<Header::Server>("lys")
                     .add<Header::ContentType>(MIME(Text, Plain));
 
-#if 0
                 auto stream = response.stream(Net::Http::Code::Ok);
                 stream << "PO";
-                stream << flush;
                 stream << "NG";
                 stream << ends;
-#endif
 
-                response.send(Code::Ok, "PONG");
             }
         }
         else if (req.resource() == "/echo") {
@@ -63,6 +59,50 @@ class MyHandler : public Net::Http::Handler {
     }
 };
 
+struct LoadMonitor {
+    LoadMonitor(const std::shared_ptr<Net::Http::Endpoint>& endpoint)
+        : endpoint_(endpoint)
+        , interval(std::chrono::seconds(1))
+    { }
+
+    void setInterval(std::chrono::seconds secs) {
+        interval = secs;
+    }
+
+    void start() {
+        thread.reset(new std::thread(std::bind(&LoadMonitor::run, this)));
+    }
+
+    ~LoadMonitor() {
+        thread->join();
+    }
+
+private:
+    std::shared_ptr<Net::Http::Endpoint> endpoint_;
+    std::unique_ptr<std::thread> thread;
+    std::chrono::seconds interval;
+
+    void run() {
+        Net::Tcp::Listener::Load old;
+        while (endpoint_->isBound()) {
+            endpoint_->requestLoad(old).then([&](const Net::Tcp::Listener::Load& load) {
+                old = load;
+
+                double global = load.global;
+                if (global > 100) global = 100;
+
+                if (global > 1)
+                    std::cout << "Global load is " << global << "%" << std::endl;
+                else
+                    std::cout << "Global load is 0%" << std::endl;
+            },
+            Async::NoExcept);
+
+            std::this_thread::sleep_for(std::chrono::seconds(interval));
+        }
+    }
+};
+
 int main(int argc, char *argv[]) {
     Net::Port port(9080);
 
@@ -81,12 +121,17 @@ int main(int argc, char *argv[]) {
     cout << "Cores = " << hardware_concurrency() << endl;
     cout << "Using " << thr << " threads" << endl;
 
-    Net::Http::Endpoint server(addr);
+    auto server = std::make_shared<Net::Http::Endpoint>(addr);
+
     auto opts = Net::Http::Endpoint::options()
         .threads(thr)
         .flags(Net::Tcp::Options::InstallSignalHandler);
-    server.init(opts);
-    server.setHandler(std::make_shared<MyHandler>());
+    server->init(opts);
+    server->setHandler(std::make_shared<MyHandler>());
 
-    server.serve();
+    LoadMonitor monitor(server);
+    monitor.setInterval(std::chrono::seconds(5));
+    monitor.start();
+
+    server->serve();
 }

@@ -586,6 +586,11 @@ Endpoint::serve()
     }
 }
 
+Async::Promise<Tcp::Listener::Load>
+Endpoint::requestLoad(const Tcp::Listener::Load& old) {
+    return listener.requestLoad(old);
+}
+
 Endpoint::Options
 Endpoint::options() {
     return Options();
