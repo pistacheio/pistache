@@ -231,6 +231,9 @@ IoWorker::run() {
 
     mailbox.bind(poller);
 
+    auto n = notifier.tag();
+    poller.addFd(n.value(), NotifyOn::Read, n, Polling::Mode::Edge);
+
     std::chrono::milliseconds timeout(-1);
 
     for (;;) {
@@ -250,7 +253,11 @@ IoWorker::run() {
                     if (msg->type() == Message::Type::Shutdown) {
                         return;
                     }
-                } else {
+                }
+                else if (event.tag == notifier.tag()) {
+                    handleNotify();
+                }
+                else {
                     if (event.flags.hasFlag(NotifyOn::Read)) {
                         auto fd = event.tag.value();
                         if (fd == timerFd) {
@@ -312,6 +319,23 @@ IoWorker::handleTimeout() {
             }
         }
     });
+}
+
+void
+IoWorker::handleNotify() {
+    optionally_do(load, [&](const Load& entry) {
+        while (this->notifier.tryRead()) ;
+
+        rusage now;
+
+        auto res = getrusage(RUSAGE_THREAD, &now);
+        if (res == -1)
+            entry.reject(std::runtime_error("Could not compute usage"));
+
+        entry.resolve(now);
+    });
+
+    load = None();
 }
 
 Async::Promise<ssize_t>

@@ -26,6 +26,15 @@ void setSocketOptions(Fd fd, Flags<Options> options);
 class Listener {
 public:
 
+    struct Load {
+        typedef std::chrono::system_clock::time_point TimePoint;
+        double global;
+        std::vector<double> workers;
+
+        std::vector<rusage> raw;
+        TimePoint tick;
+    };
+
     Listener();
 
     Listener(const Address& address);
@@ -37,8 +46,12 @@ public:
     bool bind();
     bool bind(const Address& adress);
 
+    bool isBound() const;
+
     void run();
     void shutdown();
+
+    Async::Promise<Load> requestLoad(const Load& old);
 
     Options options() const;
     Address address() const;
@@ -54,6 +67,7 @@ private:
     std::shared_ptr<Handler> handler_;
 
     void dispatchPeer(const std::shared_ptr<Peer>& peer);
+    void runLoadThread();
 };
 
 } // namespace Tcp
