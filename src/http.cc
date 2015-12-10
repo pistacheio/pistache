@@ -13,7 +13,6 @@
 #include "http.h"
 #include "net.h"
 #include "peer.h"
-#include "array_buf.h"
 
 using namespace std;
 
