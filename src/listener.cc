@@ -242,7 +242,8 @@ Listener::requestLoad(const Listener::Load& old) {
             };
 
             auto now = std::chrono::system_clock::now();
-            std::chrono::microseconds tick = now - old.tick;
+            auto diff = now - old.tick;
+            auto tick = std::chrono::duration_cast<std::chrono::microseconds>(diff);
             res.tick = now;
 
             for (size_t i = 0; i < usages.size(); ++i) {
