@@ -263,7 +263,7 @@ Listener::requestLoad(const Listener::Load& old) {
 
         return Async::Promise<Load>::resolved(std::move(res));
 
-     }, Async::NoExcept);
+     }, Async::Throw);
 }
 
 Address
