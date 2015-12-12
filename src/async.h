@@ -799,6 +799,133 @@ namespace Async {
             Rejection reject;
         };
 
+        template<typename T,
+                 typename Results
+                >
+        struct WhenAllRange {
+
+            WhenAllRange(Resolver resolve, Rejection reject)
+                : resolve(std::move(resolve))
+                , reject(std::move(reject))
+            { }
+
+            template<typename Iterator>
+            void operator()(Iterator first, Iterator last) {
+
+                auto data = std::make_shared<DataT<T>>(
+                   static_cast<size_t>(std::distance(first, last)),
+                   std::move(resolve),
+                   std::move(reject)
+                );
+
+                size_t index = 0;
+                for (auto it = first; it != last; ++it) {
+
+                    WhenContinuation<T> cont(data, index);
+
+                    it->then(std::move(cont), [=](std::exception_ptr ptr) {
+                        data->rejected.store(true);
+                        data->reject(std::move(ptr));
+                    });
+
+                    ++index;
+                }
+            }
+
+        private:
+            struct Data {
+                Data(size_t total, Resolver resolver, Rejection rejection)
+                    : total(total)
+                    , resolved(0)
+                    , rejected(false)
+                    , resolve(std::move(resolver))
+                    , reject(std::move(rejection))
+                { }
+
+                const size_t total;
+                std::atomic<size_t> resolved;
+                std::atomic<bool> rejected;
+
+                Resolver resolve;
+                Rejection reject;
+
+            };
+
+            /* Ok so apparently I can not fully specialize a template structure
+             * here, so you know what, compiler ? Take that Dummy type and leave
+             * me alone
+             */
+            template<typename ValueType, typename Dummy = void> struct DataT : public Data {
+                DataT(size_t total, Resolver resolver, Rejection rejection)
+                    : Data(total, std::move(resolver), std::move(rejection))
+                {
+                    results.resize(total);
+                }
+
+                Results results;
+            };
+
+            /* For a vector of void promises, we do not have any results, that's
+             * why we need a distinct specialization for the void case
+             */
+            template<typename Dummy> struct DataT<void, Dummy> : public Data {
+                DataT(size_t total, Resolver resolver, Rejection rejection)
+                    : Data(total, std::move(resolver), std::move(rejection))
+                {
+                }
+            };
+
+            template<typename ValueType, typename Dummy = void>
+            struct WhenContinuation {
+
+                typedef std::shared_ptr<DataT<ValueType>> D;
+
+                WhenContinuation(const D& data, size_t index)
+                    : data(data)
+                    , index(index)
+                { }
+
+                void operator()(const ValueType& val) const {
+                    if (data->rejected) return;
+
+                    data->results[index] = val;
+                    data->resolved.fetch_add(1);
+
+                    if (data->resolved == data->total) {
+                        data->resolve(data->results);
+                    }
+                }
+
+                D data;
+                size_t index;
+            };
+
+            template<typename Dummy>
+            struct WhenContinuation<void, Dummy> {
+
+                typedef std::shared_ptr<DataT<void>> D;
+
+                WhenContinuation(const D& data, size_t)
+                    : data(data)
+                { }
+
+                void operator()() const {
+                    if (data->rejected) return;
+
+                    data->resolved.fetch_add(1);
+
+                    if (data->resolved == data->total) {
+                        data->resolve();
+                    }
+                }
+
+                D data;
+            };
+
+            Resolver resolve;
+            Rejection reject;
+        };
+
     }
 
     template<
@@ -836,62 +963,22 @@ namespace Async {
             = typename detail::RemovePromise<
                   typename std::iterator_traits<Iterator>::value_type
               >::Type,
-        typename Results = std::vector<ValueType>
+        typename Results
+            = typename std::conditional<
+                        std::is_same<void, ValueType>::value,
+                    void, std::vector<ValueType>
+              >::type
     >
     Promise<Results> whenAll(Iterator first, Iterator last) {
         /* @Security, assert that last >= first */
 
-        struct Data {
-        public:
-            Data(size_t total, Resolver resolver, Rejection rejection)
-                : total(total)
-                , resolved(0)
-                , rejected(false)
-                , resolve(resolver)
-                , reject(rejection)
-            {
-                results.resize(total);
-            }
-
-            const size_t total;
-            std::atomic<size_t> resolved;
-            std::atomic<bool> rejected;
-
-            Resolver resolve;
-            Rejection reject;
-
-            Results results;
-
-        };
-
         return Promise<Results>([=](Resolver& resolve, Rejection& rejection) {
 
-            auto data = std::make_shared<Data>(
-               static_cast<size_t>(std::distance(first, last)),
-               std::move(resolve),
-               std::move(rejection)
-            );
+            Impl::WhenAllRange<ValueType, Results> impl(
+                std::move(resolve), std::move(rejection));
 
-            size_t index = 0;
-            for (auto it = first; it != last; ++it) {
-                it->then([=](const ValueType& val) {
-                    if (data->rejected) return;
+            impl(first, last);
 
-                    data->results[index] = val;
-                    data->resolved.fetch_add(1);
-
-                    if (data->resolved == data->total) {
-                        data->resolve(data->results);
-                    }
-
-                },
-                [=](std::exception_ptr ptr) {
-                    data->rejected.store(true);
-                    data->reject(std::move(ptr));
-                });
-
-                ++index;
-            }
         });
     }
 

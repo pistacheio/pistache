@@ -229,6 +229,17 @@ TEST(async_test, when_all) {
     Async::whenAll(p3, p4).then([](const std::tuple<std::string, void>& results) {
     }, Async::NoExcept);
 #endif
+
+    std::vector<Async::Promise<void>> promises;
+    promises.push_back(std::move(p4));
+    promises.push_back(Async::Promise<void>::resolved());
+    auto p7 = Async::whenAll(std::begin(promises), std::end(promises));
+
+    resolved = false;
+
+    p7.then([&]() { resolved = true; }, Async::NoExcept);
+
+    ASSERT_TRUE(resolved);
 }
 
 TEST(async_test, rethrow_test) {
