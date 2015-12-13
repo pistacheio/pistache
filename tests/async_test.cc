@@ -1,6 +1,7 @@
 #include "gtest/gtest.h"
 #include "async.h"
 #include <thread>
+#include <algorithm>
 
 Async::Promise<int> doAsync(int N)
 {
@@ -16,6 +17,23 @@ Async::Promise<int> doAsync(int N)
 
     return promise;
 }
+
+template<typename T, typename Func>
+Async::Promise<T> doAsyncTimed(std::chrono::seconds time, T val, Func func)
+{
+    Async::Promise<T> promise(
+        [=](Async::Resolver& resolve, Async::Rejection& reject) {
+            std::thread thr([=]() mutable {
+                std::this_thread::sleep_for(time);
+                resolve(func(val));
+            });
+
+            thr.detach();
+    });
+
+    return promise;
+}
+
 
 TEST(async_test, basic_test) {
     Async::Promise<int> p1(
@@ -239,6 +257,27 @@ TEST(async_test, when_all) {
 
     p7.then([&]() { resolved = true; }, Async::NoExcept);
 
+    ASSERT_TRUE(resolved);
+}
+
+TEST(async_test, when_any) {
+    auto p1 = doAsyncTimed(std::chrono::seconds(2), 10.0,
+            [](double val) { return -val; });
+    auto p2 = doAsyncTimed(std::chrono::seconds(1), std::string("Hello"),
+            [](std::string val) { std::transform(std::begin(val), std::end(val), std::begin(val), ::toupper); return val; });
+
+    bool resolved = false;
+    Async::whenAny(p1, p2).then([&](const Async::Any& any) {
+        ASSERT_TRUE(any.is<std::string>());
+
+        auto val = any.cast<std::string>();
+        ASSERT_EQ(val, "HELLO");
+
+        ASSERT_THROW(any.cast<double>(), Async::BadAnyCast);
+        resolved = true;
+    }, Async::NoExcept);
+
+    std::this_thread::sleep_for(std::chrono::seconds(3));
     ASSERT_TRUE(resolved);
 }
 
