@@ -70,10 +70,16 @@ struct LoadMonitor {
     }
 
     void start() {
+        shutdown_ = false;
         thread.reset(new std::thread(std::bind(&LoadMonitor::run, this)));
     }
 
+    void shutdown() {
+        shutdown_ = true;
+    }
+
     ~LoadMonitor() {
+        shutdown_ = true;
         thread->join();
     }
 
@@ -82,9 +88,13 @@ private:
     std::unique_ptr<std::thread> thread;
     std::chrono::seconds interval;
 
+    std::atomic<bool> shutdown_;
+
     void run() {
         Net::Tcp::Listener::Load old;
-        while (endpoint_->isBound()) {
+        while (!shutdown_) {
+            if (!endpoint_->isBound()) continue;
+
             endpoint_->requestLoad(old).then([&](const Net::Tcp::Listener::Load& load) {
                 old = load;
 
@@ -134,4 +144,5 @@ int main(int argc, char *argv[]) {
     monitor.start();
 
     server->serve();
+    monitor.shutdown();
 }
