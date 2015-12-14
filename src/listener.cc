@@ -262,7 +262,7 @@ Listener::requestLoad(const Listener::Load& old) {
             res.global /= usages.size();
         }
 
-        return Async::Promise<Load>::resolved(std::move(res));
+        return res;
 
      }, Async::Throw);
 }
