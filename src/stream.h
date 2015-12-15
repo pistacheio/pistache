@@ -97,7 +97,7 @@ public:
         }
 
         memcpy(bytes + size, data, len);
-        Base::setg(bytes, bytes + size, bytes + size + len);
+        Base::setg(bytes, this->gptr(), bytes + size + len);
         size += len;
         return true;
     }

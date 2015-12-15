@@ -406,6 +406,7 @@ namespace Private {
         virtual State apply(StreamCursor& cursor) = 0;
 
         void raise(const char* msg, Code code = Code::Bad_Request);
+        void raiseF(Code code, const char *msg, ...);
 
         Request *request;
     };

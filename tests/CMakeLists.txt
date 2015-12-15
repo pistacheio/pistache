@@ -13,3 +13,7 @@ add_test( async_test run_async_test )
 add_executable( run_typeid_test typeid_test.cc )
 target_link_libraries(run_typeid_test gtest gtest_main)
 add_test( typeid_test run_typeid_test )
+
+add_executable( run_parser_test parser_test.cc )
+target_link_libraries(run_parser_test gtest gtest_main net)
+add_test( parser_test run_parser_test )

@@ -8,6 +8,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <ctime>
+#include <cstdio>
 #include <iomanip>
 #include "common.h"
 #include "http.h"
@@ -40,6 +41,31 @@ namespace Private {
         throw HttpError(code, msg);
     }
 
+    void
+    Step::raiseF(Code code, const char* fmt, ...) {
+
+        struct VaList {
+            VaList(va_list& args)
+                : args(args)
+            { }
+
+            ~VaList() { va_end(args); }
+            va_list& args;
+        };
+
+        va_list args;
+        va_start(args, fmt);
+
+        VaList guard(args);
+
+        char *v;
+        vasprintf(&v, fmt, args);
+
+        std::string str(v);
+        free(v);
+        throw HttpError(code, str);
+    }
+
     State
     RequestLineStep::apply(StreamCursor& cursor) {
         StreamCursor::Revert revert(cursor);
@@ -70,14 +96,16 @@ namespace Private {
         }
 
         if (!found) {
-            raise("Unknown HTTP request method");
+            //raise("Unknown HTTP request method");
+            return State::Again;
         }
 
         int n;
 
         if (cursor.eof()) return State::Again;
         else if ((n = cursor.current()) != ' ')
-            raise("Malformed HTTP request after Method, expected SP");
+            raiseF(Code::Bad_Request,
+             "Malformed HTTP request after Method, expected 'SP', got '%c' (0x%d)", n, n);
 
         if (!cursor.advance(1)) return State::Again;
 
@@ -125,6 +153,7 @@ namespace Private {
 
         const char* ver = versionToken.rawText();
         const size_t size = versionToken.size();
+
         if (strncmp(ver, "HTTP/1.0", size) == 0) {
             request->version_ = Version::Http10;
         }
