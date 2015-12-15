@@ -10,6 +10,7 @@
 #include "peer.h"
 #include "os.h"
 #include <sys/timerfd.h>
+#include <sys/sendfile.h>
 
 namespace Net {
 
@@ -339,7 +340,7 @@ IoWorker::handleNotify() {
 }
 
 Async::Promise<ssize_t>
-IoWorker::asyncWrite(Fd fd, const void* buf, size_t len) {
+IoWorker::asyncWrite(Fd fd, const void* buf, size_t len, int flags) {
     return Async::Promise<ssize_t>([=](Async::Resolver& resolve, Async::Rejection& reject) {
 
         auto it = toWrite.find(fd);
@@ -352,7 +353,7 @@ IoWorker::asyncWrite(Fd fd, const void* buf, size_t len) {
         for (;;) {
             auto *bufPtr = static_cast<const char *>(buf) + totalWritten;
             auto bufLen = len - totalWritten;
-            ssize_t bytesWritten = ::send(fd, bufPtr, bufLen, 0);
+            ssize_t bytesWritten = ::send(fd, bufPtr, bufLen, flags);
             if (bytesWritten < 0) {
                 if (errno == EAGAIN || errno == EWOULDBLOCK) {
                     toWrite.insert(
@@ -371,6 +372,35 @@ IoWorker::asyncWrite(Fd fd, const void* buf, size_t len) {
                     resolve(totalWritten);
                     break;
                 }
+            }
+        }
+    });
+}
+
+Async::Promise<ssize_t>
+IoWorker::asyncWriteFile(Fd peer_fd, Fd fd, size_t size) {
+    return Async::Promise<ssize_t>([=](Async::Resolver& resolve, Async::Rejection& reject) {
+
+        ssize_t totalWritten = 0;
+        off_t off = 0;
+        for (;;) {
+            ssize_t bytes = ::sendfile(peer_fd, fd, &off, size - off);
+            if (bytes < 0) {
+                if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                    reject(Net::Error("Incomplete"));
+                }
+                else {
+                    reject(Net::Error::system("Could not send file"));
+                }
+                break;
+            }
+            else {
+                totalWritten += bytes;
+                if (totalWritten == size) {
+                    resolve(totalWritten);
+                    break;
+                }
+                off = totalWritten;
             }
         }
     });

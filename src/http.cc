@@ -9,6 +9,11 @@
 #include <stdexcept>
 #include <ctime>
 #include <iomanip>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/stat.h> 
+#include <fcntl.h>
 #include "common.h"
 #include "http.h"
 #include "net.h"
@@ -21,7 +26,7 @@ namespace Net {
 namespace Http {
 
 template<typename H, typename Stream, typename... Args>
-typename std::enable_if<Header::IsHeader<H>::value, void>::type
+typename std::enable_if<Header::IsHeader<H>::value, Stream&>::type
 writeHeader(Stream& stream, Args&& ...args) {
     H header(std::forward<Args>(args)...);
 
@@ -29,9 +34,54 @@ writeHeader(Stream& stream, Args&& ...args) {
     header.write(stream);
 
     stream << crlf;
+
+    return stream;
 }
 
 static constexpr const char* ParserData = "__Parser";
+
+namespace {
+    bool writeStatusLine(Code code, DynamicStreamBuf& buf) {
+        #define OUT(...) \
+            do { \
+                __VA_ARGS__; \
+                if (!os) return false; \
+            } while (0)
+
+        std::ostream os(&buf);
+
+        OUT(os << "HTTP/1.1 ");
+        OUT(os << static_cast<int>(code));
+        OUT(os << ' ');
+        OUT(os << code);
+        OUT(os << crlf);
+
+        return true;
+
+        #undef OUT
+    }
+
+    bool writeHeaders(const Header::Collection& headers, DynamicStreamBuf& buf) {
+        #define OUT(...) \
+            do { \
+                __VA_ARGS__; \
+                if (!os) return false; \
+            } while (0)
+
+        std::ostream os(&buf);
+
+        for (const auto& header: headers.list()) {
+            OUT(os << header->name() << ": ");
+            OUT(header->write(os));
+            OUT(os << crlf);
+        }
+
+        return true;
+
+        #undef OUT
+    }
+
+}
 
 namespace Private {
 
@@ -352,50 +402,28 @@ Request::peer() const {
 }
 #endif
 
-void
-ResponseStream::writeStatusLine() {
-    std::ostream os(&buf_);
+ResponseStream::ResponseStream(
+        Message&& other,
+        std::weak_ptr<Tcp::Peer> peer,
+        Tcp::IoWorker* io,
+        size_t streamSize)
+    : Message(std::move(other))
+    , peer_(std::move(peer))
+    , buf_(streamSize)
+    , io_(io)
+{
+    if (!writeStatusLine(code_, buf_))
+        throw Error("Response exceeded buffer size");
 
-#define OUT(...) \
-    do { \
-        __VA_ARGS__; \
-        if (!os) { \
-            throw Error("Response exceeded buffer size"); \
-        } \
-    } while (0);
-
-    OUT(os << "HTTP/1.1 ");
-    OUT(os << static_cast<int>(code_));
-    OUT(os << ' ');
-    OUT(os << code_);
-    OUT(os << crlf);
-
-#undef OUT
-}
-
-void
-ResponseStream::writeHeaders() {
-    std::ostream os(&buf_);
-
-#define OUT(...) \
-    do { \
-        __VA_ARGS__; \
-        if (!os) { \
-            throw Error("Response exceeded buffer size"); \
-        } \
-    } while (0);
-
-    for (const auto& header: headers_.list()) {
-        OUT(os << header->name() << ": ");
-        OUT(header->write(os));
-        OUT(os << crlf);
+    if (writeHeaders(headers_, buf_)) {
+        std::ostream os(&buf_);
+        if (!writeHeader<Header::TransferEncoding>(os, Header::Encoding::Chunked))
+            throw Error("Response exceeded buffer size");
+        os << crlf;
     }
-
-    OUT(writeHeader<Header::TransferEncoding>(os, Header::Encoding::Chunked));
-    OUT(os << crlf);
-
-#undef OUT
-
+    else {
+        throw Error("Response exceeded buffer size");
+    }
 }
 
 void
@@ -421,6 +449,20 @@ ResponseStream::ends() {
 }
 
 Async::Promise<ssize_t>
+Response::sendFile(Code code, const std::string& file) {
+    int fd = open(file.c_str(), O_RDONLY);
+    if (fd == -1) {
+        /* @Improvement: maybe could we check for errno here and emit a different error
+            message
+        */
+        throw HttpError(Net::Http::Code::Not_Found, "");
+    }
+
+    code_ = code;
+    return putOnWire(fd);
+}
+
+Async::Promise<ssize_t>
 Response::putOnWire(const char* data, size_t len)
 {
     try {
@@ -434,17 +476,8 @@ Response::putOnWire(const char* data, size_t len)
             } \
         } while (0);
 
-        OUT(os << "HTTP/1.1 ");
-        OUT(os << static_cast<int>(code_));
-        OUT(os << ' ');
-        OUT(os << code_);
-        OUT(os << crlf);
-
-        for (const auto& header: headers_.list()) {
-            OUT(os << header->name() << ": ");
-            OUT(header->write(os));
-            OUT(os << crlf);
-        }
+        OUT(writeStatusLine(code_, buf_));
+        OUT(writeHeaders(headers_, buf_));
 
         OUT(writeHeader<Header::ContentLength>(os, len));
 
@@ -465,6 +498,45 @@ Response::putOnWire(const char* data, size_t len)
     } catch (const std::runtime_error& e) {
         return Async::Promise<ssize_t>::rejected(e);
     }
+}
+
+Async::Promise<ssize_t>
+Response::putOnWire(Fd fd)
+{
+    struct stat sb;
+    int res = ::fstat(fd, &sb);
+    if (res == -1) {
+        throw HttpError(Code::Internal_Server_Error, "");
+    }
+
+    std::ostream os(&buf_);
+
+#define OUT(...) \
+        do { \
+            __VA_ARGS__; \
+            if (!os) { \
+                return Async::Promise<ssize_t>::rejected(Error("Response exceeded buffer size")); \
+            } \
+        } while (0);
+
+    OUT(writeStatusLine(code_, buf_));
+    OUT(writeHeaders(headers_, buf_));
+
+    const size_t len = sb.st_size;
+
+    OUT(writeHeader<Header::ContentLength>(os, len));
+
+    OUT(os << crlf);
+
+    auto buffer = buf_.buffer();
+
+
+    return peer()->send(buffer.data, buffer.len, MSG_MORE).then([=](ssize_t bytes) {
+            return peer()->sendFile(fd, len);
+        }, Async::Throw);
+
+#undef OUT
+    
 }
 
 void

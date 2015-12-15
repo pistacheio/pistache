@@ -50,6 +50,13 @@ class MyHandler : public Net::Http::Handler {
         else if (req.resource() == "/timeout") {
             timeout.arm(std::chrono::seconds(5));
         }
+        else if (req.resource() == "/image") {
+            if (req.method() == Net::Http::Method::Get) {
+                response.sendFile(Net::Http::Code::Ok, "datacratic.png").then([](ssize_t bytes) {;
+                    std::cout << "Sent " << bytes << " bytes" << std::endl;
+                }, Async::NoExcept);
+            }
+        }
     }
 
     void onTimeout(const Net::Http::Request& req, Net::Http::Response response) {
@@ -80,7 +87,7 @@ struct LoadMonitor {
 
     ~LoadMonitor() {
         shutdown_ = true;
-        thread->join();
+        if (thread) thread->join();
     }
 
 private:

@@ -219,18 +219,7 @@ private:
             Message&& other,
             std::weak_ptr<Tcp::Peer> peer,
             Tcp::IoWorker* io,
-            size_t streamSize)
-        : Message(std::move(other))
-        , peer_(std::move(peer))
-        , buf_(streamSize)
-        , io_(io)
-    {
-        writeStatusLine();
-        writeHeaders();
-    }
-
-    void writeStatusLine();
-    void writeHeaders();
+            size_t streamSize);
 
     std::shared_ptr<Tcp::Peer> peer() const {
         if (peer_.expired())
@@ -357,6 +346,8 @@ public:
         return putOnWire(arr, N - 1);
     }
 
+    Async::Promise<ssize_t> sendFile(Code code, const std::string& file);
+
     ResponseStream stream(Code code, size_t streamSize = DefaultStreamSize) {
         code_ = code;
 
@@ -387,6 +378,7 @@ private:
     }
 
     Async::Promise<ssize_t> putOnWire(const char* data, size_t len);
+    Async::Promise<ssize_t> putOnWire(Fd fd);
 
     std::weak_ptr<Tcp::Peer> peer_;
     DynamicStreamBuf buf_;

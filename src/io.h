@@ -108,6 +108,11 @@ private:
     std::unique_ptr<std::thread> thread;
     mutable std::mutex peersMutex;
     std::unordered_map<Fd, std::shared_ptr<Peer>> peers;
+    /* @Incomplete: this should be a std::dequeue.
+        If an asyncWrite on a particular fd is initiated whereas the fd is not write-ready
+        yet and some writes are still on-hold, writes should queue-up so that when the
+        fd becomes ready again, we can write everything
+    */
     std::unordered_map<Fd, OnHoldWrite> toWrite;
 
     Optional<Timer> timer;
@@ -124,7 +129,8 @@ private:
     std::shared_ptr<Peer>& getPeer(Fd fd);
     std::shared_ptr<Peer>& getPeer(Polling::Tag tag);
 
-    Async::Promise<ssize_t> asyncWrite(Fd fd, const void *buf, size_t len);
+    Async::Promise<ssize_t> asyncWrite(Fd fd, const void *buf, size_t len, int flags = 0);
+    Async::Promise<ssize_t> asyncWriteFile(Fd peer_fd, Fd fd, size_t size);
 
     void handlePeerDisconnection(const std::shared_ptr<Peer>& peer);
 

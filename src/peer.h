@@ -50,7 +50,8 @@ public:
         return std::static_pointer_cast<T>(data);
     }
 
-    Async::Promise<ssize_t> send(const void* buf, size_t len);
+    Async::Promise<ssize_t> send(const void* buf, size_t len, int flags = 0);
+    Async::Promise<ssize_t> sendFile(Fd fd, size_t len);
 
 private:
     IoWorker* io_;
