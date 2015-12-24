@@ -50,6 +50,12 @@ class MyHandler : public Net::Http::Handler {
         else if (req.resource() == "/timeout") {
             timeout.arm(std::chrono::seconds(5));
         }
+        else if (req.resource() == "/async") {
+            std::thread([](Net::Http::Response response) {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                response.send(Net::Http::Code::Ok, "Async response");
+            }, std::move(response)).detach();
+        }
     }
 
     void onTimeout(const Net::Http::Request& req, Net::Http::Response response) {

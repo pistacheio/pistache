@@ -402,7 +402,7 @@ void
 ResponseStream::flush() {
     io_->disarmTimer();
     auto buf = buf_.buffer();
-    peer()->send(buf.data, buf.len);
+    peer()->send(buf);
 
     buf_.clear();
 }
@@ -460,7 +460,7 @@ Response::putOnWire(const char* data, size_t len)
 
 #undef OUT
 
-        return peer()->send(buffer.data, buffer.len);
+        return peer()->send(buffer);
 
     } catch (const std::runtime_error& e) {
         return Async::Promise<ssize_t>::rejected(e);

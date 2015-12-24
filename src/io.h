@@ -11,6 +11,7 @@
 #include "os.h"
 #include "tcp.h"
 #include "async.h"
+#include "stream.h"
 
 #include <thread>
 #include <mutex>
@@ -61,18 +62,18 @@ public:
 private:
     struct OnHoldWrite {
         OnHoldWrite(Async::Resolver resolve, Async::Rejection reject,
-                    const void *buf, size_t len)
+                    Buffer buffer)
             : resolve(std::move(resolve))
             , reject(std::move(reject))
-            , buf(buf)
-            , len(len)
+            , buffer(std::move(buffer))
+            , fd(-1)
         { }
 
         Async::Resolver resolve;
         Async::Rejection reject;
 
-        const void *buf;
-        size_t len;   
+        Buffer buffer;
+        Fd fd;
     };
 
     void
@@ -104,6 +105,11 @@ private:
         Async::Rejection reject;
     };
 
+    enum WriteStatus {
+        FirstTry,
+        Retry
+    };
+
     Polling::Epoll poller;
     std::unique_ptr<std::thread> thread;
     mutable std::mutex peersMutex;
@@ -121,16 +127,26 @@ private:
 
     CpuSet pins;
 
+    std::thread::id thisId;
+    PollableQueue<OnHoldWrite> writesQueue;
+
     std::shared_ptr<Peer>& getPeer(Fd fd);
     std::shared_ptr<Peer>& getPeer(Polling::Tag tag);
 
-    Async::Promise<ssize_t> asyncWrite(Fd fd, const void *buf, size_t len);
+    Async::Promise<ssize_t> asyncWrite(Fd fd, const Buffer& buffer);
+
+    void asyncWriteImpl(Fd fd, const OnHoldWrite& entry, WriteStatus status = FirstTry);
+    void asyncWriteImpl(
+            Fd fd, const Buffer& buffer,
+            Async::Resolver resolve, Async::Rejection reject,
+            WriteStatus status = FirstTry);
 
     void handlePeerDisconnection(const std::shared_ptr<Peer>& peer);
 
     void handleIncoming(const std::shared_ptr<Peer>& peer);
     void handleTimeout();
     void handleNotify();
+    void handleWriteQueue();
     void run();
 
 };

@@ -12,6 +12,7 @@
 #include <streambuf>
 #include <vector>
 #include <limits>
+#include <iostream>
 
 static constexpr char CR = 0xD;
 static constexpr char LF = 0xA;
@@ -113,17 +114,30 @@ private:
     size_t size;
 };
 
+struct Buffer {
+    Buffer(const char * const data, size_t len, bool own = false)
+        : data(data)
+        , len(len)
+        , isOwned(own)
+    { }
+
+    Buffer detach(size_t fromIndex = 0) const {
+        if (fromIndex > 0)
+            throw std::invalid_argument("Invalid index (> len)");
+
+        char *newData = new char[len - fromIndex];
+        std::copy(data + fromIndex, data + len - fromIndex, newData);
+
+        return Buffer(newData, len, true);
+    }
+
+    const char* const data;
+    const size_t len;
+    const bool isOwned;
+};
+
 class DynamicStreamBuf : public StreamBuf<char> {
 public:
-    struct Buffer {
-        Buffer(const void *data, size_t len)
-            : data(data)
-            , len(len)
-        { }
-
-        const void* data;
-        const size_t len;
-    };
 
     typedef StreamBuf<char> Base;
     typedef typename Base::traits_type traits_type;

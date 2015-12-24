@@ -9,6 +9,7 @@
 #include "net.h"
 #include "os.h"
 #include "async.h"
+#include "stream.h"
 #include <string>
 #include <iostream>
 #include <memory>
@@ -50,7 +51,7 @@ public:
         return std::static_pointer_cast<T>(data);
     }
 
-    Async::Promise<ssize_t> send(const void* buf, size_t len);
+    Async::Promise<ssize_t> send(const Buffer& buffer);
 
 private:
     IoWorker* io_;

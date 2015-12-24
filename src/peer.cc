@@ -78,8 +78,8 @@ Peer::tryGetData(std::string(name)) const {
 }
 
 Async::Promise<ssize_t>
-Peer::send(const void* buf, size_t len) {
-    return io_->asyncWrite(fd_, buf, len);
+Peer::send(const Buffer& buffer) {
+    return io_->asyncWrite(fd_, buffer);
 }
 
 

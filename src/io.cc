@@ -229,7 +229,10 @@ IoWorker::run() {
     if (pins.count() > 0) {
     }
 
+    thisId = std::this_thread::get_id();
+
     mailbox.bind(poller);
+    writesQueue.bind(poller);
 
     auto n = notifier.tag();
     poller.addFd(n.value(), NotifyOn::Read, n, Polling::Mode::Edge);
@@ -257,6 +260,9 @@ IoWorker::run() {
                 else if (event.tag == notifier.tag()) {
                     handleNotify();
                 }
+                else if (event.tag == writesQueue.tag()) {
+                    handleWriteQueue();
+                }
                 else {
                     if (event.flags.hasFlag(NotifyOn::Read)) {
                         auto fd = event.tag.value();
@@ -277,18 +283,10 @@ IoWorker::run() {
                             throw std::runtime_error("Assertion Error: could not find write data");
                         }
 
-                        auto &write = it->second;
-                        ssize_t bytes = ::send(fd, write.buf, write.len, 0);
-                        if (bytes < 0) {
-                            write.reject(Net::Error::system("Could not write data"));
-                        }
+                        poller.rearmFd(fd, NotifyOn::Read, Polling::Tag(fd), Polling::Mode::Edge);
 
-                        else if (bytes < write.len) {
-                            write.reject(Net::Error("Failed to write: could not write all bytes"));
-                        }
-                        else {
-                            write.resolve(bytes);
-                        }
+                        const auto& write = it->second;
+                        asyncWriteImpl(fd, write, Retry);
                     }
                 }
             }
@@ -338,8 +336,33 @@ IoWorker::handleNotify() {
     load = None();
 }
 
+void
+IoWorker::handleWriteQueue() {
+    // Let's drain the queue
+    for (;;) {
+        std::unique_ptr<PollableQueue<OnHoldWrite>::Entry> entry(writesQueue.pop());
+        if (!entry) break;
+
+        const auto &write = entry->data();
+        asyncWriteImpl(write.fd, write);
+    }
+}
+
 Async::Promise<ssize_t>
-IoWorker::asyncWrite(Fd fd, const void* buf, size_t len) {
+IoWorker::asyncWrite(Fd fd, const Buffer& buffer) {
+
+    // If the I/O operation has been initiated from an other thread, we queue it and we'll process
+    // it in our own thread so that we make sure that every I/O operation happens in the right thread
+    if (std::this_thread::get_id() != thisId) {
+        return Async::Promise<ssize_t>([=](Async::Resolver& resolve, Async::Rejection& reject) {
+            auto detached = buffer.detach();
+            OnHoldWrite write(std::move(resolve), std::move(reject), detached);
+            write.fd = fd;
+            auto *e = writesQueue.allocEntry(write);
+            writesQueue.push(e);
+        });
+    }
+
     return Async::Promise<ssize_t>([=](Async::Resolver& resolve, Async::Rejection& reject) {
 
         auto it = toWrite.find(fd);
@@ -348,33 +371,59 @@ IoWorker::asyncWrite(Fd fd, const void* buf, size_t len) {
             return;
         }
 
-        ssize_t totalWritten = 0;
-        for (;;) {
-            auto *bufPtr = static_cast<const char *>(buf) + totalWritten;
-            auto bufLen = len - totalWritten;
-            ssize_t bytesWritten = ::send(fd, bufPtr, bufLen, 0);
-            if (bytesWritten < 0) {
-                if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                    toWrite.insert(
-                            std::make_pair(fd, 
-                                OnHoldWrite(std::move(resolve), std::move(reject), bufPtr, bufLen)));
-                    poller.addFdOneShot(fd, NotifyOn::Write, Polling::Tag(fd));
-                }
-                else {
-                    reject(Net::Error::system("Could not write data"));
-                }
-                break;
-            }
-            else {
-                totalWritten += bytesWritten;
-                if (totalWritten == len) {
-                    resolve(totalWritten);
-                    break;
-                }
-            }
-        }
+        asyncWriteImpl(fd, buffer, resolve, reject);
+
     });
 }
+
+void
+IoWorker::asyncWriteImpl(Fd fd, const IoWorker::OnHoldWrite& entry, WriteStatus status) {
+    asyncWriteImpl(fd, entry.buffer, entry.resolve, entry.reject, status);
+}
+
+void
+IoWorker::asyncWriteImpl(
+        Fd fd, const Buffer& buffer,
+        Async::Resolver resolve, Async::Rejection reject, WriteStatus status)
+{
+    auto cleanUp = [&]() {
+        if (buffer.isOwned) delete[] buffer.data;
+        if (status == Retry)
+            toWrite.erase(fd);
+    };
+
+    ssize_t totalWritten = 0;
+    for (;;) {
+        auto *ptr = buffer.data + totalWritten;
+        auto len = buffer.len - totalWritten;
+        ssize_t bytesWritten = ::send(fd, ptr, len, 0);
+        if (bytesWritten < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                auto buf = buffer.isOwned ? buffer : buffer.detach(totalWritten);
+                if (status == FirstTry) {
+                    toWrite.insert(
+                            std::make_pair(fd,
+                                OnHoldWrite(std::move(resolve), std::move(reject), buf)));
+                }
+                poller.rearmFd(fd, NotifyOn::Read | NotifyOn::Write, Polling::Tag(fd), Polling::Mode::Edge);
+            }
+            else {
+                cleanUp();
+                reject(Net::Error::system("Could not write data"));
+            }
+            break;
+        }
+        else {
+            totalWritten += bytesWritten;
+            if (totalWritten == len) {
+                cleanUp();
+                resolve(totalWritten);
+                break;
+            }
+        }
+    }
+}
+
 
 
 } // namespace Tcp
