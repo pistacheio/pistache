@@ -93,21 +93,30 @@ namespace Private {
 
             while ((n = cursor.current()) != ' ') {
                 StreamCursor::Token keyToken(cursor);
-                if (!match_until('=', cursor))
+                if (!match_until({ '=', ' ', '&' }, cursor))
                     return State::Again;
 
                 std::string key = keyToken.text();
 
-                if (!cursor.advance(1)) return State::Again;
-
-                StreamCursor::Token valueToken(cursor);
-                if (!match_until({ ' ', '&' }, cursor))
-                    return State::Again;
-
-                std::string value = valueToken.text();
-                request->query_.add(std::move(key), std::move(value));
-                if (cursor.current() == '&') {
+                auto c = cursor.current();
+                if (c == ' ') {
+                    request->query_.add(std::move(key), "");
+                } else if (c == '&') {
+                    request->query_.add(std::move(key), "");
                     if (!cursor.advance(1)) return State::Again;
+                }
+                else if (c == '=') {
+                    if (!cursor.advance(1)) return State::Again;
+
+                    StreamCursor::Token valueToken(cursor);
+                    if (!match_until({ ' ', '&' }, cursor))
+                        return State::Again;
+
+                    std::string value = valueToken.text();
+                    request->query_.add(std::move(key), std::move(value));
+                    if (cursor.current() == '&') {
+                        if (!cursor.advance(1)) return State::Again;
+                    }
                 }
             }
         }
@@ -303,6 +312,11 @@ namespace Uri {
             return None();
 
         return Some(it->second);
+    }
+
+    bool
+    Query::has(const std::string& name) const {
+        return params.find(name) != std::end(params);
     }
 
 } // namespace Uri

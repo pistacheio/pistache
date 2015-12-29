@@ -28,14 +28,21 @@ class MyHandler : public Net::Http::Handler {
 
                 using namespace Net::Http;
 
-                response.headers()
-                    .add<Header::Server>("lys")
-                    .add<Header::ContentType>(MIME(Text, Plain));
+                timeout.arm(std::chrono::seconds(2));
 
-                auto stream = response.stream(Net::Http::Code::Ok);
-                stream << "PO";
-                stream << "NG";
-                stream << ends;
+                auto query = req.query();
+                if (query.has("chunked")) {
+                    std::cout << "Using chunked encoding" << std::endl;
+
+                    response.headers()
+                        .add<Header::Server>("lys")
+                        .add<Header::ContentType>(MIME(Text, Plain));
+
+                    auto stream = response.stream(Net::Http::Code::Ok);
+                    stream << "PO";
+                    stream << "NG";
+                    stream << ends;
+                }
 
             }
         }
