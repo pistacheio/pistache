@@ -38,6 +38,8 @@ To *message_cast(const std::unique_ptr<Message>& from)
 IoWorker::IoWorker() {
     timerFd = TRY_RET(timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK));
     poller.addFd(timerFd, Polling::NotifyOn::Read, Polling::Tag(timerFd));
+
+    notifier.bind(poller);
 }
 
 IoWorker::~IoWorker() {
@@ -233,9 +235,6 @@ IoWorker::run() {
 
     mailbox.bind(poller);
     writesQueue.bind(poller);
-
-    auto n = notifier.tag();
-    poller.addFd(n.value(), NotifyOn::Read, n, Polling::Mode::Edge);
 
     std::chrono::milliseconds timeout(-1);
 

@@ -238,8 +238,18 @@ namespace Polling {
 
 } // namespace Poller
 
-NotifyFd::NotifyFd() {
+Polling::Tag
+NotifyFd::bind(Polling::Epoll& poller) {
     event_fd = TRY_RET(eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC));
+    Polling::Tag tag(event_fd);
+
+    poller.addFd(event_fd, Polling::NotifyOn::Read, tag, Polling::Mode::Edge);
+    return Polling::Tag(event_fd);
+}
+
+bool
+NotifyFd::isBound() const {
+    return event_fd != -1;
 }
 
 Polling::Tag
@@ -249,12 +259,16 @@ NotifyFd::tag() const {
 
 void
 NotifyFd::notify() const {
+    if (!isBound())
+        throw std::runtime_error("Can not notify an unbound fd");
     eventfd_t val = 1;
     TRY(eventfd_write(event_fd, val));
 }
 
 void
 NotifyFd::read() const {
+    if (!isBound())
+        throw std::runtime_error("Can not read an unbound fd");
     eventfd_t val;
     TRY(eventfd_read(event_fd, &val));
 }

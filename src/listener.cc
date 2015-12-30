@@ -29,11 +29,16 @@ namespace Tcp {
 namespace {
     volatile sig_atomic_t g_listen_fd = -1;
 
-    void handle_sigint(int) {
+    void closeListener() {
         if (g_listen_fd != -1) {
-            close(g_listen_fd);
+            ::close(g_listen_fd);
             g_listen_fd = -1;
         }
+    }
+
+    void handle_sigint(int) {
+        std::cout << "Received C-c, closing listen fd!" << std::endl;
+        closeListener();
     }
 }
 
@@ -74,6 +79,11 @@ Listener::Listener(const Address& address)
     , listen_fd(-1)
     , backlog_(Const::MaxBacklog)
 {
+}
+
+Listener::~Listener() {
+    shutdown();
+    if (acceptThread) acceptThread->join();
 }
 
 void
@@ -168,7 +178,8 @@ Listener::bind(const Address& address) {
         TRY(::listen(fd, backlog_));
     }
 
-
+    make_non_blocking(fd);
+    poller.addFd(fd, Polling::NotifyOn::Write, Polling::Tag(fd), Polling::Mode::Edge);
     listen_fd = fd;
     g_listen_fd = fd;
 
@@ -187,31 +198,43 @@ Listener::isBound() const {
 void
 Listener::run() {
     for (;;) {
-        struct sockaddr_in peer_addr;
-        socklen_t peer_addr_len = sizeof(peer_addr);
-        int client_fd = ::accept(listen_fd, (struct sockaddr *)&peer_addr, &peer_addr_len);
-        if (client_fd < 0) {
-            if (g_listen_fd == -1) {
-                cout << "SIGINT Signal received, shutdowning !" << endl;
-                shutdown();
-                break;
+        std::vector<Polling::Event> events;
 
-            } else {
-                throw std::runtime_error(strerror(errno));
+        int ready_fds = poller.poll(events, 128, std::chrono::milliseconds(-1));
+        if (ready_fds == -1) {
+            if (errno == EINTR && g_listen_fd == -1) return;
+            throw Error::system("Polling");
+        }
+        else if (ready_fds > 0) {
+            for (const auto& event: events) {
+                if (event.tag == shutdownFd.tag())
+                    return;
+                else {
+                    if (event.flags.hasFlag(Polling::NotifyOn::Write)) {
+                        auto fd = event.tag.value();
+                        if (fd == listen_fd)
+                            handleNewConnection();
+                    }
+                }
             }
         }
-
-        make_non_blocking(client_fd);
-
-        auto peer = make_shared<Peer>(Address::fromUnix((struct sockaddr *)&peer_addr));
-        peer->associateFd(client_fd);
-
-        dispatchPeer(peer);
     }
 }
 
 void
+Listener::runThreaded() {
+    shutdownFd.bind(poller);
+    acceptThread.reset(new std::thread([=]() { this->run(); }));
+}
+
+void
 Listener::shutdown() {
+    if (shutdownFd.isBound()) shutdownFd.notify();
+    shutdownIo();
+}
+
+void
+Listener::shutdownIo() {
     for (auto &worker: ioGroup) {
         worker->shutdown();
     }
@@ -275,6 +298,23 @@ Listener::address() const {
 Options
 Listener::options() const {
     return options_;
+}
+
+void
+Listener::handleNewConnection() {
+    struct sockaddr_in peer_addr;
+    socklen_t peer_addr_len = sizeof(peer_addr);
+    int client_fd = ::accept(listen_fd, (struct sockaddr *)&peer_addr, &peer_addr_len);
+    if (client_fd < 0) {
+        throw std::runtime_error(strerror(errno));
+    }
+
+    make_non_blocking(client_fd);
+
+    auto peer = make_shared<Peer>(Address::fromUnix((struct sockaddr *)&peer_addr));
+    peer->associateFd(client_fd);
+
+    dispatchPeer(peer);
 }
 
 void

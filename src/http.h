@@ -530,6 +530,9 @@ public:
 
     void setHandler(const std::shared_ptr<Handler>& handler);
     void serve();
+    void serveThreaded();
+
+    void shutdown();
 
     bool isBound() const {
         return listener.isBound();
@@ -540,6 +543,24 @@ public:
     static Options options();
 
 private:
+    template<typename Method>
+    void serveImpl(Method method)
+    {
+#define CALL_MEMBER_FN(obj, pmf)  ((obj).*(pmf))
+        if (!handler_)
+            throw std::runtime_error("Must call setHandler() prior to serve()");
+
+        listener.setHandler(handler_);
+
+        if (listener.bind()) {
+            const auto& addr = listener.address();
+            std::cout << "Now listening on " << "http://" + addr.host() << ":"
+                      << addr.port() << std::endl;
+            CALL_MEMBER_FN(listener, method)();
+        }
+#undef CALL_MEMBER_FN
+    }
+
     std::shared_ptr<Handler> handler_;
     Net::Tcp::Listener listener;
 };

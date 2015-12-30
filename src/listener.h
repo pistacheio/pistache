@@ -36,6 +36,7 @@ public:
     };
 
     Listener();
+    ~Listener();
 
     Listener(const Address& address);
     void init(
@@ -49,6 +50,8 @@ public:
     bool isBound() const;
 
     void run();
+    void runThreaded();
+
     void shutdown();
 
     Async::Promise<Load> requestLoad(const Load& old);
@@ -62,12 +65,18 @@ private:
     Address addr_; 
     int listen_fd;
     int backlog_;
+    NotifyFd shutdownFd;
+    Polling::Epoll poller;
+
     std::vector<std::unique_ptr<IoWorker>> ioGroup;
     Flags<Options> options_;
     std::shared_ptr<Handler> handler_;
+    std::unique_ptr<std::thread> acceptThread;
 
+    void shutdownIo();
+    void handleNewConnection();
     void dispatchPeer(const std::shared_ptr<Peer>& peer);
-    void runLoadThread();
+
 };
 
 } // namespace Tcp

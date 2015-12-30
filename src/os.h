@@ -115,7 +115,12 @@ private:
 
 class NotifyFd {
 public:
-    NotifyFd();
+    NotifyFd()
+        : event_fd(-1)
+    { }
+
+    Polling::Tag bind(Polling::Epoll& poller);
+    bool isBound() const;
 
     Polling::Tag tag() const;
 

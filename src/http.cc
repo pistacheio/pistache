@@ -587,16 +587,19 @@ Endpoint::setHandler(const std::shared_ptr<Handler>& handler) {
 void
 Endpoint::serve()
 {
-    if (!handler_)
-        throw std::runtime_error("Must call setHandler() prior to serve()");
+    serveImpl(&Tcp::Listener::run);
+}
 
-    listener.setHandler(handler_);
+void
+Endpoint::serveThreaded()
+{
+    serveImpl(&Tcp::Listener::runThreaded);
+}
 
-    if (listener.bind()) { 
-        const auto& addr = listener.address();
-        cout << "Now listening on " << "http://" + addr.host() << ":" << addr.port() << endl;
-        listener.run();
-    }
+void
+Endpoint::shutdown()
+{
+    listener.shutdown();
 }
 
 Async::Promise<Tcp::Listener::Load>

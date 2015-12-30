@@ -119,7 +119,7 @@ Error::system(const char* message) {
     const char *err = strerror(errno);
 
     std::string str(message);
-    str += ':';
+    str += ": ";
     str += err;
 
     return Error(std::move(str));

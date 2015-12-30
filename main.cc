@@ -93,7 +93,7 @@ struct LoadMonitor {
 
     ~LoadMonitor() {
         shutdown_ = true;
-        thread->join();
+        if (thread) thread->join();
     }
 
 private:
@@ -156,6 +156,9 @@ int main(int argc, char *argv[]) {
     monitor.setInterval(std::chrono::seconds(5));
     monitor.start();
 
-    server->serve();
+    server->serveThreaded();
+    std::this_thread::sleep_for(std::chrono::seconds(10));
+    std::cout << "Shutdowning server" << std::endl;
+    server->shutdown();
     monitor.shutdown();
 }
