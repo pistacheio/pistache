@@ -78,10 +78,9 @@ Peer::tryGetData(std::string(name)) const {
 }
 
 Async::Promise<ssize_t>
-Peer::send(const Buffer& buffer) {
-    return io_->asyncWrite(fd_, buffer);
+Peer::send(const Buffer& buffer, int flags) {
+    return io_->asyncWrite(fd_, buffer, flags);
 }
-
 
 std::ostream& operator<<(std::ostream& os, const Peer& peer) {
     const auto& addr = peer.address();

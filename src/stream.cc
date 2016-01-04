@@ -6,6 +6,40 @@
 #include "stream.h"
 #include <algorithm>
 #include <iostream>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+FileBuffer::FileBuffer(const char* fileName)
+    : fileName_(fileName)
+{
+    init(fileName);
+}
+
+FileBuffer::FileBuffer(const std::string& fileName)
+    : fileName_(fileName)
+{
+    init(fileName.c_str());
+}
+
+void
+FileBuffer::init(const char* fileName)
+{
+    int fd = open(fileName, O_RDONLY);
+    if (fd == -1) {
+        throw std::runtime_error("Could not open file");
+    }
+
+    struct stat sb;
+    int res = ::fstat(fd, &sb);
+    if (res == -1) {
+        throw std::runtime_error("Could not get file stats");
+    }
+
+    fd_ = fd;
+    size_ = sb.st_size;
+}
 
 DynamicStreamBuf::int_type
 DynamicStreamBuf::overflow(DynamicStreamBuf::int_type ch) {

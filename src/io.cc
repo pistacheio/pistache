@@ -10,6 +10,7 @@
 #include "peer.h"
 #include "os.h"
 #include <sys/timerfd.h>
+#include <sys/sendfile.h>
 
 namespace Net {
 
@@ -343,66 +344,49 @@ IoWorker::handleWriteQueue() {
         if (!entry) break;
 
         const auto &write = entry->data();
-        asyncWriteImpl(write.fd, write);
+        asyncWriteImpl(write.peerFd, write);
     }
-}
-
-Async::Promise<ssize_t>
-IoWorker::asyncWrite(Fd fd, const Buffer& buffer) {
-
-    // If the I/O operation has been initiated from an other thread, we queue it and we'll process
-    // it in our own thread so that we make sure that every I/O operation happens in the right thread
-    if (std::this_thread::get_id() != thisId) {
-        return Async::Promise<ssize_t>([=](Async::Resolver& resolve, Async::Rejection& reject) {
-            auto detached = buffer.detach();
-            OnHoldWrite write(std::move(resolve), std::move(reject), detached);
-            write.fd = fd;
-            auto *e = writesQueue.allocEntry(write);
-            writesQueue.push(e);
-        });
-    }
-
-    return Async::Promise<ssize_t>([=](Async::Resolver& resolve, Async::Rejection& reject) {
-
-        auto it = toWrite.find(fd);
-        if (it != std::end(toWrite)) {
-            reject(Net::Error("Multiple writes on the same fd"));
-            return;
-        }
-
-        asyncWriteImpl(fd, buffer, resolve, reject);
-
-    });
 }
 
 void
 IoWorker::asyncWriteImpl(Fd fd, const IoWorker::OnHoldWrite& entry, WriteStatus status) {
-    asyncWriteImpl(fd, entry.buffer, entry.resolve, entry.reject, status);
+    asyncWriteImpl(fd, entry.flags, entry.buffer, entry.resolve, entry.reject, status);
 }
 
 void
 IoWorker::asyncWriteImpl(
-        Fd fd, const Buffer& buffer,
+        Fd fd, int flags, const BufferHolder& buffer,
         Async::Resolver resolve, Async::Rejection reject, WriteStatus status)
 {
     auto cleanUp = [&]() {
-        if (buffer.isOwned) delete[] buffer.data;
+        if (buffer.isRaw()) {
+            auto raw = buffer.raw();
+            if (raw.isOwned) delete[] raw.data;
+        }
+
         if (status == Retry)
             toWrite.erase(fd);
     };
 
     ssize_t totalWritten = 0;
     for (;;) {
-        auto *ptr = buffer.data + totalWritten;
-        auto len = buffer.len - totalWritten;
-        ssize_t bytesWritten = ::send(fd, ptr, len, 0);
+        ssize_t bytesWritten = 0;
+        auto len = buffer.size() - totalWritten;
+        if (buffer.isRaw()) {
+            auto raw = buffer.raw();
+            auto ptr = raw.data + totalWritten;
+            bytesWritten = ::send(fd, ptr, len, flags);
+        } else {
+            auto file = buffer.fd();
+            off_t offset = totalWritten;
+            bytesWritten = ::sendfile(fd, file, &offset, len);
+        }
         if (bytesWritten < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                auto buf = buffer.isOwned ? buffer : buffer.detach(totalWritten);
                 if (status == FirstTry) {
                     toWrite.insert(
                             std::make_pair(fd,
-                                OnHoldWrite(std::move(resolve), std::move(reject), buf)));
+                                OnHoldWrite(std::move(resolve), std::move(reject), buffer.detach(totalWritten), flags)));
                 }
                 poller.rearmFd(fd, NotifyOn::Read | NotifyOn::Write, Polling::Tag(fd), Polling::Mode::Edge);
             }
@@ -422,8 +406,6 @@ IoWorker::asyncWriteImpl(
         }
     }
 }
-
-
 
 } // namespace Tcp
 

@@ -51,7 +51,7 @@ public:
         return std::static_pointer_cast<T>(data);
     }
 
-    Async::Promise<ssize_t> send(const Buffer& buffer);
+    Async::Promise<ssize_t> send(const Buffer& buffer, int flags = 0);
 
 private:
     IoWorker* io_;

@@ -57,12 +57,22 @@ class MyHandler : public Net::Http::Handler {
         else if (req.resource() == "/timeout") {
             timeout.arm(std::chrono::seconds(5));
         }
+#if 0
         else if (req.resource() == "/async") {
             std::thread([](Net::Http::Response response) {
                 std::this_thread::sleep_for(std::chrono::seconds(1));
                 response.send(Net::Http::Code::Ok, "Async response");
             }, std::move(response)).detach();
         }
+#endif
+        else if (req.resource() == "/static") {
+            if (req.method() == Net::Http::Method::Get) {
+                Net::Http::serveFile(response, "README.md").then([](ssize_t bytes) {;
+                    std::cout << "Sent " << bytes << " bytes" << std::endl;
+                }, Async::NoExcept);
+            }
+        }
+
     }
 
     void onTimeout(const Net::Http::Request& req, Net::Http::Response response) {
@@ -156,8 +166,7 @@ int main(int argc, char *argv[]) {
     monitor.setInterval(std::chrono::seconds(5));
     monitor.start();
 
-    server->serveThreaded();
-    std::this_thread::sleep_for(std::chrono::seconds(10));
+    server->serve();
     std::cout << "Shutdowning server" << std::endl;
     server->shutdown();
     monitor.shutdown();

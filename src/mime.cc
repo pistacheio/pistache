@@ -51,6 +51,50 @@ MediaType::fromRaw(const char* str, size_t len) {
     return res;
 }
 
+MediaType
+MediaType::fromFile(const char* fileName)
+{
+    const char *extensionOffset = nullptr;
+    const char *p = fileName;
+    while (*p) {
+        if (*p == '.')
+            extensionOffset = p;
+        ++p;
+    }
+
+    if (!extensionOffset)
+        return MediaType();
+
+    ++extensionOffset;
+
+    struct Extension {
+        const char* const raw;
+        Mime::Type top;
+        Mime::Subtype sub;
+    };
+
+    // @Data: maybe one day try to export http://www.iana.org/assignments/media-types/media-types.xhtml
+    // as an item-list
+
+    static constexpr Extension KnownExtensions[] = {
+        { "jpg", Type::Image, Subtype::Jpeg },
+        { "jpeg", Type::Image, Subtype::Jpeg },
+        { "png", Type::Image, Subtype::Png },
+        { "bmp", Type::Image, Subtype::Bmp },
+
+        { "txt", Type::Text, Subtype::Plain },
+        { "md", Type::Text, Subtype::Plain }
+    };
+
+    for (const auto& ext: KnownExtensions) {
+        if (!strcmp(extensionOffset, ext.raw)) {
+            return MediaType(ext.top, ext.sub);
+        }
+    }
+
+    return MediaType();
+}
+
 void
 MediaType::parseRaw(const char* str, size_t len) {
     auto raise = [&](const char* str) {

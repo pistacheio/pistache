@@ -13,6 +13,7 @@
 #include <vector>
 #include <limits>
 #include <iostream>
+#include "os.h"
 
 static constexpr char CR = 0xD;
 static constexpr char LF = 0xA;
@@ -115,6 +116,12 @@ private:
 };
 
 struct Buffer {
+    Buffer()
+        : data(nullptr)
+        , len(0)
+        , isOwned(false)
+    { }
+
     Buffer(const char * const data, size_t len, bool own = false)
         : data(data)
         , len(len)
@@ -134,6 +141,23 @@ struct Buffer {
     const char* const data;
     const size_t len;
     const bool isOwned;
+};
+
+struct FileBuffer {
+    FileBuffer() { }
+
+    FileBuffer(const char* fileName);
+    FileBuffer(const std::string& fileName);
+
+    std::string fileName() const { return fileName_; }
+    Fd fd() const { return fd_; }
+    size_t size() const { return size_; }
+
+private:
+    void init(const char* fileName);
+    std::string fileName_;
+    Fd fd_;
+    size_t size_;
 };
 
 class DynamicStreamBuf : public StreamBuf<char> {

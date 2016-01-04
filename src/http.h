@@ -220,18 +220,7 @@ private:
             Message&& other,
             std::weak_ptr<Tcp::Peer> peer,
             Tcp::IoWorker* io,
-            size_t streamSize)
-        : Message(std::move(other))
-        , peer_(std::move(peer))
-        , buf_(streamSize)
-        , io_(io)
-    {
-        writeStatusLine();
-        writeHeaders();
-    }
-
-    void writeStatusLine();
-    void writeHeaders();
+            size_t streamSize);
 
     std::shared_ptr<Tcp::Peer> peer() const {
         if (peer_.expired())
@@ -276,6 +265,8 @@ class Response : private Message {
 public:
     friend class Handler;
     friend class Timeout;
+
+    friend Async::Promise<ssize_t> serveFile(Response&, const char *, const Mime::MediaType&);
 
     static constexpr size_t DefaultStreamSize = 512;
 
@@ -364,6 +355,15 @@ public:
         return ResponseStream(std::move(*this), peer_, io_, streamSize);
     }
 
+    // Unsafe API
+
+    DynamicStreamBuf *rdbuf() {
+       return &buf_;
+    }
+
+    DynamicStreamBuf *rdbuf(DynamicStreamBuf* other) {
+       throw std::domain_error("Unimplemented");
+    }
 
 private:
     Response(Tcp::IoWorker* io)
@@ -394,6 +394,9 @@ private:
     Tcp::IoWorker *io_;
 };
 
+Async::Promise<ssize_t> serveFile(
+        Response& response, const char *fileName,
+        const Mime::MediaType& contentType = Mime::MediaType());
 
 namespace Private {
 

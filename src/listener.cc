@@ -179,7 +179,7 @@ Listener::bind(const Address& address) {
     }
 
     make_non_blocking(fd);
-    poller.addFd(fd, Polling::NotifyOn::Write, Polling::Tag(fd), Polling::Mode::Edge);
+    poller.addFd(fd, Polling::NotifyOn::Read, Polling::Tag(fd), Polling::Mode::Edge);
     listen_fd = fd;
     g_listen_fd = fd;
 
@@ -210,7 +210,7 @@ Listener::run() {
                 if (event.tag == shutdownFd.tag())
                     return;
                 else {
-                    if (event.flags.hasFlag(Polling::NotifyOn::Write)) {
+                    if (event.flags.hasFlag(Polling::NotifyOn::Read)) {
                         auto fd = event.tag.value();
                         if (fd == listen_fd)
                             handleNewConnection();

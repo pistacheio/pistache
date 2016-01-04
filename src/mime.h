@@ -156,6 +156,8 @@ public:
     static MediaType fromString(const std::string& str);
     static MediaType fromString(std::string&& str);
 
+    static MediaType fromFile(const char* fileName);
+
     Mime::Type top() const { return top_; }
     Mime::Subtype sub() const { return sub_; }
     Mime::Suffix suffix() const { return suffix_; }
