@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <chrono>
 #include <ctime>
+#include <functional>
 
 namespace Net {
 
@@ -184,3 +185,14 @@ private:
 } // namespace Http
 
 } // namespace Net
+
+namespace std {
+
+template<>
+struct hash<Net::Http::Method> {
+    size_t operator()(Net::Http::Method method) const {
+        return std::hash<int>()(static_cast<int>(method));
+    }
+};
+
+} // namespace std

@@ -12,6 +12,7 @@ set(SOURCE_FILES
     http_defs.cc
     mime.cc
     stream.cc
+    router.cc
 )
 
 add_library(net ${SOURCE_FILES})
