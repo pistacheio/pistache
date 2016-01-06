@@ -5,6 +5,7 @@
 */
 
 #include "router.h"
+#include <algorithm>
 
 namespace Net {
 
@@ -14,56 +15,160 @@ Request::Request(
         const Http::Request& request,
         std::vector<TypedParam>&& params)
     : Http::Request(request)
+    , params_(std::move(params))
 {
-    for (auto&& param: params) {
-        params_.insert(std::make_pair(param.name(), std::move(param)));
-    }
+}
+
+bool
+Request::hasParam(std::string name) const {
+    auto it = std::find_if(params_.begin(), params_.end(), [&](const TypedParam& param) {
+            return param.name() == name;
+    });
+
+    return it != std::end(params_);
 }
 
 TypedParam
 Request::param(std::string name) const {
-    auto it = params_.find(std::move(name));
+    auto it = std::find_if(params_.begin(), params_.end(), [&](const TypedParam& param) {
+            return param.name() == name;
+    });
+
     if (it == std::end(params_)) {
         throw std::runtime_error("Unknown parameter");
     }
 
-    return it->second;
+    return *it;
+}
+
+Router::Route::Fragment::Fragment(std::string value)
+{
+    if (value.empty())
+        throw std::runtime_error("Invalid empty fragment");
+
+    init(std::move(value));
+}
+
+bool
+Router::Route::Fragment::match(const std::string& raw) const {
+    if (flags.hasFlag(Flag::Fixed)) {
+        if (!flags.hasFlag(Flag::Optional)) {
+            return raw == value_;
+        }
+    }
+    else if (flags.hasFlag(Flag::Parameter)) {
+        return true;
+    }
+
+    return false;
+}
+
+bool
+Router::Route::Fragment::match(const Fragment& other) const {
+    return match(other.value());
+}
+
+void
+Router::Route::Fragment::init(std::string value) {
+    if (value[0] == ':')
+        flags.setFlag(Flag::Parameter);
+    else
+        flags.setFlag(Flag::Fixed);
+
+    // Let's search for any '?'
+    auto pos = value.find('?');
+    if (pos != std::string::npos) {
+        if (value[0] != ':')
+            throw std::runtime_error("Only optional parameters are currently supported");
+
+        if (pos != value.size() - 1)
+            throw std::runtime_error("? should be at the end of the string");
+
+        value_ = value.substr(0, pos);
+        flags.setFlag(Flag::Optional);
+    } else {
+        value_ = std::move(value);
+    }
+
+    checkInvariant();
+}
+
+void
+Router::Route::Fragment::checkInvariant() const {
+    auto check = [this](std::initializer_list<Flag> exclusiveFlags) {
+        for (auto flag: exclusiveFlags) {
+            if (!flags.hasFlag(flag)) return;
+        }
+
+        throw std::logic_error(
+                std::string("Invariant violated: invalid combination of flags for fragment ") + value_);
+    };
+
+    check({ Flag::Fixed, Flag::Optional });
+    check({ Flag::Fixed, Flag::Parameter });
+}
+
+std::vector<Router::Route::Fragment>
+Router::Route::Fragment::fromUrl(const std::string& url) {
+    std::vector<Router::Route::Fragment> fragments;
+
+    std::istringstream iss(url);
+    std::string p;
+
+    while (std::getline(iss, p, '/')) {
+        if (p.empty()) continue;
+
+        fragments.push_back(Fragment(std::move(p)));
+    }
+
+    return fragments;
+}
+
+bool
+Router::Route::Fragment::isParameter() const {
+    return flags.hasFlag(Flag::Parameter);
+}
+
+bool
+Router::Route::Fragment::isOptional() const {
+    return isParameter() && flags.hasFlag(Flag::Optional);
 }
 
 std::pair<bool, std::vector<TypedParam>>
 Router::Route::match(const Http::Request& req) const
 {
-    auto reqParts = splitUrl(req.resource());
-    if (reqParts.size() != parts_.size()) return std::make_pair(false, std::vector<TypedParam>());
+    return match(req.resource());
+}
 
-    auto isUrlParameter = [](const std::string& str) {
-        return str.size() >= 1 && str[0] == ':';
-    };
+std::pair<bool, std::vector<TypedParam>>
+Router::Route::match(const std::string& req) const
+{
+    auto reqFragments = Fragment::fromUrl(req);
+    if (reqFragments.size() > fragments_.size())
+        return std::make_pair(false, std::vector<TypedParam>());
 
     std::vector<TypedParam> extractedParams;
-    for (std::vector<std::string>::size_type i = 0; i < reqParts.size(); ++i) {
-        if (!isUrlParameter(parts_[i])) {
-            if (reqParts[i] != parts_[i]) return std::make_pair(false, std::vector<TypedParam>());
-            continue;
+
+    for (std::vector<Fragment>::size_type i = 0; i < fragments_.size(); ++i) {
+        const auto& fragment = fragments_[i];
+        if (i >= reqFragments.size()) {
+            if (fragment.isOptional())
+                continue;
+
+            return std::make_pair(false, std::vector<TypedParam>());
         }
 
-        TypedParam param(parts_[i], reqParts[i]);
-        extractedParams.push_back(std::move(param));
+        const auto& reqFragment = reqFragments[i];
+        if (!fragment.match(reqFragment))
+            return std::make_pair(false, std::vector<TypedParam>());
+
+        if (fragment.isParameter()) {
+            extractedParams.push_back(TypedParam(fragment.value(), reqFragment.value()));
+        }
+
     }
 
     return make_pair(true, std::move(extractedParams));
-}
-
-std::vector<std::string>
-Router::Route::splitUrl(const std::string& resource) const {
-    std::istringstream iss(resource);
-    std::string p;
-    std::vector<std::string> parts;
-    while (std::getline(iss, p, '/')) {
-        parts.push_back(std::move(p));
-    }
-
-    return parts;
 }
 
 Router::HttpHandler::HttpHandler(
@@ -85,8 +190,11 @@ Router::HttpHandler::onRequest(
         std::tie(match, params) = route.match(req);
         if (match) {
             route.invokeHandler(Request(req, std::move(params)), std::move(response));
+            return;
         }
     }
+
+    response.send(Http::Code::Not_Found, "Could not find a matching route");
 }
 
 void

@@ -9,10 +9,30 @@
 #include <string>
 #include "http.h"
 #include "http_defs.h"
+#include "flags.h"
 
 namespace Net {
 
 namespace Rest {
+
+namespace details {
+    template<typename T> struct LexicalCast {
+        static T cast(const std::string& value) {
+            std::istringstream iss(value);
+            T out;
+            if (!(iss >> out))
+                throw std::runtime_error("Bad lexical cast");
+            return out;
+        }
+    };
+
+    template<>
+    struct LexicalCast<std::string> {
+        static std::string cast(const std::string& value) {
+            return value;
+        }
+    };
+}
 
 class TypedParam {
 public:
@@ -23,8 +43,7 @@ public:
 
     template<typename T>
     T as() const {
-        /* @FixMe: use some sort of lexical casting here */
-        return value_;
+        return details::LexicalCast<T>::cast(value_);
     }
 
     std::string name() const {
@@ -42,11 +61,11 @@ public:
             const Http::Request& request, 
             std::vector<TypedParam>&& params);
 
+    bool hasParam(std::string name) const;
     TypedParam param(std::string name) const;
 
 private:
-
-    std::unordered_map<std::string, TypedParam> params_;
+    std::vector<TypedParam> params_;
 };
 
 class Router {
@@ -58,12 +77,15 @@ public:
             : resource_(std::move(resource))
             , method_(method)
             , handler_(std::move(handler))
-            , parts_(splitUrl(resource_))
+            , fragments_(Fragment::fromUrl(resource_))
         {
         }
 
         std::pair<bool, std::vector<TypedParam>>
         match(const Http::Request& req) const;
+
+        std::pair<bool, std::vector<TypedParam>>
+        match(const std::string& req) const;
 
         template<typename... Args>
         void invokeHandler(Args&& ...args) const {
@@ -71,19 +93,48 @@ public:
         }
 
     private:
-        std::vector<std::string> splitUrl(const std::string& resource) const;
+        struct Fragment {
+            explicit Fragment(std::string value);
+
+            bool match(const std::string& raw) const;
+            bool match(const Fragment& other) const;
+
+            bool isParameter() const;
+            bool isOptional() const;
+
+            std::string value() const {
+                return value_;
+            }
+
+            static std::vector<Fragment> fromUrl(const std::string& url);
+
+        private:
+            enum class Flag {
+                None      = 0x0,
+                Fixed     = 0x1,
+                Parameter = Fixed << 1,
+                Optional  = Parameter << 1
+            };
+
+            void init(std::string value);
+
+            void checkInvariant() const;
+
+            Flags<Flag> flags;
+            std::string value_;
+        };
 
         std::string resource_;
         Net::Http::Method method_;
         Handler handler_;
         /* @Performance: since we know that resource_ will live as long as the vector underneath,
-         * we would benefit from std::experimental::string_view to store parts of the resource.
+         * we would benefit from std::experimental::string_view to store fragments.
          *
          * We could use string_view instead of allocating strings everytime. However, string_view is
          * only available in c++17, so I might have to come with my own lightweight implementation of
          * it
          */
-        std::vector<std::string> parts_;
+        std::vector<Fragment> fragments_;
     };
 
     class HttpHandler : public Net::Http::Handler {
@@ -129,6 +180,16 @@ namespace Routes {
     template<typename Handler, typename Obj>
     void Post(Router& router, std::string resource, Handler handler, Obj obj) {
         Post(router, std::move(resource), std::bind(handler, obj, std::placeholders::_1, std::placeholders::_2));
+    }
+
+    template<typename Handler, typename Obj>
+    void Put(Router& router, std::string resource, Handler handler, Obj obj) {
+        Put(router, std::move(resource), std::bind(handler, obj, std::placeholders::_1, std::placeholders::_2));
+    }
+
+    template<typename Handler, typename Obj>
+    void Delete(Router& router, std::string resource, Handler handler, Obj obj) {
+        Delete(router, std::move(resource), std::bind(handler, obj, std::placeholders::_1, std::placeholders::_2));
     }
 
 } // namespace Routing

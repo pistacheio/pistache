@@ -166,7 +166,7 @@ private:
     void setupRoutes() {
         using namespace Net::Rest;
 
-        Routes::Post(router, "/record/:name", &StatsEndpoint::doRecordMetric, this);
+        Routes::Post(router, "/record/:name/:value?", &StatsEndpoint::doRecordMetric, this);
         Routes::Get(router, "/value/:name", &StatsEndpoint::doGetMetric, this);
     }
 
@@ -176,13 +176,19 @@ private:
             return metric.name() == name;
         });
 
+        int val = 1;
+        if (request.hasParam(":value")) {
+            auto value = request.param(":value");
+            val = value.as<int>();
+        }
+
         if (it == std::end(metrics)) {
-            metrics.push_back(Metric(std::move(name), 1));
-            response.send(Http::Code::Created);
+            metrics.push_back(Metric(std::move(name), val));
+            response.send(Http::Code::Created, std::to_string(val));
         }
         else {
             auto &metric = *it;
-            metric.incr(1);
+            metric.incr(val);
             response.send(Http::Code::Ok, std::to_string(metric.value()));
         }
 
@@ -196,10 +202,10 @@ private:
 
         if (it == std::end(metrics)) {
             response.send(Http::Code::Not_Found);
+        } else {
+            const auto& metric = *it;
+            response.send(Http::Code::Ok, std::to_string(metric.value()));
         }
-
-        const auto& metric = *it;
-        response.send(Http::Code::Ok, std::to_string(metric.value()));
 
     }
 
