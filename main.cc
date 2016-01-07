@@ -201,7 +201,7 @@ private:
         });
 
         if (it == std::end(metrics)) {
-            response.send(Http::Code::Not_Found);
+            response.send(Http::Code::Not_Found, "Metric does not exist");
         } else {
             const auto& metric = *it;
             response.send(Http::Code::Ok, std::to_string(metric.value()));

@@ -55,87 +55,78 @@ private:
     std::string value_;
 };
 
-class Request : public Http::Request {
-public:
-    explicit Request(
-            const Http::Request& request, 
-            std::vector<TypedParam>&& params);
+class Request;
 
-    bool hasParam(std::string name) const;
-    TypedParam param(std::string name) const;
-
-private:
-    std::vector<TypedParam> params_;
-};
-
-class Router {
-public:
+struct Route {
     typedef std::function<void (const Request&, Net::Http::Response)> Handler;
 
-    struct Route {
-        Route(std::string resource, Http::Method method, Handler handler)
-            : resource_(std::move(resource))
-            , method_(method)
-            , handler_(std::move(handler))
-            , fragments_(Fragment::fromUrl(resource_))
-        {
+    Route(std::string resource, Http::Method method, Handler handler)
+        : resource_(std::move(resource))
+        , method_(method)
+        , handler_(std::move(handler))
+        , fragments_(Fragment::fromUrl(resource_))
+    {
+    }
+
+    std::tuple<bool, std::vector<TypedParam>, std::vector<TypedParam>>
+    match(const Http::Request& req) const;
+
+    std::tuple<bool, std::vector<TypedParam>, std::vector<TypedParam>>
+    match(const std::string& req) const;
+
+    template<typename... Args>
+    void invokeHandler(Args&& ...args) const {
+        handler_(std::forward<Args>(args)...);
+    }
+
+private:
+    struct Fragment {
+        explicit Fragment(std::string value);
+
+        bool match(const std::string& raw) const;
+        bool match(const Fragment& other) const;
+
+        bool isParameter() const;
+        bool isSplat() const;
+        bool isOptional() const;
+
+        std::string value() const {
+            return value_;
         }
 
-        std::pair<bool, std::vector<TypedParam>>
-        match(const Http::Request& req) const;
-
-        std::pair<bool, std::vector<TypedParam>>
-        match(const std::string& req) const;
-
-        template<typename... Args>
-        void invokeHandler(Args&& ...args) const {
-            handler_(std::forward<Args>(args)...);
-        }
+        static std::vector<Fragment> fromUrl(const std::string& url);
 
     private:
-        struct Fragment {
-            explicit Fragment(std::string value);
-
-            bool match(const std::string& raw) const;
-            bool match(const Fragment& other) const;
-
-            bool isParameter() const;
-            bool isOptional() const;
-
-            std::string value() const {
-                return value_;
-            }
-
-            static std::vector<Fragment> fromUrl(const std::string& url);
-
-        private:
-            enum class Flag {
-                None      = 0x0,
-                Fixed     = 0x1,
-                Parameter = Fixed << 1,
-                Optional  = Parameter << 1
-            };
-
-            void init(std::string value);
-
-            void checkInvariant() const;
-
-            Flags<Flag> flags;
-            std::string value_;
+        enum class Flag {
+            None      = 0x0,
+            Fixed     = 0x1,
+            Parameter = Fixed << 1,
+            Optional  = Parameter << 1,
+            Splat     = Optional << 1
         };
 
-        std::string resource_;
-        Net::Http::Method method_;
-        Handler handler_;
-        /* @Performance: since we know that resource_ will live as long as the vector underneath,
-         * we would benefit from std::experimental::string_view to store fragments.
-         *
-         * We could use string_view instead of allocating strings everytime. However, string_view is
-         * only available in c++17, so I might have to come with my own lightweight implementation of
-         * it
-         */
-        std::vector<Fragment> fragments_;
+        void init(std::string value);
+
+        void checkInvariant() const;
+
+        Flags<Flag> flags;
+        std::string value_;
     };
+
+    std::string resource_;
+    Net::Http::Method method_;
+    Handler handler_;
+    /* @Performance: since we know that resource_ will live as long as the vector underneath,
+     * we would benefit from std::experimental::string_view to store fragments.
+     *
+     * We could use string_view instead of allocating strings everytime. However, string_view is
+     * only available in c++17, so I might have to come with my own lightweight implementation of
+     * it
+     */
+    std::vector<Fragment> fragments_;
+};
+
+namespace Private {
 
     class HttpHandler : public Net::Http::Handler {
     public:
@@ -149,28 +140,52 @@ public:
     private:
         std::unordered_map<Http::Method, std::vector<Route>> routes;
     };
+}
 
-    std::shared_ptr<HttpHandler>
-    handler() const {
-        return std::make_shared<HttpHandler>(routes);
-    }
+class Request : public Http::Request {
+public:
+    friend class Private::HttpHandler;
 
-    void get(std::string resource, Handler handler);
-    void post(std::string resource, Handler handler);
-    void put(std::string resource, Handler handler);
-    void del(std::string resource, Handler handler);
+    bool hasParam(std::string name) const;
+    TypedParam param(std::string name) const;
+
+    TypedParam splatAt(size_t index) const;
+    std::vector<TypedParam> splat() const;
 
 private:
-    void addRoute(Http::Method method, std::string resource, Handler handler);
+    explicit Request(
+            const Http::Request& request, 
+            std::vector<TypedParam>&& params,
+            std::vector<TypedParam>&& splats);
+
+    std::vector<TypedParam> params_;
+    std::vector<TypedParam> splats_;
+};
+
+class Router {
+public:
+
+    std::shared_ptr<Private::HttpHandler>
+    handler() const {
+        return std::make_shared<Private::HttpHandler>(routes);
+    }
+
+    void get(std::string resource, Route::Handler handler);
+    void post(std::string resource, Route::Handler handler);
+    void put(std::string resource, Route::Handler handler);
+    void del(std::string resource, Route::Handler handler);
+
+private:
+    void addRoute(Http::Method method, std::string resource, Route::Handler handler);
     std::unordered_map<Http::Method, std::vector<Route>> routes;
 };
 
 namespace Routes {
 
-    void Get(Router& router, std::string resource, Router::Handler handler);
-    void Post(Router& router, std::string resource, Router::Handler handler);
-    void Put(Router& router, std::string resource, Router::Handler handler);
-    void Delete(Router& router, std::string resource, Router::Handler handler);
+    void Get(Router& router, std::string resource, Route::Handler handler);
+    void Post(Router& router, std::string resource, Route::Handler handler);
+    void Put(Router& router, std::string resource, Route::Handler handler);
+    void Delete(Router& router, std::string resource, Route::Handler handler);
 
     template<typename Handler, typename Obj>
     void Get(Router& router, std::string resource, Handler handler, Obj obj) {
