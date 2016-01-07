@@ -139,35 +139,49 @@ private:
     }
 };
 
+namespace Generic {
+
+void handleReady(const Rest::Request&, Http::Response response) {
+    response.send(Http::Code::Ok, "1");
+}
+
+}
+
 class StatsEndpoint {
 public:
     StatsEndpoint(Net::Address addr)
-        : httpEndpoint(addr)
+        : httpEndpoint(std::make_shared<Net::Http::Endpoint>(addr))
+        , monitor(httpEndpoint)
     { }
 
     void init() {
         auto opts = Net::Http::Endpoint::options()
             .threads(1)
             .flags(Net::Tcp::Options::InstallSignalHandler);
-        httpEndpoint.init(opts);
+        httpEndpoint->init(opts);
         setupRoutes();
+        monitor.setInterval(std::chrono::seconds(5));
     }
 
     void start() {
-        httpEndpoint.setHandler(router.handler());
-        httpEndpoint.serve();
+        monitor.start();
+        httpEndpoint->setHandler(router.handler());
+        httpEndpoint->serve();
     }
 
     void shutdown() {
-        httpEndpoint.shutdown();
+        httpEndpoint->shutdown();
+        monitor.shutdown();
     }
 
 private:
     void setupRoutes() {
         using namespace Net::Rest;
 
-        Routes::Post(router, "/record/:name/:value?", &StatsEndpoint::doRecordMetric, this);
-        Routes::Get(router, "/value/:name", &StatsEndpoint::doGetMetric, this);
+        Routes::Post(router, "/record/:name/:value?", Routes::bind(&StatsEndpoint::doRecordMetric, this));
+        Routes::Get(router, "/value/:name", Routes::bind(&StatsEndpoint::doGetMetric, this));
+        Routes::Get(router, "/ready", Routes::bind(&Generic::handleReady));
+
     }
 
     void doRecordMetric(const Rest::Request& request, Net::Http::Response response) {
@@ -236,8 +250,9 @@ private:
 
     std::vector<Metric> metrics;
 
-    Net::Http::Endpoint httpEndpoint;
+    std::shared_ptr<Net::Http::Endpoint> httpEndpoint;
     Rest::Router router;
+    LoadMonitor monitor;
 };
 
 int main(int argc, char *argv[]) {
