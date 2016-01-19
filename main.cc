@@ -2,6 +2,7 @@
 #include "peer.h"
 #include "http.h"
 #include "http_headers.h"
+#include "cookie.h"
 #include "router.h"
 #include <iostream>
 #include <cstring>
@@ -19,6 +20,16 @@ struct ExceptionPrinter {
         }
     }
 };
+
+void printCookies(const Net::Http::Request& req) {
+    auto cookies = req.cookies();
+    std::cout << "Cookies: [" << std::endl;
+    const std::string indent(4, ' ');
+    for (const auto& c: cookies) {
+        std::cout << indent << c.name << " = " << c.value << std::endl;
+    }
+    std::cout << "]" << std::endl;
+}
 
 class MyHandler : public Net::Http::Handler {
     void onRequest(
@@ -40,6 +51,9 @@ class MyHandler : public Net::Http::Handler {
                     response.headers()
                         .add<Header::Server>("lys")
                         .add<Header::ContentType>(MIME(Text, Plain));
+
+                    response.cookies()
+                        .add(Cookie("lang", "en-US"));
 
                     auto stream = response.stream(Net::Http::Code::Ok);
                     stream << "PO";
@@ -181,6 +195,7 @@ private:
         Routes::Post(router, "/record/:name/:value?", Routes::bind(&StatsEndpoint::doRecordMetric, this));
         Routes::Get(router, "/value/:name", Routes::bind(&StatsEndpoint::doGetMetric, this));
         Routes::Get(router, "/ready", Routes::bind(&Generic::handleReady));
+        Routes::Get(router, "/auth", Routes::bind(&StatsEndpoint::doAuth, this));
 
     }
 
@@ -221,6 +236,13 @@ private:
             response.send(Http::Code::Ok, std::to_string(metric.value()));
         }
 
+    }
+
+    void doAuth(const Rest::Request& request, Net::Http::Response response) {
+        printCookies(request);
+        response.cookies()
+            .add(Http::Cookie("lang", "en-US"));
+        response.send(Http::Code::Ok);
     }
 
     class Metric {

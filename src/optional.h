@@ -118,7 +118,7 @@ public:
 
     template<typename U>
     Optional(types::Some<U> some) { 
-        static_assert(std::is_same<T, U>::value || std::is_convertible<T, U>::value, 
+        static_assert(std::is_same<T, U>::value || std::is_convertible<U, T>::value,
                       "Types mismatch");
         from_some_helper(std::move(some), types::is_move_constructible<U>());
     }
@@ -126,7 +126,7 @@ public:
 
     template<typename U>
     Optional<T> &operator=(types::Some<U> some) {
-        static_assert(std::is_same<T, U>::value || std::is_convertible<T, U>::value, 
+        static_assert(std::is_same<T, U>::value || std::is_convertible<U, T>::value,
                       "Types mismatch");
         if (none_flag != NoneMarker) {
             data()->~T();

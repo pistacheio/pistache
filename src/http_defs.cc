@@ -7,6 +7,7 @@
 #include "http_defs.h"
 #include "common.h"
 #include <iostream>
+#include <iomanip>
 
 namespace Net {
 
@@ -106,6 +107,24 @@ FullDate
 FullDate::fromString(const std::string& str) {
     return FullDate::fromRaw(str.c_str(), str.size());
 }
+
+void
+FullDate::write(std::ostream& os, Type type) const
+{
+    char buff[100];
+    std::memset(buff, 0, sizeof buff);
+    switch (type) {
+    case Type::RFC1123:
+        //os << std::put_time(&date_, "%a, %d %b %Y %H:%M:%S %Z");
+        if (std::strftime(buff, sizeof buff, "%a, %d %b %Y %H:%M:%S %Z", &date_))
+            os << buff;
+        break;
+    case Type::RFC850:
+    case Type::AscTime:
+        break;
+    }
+}
+
 
 const char* methodString(Method method)
 {

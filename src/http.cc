@@ -64,7 +64,7 @@ namespace {
         #define OUT(...) \
             do { \
                 __VA_ARGS__; \
-                if (!os) return false; \
+                if (!os)  return false; \
             } while (0)
 
         std::ostream os(&buf);
@@ -72,6 +72,25 @@ namespace {
         for (const auto& header: headers.list()) {
             OUT(os << header->name() << ": ");
             OUT(header->write(os));
+            OUT(os << crlf);
+        }
+
+        return true;
+
+        #undef OUT
+    }
+
+    bool writeCookies(const CookieJar& cookies, DynamicStreamBuf& buf) {
+        #define OUT(...) \
+            do { \
+                __VA_ARGS__; \
+                if (!os) return false; \
+            } while (0)
+
+        std::ostream os(&buf);
+        for (const auto& cookie: cookies) {
+            OUT(os << "Set-Cookie: ");
+            OUT(cookie.write(os));
             OUT(os << crlf);
         }
 
@@ -228,7 +247,13 @@ namespace Private {
                 if (!cursor.advance(1)) return State::Again;
             }
 
-            if (Header::Registry::isRegistered(name)) {
+            if (name == "Cookie") {
+                request->cookies_.add(
+                        Cookie::fromRaw(cursor.offset(start), cursor.diff(start))
+                );
+            }
+
+            else if (Header::Registry::isRegistered(name)) {
                 std::shared_ptr<Header::Header> header = Header::Registry::makeHeader(name);
                 header->parseRaw(cursor.offset(start), cursor.diff(start));
                 request->headers_.add(header);
@@ -404,6 +429,11 @@ Request::query() const {
     return query_;
 }
 
+const CookieJar&
+Request::cookies() const {
+    return cookies_;
+}
+
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
 std::shared_ptr<Tcp::Peer>
 Request::peer() const {
@@ -428,14 +458,15 @@ ResponseStream::ResponseStream(
     if (!writeStatusLine(code_, buf_))
         throw Error("Response exceeded buffer size");
 
+    if (!writeCookies(cookies_, buf_)) {
+        throw Error("Response exceeded buffer size");
+    }
+
     if (writeHeaders(headers_, buf_)) {
         std::ostream os(&buf_);
         if (!writeHeader<Header::TransferEncoding>(os, Header::Encoding::Chunked))
             throw Error("Response exceeded buffer size");
         os << crlf;
-    }
-    else {
-        throw Error("Response exceeded buffer size");
     }
 }
 
@@ -479,6 +510,7 @@ Response::putOnWire(const char* data, size_t len)
 
         OUT(writeStatusLine(code_, buf_));
         OUT(writeHeaders(headers_, buf_));
+        OUT(writeCookies(cookies_, buf_));
 
         OUT(writeHeader<Header::ContentLength>(os, len));
 

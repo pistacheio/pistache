@@ -14,6 +14,7 @@
 #include "net.h"
 #include "http_headers.h"
 #include "http_defs.h"
+#include "cookie.h"
 #include "stream.h"
 #include "mime.h"
 #include "async.h"
@@ -53,6 +54,8 @@ public:
 
     Header::Collection headers_;
     std::string body_;
+
+    CookieJar cookies_;
 };
 
 namespace Uri {
@@ -90,6 +93,8 @@ public:
 
     const Header::Collection& headers() const;
     const Uri::Query& query() const;
+
+    const CookieJar& cookies() const;
 
     /* @Investigate: this is disabled because of a lock in the shared_ptr / weak_ptr
         implementation of libstdc++. Under contention, we experience a performance
@@ -208,6 +213,10 @@ public:
         return headers_;
     }
 
+    const CookieJar& cookies() const {
+        return cookies_;
+    }
+
     Code code() const {
         return code_;
     }
@@ -293,6 +302,14 @@ public:
 
     Header::Collection& headers() {
         return headers_;
+    }
+
+    const CookieJar& cookies() const {
+        return cookies_;
+    }
+
+    CookieJar& cookies() {
+        return cookies_;
     }
 
     Code code() const {

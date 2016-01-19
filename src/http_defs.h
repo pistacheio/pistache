@@ -147,11 +147,18 @@ class FullDate {
 public:
     FullDate();
 
+    enum class Type {
+        RFC1123,
+        RFC850,
+        AscTime
+    };
+
     FullDate(std::tm date)
         : date_(date)
     { }
 
     std::tm date() const { return date_; }
+    void write(std::ostream& os, Type type = Type::RFC1123) const;
 
     static FullDate fromRaw(const char* str, size_t len);
     static FullDate fromString(const std::string& str);

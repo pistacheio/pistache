@@ -17,3 +17,7 @@ add_test( typeid_test run_typeid_test )
 add_executable( run_router_test router_test.cc )
 target_link_libraries(run_router_test gtest gtest_main net)
 add_test( router_test run_router_test )
+
+add_executable( run_cookie_test cookie_test.cc )
+target_link_libraries(run_cookie_test gtest gtest_main net)
+add_test( cookie_test run_cookie_test )

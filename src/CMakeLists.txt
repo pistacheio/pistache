@@ -11,6 +11,7 @@ set(SOURCE_FILES
     http_headers.cc
     http_defs.cc
     mime.cc
+    cookie.cc
     stream.cc
     router.cc
 )

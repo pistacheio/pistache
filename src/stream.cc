@@ -144,12 +144,37 @@ match_raw(const void* buf, size_t len, StreamCursor& cursor) {
 }
 
 bool
+match_string(const char* str, size_t len, StreamCursor& cursor, CaseSensitivity cs) {
+    if (cursor.remaining() < len)
+        return false;
+
+    if (cs == CaseSensitivity::Sensitive) {
+        if (strncmp(cursor.offset(), str, len) == 0) {
+            cursor.advance(len);
+            return true;
+        }
+    } else {
+        const char *off = cursor.offset();
+        for (size_t i = 0; i < len; ++i) {
+            const char lhs = std::tolower(str[i]);
+            const char rhs = std::tolower(off[i]);
+            if (lhs != rhs) return false;
+        }
+
+        cursor.advance(len);
+        return true;
+    }
+
+    return false;
+}
+
+bool
 match_literal(char c, StreamCursor& cursor, CaseSensitivity cs) {
     if (cursor.eof())
         return false;
 
     char lhs = (cs == CaseSensitivity::Sensitive ? c : std::tolower(c));
-    char rhs = (cs == CaseSensitivity::Insensitive ? cursor.current() : std::tolower(cursor.current()));
+    char rhs = (cs == CaseSensitivity::Sensitive ? cursor.current() : std::tolower(cursor.current()));
 
     if (lhs == rhs) {
         cursor.advance(1);
@@ -199,4 +224,15 @@ match_double(double* val, StreamCursor &cursor) {
 
     cursor.advance(static_cast<ptrdiff_t>(end - cursor.offset()));
     return true;
+}
+
+void
+skip_whitespaces(StreamCursor& cursor) {
+    if (cursor.eof())
+        return;
+
+    int c;
+    while ((c = cursor.current()) != StreamCursor::Eof && (c == ' ' || c == '\t')) {
+        cursor.advance(1);
+    }
 }
