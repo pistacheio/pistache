@@ -10,7 +10,6 @@
 #include <stdexcept>
 #include <array>
 #include <sstream>
-#include "listener.h"
 #include "net.h"
 #include "http_headers.h"
 #include "http_defs.h"
@@ -18,6 +17,8 @@
 #include "stream.h"
 #include "mime.h"
 #include "async.h"
+#include "peer.h"
+#include "io.h"
 
 namespace Net {
 
@@ -128,7 +129,6 @@ private:
 };
 
 class Handler;
-class Timeout;
 class Response;
 
 class Timeout {
@@ -505,7 +505,7 @@ namespace Private {
         ssize_t contentLength;
     };
 
-}
+} // namespace Private
 
 class Handler : public Net::Tcp::Handler {
 public:
@@ -522,71 +522,6 @@ private:
     Private::Parser& getParser(const std::shared_ptr<Tcp::Peer>& peer) const;
 };
 
-class Endpoint {
-public:
-
-    struct Options {
-        friend class Endpoint;
-
-        Options& threads(int val);
-        Options& flags(Flags<Tcp::Options> flags);
-        Options& backlog(int val);
-
-    private:
-        int threads_;
-        Flags<Tcp::Options> flags_;
-        int backlog_;
-        Options();
-    };
-    Endpoint();
-    Endpoint(const Net::Address& addr);
-
-    template<typename... Args>
-    void initArgs(Args&& ...args) {
-        listener.init(std::forward<Args>(args)...);
-    }
-
-    void init(const Options& options);
-
-    void bind();
-    void bind(const Address& addr);
-
-    void setHandler(const std::shared_ptr<Handler>& handler);
-    void serve();
-    void serveThreaded();
-
-    void shutdown();
-
-    bool isBound() const {
-        return listener.isBound();
-    }
-
-    Async::Promise<Tcp::Listener::Load> requestLoad(const Tcp::Listener::Load& old);
-
-    static Options options();
-
-private:
-    template<typename Method>
-    void serveImpl(Method method)
-    {
-#define CALL_MEMBER_FN(obj, pmf)  ((obj).*(pmf))
-        if (!handler_)
-            throw std::runtime_error("Must call setHandler() prior to serve()");
-
-        listener.setHandler(handler_);
-
-        if (listener.bind()) {
-            const auto& addr = listener.address();
-            std::cout << "Now listening on " << "http://" + addr.host() << ":"
-                      << addr.port() << std::endl;
-            CALL_MEMBER_FN(listener, method)();
-        }
-#undef CALL_MEMBER_FN
-    }
-
-    std::shared_ptr<Handler> handler_;
-    Net::Tcp::Listener listener;
-};
 
 } // namespace Http
 

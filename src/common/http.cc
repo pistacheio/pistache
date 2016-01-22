@@ -37,8 +37,6 @@ writeHeader(Stream& stream, Args&& ...args) {
     return stream;
 }
 
-static constexpr const char* ParserData = "__Parser";
-
 namespace {
     bool writeStatusLine(Code code, DynamicStreamBuf& buf) {
         #define OUT(...) \
@@ -100,6 +98,8 @@ namespace {
     }
 
 }
+
+static constexpr const char* ParserData = "__Parser";
 
 namespace Private {
 
@@ -661,76 +661,10 @@ Timeout::onTimeout(uint64_t numWakeup) {
     handler->onTimeout(request, std::move(response));
 }
 
+
 Private::Parser&
 Handler::getParser(const std::shared_ptr<Tcp::Peer>& peer) const {
     return *peer->getData<Private::Parser>(ParserData);
-}
-
-Endpoint::Options::Options()
-    : threads_(1)
-{ }
-
-Endpoint::Options&
-Endpoint::Options::threads(int val) {
-    threads_ = val;
-    return *this;
-}
-
-Endpoint::Options&
-Endpoint::Options::flags(Flags<Tcp::Options> flags) {
-    flags_ = flags;
-    return *this;
-}
-
-Endpoint::Options&
-Endpoint::Options::backlog(int val) {
-    backlog_ = val;
-    return *this;
-}
-
-Endpoint::Endpoint()
-{ }
-
-Endpoint::Endpoint(const Net::Address& addr)
-    : listener(addr)
-{ }
-
-void
-Endpoint::init(const Endpoint::Options& options) {
-    listener.init(options.threads_, options.flags_);
-}
-
-void
-Endpoint::setHandler(const std::shared_ptr<Handler>& handler) {
-    handler_ = handler;
-}
-
-void
-Endpoint::serve()
-{
-    serveImpl(&Tcp::Listener::run);
-}
-
-void
-Endpoint::serveThreaded()
-{
-    serveImpl(&Tcp::Listener::runThreaded);
-}
-
-void
-Endpoint::shutdown()
-{
-    listener.shutdown();
-}
-
-Async::Promise<Tcp::Listener::Load>
-Endpoint::requestLoad(const Tcp::Listener::Load& old) {
-    return listener.requestLoad(old);
-}
-
-Endpoint::Options
-Endpoint::options() {
-    return Options();
 }
 
 

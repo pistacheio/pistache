@@ -1,26 +1,15 @@
+file (GLOB COMMON_SOURCE_FILES "common/*.cc")
+file (GLOB SERVER_SOURCE_FILES "server/*.cc")
+file (GLOB CLIENT_SOURCE_FILES "client/*.cc")
+
 set(SOURCE_FILES
-    tcp.cc
-    io.cc
-    listener.cc
-    net.cc
-    peer.cc
-    os.cc
-    peer.cc
-    http.cc
-    http_header.cc
-    http_headers.cc
-    http_defs.cc
-    mime.cc
-    cookie.cc
-    stream.cc
-    router.cc
+    ${COMMON_SOURCE_FILES}
+    ${SERVER_SOURCE_FILES}
+    ${CLIENT_SOURCE_FILES}
 )
 
 add_library(net ${SOURCE_FILES})
-include_directories (${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(net pthread)
 
-file(GLOB HEADER_FILES "*.h")
-install(FILES ${HEADER_FILES} DESTINATION include/rest)
 install(TARGETS net DESTINATION lib)

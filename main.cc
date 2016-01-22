@@ -1,9 +1,9 @@
 #include "net.h"
 #include "peer.h"
-#include "http.h"
 #include "http_headers.h"
 #include "cookie.h"
 #include "router.h"
+#include "endpoint.h"
 #include <iostream>
 #include <cstring>
 #include <algorithm>
