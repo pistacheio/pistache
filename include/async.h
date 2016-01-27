@@ -470,6 +470,12 @@ namespace Async {
             : core_(core)
         { }
 
+        Resolver(const Resolver& other) = delete;
+        Resolver& operator=(const Resolver& other) = delete;
+
+        Resolver(Resolver&& other) = default;
+        Resolver& operator=(Resolver&& other) = default; 
+
         template<typename Arg>
         bool operator()(Arg&& arg) const {
             typedef typename std::remove_reference<Arg>::type Type;
@@ -536,6 +542,32 @@ namespace Async {
         std::shared_ptr<Private::Core> core_;
 
     };
+
+    struct Holder {
+        Holder(Resolver resolver, Rejection rejection)
+            : resolver(std::move(resolver))
+            , rejection(std::move(rejection))
+        { }
+
+        template<typename Arg>
+        void resolve(Arg&& arg) const {
+            resolver(std::forward<Arg>(arg));
+        }
+
+        void resolve() const {
+            resolver();
+        }
+
+        template<typename Exc>
+        void reject(Exc exc) const {
+            rejection(std::move(exc));
+        }
+
+    private:
+        Resolver resolver;
+        Rejection rejection;
+    };
+
 
     static constexpr Private::IgnoreException IgnoreException{};
     static constexpr Private::NoExcept NoExcept{};
@@ -817,8 +849,8 @@ namespace Async {
         template<typename ContinuationPolicy>
         struct When {
             When(Resolver resolver, Rejection rejection)
-                : resolve(resolver)
-                , reject(rejection)
+                : resolve(std::move(resolver))
+                , reject(std::move(rejection))
             { }
 
             template<typename... Args>
@@ -1070,7 +1102,7 @@ namespace Async {
             reject = &rejection;
         });
 
-        Impl::When<Impl::All> impl(*resolve, *reject);
+        Impl::When<Impl::All> impl(std::move(*resolve), std::move(*reject));
         // So we capture everything we need inside the lambda and then call the
         // implementation and expand the parameters pack here
         impl(std::forward<Args>(args)...);
@@ -1089,7 +1121,7 @@ namespace Async {
             reject = &rejection;
         });
 
-        Impl::When<Impl::Any> impl(*resolve, *reject);
+        Impl::When<Impl::Any> impl(std::move(*resolve), std::move(*reject));
         impl(std::forward<Args>(args)...);
         return promise;
     }

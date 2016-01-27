@@ -10,16 +10,19 @@
 #include "net.h"
 #include "os.h"
 #include "flags.h"
+#include "async.h"
 #include "io.h"
 #include <vector>
 #include <memory>
+#include <thread>
+#include <sys/resource.h>
 
 namespace Net {
 
 namespace Tcp {
 
 class Peer;
-class Handler;
+class Transport;
 
 void setSocketOptions(Fd fd, Flags<Options> options);
 
@@ -40,7 +43,8 @@ public:
 
     Listener(const Address& address);
     void init(
-            size_t workers, Flags<Options> options = Options::None,
+            size_t workers,
+            Flags<Options> options = Options::None,
             int backlog = Const::MaxBacklog);
     void setHandler(const std::shared_ptr<Handler>& handler);
 
@@ -62,18 +66,22 @@ public:
     void pinWorker(size_t worker, const CpuSet& set);
 
 private: 
+    struct TransportFactory;
+
     Address addr_; 
     int listen_fd;
     int backlog_;
     NotifyFd shutdownFd;
     Polling::Epoll poller;
 
-    std::vector<std::unique_ptr<IoWorker>> ioGroup;
     Flags<Options> options_;
-    std::shared_ptr<Handler> handler_;
     std::unique_ptr<std::thread> acceptThread;
 
-    void shutdownIo();
+    size_t workers_;
+    Io::ServiceGroup io_;
+    std::shared_ptr<Transport> transport_;
+    std::shared_ptr<Handler> handler_;
+
     void handleNewConnection();
     void dispatchPeer(const std::shared_ptr<Peer>& peer);
 

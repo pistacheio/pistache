@@ -12,10 +12,16 @@ namespace Net {
 namespace Tcp {
 
 Handler::Handler()
+    : transport_(nullptr)
 { }
 
 Handler::~Handler()
 { }
+
+void
+Handler::associateTransport(Transport* transport) {
+    transport_ = transport;
+}
 
 void
 Handler::onConnection(const std::shared_ptr<Tcp::Peer>& peer) {

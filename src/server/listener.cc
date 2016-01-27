@@ -13,12 +13,15 @@
 #include <sys/epoll.h>
 #include <pthread.h>
 #include <signal.h>
+#include <sys/timerfd.h>
+#include <sys/sendfile.h>
 #include <cassert>
 #include <cstring>
 #include "listener.h"
 #include "peer.h"
 #include "common.h"
 #include "os.h"
+#include "transport.h"
 
 using namespace std;
 
@@ -87,7 +90,9 @@ Listener::~Listener() {
 }
 
 void
-Listener::init(size_t workers, Flags<Options> options, int backlog)
+Listener::init(
+    size_t workers,
+    Flags<Options> options, int backlog)
 {
     if (workers > hardware_concurrency()) {
         // Log::warning() << "More workers than available cores"
@@ -102,21 +107,19 @@ Listener::init(size_t workers, Flags<Options> options, int backlog)
         }
     }
 
-    for (size_t i = 0; i < workers; ++i) {
-        auto wrk = std::unique_ptr<IoWorker>(new IoWorker);
-        ioGroup.push_back(std::move(wrk));
-    }
+    workers_ = workers;
+
 }
 
 void
-Listener::setHandler(const std::shared_ptr<Handler>& handler)
-{
+Listener::setHandler(const std::shared_ptr<Handler>& handler) {
     handler_ = handler;
 }
 
 void
 Listener::pinWorker(size_t worker, const CpuSet& set)
 {
+#if 0
     if (ioGroup.empty()) {
         throw std::domain_error("Invalid operation, did you call init() before ?");
     }
@@ -126,6 +129,7 @@ Listener::pinWorker(size_t worker, const CpuSet& set)
 
     auto &wrk = ioGroup[worker];
     wrk->pin(set);
+#endif
 }
 
 bool
@@ -135,10 +139,8 @@ Listener::bind() {
 
 bool
 Listener::bind(const Address& address) {
-    if (ioGroup.empty()) {
-        throw std::runtime_error("Call init() before calling bind()");
-    }
-
+    if (!handler_)
+        throw std::runtime_error("Call setHandler before calling bind()");
     addr_ = address;
 
     struct addrinfo hints;
@@ -183,9 +185,10 @@ Listener::bind(const Address& address) {
     listen_fd = fd;
     g_listen_fd = fd;
 
-    for (auto& io: ioGroup) {
-        io->start(handler_, options_);
-    }
+    transport_.reset(new Transport(handler_));
+
+    io_.init(workers_, transport_);
+    io_.start();
 
     return true;
 }
@@ -230,24 +233,12 @@ Listener::runThreaded() {
 void
 Listener::shutdown() {
     if (shutdownFd.isBound()) shutdownFd.notify();
-    shutdownIo();
-}
-
-void
-Listener::shutdownIo() {
-    for (auto &worker: ioGroup) {
-        worker->shutdown();
-    }
+    io_.shutdown();
 }
 
 Async::Promise<Listener::Load>
 Listener::requestLoad(const Listener::Load& old) {
-    std::vector<Async::Promise<rusage>> loads;
-    loads.reserve(ioGroup.size());
-
-    for (const auto& io: ioGroup) {
-        loads.push_back(io->getLoad());
-    }
+    auto loads = io_.load();
 
     return Async::whenAll(std::begin(loads), std::end(loads)).then([=](const std::vector<rusage>& usages) {
 
@@ -256,7 +247,7 @@ Listener::requestLoad(const Listener::Load& old) {
 
         if (old.raw.empty()) {
             res.global = 0.0;
-            for (size_t i = 0; i < ioGroup.size(); ++i) res.workers.push_back(0.0);
+            for (size_t i = 0; i < io_.size(); ++i) res.workers.push_back(0.0);
         } else {
 
             auto totalElapsed = [](rusage usage) {
@@ -319,10 +310,10 @@ Listener::handleNewConnection() {
 
 void
 Listener::dispatchPeer(const std::shared_ptr<Peer>& peer) {
-    const size_t workers = ioGroup.size();
-    size_t worker = peer->fd() % workers;
+    auto service = io_.service(peer->fd());
+    auto transport = std::static_pointer_cast<Transport>(service->handler());
 
-    ioGroup[worker]->handleNewPeer(peer);
+    transport->handleNewPeer(peer);
 
 }
 

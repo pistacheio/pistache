@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <memory>
 #include <chrono>
 #include <vector>
 #include <bitset>
@@ -120,6 +121,7 @@ public:
     { }
 
     Polling::Tag bind(Polling::Epoll& poller);
+
     bool isBound() const;
 
     Polling::Tag tag() const;

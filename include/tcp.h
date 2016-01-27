@@ -7,6 +7,7 @@
 #pragma once
 
 #include "flags.h"
+#include "prototype.h"
 #include <memory>
 
 namespace Net {
@@ -14,6 +15,7 @@ namespace Net {
 namespace Tcp {
 
 class Peer;
+class Transport;
 
 enum class Options : uint64_t {
     None                 = 0,
@@ -28,11 +30,9 @@ enum class Options : uint64_t {
 
 DECLARE_FLAGS_OPERATORS(Options)
 
-class IoWorker;
-
-class Handler {
+class Handler : private Prototype<Handler> {
 public:
-    friend class IoWorker;
+    friend class Transport;
 
     Handler();
     ~Handler();
@@ -43,10 +43,15 @@ public:
     virtual void onDisconnection(const std::shared_ptr<Tcp::Peer>& peer);
 
 protected:
-    IoWorker *io() { return io_; }
+    Transport *transport() {
+        if (!transport_)
+            throw std::logic_error("Orphaned handler");
+        return transport_;
+     }
 
 private:
-    IoWorker *io_;
+    void associateTransport(Transport* transport);
+    Transport *transport_;
 };
 
 } // namespace Tcp

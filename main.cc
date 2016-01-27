@@ -32,6 +32,9 @@ void printCookies(const Net::Http::Request& req) {
 }
 
 class MyHandler : public Net::Http::Handler {
+
+    HTTP_PROTOTYPE(MyHandler)
+
     void onRequest(
             const Net::Http::Request& req,
             Net::Http::Response response,
@@ -59,6 +62,9 @@ class MyHandler : public Net::Http::Handler {
                     stream << "PO";
                     stream << "NG";
                     stream << ends;
+                }
+                else {
+                    response.send(Net::Http::Code::Ok, "PONG");
                 }
 
             }
@@ -97,6 +103,7 @@ class MyHandler : public Net::Http::Handler {
             .send(Net::Http::Code::Request_Timeout, "Timeout")
             .then([=](ssize_t) { }, ExceptionPrinter());
     }
+
 };
 
 struct LoadMonitor {
@@ -161,6 +168,7 @@ void handleReady(const Rest::Request&, Http::Response response) {
 
 }
 
+#if 0
 class StatsEndpoint {
 public:
     StatsEndpoint(Net::Address addr)
@@ -168,9 +176,9 @@ public:
         , monitor(httpEndpoint)
     { }
 
-    void init() {
+    void init(size_t thr = 2) {
         auto opts = Net::Http::Endpoint::options()
-            .threads(1)
+            .threads(thr)
             .flags(Net::Tcp::Options::InstallSignalHandler);
         httpEndpoint->init(opts);
         setupRoutes();
@@ -179,7 +187,8 @@ public:
 
     void start() {
         monitor.start();
-        httpEndpoint->setHandler(router.handler());
+        //httpEndpoint->setHandler(router.handler());
+        httpEndpoint->setHandler(std::make_shared<MyHandler>());
         httpEndpoint->serve();
     }
 
@@ -276,6 +285,7 @@ private:
     Rest::Router router;
     LoadMonitor monitor;
 };
+#endif
 
 int main(int argc, char *argv[]) {
     Net::Port port(9080);
@@ -295,11 +305,31 @@ int main(int argc, char *argv[]) {
     cout << "Cores = " << hardware_concurrency() << endl;
     cout << "Using " << thr << " threads" << endl;
 
+#if 0
     StatsEndpoint stats(addr);
 
-    stats.init();
+    stats.init(thr);
     stats.start();
+#endif
+
+    auto server = std::make_shared<Net::Http::Endpoint>(addr);
+
+    auto opts = Net::Http::Endpoint::options()
+        .threads(thr)
+        .flags(Net::Tcp::Options::InstallSignalHandler);
+    server->init(opts);
+    server->setHandler(std::make_shared<MyHandler>());
+
+    LoadMonitor monitor(server);
+    monitor.setInterval(std::chrono::seconds(1));
+    monitor.start();
+
+    server->serve();
 
     std::cout << "Shutdowning server" << std::endl;
+#if 0
     stats.shutdown();
+#endif
+    server->shutdown();
+    monitor.shutdown();
 }

@@ -5,6 +5,7 @@
 
 #include "os.h"
 #include "common.h"
+#include "io.h"
 #include <unistd.h>
 #include <fcntl.h>
 #include <fstream>
@@ -244,7 +245,7 @@ NotifyFd::bind(Polling::Epoll& poller) {
     Polling::Tag tag(event_fd);
 
     poller.addFd(event_fd, Polling::NotifyOn::Read, tag, Polling::Mode::Edge);
-    return Polling::Tag(event_fd);
+    return tag;
 }
 
 bool

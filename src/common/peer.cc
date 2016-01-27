@@ -5,7 +5,7 @@
 
 #include "peer.h"
 #include "async.h"
-#include "io.h"
+#include "transport.h"
 #include <iostream>
 #include <stdexcept>
 #include <sys/socket.h>
@@ -18,11 +18,13 @@ using namespace std;
 
 Peer::Peer()
     : fd_(-1)
+    , transport_(nullptr)
 { }
 
 Peer::Peer(const Address& addr)
     : addr(addr)
     , fd_(-1)
+    , transport_(nullptr)
 { }
 
 Address
@@ -79,13 +81,26 @@ Peer::tryGetData(std::string(name)) const {
 
 Async::Promise<ssize_t>
 Peer::send(const Buffer& buffer, int flags) {
-    return io_->asyncWrite(fd_, buffer, flags);
+    return transport()->asyncWrite(fd_, buffer, flags);
 }
 
 std::ostream& operator<<(std::ostream& os, const Peer& peer) {
     const auto& addr = peer.address();
     os << "(" << addr.host() << ", " << addr.port() << ") [" << peer.hostname() << "]";
     return os;
+}
+
+void
+Peer::associateTransport(Transport* transport) {
+    transport_ = transport;
+}
+
+Transport*
+Peer::transport() const {
+    if (!transport_)
+        throw std::logic_error("Orphaned peer");
+
+    return transport_;
 }
 
 } // namespace Tcp

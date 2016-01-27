@@ -13,6 +13,7 @@ namespace Net {
 
 namespace Http {
 
+
 Endpoint::Options::Options()
     : threads_(1)
 { }

@@ -7,10 +7,10 @@ Async::Promise<int> doAsync(int N)
 {
     Async::Promise<int> promise(
         [=](Async::Resolver& resolve, Async::Rejection& reject) {
-            std::thread thr([=]() mutable {
+            std::thread thr([=](Async::Resolver resolve) mutable {
                 std::this_thread::sleep_for(std::chrono::seconds(1));
                 resolve(N * 2);
-            });
+            }, std::move(resolve));
 
             thr.detach();
     });
@@ -23,10 +23,10 @@ Async::Promise<T> doAsyncTimed(std::chrono::seconds time, T val, Func func)
 {
     Async::Promise<T> promise(
         [=](Async::Resolver& resolve, Async::Rejection& reject) {
-            std::thread thr([=]() mutable {
+            std::thread thr([=](Async::Resolver resolve) mutable {
                 std::this_thread::sleep_for(time);
                 resolve(func(val));
-            });
+            }, std::move(resolve));
 
             thr.detach();
     });

@@ -139,6 +139,10 @@ namespace Private {
                 Http::Timeout timeout);
 
     private:
+        std::shared_ptr<Net::Tcp::Handler> clone() const {
+            return std::make_shared<HttpHandler>(routes);
+        }
+
         std::unordered_map<Http::Method, std::vector<Route>> routes;
     };
 }

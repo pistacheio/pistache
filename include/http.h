@@ -18,7 +18,8 @@
 #include "mime.h"
 #include "async.h"
 #include "peer.h"
-#include "io.h"
+#include "tcp.h"
+#include "transport.h"
 
 namespace Net {
 
@@ -139,7 +140,7 @@ public:
     template<typename Duration>
     void arm(Duration duration) {
         Async::Promise<uint64_t> p([=](Async::Resolver& resolve, Async::Rejection& reject) {
-            io->armTimer(duration, resolve, reject);
+            transport->io()->armTimer(duration, std::move(resolve), std::move(reject));
         });
 
         p.then(
@@ -155,7 +156,7 @@ public:
     }
 
     void disarm() {
-        io->disarmTimer();
+        transport->io()->disarmTimer();
         armed = false;
     }
 
@@ -164,11 +165,11 @@ public:
     }
 
 private:
-    Timeout(Tcp::IoWorker* io,
+    Timeout(Tcp::Transport* transport,
             Handler* handler,
             const std::shared_ptr<Tcp::Peer>& peer,
             const Request& request)
-        : io(io)
+        : transport(transport)
         , handler(handler)
         , peer(peer)
         , request(request)
@@ -181,7 +182,7 @@ private:
     std::weak_ptr<Tcp::Peer> peer;
     Request request;
 
-    Tcp::IoWorker *io;
+    Tcp::Transport* transport;
     bool armed;
 };
 
@@ -193,14 +194,14 @@ public:
         : Message(std::move(other))
         , peer_(std::move(other.peer_))
         , buf_(std::move(other.buf_))
-        , io_(other.io_)
+        , transport_(other.transport_)
     { }
 
     ResponseStream& operator=(ResponseStream&& other) {
         Message::operator=(std::move(other));
         peer_ = std::move(other.peer_);
         buf_ = std::move(other.buf_);
-        io_ = other.io_;
+        transport_ = other.transport_;
 
         return *this;
     }
@@ -228,7 +229,7 @@ private:
     ResponseStream(
             Message&& other,
             std::weak_ptr<Tcp::Peer> peer,
-            Tcp::IoWorker* io,
+            Tcp::Transport* transport,
             size_t streamSize);
 
     std::shared_ptr<Tcp::Peer> peer() const {
@@ -240,7 +241,7 @@ private:
 
     std::weak_ptr<Tcp::Peer> peer_;
     DynamicStreamBuf buf_;
-    Tcp::IoWorker* io_;
+    Tcp::Transport* transport_;
 };
 
 inline ResponseStream& ends(ResponseStream &stream) {
@@ -286,12 +287,12 @@ public:
         : Message(std::move(other))
         , peer_(other.peer_)
         , buf_(std::move(other.buf_))
-        , io_(other.io_)
+        , transport_(other.transport_)
     { }
     Response& operator=(Response&& other) {
         Message::operator=(std::move(other));
         peer_ = std::move(other.peer_);
-        io_ = other.io_;
+        transport_ = other.transport_;
         buf_ = std::move(other.buf_);
         return *this;
     }
@@ -369,7 +370,7 @@ public:
     ResponseStream stream(Code code, size_t streamSize = DefaultStreamSize) {
         code_ = code;
 
-        return ResponseStream(std::move(*this), peer_, io_, streamSize);
+        return ResponseStream(std::move(*this), peer_, transport_, streamSize);
     }
 
     // Unsafe API
@@ -383,10 +384,10 @@ public:
     }
 
 private:
-    Response(Tcp::IoWorker* io)
+    Response(Tcp::Transport* transport)
         : Message()
         , buf_(DefaultStreamSize)
-        , io_(io)
+        , transport_(transport)
     { }
 
     std::shared_ptr<Tcp::Peer> peer() const {
@@ -408,7 +409,7 @@ private:
 
     std::weak_ptr<Tcp::Peer> peer_;
     DynamicStreamBuf buf_;
-    Tcp::IoWorker *io_;
+    Tcp::Transport *transport_;
 };
 
 Async::Promise<ssize_t> serveFile(
@@ -521,7 +522,6 @@ public:
 private:
     Private::Parser& getParser(const std::shared_ptr<Tcp::Peer>& peer) const;
 };
-
 
 } // namespace Http
 

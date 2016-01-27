@@ -38,11 +38,11 @@ public:
     }
 
     void init(const Options& options);
+    void setHandler(const std::shared_ptr<Handler>& handler);
 
     void bind();
     void bind(const Address& addr);
 
-    void setHandler(const std::shared_ptr<Handler>& handler);
     void serve();
     void serveThreaded();
 
@@ -57,6 +57,7 @@ public:
     static Options options();
 
 private:
+
     template<typename Method>
     void serveImpl(Method method)
     {

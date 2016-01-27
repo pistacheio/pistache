@@ -19,11 +19,11 @@ namespace Net {
 
 namespace Tcp {
 
-class IoWorker;
+class Transport;
 
 class Peer {
 public:
-    friend class IoWorker;
+    friend class Transport;
 
     Peer();
     Peer(const Address& addr);
@@ -54,7 +54,10 @@ public:
     Async::Promise<ssize_t> send(const Buffer& buffer, int flags = 0);
 
 private:
-    IoWorker* io_;
+    void associateTransport(Transport* transport);
+    Transport* transport() const;
+
+    Transport* transport_;
 
     Address addr;
     std::string hostname_;

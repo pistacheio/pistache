@@ -14,6 +14,7 @@
 #include <sys/eventfd.h>
 #include <unistd.h>
 
+
 template<typename T>
 class Mailbox {
 public:
@@ -147,8 +148,12 @@ public:
     struct Entry {
         friend class Queue;
 
-        T data() const {
+        const T& data() const {
             return *reinterpret_cast<const T*>(&storage);
+        }
+
+        T& data() {
+            return *reinterpret_cast<T*>(&storage);
         }
 
         ~Entry() {
@@ -194,7 +199,7 @@ public:
         if (next) {
             // Since it's Single-Consumer, the store does not need to be atomic
             tail = next;
-            new (&res->storage) T(next->data());
+            new (&res->storage) T(std::move(next->data()));
             return res;
         }
         return nullptr;

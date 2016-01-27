@@ -17,6 +17,7 @@
 #include "http.h"
 #include "net.h"
 #include "peer.h"
+#include "transport.h"
 
 using namespace std;
 
@@ -448,12 +449,12 @@ Request::peer() const {
 ResponseStream::ResponseStream(
         Message&& other,
         std::weak_ptr<Tcp::Peer> peer,
-        Tcp::IoWorker* io,
+        Tcp::Transport* transport,
         size_t streamSize)
     : Message(std::move(other))
     , peer_(std::move(peer))
     , buf_(streamSize)
-    , io_(io)
+    , transport_(transport)
 {
     if (!writeStatusLine(code_, buf_))
         throw Error("Response exceeded buffer size");
@@ -472,11 +473,11 @@ ResponseStream::ResponseStream(
 
 void
 ResponseStream::flush() {
-    io_->disarmTimer();
+    transport_->io()->disarmTimer();
     auto buf = buf_.buffer();
 
     auto fd = peer()->fd();
-    io_->asyncWrite(fd, buf);
+    transport_->asyncWrite(fd, buf);
 
     buf_.clear();
 }
@@ -522,12 +523,12 @@ Response::putOnWire(const char* data, size_t len)
 
         auto buffer = buf_.buffer();
 
-        io_->disarmTimer();
+        transport_->io()->disarmTimer();
 
 #undef OUT
 
         auto fd = peer()->fd();
-        return io_->asyncWrite(fd, buffer);
+        return transport_->asyncWrite(fd, buffer);
 
     } catch (const std::runtime_error& e) {
         return Async::Promise<ssize_t>::rejected(e);
@@ -590,13 +591,13 @@ serveFile(Response& response, const char* fileName, const Mime::MediaType& conte
 
     OUT(os << crlf);
 
-    auto *io = response.io_;
+    auto *transport = response.transport_;
     auto peer = response.peer();
     auto sockFd = peer->fd();
 
     auto buffer = buf->buffer();
-    return io->asyncWrite(sockFd, buffer, MSG_MORE).then([=](ssize_t bytes) {
-        return io->asyncWrite(sockFd, FileBuffer(fileName));
+    return transport->asyncWrite(sockFd, buffer, MSG_MORE).then([=](ssize_t bytes) {
+        return transport->asyncWrite(sockFd, FileBuffer(fileName));
     }, Async::Throw);
 
 #undef OUT
@@ -613,10 +614,10 @@ Handler::onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer
 
         auto state = parser.parse();
         if (state == Private::State::Done) {
-            Response response(io());
+            Response response(transport());
             response.associatePeer(peer);
 
-            Timeout timeout(io(), this, peer, parser.request);
+            Timeout timeout(transport(), this, peer, parser.request);
 
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
             parser.request.associatePeer(peer);
@@ -625,13 +626,13 @@ Handler::onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer
             parser.reset();
         }
     } catch (const HttpError &err) {
-        Response response(io());
+        Response response(transport());
         response.associatePeer(peer);
         response.send(static_cast<Code>(err.code()), err.reason());
         getParser(peer).reset();
     }
     catch (const std::exception& e) {
-        Response response(io());
+        Response response(transport());
         response.associatePeer(peer);
         response.send(Code::Internal_Server_Error, e.what());
         getParser(peer).reset();
@@ -655,7 +656,7 @@ void
 Timeout::onTimeout(uint64_t numWakeup) {
     if (!peer.lock()) return;
 
-    Response response(io);
+    Response response(transport);
     response.associatePeer(peer);
 
     handler->onTimeout(request, std::move(response));
