@@ -26,7 +26,8 @@ namespace Net {
 namespace Http {
 
 namespace Private {
-    class Parser;
+    class ParserBase;
+    template<typename T> struct Parser;
     class RequestLineStep;
     class HeadersStep;
     class BodyStep;
@@ -72,10 +73,16 @@ namespace Uri {
         Optional<std::string> get(const std::string& name) const;
         bool has(const std::string& name) const;
 
+        void clear() {
+            params.clear();
+        }
+
     private:
         std::unordered_map<std::string, std::string> params;
     };
 } // namespace Uri
+
+class RequestBuilder;
 
 // 5. Request
 class Request : private Message {
@@ -83,9 +90,17 @@ public:
     friend class Private::RequestLineStep;
     friend class Private::HeadersStep;
     friend class Private::BodyStep;
-    friend class Private::Parser;
+    friend class Private::ParserBase;
+    friend class Private::Parser<Http::Request>;
 
-    friend class Handler;
+    friend class RequestBuilder;
+
+    Request(const Request& other) = default;
+    Request& operator=(const Request& other) = default;
+
+    Request(Request&& other) = default;
+    Request& operator=(Request&& other) = default;
+
 
     Version version() const;
     Method method() const;
@@ -126,7 +141,33 @@ private:
     std::string resource_;
     Uri::Query query_;
 
+#ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
     std::weak_ptr<Tcp::Peer> peer_;
+#endif
+};
+
+class RequestBuilder {
+public:
+    RequestBuilder& resource(std::string val);
+    RequestBuilder& params(const Uri::Query& query);
+    RequestBuilder& header(const std::shared_ptr<Header::Header>& header);
+
+    template<typename H, typename... Args>
+    typename
+    std::enable_if<
+        Header::IsHeader<H>::value, RequestBuilder&
+    >::type
+    header(Args&& ...args) {
+        return header(std::make_shared<H>(std::forward<Args>(args)...));
+    }
+
+    RequestBuilder& cookie(const Cookie& cookie);
+    RequestBuilder& body(std::string val);
+
+    const Request& request() const { return request_; }
+    operator Request() const { return request_; }
+private:
+    Request request_;
 };
 
 class Handler;
@@ -271,10 +312,12 @@ operator<<(ResponseStream& stream, ResponseStream & (*func)(ResponseStream &)) {
 }
 
 // 6. Response
-class Response : private Message {
+class Response : public Message {
 public:
     friend class Handler;
     friend class Timeout;
+    friend class Private::ParserBase;
+    friend class Private::Parser<Response>;
 
     friend Async::Promise<ssize_t> serveFile(Response&, const char *, const Mime::MediaType&);
 
@@ -384,6 +427,12 @@ public:
     }
 
 private:
+    Response()
+        : Message()
+        , buf_(0)
+        , transport_(nullptr)
+    { }
+
     Response(Tcp::Transport* transport)
         : Message()
         , buf_(DefaultStreamSize)
@@ -421,15 +470,15 @@ namespace Private {
     enum class State { Again, Next, Done };
 
     struct Step {
-        Step(Request* request)
-            : request(request)
+        Step(Message* request)
+            : message(request)
         { }
 
         virtual State apply(StreamCursor& cursor) = 0;
 
         void raise(const char* msg, Code code = Code::Bad_Request);
 
-        Request *request;
+        Message *message;
     };
 
     struct RequestLineStep : public Step {
@@ -440,8 +489,16 @@ namespace Private {
         State apply(StreamCursor& cursor);
     };
 
+    struct ResponseLineStep : public Step {
+        ResponseLineStep(Response* response)
+            : Step(response)
+        { }
+
+        State apply(StreamCursor& cursor);
+    };
+
     struct HeadersStep : public Step {
-        HeadersStep(Request* request)
+        HeadersStep(Message* request)
             : Step(request)
         { }
 
@@ -449,7 +506,7 @@ namespace Private {
     };
 
     struct BodyStep : public Step {
-        BodyStep(Request* request)
+        BodyStep(Message* request)
             : Step(request)
             , bytesRead(0)
         { }
@@ -460,22 +517,51 @@ namespace Private {
         size_t bytesRead;
     };
 
-    struct Parser {
-
-        Parser()
-            : contentLength(-1)
-            , currentStep(0)
+    struct ParserBase {
+        ParserBase()
+            : currentStep(0)
             , cursor(&buffer)
         {
+        }
+
+        ParserBase(const char* data, size_t len)
+            : currentStep(0)
+            , cursor(&buffer)
+        {
+        }
+
+        ParserBase(const ParserBase& other) = delete;
+        ParserBase(ParserBase&& other) = default;
+
+        bool feed(const char* data, size_t len);
+        virtual void reset();
+
+        State parse();
+
+        ArrayStreamBuf<Const::MaxBuffer> buffer;
+        StreamCursor cursor;
+
+    protected:
+        static constexpr size_t StepsCount = 3;
+
+        std::array<std::unique_ptr<Step>, StepsCount> allSteps;
+        size_t currentStep;
+
+    };
+
+    template<typename Message> struct Parser;
+
+    template<> struct Parser<Http::Request> : public ParserBase {
+        Parser()
+            : ParserBase()
+        { 
             allSteps[0].reset(new RequestLineStep(&request));
             allSteps[1].reset(new HeadersStep(&request));
             allSteps[2].reset(new BodyStep(&request));
         }
 
         Parser(const char* data, size_t len)
-            : contentLength(-1)
-            , currentStep(0)
-            , cursor(&buffer)
+            : ParserBase()
         {
             allSteps[0].reset(new RequestLineStep(&request));
             allSteps[1].reset(new HeadersStep(&request));
@@ -484,26 +570,38 @@ namespace Private {
             feed(data, len);
         }
 
-        Parser(const Parser& other) = delete;
-        Parser(Parser&& other) = default;
+        void reset() {
+            ParserBase::reset();
 
-        bool feed(const char* data, size_t len);
-        void reset();
-
-        State parse();
-
-        ArrayStreamBuf<Const::MaxBuffer> buffer;
-        StreamCursor cursor;
+            request.headers_.clear();
+            request.body_.clear();
+            request.resource_.clear();
+            request.query_.clear();
+        }
 
         Request request;
+    };
 
-    private:
-        static constexpr size_t StepsCount = 3;
+    template<> struct Parser<Http::Response> : public ParserBase {
+        Parser()
+            : ParserBase()
+        {
+            allSteps[0].reset(new ResponseLineStep(&response));
+            allSteps[1].reset(new HeadersStep(&response));
+            allSteps[2].reset(new BodyStep(&response));
+        }
 
-        std::array<std::unique_ptr<Step>, StepsCount> allSteps;
-        size_t currentStep;
+        Parser(const char* data, size_t len)
+            : ParserBase()
+        {
+            allSteps[0].reset(new ResponseLineStep(&response));
+            allSteps[1].reset(new HeadersStep(&response));
+            allSteps[2].reset(new BodyStep(&response));
 
-        ssize_t contentLength;
+            feed(data, len);
+        }
+
+        Response response;
     };
 
 } // namespace Private
@@ -520,7 +618,7 @@ public:
     virtual void onTimeout(const Request& request, Response response);
 
 private:
-    Private::Parser& getParser(const std::shared_ptr<Tcp::Peer>& peer) const;
+    Private::Parser<Http::Request>& getParser(const std::shared_ptr<Tcp::Peer>& peer) const;
 };
 
 } // namespace Http

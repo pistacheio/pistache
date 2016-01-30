@@ -178,6 +178,7 @@ Listener::bind(const Address& address) {
         }
 
         TRY(::listen(fd, backlog_));
+        break;
     }
 
     make_non_blocking(fd);

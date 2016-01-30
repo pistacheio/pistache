@@ -129,6 +129,8 @@ namespace Private {
         #undef METHOD
         };
 
+        auto request = static_cast<Request *>(message);
+
         bool found = false;
         for (const auto& method: Methods) {
             if (match_raw(method.str, method.len, cursor)) {
@@ -221,6 +223,47 @@ namespace Private {
     }
 
     State
+    ResponseLineStep::apply(StreamCursor& cursor) {
+        StreamCursor::Revert revert(cursor);
+
+        if (match_raw("HTTP/1.1", sizeof("HTTP/1.1") - 1, cursor)) {
+            std::cout << "Matched http/1.1" << std::endl;
+            //response->version = Version::Http11;
+        }
+        else if (match_raw("HTTP/1.0", sizeof("HTTP/1.0") - 1, cursor)) {
+        }
+        else {
+            raise("Encountered invalid HTTP version");
+        }
+
+        int n;
+        // SP
+        if ((n = cursor.current()) != StreamCursor::Eof && n != ' ')
+            raise("Expected SPACE after http version");
+        if (!cursor.advance(1)) return State::Again;
+
+        StreamCursor::Token codeToken(cursor);
+        if (!match_until(' ', cursor))
+            return State::Again;
+
+        auto code = codeToken.text();
+        std::cout << "Code = " << code << std::endl;
+        if (!cursor.advance(1)) return State::Again;
+
+        StreamCursor::Token textToken(cursor);
+        while (!cursor.eol()) cursor.advance(1);
+
+        auto text = textToken.text();
+        std::cout << "Text = "<< text << std::endl;
+
+        if (!cursor.advance(2)) return State::Again;
+
+        revert.ignore();
+        return State::Next;
+
+    }
+
+    State
     HeadersStep::apply(StreamCursor& cursor) {
         StreamCursor::Revert revert(cursor);
 
@@ -249,7 +292,7 @@ namespace Private {
             }
 
             if (name == "Cookie") {
-                request->cookies_.add(
+                message->cookies_.add(
                         Cookie::fromRaw(cursor.offset(start), cursor.diff(start))
                 );
             }
@@ -257,11 +300,11 @@ namespace Private {
             else if (Header::Registry::isRegistered(name)) {
                 std::shared_ptr<Header::Header> header = Header::Registry::makeHeader(name);
                 header->parseRaw(cursor.offset(start), cursor.diff(start));
-                request->headers_.add(header);
+                message->headers_.add(header);
             }
             else {
                 std::string value(cursor.offset(start), cursor.diff(start));
-                request->headers_.addRaw(Header::Raw(std::move(name), std::move(value)));
+                message->headers_.addRaw(Header::Raw(std::move(name), std::move(value)));
             }
 
             // CRLF
@@ -276,7 +319,7 @@ namespace Private {
 
     State
     BodyStep::apply(StreamCursor& cursor) {
-        auto cl = request->headers_.tryGet<Header::ContentLength>();
+        auto cl = message->headers_.tryGet<Header::ContentLength>();
         if (!cl) return State::Done;
 
         auto contentLength = cl->value();
@@ -292,7 +335,7 @@ namespace Private {
             // for that right now
             if (available < remaining) {
                 cursor.advance(available);
-                request->body_ += token.text();
+                message->body_ += token.text();
 
                 bytesRead += available;
 
@@ -300,7 +343,7 @@ namespace Private {
             }
             else {
                 cursor.advance(remaining);
-                request->body_ += token.text();
+                message->body_ += token.text();
             }
 
         }
@@ -308,20 +351,20 @@ namespace Private {
         else {
             if (!cursor.advance(2)) return State::Again;
 
-            request->body_.reserve(contentLength);
+            message->body_.reserve(contentLength);
 
             StreamCursor::Token token(cursor);
             const size_t available = cursor.remaining();
             // We have an incomplete body, read what we can
             if (available < contentLength) {
                 cursor.advance(available);
-                request->body_ += token.text();
+                message->body_ += token.text();
                 bytesRead += available;
                 return State::Again;
             }
 
             cursor.advance(contentLength);
-            request->body_ = token.text();
+            message->body_ = token.text();
         }
 
         bytesRead = 0;
@@ -329,7 +372,7 @@ namespace Private {
     }
 
     State
-    Parser::parse() {
+    ParserBase::parse() {
         State state = State::Again;
         do {
             Step *step = allSteps[currentStep].get();
@@ -344,20 +387,17 @@ namespace Private {
     }
 
     bool
-    Parser::feed(const char* data, size_t len) {
+    ParserBase::feed(const char* data, size_t len) {
         return buffer.feed(data, len);
     }
 
     void
-    Parser::reset() {
+    ParserBase::reset() {
         buffer.reset();
         cursor.reset();
 
         currentStep = 0;
 
-        request.headers_.clear();
-        request.body_.clear();
-        request.resource_.clear();
     }
 
 } // namespace Private
@@ -445,6 +485,35 @@ Request::peer() const {
     return p;
 }
 #endif
+
+RequestBuilder&
+RequestBuilder::resource(std::string val) {
+    request_.resource_ = std::move(val);
+    return *this;
+}
+
+RequestBuilder&
+RequestBuilder::params(const Uri::Query& params) {
+    request_.query_ = params;
+    return *this;
+}
+
+RequestBuilder&
+RequestBuilder::header(const std::shared_ptr<Header::Header>& header) {
+    request_.headers_.add(header);
+    return *this;
+}
+
+RequestBuilder&
+RequestBuilder::cookie(const Cookie& cookie) {
+    request_.cookies_.add(cookie);
+    return *this;
+}
+
+RequestBuilder&
+RequestBuilder::body(std::string val) {
+    request_.body_ = std::move(val);
+}
 
 ResponseStream::ResponseStream(
         Message&& other,
@@ -641,7 +710,7 @@ Handler::onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer
 
 void
 Handler::onConnection(const std::shared_ptr<Tcp::Peer>& peer) {
-    peer->putData(ParserData, std::make_shared<Private::Parser>());
+    peer->putData(ParserData, std::make_shared<Private::Parser<Http::Request>>());
 }
 
 void
@@ -663,9 +732,9 @@ Timeout::onTimeout(uint64_t numWakeup) {
 }
 
 
-Private::Parser&
+Private::Parser<Http::Request>&
 Handler::getParser(const std::shared_ptr<Tcp::Peer>& peer) const {
-    return *peer->getData<Private::Parser>(ParserData);
+    return *peer->getData<Private::Parser<Http::Request>>(ParserData);
 }
 
 

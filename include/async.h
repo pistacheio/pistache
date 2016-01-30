@@ -11,6 +11,7 @@
 #include <functional>
 #include <memory>
 #include <atomic>
+#include <vector>
 #include "optional.h"
 #include "typeid.h"
 

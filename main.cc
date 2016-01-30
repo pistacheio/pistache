@@ -4,6 +4,7 @@
 #include "cookie.h"
 #include "router.h"
 #include "endpoint.h"
+#include "client.h"
 #include <iostream>
 #include <cstring>
 #include <algorithm>
@@ -287,6 +288,7 @@ private:
 };
 #endif
 
+/*
 int main(int argc, char *argv[]) {
     Net::Port port(9080);
 
@@ -333,3 +335,23 @@ int main(int argc, char *argv[]) {
     server->shutdown();
     monitor.shutdown();
 }
+*/
+
+#if 1
+int main() {
+    Net::Http::Client client("http://www.foaas.com");
+    auto opts = Net::Http::Client::options()
+        .threads(1)
+        .maxConnections(1);
+
+    using namespace Net::Http;
+
+    client.init(opts);
+    client.get(
+            client
+            .newRequest("/off/octal/nask")
+            .header<Header::ContentType>(MIME(Text, Plain))
+            .cookie(Cookie("FOO", "bar")));
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+}
+#endif

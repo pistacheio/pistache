@@ -51,6 +51,21 @@ Service::modifyFd(Fd fd, Polling::NotifyOn interest, Polling::Mode mode) {
 }
 
 void
+Service::registerFd(Fd fd, Polling::NotifyOn interest, Polling::Tag tag, Polling::Mode mode) {
+    poller.addFd(fd, interest, tag, mode);
+}
+
+void
+Service::registerFdOneShot(Fd fd, Polling::NotifyOn interest, Polling::Tag tag, Polling::Mode mode) {
+    poller.addFdOneShot(fd, interest, tag, mode);
+}
+
+void
+Service::modifyFd(Fd fd, Polling::NotifyOn interest, Polling::Tag tag, Polling::Mode mode) {
+    poller.rearmFd(fd, interest, tag, mode);
+}
+
+void
 Service::init(const std::shared_ptr<Handler>& handler) {
     handler_ = handler;
     handler_->io_ = this;
@@ -246,6 +261,14 @@ ServiceGroup::service(Fd fd) const {
     size_t worker = fd % workers_.size();
     auto& wrk = workers_[worker];
     return wrk->service();
+}
+
+std::shared_ptr<Service>
+ServiceGroup::service(size_t index) const {
+    if (index >= workers_.size())
+        throw std::out_of_range("index out of range");
+
+    return workers_[index]->service();
 }
     
 ServiceGroup::Worker::Worker() {

@@ -101,8 +101,11 @@ namespace Io {
 
         void registerFd(Fd fd, Polling::NotifyOn interest, Polling::Mode mode = Polling::Mode::Level);
         void registerFdOneShot(Fd fd, Polling::NotifyOn interest, Polling::Mode mode = Polling::Mode::Level);
-
         void modifyFd(Fd fd, Polling::NotifyOn interest, Polling::Mode mode = Polling::Mode::Level);
+
+        void registerFd(Fd fd, Polling::NotifyOn interest, Polling::Tag tag, Polling::Mode mode = Polling::Mode::Level);
+        void registerFdOneShot(Fd fd, Polling::NotifyOn interest, Polling::Tag tag, Polling::Mode mode = Polling::Mode::Level);
+        void modifyFd(Fd fd, Polling::NotifyOn interest, Polling::Tag tag, Polling::Mode mode = Polling::Mode::Level);
 
         void init(const std::shared_ptr<Handler>& handler);
         void run();
@@ -168,7 +171,7 @@ namespace Io {
         void shutdown();
 
         std::shared_ptr<Service> service(Fd fd) const;
-
+        std::shared_ptr<Service> service(size_t index) const;
         std::vector<Async::Promise<rusage>> load() const;
 
         size_t size() const {

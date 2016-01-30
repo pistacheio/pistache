@@ -349,6 +349,10 @@ public:
     NAME("User-Agent")
 
     UserAgent() { }
+    explicit UserAgent(const char* ua)
+        : ua_(ua)
+    { }
+
     explicit UserAgent(const std::string& ua) :
         ua_(ua)
     { }
