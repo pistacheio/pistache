@@ -351,7 +351,11 @@ int main() {
             client
             .newRequest("/off/octal/nask")
             .header<Header::ContentType>(MIME(Text, Plain))
-            .cookie(Cookie("FOO", "bar")));
+            .cookie(Cookie("FOO", "bar")))
+    .then([](const Http::Response& response) {
+        std::cout << "code = " << response.code() << std::endl;
+        std::cout << "body = " << response.body_ << std::endl;
+    }, Async::NoExcept);
     std::this_thread::sleep_for(std::chrono::seconds(1));
 }
 #endif

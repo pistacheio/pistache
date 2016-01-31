@@ -218,6 +218,10 @@ class TransferEncoding : public EncodingHeader {
 public:
     NAME("Transfer-Encoding")
 
+    TransferEncoding()
+        : EncodingHeader(Encoding::Identity)
+    { }
+
     explicit TransferEncoding(Encoding encoding)
        : EncodingHeader(encoding)
     { }

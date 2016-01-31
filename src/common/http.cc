@@ -226,8 +226,9 @@ namespace Private {
     ResponseLineStep::apply(StreamCursor& cursor) {
         StreamCursor::Revert revert(cursor);
 
+        auto *response = static_cast<Response *>(message);
+
         if (match_raw("HTTP/1.1", sizeof("HTTP/1.1") - 1, cursor)) {
-            std::cout << "Matched http/1.1" << std::endl;
             //response->version = Version::Http11;
         }
         else if (match_raw("HTTP/1.0", sizeof("HTTP/1.0") - 1, cursor)) {
@@ -246,15 +247,15 @@ namespace Private {
         if (!match_until(' ', cursor))
             return State::Again;
 
-        auto code = codeToken.text();
-        std::cout << "Code = " << code << std::endl;
+        char *end;
+        auto code = strtol(codeToken.rawText(), &end, 10);
+        if (*end != ' ')
+            raise("Failed to parsed return code");
+        response->code_ = static_cast<Http::Code>(code);
+
         if (!cursor.advance(1)) return State::Again;
 
-        StreamCursor::Token textToken(cursor);
         while (!cursor.eol()) cursor.advance(1);
-
-        auto text = textToken.text();
-        std::cout << "Text = "<< text << std::endl;
 
         if (!cursor.advance(2)) return State::Again;
 
@@ -319,56 +320,128 @@ namespace Private {
 
     State
     BodyStep::apply(StreamCursor& cursor) {
-        auto cl = message->headers_.tryGet<Header::ContentLength>();
-        if (!cl) return State::Done;
+        if (message->body_.empty()) {
+            /* If this is the first time we are reading the body, skip the CRLF */
+            if (!cursor.advance(2)) return State::Again;
+        }
 
+        auto cl = message->headers_.tryGet<Header::ContentLength>();
+        auto te = message->headers_.tryGet<Header::TransferEncoding>();
+
+        if (cl && te)
+            raise("Got mutually exclusive ContentLength and TransferEncoding header");
+
+        if (cl)
+            return parseContentLength(cursor, cl);
+
+        if (te)
+            return parseTransferEncoding(cursor, te);
+
+        return State::Done;
+
+    }
+
+    State
+    BodyStep::parseContentLength(StreamCursor& cursor, const std::shared_ptr<Header::ContentLength>& cl) {
         auto contentLength = cl->value();
+
+        auto readBody = [&](size_t size) {
+            StreamCursor::Token token(cursor);
+            const size_t available = cursor.remaining();
+
+            // We have an incomplete body, read what we can
+            if (available < size) {
+                cursor.advance(available);
+                message->body_.append(token.rawText(), token.size());
+
+                bytesRead += available;
+
+                return false;
+            }
+
+            cursor.advance(size);
+            message->body_.append(token.rawText(), token.size());
+            return true;
+        };
+
         // We already started to read some bytes but we got an incomplete payload
         if (bytesRead > 0) {
             // How many bytes do we still need to read ?
             const size_t remaining = contentLength - bytesRead;
-
-            StreamCursor::Token token(cursor);
-            const size_t available = cursor.remaining();
-
-            // Could be refactored in a single function / lambda but I'm too lazy
-            // for that right now
-            if (available < remaining) {
-                cursor.advance(available);
-                message->body_ += token.text();
-
-                bytesRead += available;
-
-                return State::Again;
-            }
-            else {
-                cursor.advance(remaining);
-                message->body_ += token.text();
-            }
-
+            if (!readBody(remaining)) return State::Again;
         }
         // This is the first time we are reading the payload
         else {
-            if (!cursor.advance(2)) return State::Again;
-
             message->body_.reserve(contentLength);
-
-            StreamCursor::Token token(cursor);
-            const size_t available = cursor.remaining();
-            // We have an incomplete body, read what we can
-            if (available < contentLength) {
-                cursor.advance(available);
-                message->body_ += token.text();
-                bytesRead += available;
-                return State::Again;
-            }
-
-            cursor.advance(contentLength);
-            message->body_ = token.text();
+            if (!readBody(contentLength)) return State::Again;
         }
 
         bytesRead = 0;
         return State::Done;
+    }
+
+    BodyStep::Chunk::Result
+    BodyStep::Chunk::parse(StreamCursor& cursor) {
+        if (size == -1) {
+            StreamCursor::Revert revert(cursor);
+            StreamCursor::Token chunkSize(cursor);
+
+            while (!cursor.eol()) if (!cursor.advance(1)) return Incomplete;
+
+            char *end;
+            const char *raw = chunkSize.rawText();
+            auto sz = std::strtol(raw, &end, 16);
+            if (*end != '\r') throw std::runtime_error("Invalid chunk size");
+
+            // CRLF
+            if (!cursor.advance(2)) return Incomplete;
+
+            revert.ignore();
+
+            size = sz;
+        }
+
+        if (size == 0)
+            return Final;
+
+        message->body_.reserve(size);
+        StreamCursor::Token chunkData(cursor);
+        const size_t available = cursor.remaining();
+
+        if (available < size) {
+            cursor.advance(available);
+            message->body_.append(chunkData.rawText(), available);
+            return Incomplete;
+        }
+        cursor.advance(size);
+
+        if (!cursor.advance(2)) return Incomplete;
+
+        message->body_.append(chunkData.rawText(), size);
+        return Complete;
+    }
+
+    State
+    BodyStep::parseTransferEncoding(StreamCursor& cursor, const std::shared_ptr<Header::TransferEncoding>& te) {
+        auto encoding = te->encoding();
+        if (encoding == Http::Header::Encoding::Chunked) {
+            Chunk::Result result;
+            try {
+                while ((result = chunk.parse(cursor)) != Chunk::Final) {
+                    if (result == Chunk::Incomplete) return State::Again;
+
+                    chunk.reset();
+                    if (cursor.eof()) return State::Again;
+                }
+            } catch (const std::exception& e) {
+                raise(e.what());
+            }
+
+            return State::Done;
+        }
+        else {
+            raise("Unsupported Transfer-Encoding", Code::Not_Implemented);
+        }
     }
 
     State

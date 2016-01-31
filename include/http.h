@@ -312,6 +312,7 @@ operator<<(ResponseStream& stream, ResponseStream & (*func)(ResponseStream &)) {
 }
 
 // 6. Response
+// @Investigate public inheritence
 class Response : public Message {
 public:
     friend class Handler;
@@ -506,14 +507,41 @@ namespace Private {
     };
 
     struct BodyStep : public Step {
-        BodyStep(Message* request)
-            : Step(request)
+        BodyStep(Message* message)
+            : Step(message)
+            , chunk(message)
             , bytesRead(0)
         { }
 
         State apply(StreamCursor& cursor);
 
     private:
+        struct Chunk {
+            enum Result { Complete, Incomplete, Final };
+
+            Chunk(Message* message)
+              : message(message)
+              , bytesRead(0)
+              , size(-1)
+            { }
+
+            Result parse(StreamCursor& cursor);
+
+            void reset() {
+                bytesRead = 0;
+                size = -1;
+            }
+
+        private:
+            Message* message;
+            size_t bytesRead;
+            ssize_t size;
+        };
+
+        State parseContentLength(StreamCursor& cursor, const std::shared_ptr<Header::ContentLength>& cl);
+        State parseTransferEncoding(StreamCursor& cursor, const std::shared_ptr<Header::TransferEncoding>& te);
+
+        Chunk chunk;
         size_t bytesRead;
     };
 

@@ -24,6 +24,7 @@ RegisterHeader(Accept);
 RegisterHeader(Allow);
 RegisterHeader(CacheControl);
 RegisterHeader(ContentEncoding);
+RegisterHeader(TransferEncoding);
 RegisterHeader(ContentLength);
 RegisterHeader(ContentType);
 RegisterHeader(Date);

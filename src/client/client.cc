@@ -236,7 +236,6 @@ Transport::handleConnectionQueue() {
 
 void
 Transport::handleIncoming(Fd fd) {
-    std::cout << "Handling incoming on fd " << fd << std::endl;
     char buffer[Const::MaxBuffer];
     memset(buffer, 0, sizeof buffer);
 
@@ -283,7 +282,7 @@ Transport::handleResponsePacket(Fd fd, const char* buffer, size_t totalBytes) {
     auto &req = it->second;
     req.parser->feed(buffer, totalBytes);
     if (req.parser->parse() == Private::State::Done) {
-        std::cout << "DOne parsing!" << std::endl;
+        req.resolve(std::move(req.parser->response));
     }
 }
 
@@ -524,10 +523,9 @@ Client::get(const Http::Request& request, std::chrono::milliseconds timeout)
             conn->connect(addr_);
         }
 
-        conn->perform(request);
+        return conn->perform(request);
     }
 
-    return Async::Promise<Http::Response>::rejected(std::runtime_error("Unimplemented"));
 }
 
 } // namespace Http
