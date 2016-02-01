@@ -371,14 +371,14 @@ struct OnRequestWriteCompleted {
         , reject(std::move(reject))
     { }
 
-    void operator()(size_t bytes) const {
+    void operator()(size_t bytes) {
         transport->addInFlight(fd, std::move(resolve), std::move(reject));
     }
 
-    mutable std::shared_ptr<Transport> transport;
+    std::shared_ptr<Transport> transport;
     Fd fd;
-    mutable Async::Resolver resolve;
-    mutable Async::Rejection reject;
+    Async::Resolver resolve;
+    Async::Rejection reject;
 };
 
 void
