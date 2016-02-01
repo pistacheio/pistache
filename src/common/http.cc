@@ -638,7 +638,7 @@ ResponseStream::ends() {
 }
 
 Async::Promise<ssize_t>
-Response::putOnWire(const char* data, size_t len)
+ResponseWriter::putOnWire(const char* data, size_t len)
 {
     try {
         std::ostream os(&buf_);
@@ -678,7 +678,7 @@ Response::putOnWire(const char* data, size_t len)
 }
 
 Async::Promise<ssize_t>
-serveFile(Response& response, const char* fileName, const Mime::MediaType& contentType)
+serveFile(ResponseWriter& response, const char* fileName, const Mime::MediaType& contentType)
 {
     struct stat sb;
 
@@ -756,7 +756,7 @@ Handler::onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer
 
         auto state = parser.parse();
         if (state == Private::State::Done) {
-            Response response(transport());
+            ResponseWriter response(transport());
             response.associatePeer(peer);
 
             Timeout timeout(transport(), this, peer, parser.request);
@@ -768,13 +768,13 @@ Handler::onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer
             parser.reset();
         }
     } catch (const HttpError &err) {
-        Response response(transport());
+        ResponseWriter response(transport());
         response.associatePeer(peer);
         response.send(static_cast<Code>(err.code()), err.reason());
         getParser(peer).reset();
     }
     catch (const std::exception& e) {
-        Response response(transport());
+        ResponseWriter response(transport());
         response.associatePeer(peer);
         response.send(Code::Internal_Server_Error, e.what());
         getParser(peer).reset();
@@ -791,14 +791,14 @@ Handler::onDisconnection(const shared_ptr<Tcp::Peer>& peer) {
 }
 
 void
-Handler::onTimeout(const Request& request, Response response) {
+Handler::onTimeout(const Request& request, ResponseWriter response) {
 }
 
 void
 Timeout::onTimeout(uint64_t numWakeup) {
     if (!peer.lock()) return;
 
-    Response response(transport);
+    ResponseWriter response(transport);
     response.associatePeer(peer);
 
     handler->onTimeout(request, std::move(response));

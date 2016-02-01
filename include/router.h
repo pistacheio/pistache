@@ -135,7 +135,7 @@ namespace Private {
 
         void onRequest(
                 const Http::Request& req,
-                Http::Response response,
+                Http::ResponseWriter response,
                 Http::Timeout timeout);
 
     private:

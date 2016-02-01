@@ -38,7 +38,7 @@ class MyHandler : public Net::Http::Handler {
 
     void onRequest(
             const Net::Http::Request& req,
-            Net::Http::Response response,
+            Net::Http::ResponseWriter response,
             Net::Http::Timeout timeout) {
 
         if (req.resource() == "/ping") {
@@ -99,7 +99,7 @@ class MyHandler : public Net::Http::Handler {
 
     }
 
-    void onTimeout(const Net::Http::Request& req, Net::Http::Response response) {
+    void onTimeout(const Net::Http::Request& req, Net::Http::ResponseWriter response) {
         response
             .send(Net::Http::Code::Request_Timeout, "Timeout")
             .then([=](ssize_t) { }, ExceptionPrinter());
@@ -163,7 +163,7 @@ private:
 
 namespace Generic {
 
-void handleReady(const Rest::Request&, Http::Response response) {
+void handleReady(const Rest::Request&, Http::ResponseWriter response) {
     response.send(Http::Code::Ok, "1");
 }
 
@@ -347,14 +347,13 @@ int main() {
     using namespace Net::Http;
 
     client.init(opts);
-    client.get(
-            client
-            .newRequest("/off/octal/nask")
+    client.get(client
+            .request("/off/octal/nask")
             .header<Header::ContentType>(MIME(Text, Plain))
             .cookie(Cookie("FOO", "bar")))
     .then([](const Http::Response& response) {
         std::cout << "code = " << response.code() << std::endl;
-        std::cout << "body = " << response.body_ << std::endl;
+        std::cout << "body = " << response.body() << std::endl;
     }, Async::NoExcept);
     std::this_thread::sleep_for(std::chrono::seconds(1));
 }

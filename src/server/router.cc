@@ -218,7 +218,7 @@ HttpHandler::HttpHandler(
 void
 HttpHandler::onRequest(
         const Http::Request& req,
-        Http::Response response,
+        Http::ResponseWriter response,
         Http::Timeout timeout)
 {
     auto& r = routes[req.method()];

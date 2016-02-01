@@ -29,6 +29,7 @@ namespace Private {
     class ParserBase;
     template<typename T> struct Parser;
     class RequestLineStep;
+    class ResponseLineStep;
     class HeadersStep;
     class BodyStep;
 }
@@ -44,6 +45,10 @@ std::basic_ostream<CharT, Traits>& crlf(std::basic_ostream<CharT, Traits>& os) {
 // 4. HTTP Message
 class Message {
 public:
+    friend class Private::HeadersStep;
+    friend class Private::BodyStep;
+    friend class Private::ParserBase;
+
     Message();
 
     Message(const Message& other) = default;
@@ -52,6 +57,7 @@ public:
     Message(Message&& other) = default;
     Message& operator=(Message&& other) = default;
 
+protected:
     Version version_;
     Code code_;
 
@@ -85,12 +91,9 @@ namespace Uri {
 class RequestBuilder;
 
 // 5. Request
-class Request : private Message {
+class Request : public Message {
 public:
     friend class Private::RequestLineStep;
-    friend class Private::HeadersStep;
-    friend class Private::BodyStep;
-    friend class Private::ParserBase;
     friend class Private::Parser<Http::Request>;
 
     friend class RequestBuilder;
@@ -100,7 +103,6 @@ public:
 
     Request(Request&& other) = default;
     Request& operator=(Request&& other) = default;
-
 
     Version version() const;
     Method method() const;
@@ -171,7 +173,7 @@ private:
 };
 
 class Handler;
-class Response;
+class ResponseWrite;
 
 class Timeout {
 public:
@@ -227,9 +229,9 @@ private:
     bool armed;
 };
 
-class ResponseStream : private Message {
+class ResponseStream : public Message {
 public:
-    friend class Response;
+    friend class ResponseWriter;
 
     ResponseStream(ResponseStream&& other)
         : Message(std::move(other))
@@ -315,31 +317,13 @@ operator<<(ResponseStream& stream, ResponseStream & (*func)(ResponseStream &)) {
 // @Investigate public inheritence
 class Response : public Message {
 public:
-    friend class Handler;
-    friend class Timeout;
-    friend class Private::ParserBase;
-    friend class Private::Parser<Response>;
+    friend class Private::ResponseLineStep;
+    friend class Private::Parser<Http::Response>;
 
-    friend Async::Promise<ssize_t> serveFile(Response&, const char *, const Mime::MediaType&);
-
-    static constexpr size_t DefaultStreamSize = 512;
-
-    // C++11: std::weak_ptr move constructor is C++14 only so the default
-    // version of move constructor / assignement operator does not work and we
-    // have to define it ourself
-    Response(Response&& other)
-        : Message(std::move(other))
-        , peer_(other.peer_)
-        , buf_(std::move(other.buf_))
-        , transport_(other.transport_)
-    { }
-    Response& operator=(Response&& other) {
-        Message::operator=(std::move(other));
-        peer_ = std::move(other.peer_);
-        transport_ = other.transport_;
-        buf_ = std::move(other.buf_);
-        return *this;
-    }
+    Response(const Response& other) = default;
+    Response& operator=(const Response& other) = default;
+    Response(Response&& other) = default;
+    Response& operator=(Response&& other) = default;
 
     const Header::Collection& headers() const {
         return headers_;
@@ -359,6 +343,48 @@ public:
 
     Code code() const {
         return code_;
+    }
+
+    std::string body() const {
+        return body_;
+    }
+
+protected:
+    Response()
+        : Message()
+    { }
+};
+
+class ResponseWriter : public Response {
+public:
+    static constexpr size_t DefaultStreamSize = 512;
+
+    friend Async::Promise<ssize_t> serveFile(ResponseWriter&, const char *, const Mime::MediaType&);
+
+    friend class Handler;
+    friend class Timeout;
+
+    friend class Private::ResponseLineStep;
+    friend class Private::Parser<Http::Response>;
+
+    ResponseWriter(const ResponseWriter& other) = delete;
+    ResponseWriter& operator=(const ResponseWriter& other) = delete;
+    //
+    // C++11: std::weak_ptr move constructor is C++14 only so the default
+    // version of move constructor / assignement operator does not work and we
+    // have to define it ourself
+    ResponseWriter(ResponseWriter&& other)
+        : Response(std::move(other))
+        , peer_(other.peer_)
+        , buf_(std::move(other.buf_))
+        , transport_(other.transport_)
+    { }
+    ResponseWriter& operator=(ResponseWriter&& other) {
+        Response::operator=(std::move(other));
+        peer_ = std::move(other.peer_);
+        transport_ = other.transport_;
+        buf_ = std::move(other.buf_);
+        return *this;
     }
 
     void setMime(const Mime::MediaType& mime) {
@@ -428,14 +454,14 @@ public:
     }
 
 private:
-    Response()
-        : Message()
+    ResponseWriter()
+        : Response()
         , buf_(0)
         , transport_(nullptr)
     { }
 
-    Response(Tcp::Transport* transport)
-        : Message()
+    ResponseWriter(Tcp::Transport* transport)
+        : Response()
         , buf_(DefaultStreamSize)
         , transport_(transport)
     { }
@@ -463,7 +489,7 @@ private:
 };
 
 Async::Promise<ssize_t> serveFile(
-        Response& response, const char *fileName,
+        ResponseWriter& response, const char *fileName,
         const Mime::MediaType& contentType = Mime::MediaType());
 
 namespace Private {
@@ -641,9 +667,9 @@ public:
     void onConnection(const std::shared_ptr<Tcp::Peer>& peer);
     void onDisconnection(const std::shared_ptr<Tcp::Peer>& peer);
 
-    virtual void onRequest(const Request& request, Response response, Timeout timeout) = 0;
+    virtual void onRequest(const Request& request, ResponseWriter response, Timeout timeout) = 0;
 
-    virtual void onTimeout(const Request& request, Response response);
+    virtual void onTimeout(const Request& request, ResponseWriter response);
 
 private:
     Private::Parser<Http::Request>& getParser(const std::shared_ptr<Tcp::Peer>& peer) const;

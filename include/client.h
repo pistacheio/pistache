@@ -52,8 +52,6 @@ public:
                 return;
             }
 
-            std::cout << "I am in the same thread, wouhou" << std::endl;
-
             asyncWriteImpl(fd, flags, BufferHolder(buffer), std::move(resolve), std::move(reject));
 
         });
@@ -317,7 +315,7 @@ public:
    static Options options();
    void init(const Options& options);
 
-   RequestBuilder newRequest(std::string resource);
+   RequestBuilder request(std::string resource);
 
    Async::Promise<Response> get(
            const Http::Request& request,

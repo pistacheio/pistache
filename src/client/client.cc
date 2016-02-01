@@ -498,7 +498,7 @@ Client::init(const Client::Options& options) {
 }
 
 RequestBuilder
-Client::newRequest(std::string val) {
+Client::request(std::string val) {
     RequestBuilder builder;
     builder.resource(std::move(val));
     return builder;
