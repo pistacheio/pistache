@@ -297,6 +297,10 @@ Expect::write(std::ostream& os) const {
     }
 }
 
+Host::Host(const std::string& data) {
+    parse(data);
+}
+
 void
 Host::parse(const std::string& data) {
     auto pos = data.find(':');

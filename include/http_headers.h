@@ -61,6 +61,14 @@ public:
         return add(std::make_shared<H>(std::forward<Args>(args)...));
     }
 
+    template<typename H>
+    typename std::enable_if<
+                IsHeader<H>::value, bool
+             >::type
+    remove() {
+        return remove(H::Name);
+    }
+
     std::shared_ptr<const Header> get(const std::string& name) const;
     std::shared_ptr<Header> get(const std::string& name);
     Raw getRaw(const std::string& name) const;
@@ -79,6 +87,8 @@ public:
     bool has(const std::string& name) const;
 
     std::vector<std::shared_ptr<Header>> list() const;
+
+    bool remove(const std::string& name);
 
     void clear();
 

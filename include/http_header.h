@@ -314,7 +314,8 @@ public:
     Host()
     { }
 
-    explicit Host(const std::string& host, Net::Port port = 80)
+    explicit Host(const std::string& host);
+    explicit Host(const std::string& host, Net::Port port)
         : host_(host)
         , port_(port)
     { }
@@ -364,7 +365,11 @@ public:
     void parse(const std::string& data);
     void write(std::ostream& os) const;
 
-    std::string ua() const { return ua_; }
+    void setAgent(std::string ua) {
+        ua_ = std::move(ua);
+    }
+
+    std::string agent() const { return ua_; }
 
 private:
     std::string ua_;

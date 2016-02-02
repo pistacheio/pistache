@@ -157,6 +157,20 @@ Collection::list() const {
     return ret;
 }
 
+bool
+Collection::remove(const std::string& name) {
+    auto tit = headers.find(name);
+    if (tit == std::end(headers)) {
+        auto rit = rawHeaders.find(name);
+        if (rit == std::end(rawHeaders)) return false;
+
+        rawHeaders.erase(rit);
+        return true;
+    }
+    headers.erase(tit);
+    return true;
+}
+
 void
 Collection::clear() {
     headers.clear();

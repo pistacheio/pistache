@@ -59,10 +59,10 @@ namespace {
 
     }
 
-    bool writeRequest(const Http::Request& request, DynamicStreamBuf &buf) {
+    bool writeRequest(const Http::Request& request, std::string host, DynamicStreamBuf &buf) {
         std::ostream os(&buf);
 
-        OUT(os << "GET ");
+        OUT(os << request.method() << " ");
         OUT(os << request.resource());
         OUT(os << " HTTP/1.1" << crlf);
 
@@ -70,7 +70,7 @@ namespace {
         if (!writeHeaders(request.headers(), buf)) return false;
 
         if (!writeHeader<Header::UserAgent>(os, "restpp/0.1")) return false;
-        if (!writeHeader<Header::Host>(os, "foaas.com")) return false;
+        if (!writeHeader<Header::Host>(os, std::move(host))) return false;
         OUT(os << crlf);
 
         return true;
@@ -81,18 +81,14 @@ namespace {
 #undef OUT
 }
 
-Transport::ConnectionEvent::ConnectionEvent(const Connection* connection)
-    : connection_(connection)
-{ }
-
 void
 Transport::onReady(const Io::FdSet& fds) {
     for (const auto& entry: fds) {
         if (entry.getTag() == connectionsQueue.tag()) {
             handleConnectionQueue();
         }
-        else if (entry.getTag() == writesQueue.tag()) {
-            handleWriteQueue();
+        else if (entry.getTag() == requestsQueue.tag()) {
+            handleRequestsQueue();
         }
 
         else if (entry.isReadable()) {
@@ -112,14 +108,19 @@ Transport::onReady(const Io::FdSet& fds) {
                 continue; 
             }
 
+#if 0
             auto writeIt = toWrite.find(fd);
             if (writeIt != std::end(toWrite)) {
+                /* @Bug: should not need modifyFd, investigate why I can't use
+                 * registerFd
+                 */
                 io()->modifyFd(fd, NotifyOn::Read, Polling::Mode::Edge);
 
                 auto& write = writeIt->second;
                 asyncWriteImpl(fd, write, Retry);
                 continue;
             }
+#endif
 
             throw std::runtime_error("Unknown fd");
         }
@@ -128,7 +129,7 @@ Transport::onReady(const Io::FdSet& fds) {
 
 void
 Transport::registerPoller(Polling::Epoll& poller) {
-    writesQueue.bind(poller);
+    requestsQueue.bind(poller);
     connectionsQueue.bind(poller);
 }
 
@@ -143,50 +144,54 @@ Transport::asyncConnect(Fd fd, const struct sockaddr* address, socklen_t addr_le
 }
 
 void
-Transport::asyncWriteImpl(Fd fd, Transport::OnHoldWrite& entry, WriteStatus status) {
-    asyncWriteImpl(fd, entry.flags, entry.buffer, std::move(entry.resolve), std::move(entry.reject), status);
+Transport::asyncSendRequest(
+        Fd fd,
+        const Buffer& buffer,
+        Async::Resolver resolve,
+        Async::Rejection reject,
+        OnResponseParsed onParsed) {
+
+    if (std::this_thread::get_id() != io()->thread()) {
+        InflightRequest req(std::move(resolve), std::move(reject), fd, buffer.detach(), std::move(onParsed));
+        auto detached = buffer.detach();
+        auto *e = requestsQueue.allocEntry(std::move(req));
+        requestsQueue.push(e);
+    } else {
+        InflightRequest req(std::move(resolve), std::move(reject), fd, buffer, std::move(onParsed));
+
+        asyncSendRequestImpl(req);
+    }
 }
 
-void
-Transport::asyncWriteImpl(
-        Fd fd, int flags, const BufferHolder& buffer,
-        Async::Resolver resolve, Async::Rejection reject, WriteStatus status)
-{
-    auto cleanUp = [&]() {
-        if (buffer.isRaw()) {
-            auto raw = buffer.raw();
-            if (raw.isOwned) delete[] raw.data;
-        }
 
-        if (status == Retry)
-            toWrite.erase(fd);
+void
+Transport::asyncSendRequestImpl(
+        InflightRequest& req, WriteStatus status)
+{
+    auto buffer = req.buffer;
+
+    auto cleanUp = [&]() {
+        if (buffer.isOwned) delete[] buffer.data;
     };
+
+    auto fd = req.fd;
 
     ssize_t totalWritten = 0;
     for (;;) {
         ssize_t bytesWritten = 0;
-        auto len = buffer.size() - totalWritten;
-        if (buffer.isRaw()) {
-            auto raw = buffer.raw();
-            auto ptr = raw.data + totalWritten;
-            bytesWritten = ::send(fd, ptr, len, flags);
-        } else {
-            auto file = buffer.fd();
-            off_t offset = totalWritten;
-            bytesWritten = ::sendfile(fd, file, &offset, len);
-        }
+        auto len = buffer.len - totalWritten;
+        auto ptr = buffer.data + totalWritten;
+        bytesWritten = ::send(fd, ptr, len, 0);
         if (bytesWritten < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if (status == FirstTry) {
-                    toWrite.insert(
-                            std::make_pair(fd,
-                                OnHoldWrite(std::move(resolve), std::move(reject), buffer.detach(totalWritten), flags)));
+                    throw std::runtime_error("Unimplemented, fix me!");
                 }
                 io()->modifyFd(fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
             }
             else {
                 cleanUp();
-                reject(Net::Error::system("Could not write data"));
+                req.reject(Net::Error::system("Could not send request"));
             }
             break;
         }
@@ -194,7 +199,8 @@ Transport::asyncWriteImpl(
             totalWritten += bytesWritten;
             if (totalWritten == len) {
                 cleanUp();
-                resolve(totalWritten);
+                auto& queue = inflightRequests[fd];
+                queue.push_back(std::move(req));
                 break;
             }
         }
@@ -202,14 +208,14 @@ Transport::asyncWriteImpl(
 }
 
 void
-Transport::handleWriteQueue() {
+Transport::handleRequestsQueue() {
     // Let's drain the queue
     for (;;) {
-        std::unique_ptr<PollableQueue<OnHoldWrite>::Entry> entry(writesQueue.pop());
+        std::unique_ptr<PollableQueue<InflightRequest>::Entry> entry(requestsQueue.pop());
         if (!entry) break;
 
-        auto &write = entry->data();
-        asyncWriteImpl(write.peerFd, write);
+        auto &req = entry->data();
+        asyncSendRequestImpl(req);
     }
 }
 
@@ -279,10 +285,12 @@ Transport::handleResponsePacket(Fd fd, const char* buffer, size_t totalBytes) {
     if (it == std::end(inflightRequests))
         throw std::runtime_error("Received response for a non-inflight request");
 
-    auto &req = it->second;
-    req.parser->feed(buffer, totalBytes);
+    auto &queue = it->second;
+    auto &req = queue.front();
+    req.feed(buffer, totalBytes);
     if (req.parser->parse() == Private::State::Done) {
         req.resolve(std::move(req.parser->response));
+        queue.pop_front();
     }
 }
 
@@ -316,13 +324,13 @@ Connection::connect(Net::Address addr)
 
         make_non_blocking(sfd);
 
-        state_.store(static_cast<uint32_t>(State::Connecting));
+        connectionState_ = Connecting;
 
         transport_->asyncConnect(sfd, addr->ai_addr, addr->ai_addrlen)
             .then([=]() { 
+                connectionState_ = Connected;
                 fd = sfd;
                 transport_->io()->modifyFd(fd, NotifyOn::Read);
-                state_.store(static_cast<uint32_t>(State::Connected));
                 processRequestQueue();
             }, Async::Throw);
         break;
@@ -335,7 +343,12 @@ Connection::connect(Net::Address addr)
 
 bool
 Connection::isConnected() const {
-    return static_cast<State>(state_.load()) == State::Connected;
+    return connectionState_ == Connected;
+}
+
+void
+Connection::close() {
+    connectionState_ = NotConnected;
 }
 
 void
@@ -352,49 +365,66 @@ Connection::hasTransport() const {
 }
 
 Async::Promise<Response>
-Connection::perform(const Http::Request& request) {
+Connection::perform(
+        const Http::Request& request,
+        std::string host,
+        OnDone onDone) {
     return Async::Promise<Response>([=](Async::Resolver& resolve, Async::Rejection& reject) {
         if (!isConnected()) {
-        auto* entry = requestsQueue.allocEntry(RequestData(std::move(resolve), std::move(reject), request));
+        auto* entry = requestsQueue.allocEntry(
+                RequestData(std::move(resolve), std::move(reject), request, std::move(host), std::move(onDone)));
         requestsQueue.push(entry);
         } else {
-            performImpl(request, std::move(resolve), std::move(reject));
+            performImpl(request, std::move(host), std::move(resolve), std::move(reject), std::move(onDone));
         }
     });
 }
 
+#if 0
 struct OnRequestWriteCompleted {
-    OnRequestWriteCompleted(const std::shared_ptr<Transport>& transport, Fd fd, Async::Resolver resolve, Async::Rejection reject)
+    OnRequestWriteCompleted(
+            const std::shared_ptr<Transport>& transport,
+            Fd fd,
+            Async::Resolver resolve, Async::Rejection reject,
+            Connection::OnDone onDone)
         : transport(transport)
         , fd(fd)
         , resolve(std::move(resolve))
         , reject(std::move(reject))
+        , onDone(std::move(onDone))
     { }
 
     void operator()(size_t bytes) {
         transport->addInFlight(fd, std::move(resolve), std::move(reject));
+        onDone();
     }
 
     std::shared_ptr<Transport> transport;
     Fd fd;
     Async::Resolver resolve;
     Async::Rejection reject;
+    Connection::OnDone onDone;
 };
+#endif
 
 void
 Connection::performImpl(
         const Http::Request& request,
+        std::string host,
         Async::Resolver resolve,
-        Async::Rejection reject) {
+        Async::Rejection reject,
+        OnDone onDone) {
 
     DynamicStreamBuf buf(128);
 
-    if (!writeRequest(request, buf))
+    if (!writeRequest(request, std::move(host), buf))
         reject(std::runtime_error("Could not write request"));
 
     auto buffer = buf.buffer();
-    OnRequestWriteCompleted onCompleted(transport_, fd, std::move(resolve), std::move(reject));
-    transport_->asyncWrite(fd, buffer).then(std::move(onCompleted) , Async::Throw);
+#if 0
+    OnRequestWriteCompleted onCompleted(transport_, fd, std::move(resolve), std::move(reject), std::move(onDone));
+#endif
+    transport_->asyncSendRequest(fd, buffer, std::move(resolve), std::move(reject), std::move(onDone));
 }
 
 void
@@ -404,7 +434,8 @@ Connection::processRequestQueue() {
         if (!entry) break;
 
         auto &req = entry->data();
-        performImpl(req.request, std::move(req.resolve), std::move(req.reject));
+        performImpl(req.request,
+                std::move(req.host), std::move(req.resolve), std::move(req.reject), std::move(req.onDone));
     }
 
 }
@@ -415,20 +446,19 @@ ConnectionPool::init(size_t max)
     for (size_t i = 0; i < max; ++i) {
         connections.push_back(std::make_shared<Connection>());
     }
+
+    usedCount.store(0);
 }
 
 std::shared_ptr<Connection>
 ConnectionPool::pickConnection() {
     for (auto& conn: connections) {
         auto& state = conn->state_;
-        if (static_cast<Connection::State>(state.load()) == Connection::State::Idle) {
-            auto curState = static_cast<uint32_t>(Connection::State::Idle);
-            auto newState = Connection::State::Used;
-            if (state.compare_exchange_strong(
-                curState,
-                static_cast<uint32_t>(Connection::State::Used))) {
-                return conn;
-            }
+        auto curState = static_cast<uint32_t>(Connection::State::Idle);
+        auto newState = static_cast<uint32_t>(Connection::State::Used);
+        if (state.compare_exchange_strong(curState, newState)) {
+            usedCount.fetch_add(1);
+            return conn;
         }
     }
 
@@ -436,8 +466,14 @@ ConnectionPool::pickConnection() {
 }
 
 void
-ConnectionPool::returnConnection(const std::shared_ptr<Connection>& connection) {
+ConnectionPool::releaseConnection(const std::shared_ptr<Connection>& connection) {
     connection->state_.store(static_cast<uint32_t>(Connection::State::Idle));
+    usedCount.fetch_add(-1);
+}
+
+size_t
+ConnectionPool::availableCount() const {
+    return connections.size() - usedCount.load();
 }
 
 Client::Options&
@@ -460,7 +496,13 @@ Client::Options::keepAlive(bool val) {
 Client::Client(const std::string& base)
     : url_(base)
     , ioIndex(0)
-{ }
+{
+    host_ = url_;
+    constexpr const char *Http = "http://";
+    constexpr size_t Size = sizeof("http://") - 1;
+    if (!host_.compare(0, Size, Http))
+        host_.erase(0, Size);
+}
 
 Client::Options
 Client::options() {
@@ -497,6 +539,11 @@ Client::init(const Client::Options& options) {
     pool.init(options.maxConnections_);
 }
 
+void
+Client::shutdown() {
+    io_.shutdown();
+}
+
 RequestBuilder
 Client::request(std::string val) {
     RequestBuilder builder;
@@ -507,9 +554,20 @@ Client::request(std::string val) {
 Async::Promise<Http::Response>
 Client::get(const Http::Request& request, std::chrono::milliseconds timeout)
 {
+    unsafe {
+        auto &req = const_cast<Http::Request &>(request);
+        req.method_ = Http::Method::Get;
+
+        req.headers_.remove<Header::UserAgent>();
+    }
+
     auto conn = pool.pickConnection();
     if (conn == nullptr) {
-        std::cout << "No connection available yet, bailing-out" << std::endl;
+        return Async::Promise<Response>([=](Async::Resolver& resolve, Async::Rejection& reject) {
+            auto entry = requestsQueue.allocEntry(
+                    Connection::RequestData(std::move(resolve), std::move(reject), request, host_, nullptr));
+            requestsQueue.push(entry);
+        });
     }
     else {
 
@@ -520,12 +578,40 @@ Client::get(const Http::Request& request, std::chrono::milliseconds timeout)
             auto transport = std::static_pointer_cast<Transport>(service->handler()); 
             conn->associateTransport(transport);
 
-            conn->connect(addr_);
         }
 
-        return conn->perform(request);
+        if (!conn->isConnected())
+            conn->connect(addr_);
+
+        return conn->perform(request, host_, [=]() {
+            pool.releaseConnection(conn);
+            processRequestQueue();
+        });
     }
 
+}
+
+void
+Client::processRequestQueue() {
+    for (;;) {
+        auto conn = pool.pickConnection();
+        if (!conn) break;
+
+        std::unique_ptr<Queue<Connection::RequestData>::Entry> entry(requestsQueue.pop());
+        if (!entry) {
+            pool.releaseConnection(conn);
+            break;
+        }
+
+        auto& req = entry->data();
+        conn->performImpl(
+                req.request, std::move(req.host),
+                std::move(req.resolve), std::move(req.reject),
+                [=]() {
+                    pool.releaseConnection(conn);
+                    processRequestQueue();
+                });
+    }
 }
 
 } // namespace Http

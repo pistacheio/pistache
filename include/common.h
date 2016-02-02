@@ -15,6 +15,8 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
+#define unsafe
+
 #define TRY(...) \
     do { \
         auto ret = __VA_ARGS__; \

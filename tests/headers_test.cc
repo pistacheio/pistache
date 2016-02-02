@@ -225,7 +225,7 @@ TEST(headers_test, user_agent) {
     Header::UserAgent ua;
 
     ua.parse("CERN-LineMode/2.15 libwww/2.17b3");
-    ASSERT_EQ(ua.ua(), "CERN-LineMode/2.15 libwww/2.17b3");
+    ASSERT_EQ(ua.agent(), "CERN-LineMode/2.15 libwww/2.17b3");
 }
 
 TEST(headers_test, content_encoding) {

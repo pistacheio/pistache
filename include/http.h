@@ -97,6 +97,7 @@ public:
     friend class Private::Parser<Http::Request>;
 
     friend class RequestBuilder;
+    friend class Client;
 
     Request(const Request& other) = default;
     Request& operator=(const Request& other) = default;
