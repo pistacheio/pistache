@@ -82,7 +82,7 @@ public:
       : size(0)
     {
         memset(bytes, 0, N);
-        Base::setg(bytes, bytes, bytes);
+        Base::setg(bytes, bytes, bytes + N);
     }
 
     template<size_t M>
@@ -99,7 +99,14 @@ public:
         }
 
         memcpy(bytes + size, data, len);
-        Base::setg(bytes, Base::gptr(), bytes + size + len);
+        CharT *cur = nullptr;
+        if (this->gptr()) {
+            cur = this->gptr();
+        } else {
+            cur = bytes + size;
+        }
+
+        Base::setg(bytes, cur, bytes + size + len);
 
         size += len;
         return true;

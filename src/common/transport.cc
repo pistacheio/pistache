@@ -3,6 +3,7 @@
 #include "tcp.h"
 #include "os.h"
 #include <sys/sendfile.h>
+#include <sys/timerfd.h>
 
 using namespace Polling;
 
@@ -28,6 +29,8 @@ Transport::clone() const {
 void
 Transport::registerPoller(Polling::Epoll& poller) {
     writesQueue.bind(poller);
+    timersQueue.bind(poller);
+    notifier.bind(poller);
 }
 
 void
@@ -50,10 +53,28 @@ Transport::onReady(const Io::FdSet& fds) {
         if (entry.getTag() == writesQueue.tag()) {
             handleWriteQueue();
         }
+        else if (entry.getTag() == timersQueue.tag()) {
+            handleTimerQueue();
+        }
+        else if (entry.getTag() == notifier.tag()) {
+            handleNotify();
+        }
 
         else if (entry.isReadable()) {
-            auto& peer = getPeer(entry.getTag());
-            handleIncoming(peer);
+            auto tag = entry.getTag();
+            if (isPeerFd(tag)) {
+                auto& peer = getPeer(tag);
+                handleIncoming(peer);
+            } else if (isTimerFd(tag)) {
+                auto it = timers.find(tag.value());
+                auto& entry = it->second;
+                handleTimer(std::move(entry));
+                timers.erase(it);
+            }
+            else {
+                throw std::runtime_error("Unknown fd");
+            }
+
         }
         else if (entry.isWritable()) {
             auto tag = entry.getTag();
@@ -70,6 +91,16 @@ Transport::onReady(const Io::FdSet& fds) {
             asyncWriteImpl(fd, write, Retry);
         }
     }
+}
+
+void
+Transport::disarmTimer(Fd fd) {
+    auto it = timers.find(fd);
+    if (it == std::end(timers))
+        throw std::runtime_error("Timer has not been armed");
+
+    auto &entry = it->second;
+    entry.disable();
 }
 
 void
@@ -192,6 +223,53 @@ Transport::asyncWriteImpl(
 }
 
 void
+Transport::armTimerMs(
+        Fd fd, std::chrono::milliseconds value,
+        Async::Resolver resolve, Async::Rejection reject) {
+    const bool isInRightThread = std::this_thread::get_id() == io()->thread();
+    TimerEntry entry(fd, value, std::move(resolve), std::move(reject));
+    if (!isInRightThread) {
+        auto *e = timersQueue.allocEntry(std::move(entry));
+        timersQueue.push(e);
+    } else {
+        armTimerMsImpl(std::move(entry));
+    }
+}
+
+void
+Transport::armTimerMsImpl(TimerEntry entry) {
+
+    auto it = timers.find(entry.fd);
+    if (it != std::end(timers)) {
+        entry.reject(std::runtime_error("Timer is already armed"));
+        return;
+    }
+
+    itimerspec spec;
+    spec.it_interval.tv_sec = 0;
+    spec.it_interval.tv_nsec = 0;
+
+    if (entry.value.count() < 1000) {
+        spec.it_value.tv_sec = 0;
+        spec.it_value.tv_nsec
+            = std::chrono::duration_cast<std::chrono::nanoseconds>(entry.value).count();
+    } else {
+        spec.it_value.tv_sec
+            = std::chrono::duration_cast<std::chrono::seconds>(entry.value).count();
+        spec.it_value.tv_nsec = 0;
+    }
+
+    int res = timerfd_settime(entry.fd, 0, &spec, 0);
+    if (res == -1) {
+        entry.reject(Net::Error::system("Could not set timer time"));
+        return;
+    }
+
+    io()->registerFdOneShot(entry.fd, NotifyOn::Read, Polling::Mode::Edge);
+    timers.insert(std::make_pair(entry.fd, std::move(entry)));
+}
+
+void
 Transport::handleWriteQueue() {
     // Let's drain the queue
     for (;;) {
@@ -201,6 +279,77 @@ Transport::handleWriteQueue() {
         auto &write = entry->data();
         asyncWriteImpl(write.peerFd, write);
     }
+}
+
+void
+Transport::handleTimerQueue() {
+    for (;;) {
+        std::unique_ptr<PollableQueue<TimerEntry>::Entry> entry(timersQueue.pop());
+        if (!entry) break;
+
+        auto &timer = entry->data();
+        armTimerMsImpl(std::move(timer));
+    }
+}
+
+
+void
+Transport::handleNotify() {
+    optionally_do(loadRequest_, [&](const Async::Holder& async) {
+        while (this->notifier.tryRead()) ;
+
+        rusage now;
+
+        auto res = getrusage(RUSAGE_THREAD, &now);
+        if (res == -1)
+            async.reject(std::runtime_error("Could not compute usage"));
+
+        async.resolve(now);
+    });
+
+    loadRequest_ = None();
+}
+
+void
+Transport::handleTimer(TimerEntry entry) {
+    if (entry.isActive()) {
+        uint64_t numWakeups;
+        int res = ::read(entry.fd, &numWakeups, sizeof numWakeups);
+        if (res == -1) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+                return;
+            else
+                entry.reject(Net::Error::system("Could not read timerfd"));
+        } else {
+            if (res != sizeof(numWakeups)) {
+                entry.reject(Net::Error("Read invalid number of bytes for timer fd: "
+                            + std::to_string(entry.fd)));
+            }
+            else {
+                entry.resolve(numWakeups);
+            }
+        }
+    }
+}
+
+bool
+Transport::isPeerFd(Fd fd) const {
+    std::unique_lock<std::mutex> guard(peersMutex);
+    return peers.find(fd) != std::end(peers);
+}
+
+bool
+Transport::isTimerFd(Fd fd) const {
+    return timers.find(fd) != std::end(timers);
+}
+
+bool
+Transport::isPeerFd(Polling::Tag tag) const {
+    return isPeerFd(tag.value());
+}
+bool
+Transport::isTimerFd(Polling::Tag tag) const {
+    return isTimerFd(tag.value());
 }
 
 std::shared_ptr<Peer>&

@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "mailbox.h"
 #include "flags.h"
 #include "os.h"
 #include "async.h"
@@ -95,10 +94,6 @@ namespace Io {
 
     class Service {
     public:
-        PollableMailbox<Message> mailbox;
-
-        Service();
-
         void registerFd(Fd fd, Polling::NotifyOn interest, Polling::Mode mode = Polling::Mode::Level);
         void registerFdOneShot(Fd fd, Polling::NotifyOn interest, Polling::Mode mode = Polling::Mode::Level);
         void modifyFd(Fd fd, Polling::NotifyOn interest, Polling::Mode mode = Polling::Mode::Level);
@@ -114,50 +109,13 @@ namespace Io {
         std::thread::id thread() const { return thisId; }
         std::shared_ptr<Handler> handler() const { return handler_; }
 
-        Async::Promise<rusage> load() {
-            return Async::Promise<rusage>([=](Async::Resolver& resolve, Async::Rejection& reject) {
-                load_ = Some(Async::Holder(std::move(resolve), std::move(reject)));
-                notifier.notify();
-            });
-        }
-
-        template<typename Duration>
-        void armTimer(Duration timeout, Async::Resolver resolve, Async::Rejection reject) {
-            armTimerMs(std::chrono::duration_cast<std::chrono::milliseconds>(timeout),
-                       std::move(resolve),
-                       std::move(reject));
-        }
-
-        void disarmTimer();
-
     private:
-        struct Timer {
-            Timer(std::chrono::milliseconds value,
-                    Async::Resolver resolve,
-                    Async::Rejection reject)
-              : value(value)
-              , resolve(std::move(resolve))
-              , reject(std::move(reject))
-            { } 
-
-            std::chrono::milliseconds value;
-            Async::Resolver resolve;
-            Async::Rejection reject;
-        };
-
-        void
-        armTimerMs(std::chrono::milliseconds value, Async::Resolver resolver, Async::Rejection reject);
-        void handleNotify();
-        void handleTimeout();
-
-        Fd timerFd;
         std::thread::id thisId;
         std::shared_ptr<Handler> handler_;
 
-        Optional<Async::Holder> load_;
-        Optional<Timer> timer;
+        std::atomic<bool> shutdown_;
+        NotifyFd shutdownFd;
 
-        NotifyFd notifier;
         Polling::Epoll poller;
     };
 
@@ -190,9 +148,7 @@ namespace Io {
 
             void init(const std::shared_ptr<Handler>& handler);
 
-            Async::Promise<rusage> load() const {
-                return service_->load();
-            }
+            Async::Promise<rusage> load();
 
             void run();
             void shutdown();
@@ -211,6 +167,10 @@ namespace Io {
 
         virtual void onReady(const FdSet& fds) = 0;
         virtual void registerPoller(Polling::Epoll& poller) { }
+
+        virtual Async::Promise<rusage> load() {
+            return Async::Promise<rusage>::rejected(std::runtime_error("Unimplemented"));
+        }
 
         Service* io() const {
             return io_;

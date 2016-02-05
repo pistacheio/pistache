@@ -592,11 +592,13 @@ ResponseStream::ResponseStream(
         Message&& other,
         std::weak_ptr<Tcp::Peer> peer,
         Tcp::Transport* transport,
+        Timeout timeout,
         size_t streamSize)
     : Message(std::move(other))
     , peer_(std::move(peer))
     , buf_(streamSize)
     , transport_(transport)
+    , timeout_(std::move(timeout))
 {
     if (!writeStatusLine(code_, buf_))
         throw Error("Response exceeded buffer size");
@@ -615,7 +617,7 @@ ResponseStream::ResponseStream(
 
 void
 ResponseStream::flush() {
-    transport_->io()->disarmTimer();
+    timeout_.disarm();
     auto buf = buf_.buffer();
 
     auto fd = peer()->fd();
@@ -665,7 +667,7 @@ ResponseWriter::putOnWire(const char* data, size_t len)
 
         auto buffer = buf_.buffer();
 
-        transport_->io()->disarmTimer();
+        timeout_.disarm();
 
 #undef OUT
 
@@ -756,15 +758,13 @@ Handler::onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer
 
         auto state = parser.parse();
         if (state == Private::State::Done) {
-            ResponseWriter response(transport());
+            ResponseWriter response(transport(), parser.request, this);
             response.associatePeer(peer);
-
-            Timeout timeout(transport(), this, peer, parser.request);
 
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
             parser.request.associatePeer(peer);
 #endif
-            onRequest(parser.request, std::move(response), std::move(timeout));
+            onRequest(parser.request, std::move(response));
             parser.reset();
         }
     } catch (const HttpError &err) {

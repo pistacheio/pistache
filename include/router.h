@@ -135,8 +135,7 @@ namespace Private {
 
         void onRequest(
                 const Http::Request& req,
-                Http::ResponseWriter response,
-                Http::Timeout timeout);
+                Http::ResponseWriter response);
 
     private:
         std::shared_ptr<Net::Tcp::Handler> clone() const {

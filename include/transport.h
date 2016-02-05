@@ -7,6 +7,7 @@
 #pragma once
 
 #include "io.h"
+#include "mailbox.h"
 #include "optional.h"
 #include "async.h"
 #include "stream.h"
@@ -33,7 +34,8 @@ public:
     Async::Promise<ssize_t> asyncWrite(Fd fd, const Buf& buffer, int flags = 0) {
         // If the I/O operation has been initiated from an other thread, we queue it and we'll process
         // it in our own thread so that we make sure that every I/O operation happens in the right thread
-        if (std::this_thread::get_id() != io()->thread()) {
+        const bool isInRightThread = std::this_thread::get_id() == io()->thread();
+        if (!isInRightThread) {
             return Async::Promise<ssize_t>([=](Async::Resolver& resolve, Async::Rejection& reject) {
                 BufferHolder holder(buffer);
                 auto detached = holder.detach();
@@ -55,6 +57,24 @@ public:
 
         });
     }
+
+    Async::Promise<rusage> load() {
+        return Async::Promise<rusage>([=](Async::Resolver& resolve, Async::Rejection& reject) {
+            loadRequest_ = Some(Async::Holder(std::move(resolve), std::move(reject)));
+            notifier.notify();
+        });
+    }
+
+
+    template<typename Duration>
+    void armTimer(Fd fd, Duration timeout, Async::Resolver resolve, Async::Rejection reject) {
+        armTimerMs(
+                fd, std::chrono::duration_cast<std::chrono::milliseconds>(timeout),
+                std::move(resolve), std::move(reject));
+
+    }
+
+    void disarmTimer(Fd fd);
 
     std::shared_ptr<Io::Handler> clone() const;
 
@@ -146,6 +166,41 @@ private:
         Fd peerFd;
     };
 
+    struct TimerEntry {
+        TimerEntry(Fd fd, std::chrono::milliseconds value,
+                Async::Resolver resolve,
+                Async::Rejection reject)
+          : fd(fd)
+          , value(value)
+          , resolve(std::move(resolve))
+          , reject(std::move(reject))
+        {
+            active.store(true, std::memory_order_relaxed);
+        }
+
+        TimerEntry(TimerEntry&& other)
+            : fd(other.fd)
+            , value(other.value)
+            , resolve(std::move(other.resolve))
+            , reject(std::move(other.reject))
+            , active(other.active.load())
+        { }
+
+        void disable() {
+            active.store(false, std::memory_order_relaxed);
+        }
+
+        bool isActive() {
+            return active.load(std::memory_order_relaxed);
+        }
+
+        Fd fd;
+        std::chrono::milliseconds value;
+        Async::Resolver resolve;
+        Async::Rejection reject;
+        std::atomic<bool> active;
+    };
+
     mutable std::mutex peersMutex;
     std::unordered_map<Fd, std::shared_ptr<Peer>> peers;
     /* @Incomplete: this should be a std::dequeue.
@@ -153,13 +208,31 @@ private:
         yet and some writes are still on-hold, writes should queue-up so that when the
         fd becomes ready again, we can write everything
     */
-    std::unordered_map<Fd, OnHoldWrite> toWrite;
     PollableQueue<OnHoldWrite> writesQueue;
+    std::unordered_map<Fd, OnHoldWrite> toWrite;
+
+    PollableQueue<TimerEntry> timersQueue;
+    std::unordered_map<Fd, TimerEntry> timers;
+
+    Optional<Async::Holder> loadRequest_;
+    NotifyFd notifier;
 
     std::shared_ptr<Tcp::Handler> handler_;
 
+    bool isPeerFd(Fd fd) const;
+    bool isTimerFd(Fd fd) const;
+    bool isPeerFd(Polling::Tag tag) const;
+    bool isTimerFd(Polling::Tag tag) const;
+
     std::shared_ptr<Peer>& getPeer(Fd fd);
     std::shared_ptr<Peer>& getPeer(Polling::Tag tag);
+
+    void
+    armTimerMs(Fd fd,
+              std::chrono::milliseconds value,
+              Async::Resolver resolver, Async::Rejection reject);
+
+    void armTimerMsImpl(TimerEntry entry);
 
     void asyncWriteImpl(Fd fd, OnHoldWrite& entry, WriteStatus status = FirstTry);
     void asyncWriteImpl(
@@ -170,6 +243,9 @@ private:
     void handlePeerDisconnection(const std::shared_ptr<Peer>& peer);
     void handleIncoming(const std::shared_ptr<Peer>& peer);
     void handleWriteQueue();
+    void handleTimerQueue();
+    void handleNotify();
+    void handleTimer(TimerEntry entry);
 };
 
 } // namespace Tcp

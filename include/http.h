@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <sys/timerfd.h>
 #include <type_traits>
 #include <stdexcept>
 #include <array>
@@ -98,6 +99,8 @@ public:
 
     friend class RequestBuilder;
     friend class Client;
+    friend class ResponseWriter;
+    friend class Timeout;
 
     Request(const Request& other) = default;
     Request& operator=(const Request& other) = default;
@@ -174,23 +177,46 @@ private:
 };
 
 class Handler;
-class ResponseWrite;
+class ResponseWriter;
 
 class Timeout {
 public:
 
-    friend class Handler;
+    friend class ResponseWriter;
+
+    Timeout(Timeout&& other)
+        : handler(other.handler)
+        , request(std::move(other.request))
+        , peer(std::move(other.peer))
+        , transport(other.transport)
+        , armed(other.armed)
+        , timerFd(other.timerFd)
+    {
+        other.timerFd = -1;
+    }
+
+    Timeout& operator=(Timeout&& other) {
+        handler = other.handler;
+        request = std::move(other.request);
+        peer = std::move(other.peer);
+        transport = other.transport;
+        armed = other.armed;
+        timerFd = other.timerFd;
+        other.timerFd = -1;
+    }
 
     template<typename Duration>
     void arm(Duration duration) {
         Async::Promise<uint64_t> p([=](Async::Resolver& resolve, Async::Rejection& reject) {
-            transport->io()->armTimer(duration, std::move(resolve), std::move(reject));
+            timerFd = TRY_RET(timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK));
+            transport->armTimer(timerFd, duration, std::move(resolve), std::move(reject));
         });
 
         p.then(
             [=](uint64_t numWakeup) {
                 this->armed = false;
                 this->onTimeout(numWakeup);
+                close(timerFd);
         },
         [=](std::exception_ptr exc) {
             std::rethrow_exception(exc);
@@ -200,8 +226,9 @@ public:
     }
 
     void disarm() {
-        transport->io()->disarmTimer();
-        armed = false;
+        if (armed) {
+            transport->disarmTimer(timerFd);
+        }
     }
 
     bool isArmed() const {
@@ -209,25 +236,37 @@ public:
     }
 
 private:
+    Timeout()
+        : handler(nullptr)
+        , transport(nullptr)
+    { }
+
     Timeout(Tcp::Transport* transport,
             Handler* handler,
-            const std::shared_ptr<Tcp::Peer>& peer,
-            const Request& request)
+            Request request)
         : transport(transport)
         , handler(handler)
-        , peer(peer)
-        , request(request)
+        , request(std::move(request))
         , armed(false)
-    { }
+        , timerFd(-1)
+    {
+    }
+
+    template<typename Ptr>
+    void associatePeer(const Ptr& ptr) {
+        peer = ptr;
+    }
 
     void onTimeout(uint64_t numWakeup);
 
     Handler* handler;
-    std::weak_ptr<Tcp::Peer> peer;
     Request request;
+
+    std::weak_ptr<Tcp::Peer> peer;
 
     Tcp::Transport* transport;
     bool armed;
+    Fd timerFd;
 };
 
 class ResponseStream : public Message {
@@ -239,6 +278,7 @@ public:
         , peer_(std::move(other.peer_))
         , buf_(std::move(other.buf_))
         , transport_(other.transport_)
+        , timeout_(std::move(other.timeout_))
     { }
 
     ResponseStream& operator=(ResponseStream&& other) {
@@ -246,6 +286,7 @@ public:
         peer_ = std::move(other.peer_);
         buf_ = std::move(other.buf_);
         transport_ = other.transport_;
+        timeout_ = std::move(other.timeout_);
 
         return *this;
     }
@@ -274,6 +315,7 @@ private:
             Message&& other,
             std::weak_ptr<Tcp::Peer> peer,
             Tcp::Transport* transport,
+            Timeout timeout,
             size_t streamSize);
 
     std::shared_ptr<Tcp::Peer> peer() const {
@@ -286,6 +328,7 @@ private:
     std::weak_ptr<Tcp::Peer> peer_;
     DynamicStreamBuf buf_;
     Tcp::Transport* transport_;
+    Timeout timeout_;
 };
 
 inline ResponseStream& ends(ResponseStream &stream) {
@@ -303,7 +346,7 @@ ResponseStream& operator<<(ResponseStream& stream, const T& val) {
     Net::Size<T> size;
 
     std::ostream os(&stream.buf_);
-    os << size(val) << crlf;
+    os << std::hex << size(val) << crlf;
     os << val << crlf;
 
     return stream;
@@ -379,12 +422,14 @@ public:
         , peer_(other.peer_)
         , buf_(std::move(other.buf_))
         , transport_(other.transport_)
+        , timeout_(std::move(other.timeout_))
     { }
     ResponseWriter& operator=(ResponseWriter&& other) {
         Response::operator=(std::move(other));
         peer_ = std::move(other.peer_);
         transport_ = other.transport_;
         buf_ = std::move(other.buf_);
+        timeout_ = std::move(other.timeout_);
         return *this;
     }
 
@@ -441,7 +486,8 @@ public:
     ResponseStream stream(Code code, size_t streamSize = DefaultStreamSize) {
         code_ = code;
 
-        return ResponseStream(std::move(*this), peer_, transport_, streamSize);
+        return ResponseStream(
+                std::move(*this), peer_, transport_, std::move(timeout_), streamSize);
     }
 
     // Unsafe API
@@ -452,6 +498,15 @@ public:
 
     DynamicStreamBuf *rdbuf(DynamicStreamBuf* other) {
        throw std::domain_error("Unimplemented");
+    }
+
+    template<typename Duration>
+    void timeoutAfter(Duration duration) {
+        timeout_.arm(duration);
+    }
+
+    Timeout& timeout() {
+        return timeout_;
     }
 
 private:
@@ -467,6 +522,13 @@ private:
         , transport_(transport)
     { }
 
+    ResponseWriter(Tcp::Transport* transport, Request request, Handler* handler)
+        : Response()
+        , buf_(DefaultStreamSize)
+        , transport_(transport)
+        , timeout_(transport, handler, std::move(request)) 
+    { }
+
     std::shared_ptr<Tcp::Peer> peer() const {
         if (peer_.expired())
             throw std::runtime_error("Write failed: Broken pipe");
@@ -480,6 +542,7 @@ private:
             throw std::runtime_error("A peer was already associated to the response");
 
         peer_ = peer;
+        timeout_.associatePeer(peer_);
     }
 
     Async::Promise<ssize_t> putOnWire(const char* data, size_t len);
@@ -487,6 +550,7 @@ private:
     std::weak_ptr<Tcp::Peer> peer_;
     DynamicStreamBuf buf_;
     Tcp::Transport *transport_;
+    Timeout timeout_;
 };
 
 Async::Promise<ssize_t> serveFile(
@@ -668,7 +732,7 @@ public:
     void onConnection(const std::shared_ptr<Tcp::Peer>& peer);
     void onDisconnection(const std::shared_ptr<Tcp::Peer>& peer);
 
-    virtual void onRequest(const Request& request, ResponseWriter response, Timeout timeout) = 0;
+    virtual void onRequest(const Request& request, ResponseWriter response) = 0;
 
     virtual void onTimeout(const Request& request, ResponseWriter response);
 

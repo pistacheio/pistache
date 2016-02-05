@@ -38,15 +38,15 @@ class MyHandler : public Net::Http::Handler {
 
     void onRequest(
             const Net::Http::Request& req,
-            Net::Http::ResponseWriter response,
-            Net::Http::Timeout timeout) {
+            Net::Http::ResponseWriter response) {
 
         if (req.resource() == "/ping") {
             if (req.method() == Net::Http::Method::Get) {
 
                 using namespace Net::Http;
 
-                timeout.arm(std::chrono::seconds(2));
+                response.timeoutAfter(std::chrono::seconds(2));
+                //timeout.arm(std::chrono::seconds(2));
 
                 auto query = req.query();
                 if (query.has("chunked")) {
@@ -79,7 +79,7 @@ class MyHandler : public Net::Http::Handler {
             throw std::runtime_error("Exception thrown in the handler");
         }
         else if (req.resource() == "/timeout") {
-            timeout.arm(std::chrono::seconds(5));
+            response.timeoutAfter(std::chrono::seconds(2));
         }
 #if 0
         else if (req.resource() == "/async") {
@@ -288,7 +288,6 @@ private:
 };
 #endif
 
-/*
 int main(int argc, char *argv[]) {
     Net::Port port(9080);
 
@@ -324,7 +323,7 @@ int main(int argc, char *argv[]) {
 
     LoadMonitor monitor(server);
     monitor.setInterval(std::chrono::seconds(1));
-    monitor.start();
+    //monitor.start();
 
     server->serve();
 
@@ -335,9 +334,8 @@ int main(int argc, char *argv[]) {
     server->shutdown();
     monitor.shutdown();
 }
-*/
 
-#if 1
+#if 0
 int main() {
     Net::Http::Client client("http://supnetwork.org:9080");
     auto opts = Net::Http::Client::options()
