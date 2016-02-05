@@ -48,6 +48,7 @@ Service::init(const std::shared_ptr<Handler>& handler) {
     handler_->io_ = this;
 
     handler_->registerPoller(poller);
+    shutdown_.store(false);
 }
 
 void

@@ -45,7 +45,7 @@ class MyHandler : public Net::Http::Handler {
 
                 using namespace Net::Http;
 
-                response.timeoutAfter(std::chrono::seconds(2));
+                //response.timeoutAfter(std::chrono::seconds(2));
                 //timeout.arm(std::chrono::seconds(2));
 
                 auto query = req.query();
@@ -323,7 +323,7 @@ int main(int argc, char *argv[]) {
 
     LoadMonitor monitor(server);
     monitor.setInterval(std::chrono::seconds(1));
-    //monitor.start();
+    monitor.start();
 
     server->serve();
 
