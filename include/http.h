@@ -98,9 +98,8 @@ public:
     friend class Private::Parser<Http::Request>;
 
     friend class RequestBuilder;
+    // @Todo: try to remove the need for friend-ness here
     friend class Client;
-    friend class ResponseWriter;
-    friend class Timeout;
 
     Request(const Request& other) = default;
     Request& operator=(const Request& other) = default;
@@ -154,6 +153,7 @@ private:
 
 class RequestBuilder {
 public:
+    RequestBuilder& method(Method method);
     RequestBuilder& resource(std::string val);
     RequestBuilder& params(const Uri::Query& query);
     RequestBuilder& header(const std::shared_ptr<Header::Header>& header);
@@ -172,6 +172,7 @@ public:
 
     const Request& request() const { return request_; }
     operator Request() const { return request_; }
+
 private:
     Request request_;
 };
@@ -236,11 +237,6 @@ public:
     }
 
 private:
-    Timeout()
-        : handler(nullptr)
-        , transport(nullptr)
-    { }
-
     Timeout(Tcp::Transport* transport,
             Handler* handler,
             Request request)
@@ -520,12 +516,6 @@ public:
     }
 
 private:
-    ResponseWriter()
-        : Response()
-        , buf_(0)
-        , transport_(nullptr)
-    { }
-
     ResponseWriter(Tcp::Transport* transport, Request request, Handler* handler)
         : Response(request.version())
         , buf_(DefaultStreamSize)

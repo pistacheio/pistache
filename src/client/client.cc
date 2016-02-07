@@ -382,33 +382,6 @@ Connection::perform(
     });
 }
 
-#if 0
-struct OnRequestWriteCompleted {
-    OnRequestWriteCompleted(
-            const std::shared_ptr<Transport>& transport,
-            Fd fd,
-            Async::Resolver resolve, Async::Rejection reject,
-            Connection::OnDone onDone)
-        : transport(transport)
-        , fd(fd)
-        , resolve(std::move(resolve))
-        , reject(std::move(reject))
-        , onDone(std::move(onDone))
-    { }
-
-    void operator()(size_t bytes) {
-        transport->addInFlight(fd, std::move(resolve), std::move(reject));
-        onDone();
-    }
-
-    std::shared_ptr<Transport> transport;
-    Fd fd;
-    Async::Resolver resolve;
-    Async::Rejection reject;
-    Connection::OnDone onDone;
-};
-#endif
-
 void
 Connection::performImpl(
         const Http::Request& request,
@@ -423,9 +396,6 @@ Connection::performImpl(
         reject(std::runtime_error("Could not write request"));
 
     auto buffer = buf.buffer();
-#if 0
-    OnRequestWriteCompleted onCompleted(transport_, fd, std::move(resolve), std::move(reject), std::move(onDone));
-#endif
     transport_->asyncSendRequest(fd, buffer, std::move(resolve), std::move(reject), std::move(onDone));
 }
 

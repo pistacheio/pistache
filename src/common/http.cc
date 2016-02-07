@@ -560,6 +560,13 @@ Request::peer() const {
 #endif
 
 RequestBuilder&
+RequestBuilder::method(Method method)
+{
+    request_.method_ = method;
+    return *this;
+}
+
+RequestBuilder&
 RequestBuilder::resource(std::string val) {
     request_.resource_ = std::move(val);
     return *this;
