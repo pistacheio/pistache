@@ -273,7 +273,7 @@ void
 Transport::handleWriteQueue() {
     // Let's drain the queue
     for (;;) {
-        std::unique_ptr<PollableQueue<OnHoldWrite>::Entry> entry(writesQueue.pop());
+        auto entry = writesQueue.popSafe();
         if (!entry) break;
 
         auto &write = entry->data();
@@ -284,7 +284,7 @@ Transport::handleWriteQueue() {
 void
 Transport::handleTimerQueue() {
     for (;;) {
-        std::unique_ptr<PollableQueue<TimerEntry>::Entry> entry(timersQueue.pop());
+        auto entry = timersQueue.popSafe();
         if (!entry) break;
 
         auto &timer = entry->data();

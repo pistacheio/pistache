@@ -205,6 +205,10 @@ public:
         return nullptr;
     }
 
+    std::unique_ptr<Entry> popSafe() {
+        return std::unique_ptr<Entry>(pop());
+    }
+
 private:
     std::atomic<Entry *> head;
     Entry *tail;

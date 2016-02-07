@@ -213,7 +213,7 @@ void
 Transport::handleRequestsQueue() {
     // Let's drain the queue
     for (;;) {
-        std::unique_ptr<PollableQueue<InflightRequest>::Entry> entry(requestsQueue.pop());
+        auto entry = requestsQueue.popSafe();
         if (!entry) break;
 
         auto &req = entry->data();
@@ -224,7 +224,7 @@ Transport::handleRequestsQueue() {
 void
 Transport::handleConnectionQueue() {
     for (;;) {
-        std::unique_ptr<PollableQueue<PendingConnection>::Entry> entry(connectionsQueue.pop());
+        auto entry = connectionsQueue.popSafe();
         if (!entry) break;
 
         auto &conn = entry->data();
@@ -402,7 +402,7 @@ Connection::performImpl(
 void
 Connection::processRequestQueue() {
     for (;;) {
-        std::unique_ptr<Queue<RequestData>::Entry> entry(requestsQueue.pop());
+        auto entry = requestsQueue.popSafe();
         if (!entry) break;
 
         auto &req = entry->data();
@@ -595,7 +595,7 @@ Client::processRequestQueue() {
         auto conn = pool.pickConnection();
         if (!conn) break;
 
-        std::unique_ptr<Queue<Connection::RequestData>::Entry> entry(requestsQueue.pop());
+        auto entry = requestsQueue.popSafe();
         if (!entry) {
             pool.releaseConnection(conn);
             break;
