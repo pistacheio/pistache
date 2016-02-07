@@ -182,6 +182,27 @@ private:
     std::vector<Http::CacheDirective> directives_;
 };
 
+class Connection : public Header {
+public:
+    NAME("Connection")
+
+    Connection()
+        : control_(ConnectionControl::KeepAlive)
+    { }
+
+    explicit Connection(ConnectionControl control)
+        : control_(control)
+    { }
+
+    void parseRaw(const char* str, size_t len);
+    void write(std::ostream& os) const;
+
+    ConnectionControl control() const { return control_; }
+
+private:
+    ConnectionControl control_;
+};
+
 class EncodingHeader : public Header {
 public:
 

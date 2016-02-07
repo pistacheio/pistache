@@ -255,6 +255,38 @@ CacheControl::addDirectives(const std::vector<Http::CacheDirective>& directives)
 }
 
 void
+Connection::parseRaw(const char* str, size_t len) {
+    char *p = const_cast<char *>(str);
+    RawStreamBuf<> buf(p, p + len);
+    StreamCursor cursor(&buf);
+
+#define STR(str) \
+    str, sizeof(str) - 1
+
+    if (match_string(STR("close"), cursor)) {
+        control_ = ConnectionControl::Close;
+    }
+    else if (match_string(STR("keep-alive"), cursor)) {
+        control_ = ConnectionControl::KeepAlive;
+    }
+    else {
+        control_ = ConnectionControl::Ext;
+    }
+}
+
+void
+Connection::write(std::ostream& os) const {
+    switch (control_) {
+    case ConnectionControl::Close:
+        os << "Close";
+        break;
+    case ConnectionControl::KeepAlive:
+        os << "Keep-Alive";
+        break;
+    }
+}
+
+void
 ContentLength::parse(const std::string& data) {
     try {
         size_t pos;

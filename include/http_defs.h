@@ -111,6 +111,12 @@ enum class Version {
     Http11 // HTTP/1.1
 };
 
+enum class ConnectionControl {
+    Close,
+    KeepAlive,
+    Ext
+};
+
 enum class Expectation {
     Continue,
     Ext
@@ -170,6 +176,7 @@ private:
 const char* methodString(Method method);
 const char* codeString(Code code);
 
+std::ostream& operator<<(std::ostream& os, Version version);
 std::ostream& operator<<(std::ostream& os, Method method);
 std::ostream& operator<<(std::ostream& os, Code code);
 

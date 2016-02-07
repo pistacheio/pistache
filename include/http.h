@@ -393,10 +393,20 @@ public:
         return body_;
     }
 
+    Version version() const {
+        return version_;
+    }
+
 protected:
     Response()
         : Message()
     { }
+
+    Response(Version version)
+        : Message()
+    {
+        version_ = version;
+    }
 };
 
 class ResponseWriter : public Response {
@@ -523,7 +533,7 @@ private:
     { }
 
     ResponseWriter(Tcp::Transport* transport, Request request, Handler* handler)
-        : Response()
+        : Response(request.version())
         , buf_(DefaultStreamSize)
         , transport_(transport)
         , timeout_(transport, handler, std::move(request)) 

@@ -39,7 +39,7 @@ writeHeader(Stream& stream, Args&& ...args) {
 }
 
 namespace {
-    bool writeStatusLine(Code code, DynamicStreamBuf& buf) {
+    bool writeStatusLine(Version version, Code code, DynamicStreamBuf& buf) {
         #define OUT(...) \
             do { \
                 __VA_ARGS__; \
@@ -48,7 +48,7 @@ namespace {
 
         std::ostream os(&buf);
 
-        OUT(os << "HTTP/1.1 ");
+        OUT(os << version << " ");
         OUT(os << static_cast<int>(code));
         OUT(os << ' ');
         OUT(os << code);
@@ -600,7 +600,7 @@ ResponseStream::ResponseStream(
     , transport_(transport)
     , timeout_(std::move(timeout))
 {
-    if (!writeStatusLine(code_, buf_))
+    if (!writeStatusLine(version_, code_, buf_))
         throw Error("Response exceeded buffer size");
 
     if (!writeCookies(cookies_, buf_)) {
@@ -609,6 +609,12 @@ ResponseStream::ResponseStream(
 
     if (writeHeaders(headers_, buf_)) {
         std::ostream os(&buf_);
+        /* @Todo @Major:
+         * Correctly handle non-keep alive requests
+         * Do not put Keep-Alive if version == Http::11 and request.keepAlive == true
+        */
+        if (!writeHeader<Header::Connection>(os, ConnectionControl::KeepAlive));
+            throw Error("Response exceeded buffer size");
         if (!writeHeader<Header::TransferEncoding>(os, Header::Encoding::Chunked))
             throw Error("Response exceeded buffer size");
         os << crlf;
@@ -653,10 +659,15 @@ ResponseWriter::putOnWire(const char* data, size_t len)
             } \
         } while (0);
 
-        OUT(writeStatusLine(code_, buf_));
+        OUT(writeStatusLine(version_, code_, buf_));
         OUT(writeHeaders(headers_, buf_));
         OUT(writeCookies(cookies_, buf_));
 
+        /* @Todo @Major:
+         * Correctly handle non-keep alive requests
+         * Do not put Keep-Alive if version == Http::11 and request.keepAlive == true
+        */
+        OUT(writeHeader<Header::Connection>(os, ConnectionControl::KeepAlive));
         OUT(writeHeader<Header::ContentLength>(os, len));
 
         OUT(os << crlf);
@@ -718,7 +729,7 @@ serveFile(ResponseWriter& response, const char* fileName, const Mime::MediaType&
             headers.add<Header::ContentType>(contentType);
     };
 
-    OUT(writeStatusLine(Http::Code::Ok, *buf));
+    OUT(writeStatusLine(response.version(), Http::Code::Ok, *buf));
     if (contentType.isValid()) {
         setContentType(contentType);
     } else {
@@ -749,8 +760,8 @@ serveFile(ResponseWriter& response, const char* fileName, const Mime::MediaType&
 
 void
 Handler::onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer>& peer) {
+    auto& parser = getParser(peer);
     try {
-        auto& parser = getParser(peer);
         if (!parser.feed(buffer, len)) {
             parser.reset();
             throw HttpError(Code::Request_Entity_Too_Large, "Request exceeded maximum buffer size");
@@ -768,16 +779,16 @@ Handler::onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer
             parser.reset();
         }
     } catch (const HttpError &err) {
-        ResponseWriter response(transport());
+        ResponseWriter response(transport(), parser.request, this);
         response.associatePeer(peer);
         response.send(static_cast<Code>(err.code()), err.reason());
-        getParser(peer).reset();
+        parser.reset();
     }
     catch (const std::exception& e) {
-        ResponseWriter response(transport());
+        ResponseWriter response(transport(), parser.request, this);
         response.associatePeer(peer);
         response.send(Code::Internal_Server_Error, e.what());
-        getParser(peer).reset();
+        parser.reset();
     }
 }
 

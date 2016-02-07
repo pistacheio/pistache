@@ -23,6 +23,7 @@ namespace {
 RegisterHeader(Accept);
 RegisterHeader(Allow);
 RegisterHeader(CacheControl);
+RegisterHeader(Connection);
 RegisterHeader(ContentEncoding);
 RegisterHeader(TransferEncoding);
 RegisterHeader(ContentLength);

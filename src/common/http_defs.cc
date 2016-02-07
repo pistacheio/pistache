@@ -125,6 +125,16 @@ FullDate::write(std::ostream& os, Type type) const
     }
 }
 
+const char *versionString(Version version) {
+    switch (version) {
+        case Version::Http10:
+            return "HTTP/1.0";
+        case Version::Http11:
+            return "HTTP/1.1";
+    }
+
+    unreachable();
+}
 
 const char* methodString(Method method)
 {
@@ -150,6 +160,11 @@ const char* codeString(Code code)
     }
 
     return "";
+}
+
+std::ostream& operator<<(std::ostream& os, Version version) {
+    os << versionString(version);
+    return os;
 }
 
 std::ostream& operator<<(std::ostream& os, Method method) {

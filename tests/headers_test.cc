@@ -167,6 +167,32 @@ TEST(headers_test, content_length) {
     ASSERT_EQ(cl.value(), 3495);
 }
 
+TEST(headers_test, connection) {
+    Header::Connection connection;
+
+    constexpr struct Test {
+        const char *data;
+        ConnectionControl expected;
+    } tests[] = {
+      { "close", ConnectionControl::Close },
+      { "clOse", ConnectionControl::Close },
+      { "Close", ConnectionControl::Close },
+      { "CLOSE", ConnectionControl::Close },
+
+      { "keep-alive", ConnectionControl::KeepAlive },
+      { "Keep-Alive", ConnectionControl::KeepAlive },
+      { "kEEp-alIvE", ConnectionControl::KeepAlive },
+      { "KEEP-ALIVE", ConnectionControl::KeepAlive }
+    };
+
+    for (auto test: tests) {
+        Header::Connection connection;
+        connection.parse(test.data);
+
+        ASSERT_EQ(connection.control(), test.expected);
+    }
+}
+
 TEST(headers_test, date_test) {
     /* RFC-1123 */
     Header::Date d1;
