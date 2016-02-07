@@ -526,12 +526,6 @@ private:
         , transport_(nullptr)
     { }
 
-    ResponseWriter(Tcp::Transport* transport)
-        : Response()
-        , buf_(DefaultStreamSize)
-        , transport_(transport)
-    { }
-
     ResponseWriter(Tcp::Transport* transport, Request request, Handler* handler)
         : Response(request.version())
         , buf_(DefaultStreamSize)

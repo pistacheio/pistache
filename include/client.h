@@ -245,6 +245,15 @@ public:
    Async::Promise<Response> get(
            const Http::Request& request,
            std::chrono::milliseconds timeout = std::chrono::milliseconds(0));
+   Async::Promise<Response> post(
+           const Http::Request& req,
+           std::chrono::milliseconds timeout = std::chrono::milliseconds(0));
+   Async::Promise<Response> put(
+           const Http::Request& req,
+           std::chrono::milliseconds timeout = std::chrono::milliseconds(0));
+   Async::Promise<Response> del(
+           const Http::Request& req,
+           std::chrono::milliseconds timeout = std::chrono::milliseconds(0));
 
    void shutdown();
 
@@ -259,6 +268,11 @@ private:
 
    std::atomic<uint64_t> ioIndex;
    Queue<Connection::RequestData> requestsQueue;
+
+   Async::Promise<Response> doRequest(
+           const Http::Request& req,
+           Http::Method method,
+           std::chrono::milliseconds timeout);
 
    void processRequestQueue();
 

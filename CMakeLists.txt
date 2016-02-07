@@ -19,8 +19,7 @@ install(FILES ${HEADER_FILES} DESTINATION include/rest)
 add_subdirectory (src)
 include_directories (src)
 
-add_executable(server main.cc)
-target_link_libraries(server net)
+add_subdirectory (examples)
 
 ADD_SUBDIRECTORY (googletest-release-1.7.0)
 enable_testing()

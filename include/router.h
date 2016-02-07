@@ -59,7 +59,7 @@ private:
 class Request;
 
 struct Route {
-    typedef std::function<void (const Request&, Net::Http::Response)> Handler;
+    typedef std::function<void (const Request&, Net::Http::ResponseWriter)> Handler;
 
     Route(std::string resource, Http::Method method, Handler handler)
         : resource_(std::move(resource))
@@ -223,7 +223,7 @@ namespace Routes {
 
         #define CALL_MEMBER_FN(obj, pmf)  ((obj)->*(pmf))
 
-        return [=](const Rest::Request& request, Http::Response response) {
+        return [=](const Rest::Request& request, Http::ResponseWriter response) {
             CALL_MEMBER_FN(obj, func)(request, std::move(response));
         };
 
@@ -234,7 +234,7 @@ namespace Routes {
     Route::Handler bind(Result (*func)(Args...)) {
         details::static_checks<Args...>();
 
-        return [=](const Rest::Request& request, Http::Response response) {
+        return [=](const Rest::Request& request, Http::ResponseWriter response) {
             func(request, std::move(response));
         };
     }

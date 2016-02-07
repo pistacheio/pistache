@@ -809,7 +809,7 @@ void
 Timeout::onTimeout(uint64_t numWakeup) {
     if (!peer.lock()) return;
 
-    ResponseWriter response(transport);
+    ResponseWriter response(transport, request, handler);
     response.associatePeer(peer);
 
     handler->onTimeout(request, std::move(response));

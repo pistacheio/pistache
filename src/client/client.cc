@@ -15,6 +15,8 @@ namespace Net {
 
 namespace Http {
 
+static constexpr const char* UA = "pistache/0.1";
+
 namespace {
     #define OUT(...) \
     do { \
@@ -69,7 +71,7 @@ namespace {
         if (!writeCookies(request.cookies(), buf)) return false;
         if (!writeHeaders(request.headers(), buf)) return false;
 
-        if (!writeHeader<Header::UserAgent>(os, "restpp/0.1")) return false;
+        if (!writeHeader<Header::UserAgent>(os, UA)) return false;
         if (!writeHeader<Header::Host>(os, std::move(host))) return false;
         OUT(os << crlf);
 
@@ -554,10 +556,36 @@ Client::request(std::string val) {
 Async::Promise<Http::Response>
 Client::get(const Http::Request& request, std::chrono::milliseconds timeout)
 {
+    return doRequest(request, Http::Method::Get, timeout);
+}
+
+Async::Promise<Http::Response>
+Client::post(const Http::Request& request, std::chrono::milliseconds timeout)
+{
+    return doRequest(request, Http::Method::Post, timeout);
+}
+
+Async::Promise<Http::Response>
+Client::put(const Http::Request& request, std::chrono::milliseconds timeout)
+{
+    return doRequest(request, Http::Method::Put, timeout);
+}
+
+Async::Promise<Http::Response>
+Client::del(const Http::Request& request, std::chrono::milliseconds timeout)
+{
+    return doRequest(request, Http::Method::Delete, timeout);
+}
+
+Async::Promise<Response>
+Client::doRequest(
+        const Http::Request& request,
+        Http::Method method,
+        std::chrono::milliseconds timeout)
+{
     unsafe {
         auto &req = const_cast<Http::Request &>(request);
-        req.method_ = Http::Method::Get;
-
+        req.method_ = method;
         req.headers_.remove<Header::UserAgent>();
     }
 
