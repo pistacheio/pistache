@@ -12,8 +12,8 @@
 using namespace Net;
 
 int main() {
-    Net::Http::Client client("http://supnetwork.org:9080");
-    auto opts = Net::Http::Client::options()
+    Http::Experimental::Client client("http://supnetwork.org:9080");
+    auto opts = Http::Experimental::Client::options()
         .threads(1)
         .maxConnections(20);
 

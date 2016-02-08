@@ -35,6 +35,10 @@ namespace Private {
     class BodyStep;
 }
 
+namespace Experimental {
+    class Client;
+}
+
 template< class CharT, class Traits>
 std::basic_ostream<CharT, Traits>& crlf(std::basic_ostream<CharT, Traits>& os) {
     static constexpr char CRLF[] = {0xD, 0xA};
@@ -99,7 +103,7 @@ public:
 
     friend class RequestBuilder;
     // @Todo: try to remove the need for friend-ness here
-    friend class Client;
+    friend class Experimental::Client;
 
     Request(const Request& other) = default;
     Request& operator=(const Request& other) = default;

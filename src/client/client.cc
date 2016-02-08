@@ -15,6 +15,8 @@ namespace Net {
 
 namespace Http {
 
+namespace Experimental {
+
 static constexpr const char* UA = "pistache/0.1";
 
 namespace {
@@ -611,6 +613,8 @@ Client::processRequestQueue() {
                 });
     }
 }
+
+} // namespace Experimental
 
 } // namespace Http
 
