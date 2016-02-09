@@ -9,6 +9,7 @@
 #include "os.h"
 #include "http.h"
 #include "io.h"
+#include "timer_pool.h"
 #include <atomic>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -23,11 +24,20 @@ namespace Experimental {
 class ConnectionPool;
 class Transport;
 
-struct Connection {
+struct Connection : public std::enable_shared_from_this<Connection> {
 
     friend class ConnectionPool;
 
     typedef std::function<void()> OnDone;
+
+    Connection()
+        : fd(-1)
+        , connectionState_(NotConnected)
+        , inflightCount(0)
+        , responsesReceived(0)
+    {
+        state_.store(static_cast<uint32_t>(State::Idle));
+    }
 
     struct RequestData {
 
@@ -35,18 +45,21 @@ struct Connection {
                 Async::Resolver resolve, Async::Rejection reject,
                 const Http::Request& request,
                 std::string host,
+                std::chrono::milliseconds timeout,
                 OnDone onDone)
             : resolve(std::move(resolve))
             , reject(std::move(reject))
             , request(request)
             , host(std::move(host))
+            , timeout(timeout)  
             , onDone(std::move(onDone))
         { }
         Async::Resolver resolve;
         Async::Rejection reject;
 
-        std::string host;
         Http::Request request;
+        std::string host;
+        std::chrono::milliseconds timeout;
         OnDone onDone;
     };
 
@@ -61,13 +74,6 @@ struct Connection {
         Connected
     };
 
-    Connection()
-        : fd(-1)
-        , connectionState_(NotConnected)
-    {
-        state_.store(static_cast<uint32_t>(State::Idle));
-    }
-
     void connect(Net::Address addr);
     void close();
     bool isConnected() const;
@@ -77,24 +83,58 @@ struct Connection {
     Async::Promise<Response> perform(
             const Http::Request& request,
             std::string host,
+            std::chrono::milliseconds timeout,
             OnDone onDone);
 
     void performImpl(
             const Http::Request& request,
             std::string host,
+            std::chrono::milliseconds timeout,
             Async::Resolver resolve,
             Async::Rejection reject,
             OnDone onDone);
 
     Fd fd;
 
+    void handleResponsePacket(const char* buffer, size_t totalBytes);
+    void handleTimeout();
+
+    std::string dump() const;
+
 private:
+    std::atomic<int> inflightCount;
+    std::atomic<int> responsesReceived;
+    struct sockaddr_in saddr;
+
+
     void processRequestQueue();
+
+    struct RequestEntry {
+        RequestEntry(
+                Async::Resolver resolve, Async::Rejection reject,
+                std::shared_ptr<TimerPool::Entry> timer,
+                OnDone onDone)
+          : resolve(std::move(resolve))
+          , reject(std::move(reject))
+          , timer(std::move(timer))
+          , onDone(std::move(onDone))
+        { }
+
+        Async::Resolver resolve;
+        Async::Rejection reject;
+        std::shared_ptr<TimerPool::Entry> timer;
+        OnDone onDone;
+    };
 
     std::atomic<uint32_t> state_;
     ConnectionState connectionState_;
     std::shared_ptr<Transport> transport_;
     Queue<RequestData> requestsQueue;
+
+    std::deque<RequestEntry> inflightRequests;
+
+    Net::TimerPool timerPool_;
+    Private::Parser<Http::Response> parser_;
 };
 
 struct ConnectionPool {
@@ -121,14 +161,12 @@ public:
     void registerPoller(Polling::Epoll& poller);
 
     Async::Promise<void>
-    asyncConnect(Fd fd, const struct sockaddr* address, socklen_t addr_len);
+    asyncConnect(const std::shared_ptr<Connection>& connection, const struct sockaddr* address, socklen_t addr_len);
 
-    void asyncSendRequest(
-            Fd fd,
-            const Buffer& buffer,
-            Async::Resolver resolve,
-            Async::Rejection reject,
-            OnResponseParsed onParsed);
+    Async::Promise<ssize_t> asyncSendRequest(
+            const std::shared_ptr<Connection>& connection,
+            std::shared_ptr<TimerPool::Entry> timer,
+            const Buffer& buffer);
 
 private:
 
@@ -137,74 +175,61 @@ private:
         Retry
     };
 
-    struct PendingConnection {
-        PendingConnection(
+    struct ConnectionEntry {
+        ConnectionEntry(
                 Async::Resolver resolve, Async::Rejection reject,
-                Fd fd, const struct sockaddr* addr, socklen_t addr_len)
+                std::shared_ptr<Connection> connection, const struct sockaddr* addr, socklen_t addr_len)
             : resolve(std::move(resolve))
             , reject(std::move(reject))
-            , fd(fd)
+            , connection(std::move(connection))
             , addr(addr)
             , addr_len(addr_len)
         { }
 
         Async::Resolver resolve;
         Async::Rejection reject;
-        Fd fd;
+        std::shared_ptr<Connection> connection;
         const struct sockaddr* addr;
         socklen_t addr_len;
     };
 
-    struct InflightRequest {
-        InflightRequest(
+    struct RequestEntry {
+        RequestEntry(
                 Async::Resolver resolve, Async::Rejection reject,
-                Fd fd,
-                const Buffer& buffer,
-                OnResponseParsed onParsed = nullptr)
-            : resolve_(std::move(resolve))
+                std::shared_ptr<Connection> connection,
+                std::shared_ptr<TimerPool::Entry> timer,
+                const Buffer& buffer)
+            : resolve(std::move(resolve))
             , reject(std::move(reject))
-            , fd(fd)
+            , connection(std::move(connection))
+            , timer(std::move(timer))
             , buffer(buffer)
-            , onParsed(onParsed)
         {
         }
 
-        void feed(const char* buffer, size_t totalBytes) {
-            if (!parser)
-                parser.reset(new Private::Parser<Http::Response>());
-
-            parser->feed(buffer, totalBytes);
-        }
-
-        void resolve(Http::Response response) {
-            if (onParsed)
-                onParsed();
-            resolve_(std::move(response));
-        }
-
-        Async::Resolver resolve_;
+        Async::Resolver resolve;
         Async::Rejection reject;
-        Fd fd;
+        std::shared_ptr<Connection> connection;
+        std::shared_ptr<TimerPool::Entry> timer;
         Buffer buffer;
 
-        OnResponseParsed onParsed;
-
-        std::shared_ptr<Private::Parser<Http::Response>> parser;
     };
 
 
-    PollableQueue<InflightRequest> requestsQueue;
-    PollableQueue<PendingConnection> connectionsQueue;
+    PollableQueue<RequestEntry> requestsQueue;
+    PollableQueue<ConnectionEntry> connectionsQueue;
 
-    std::unordered_map<Fd, PendingConnection> pendingConnections;
-    std::unordered_map<Fd, std::deque<InflightRequest>> inflightRequests;
+    std::unordered_map<Fd, ConnectionEntry> connections;
+    std::unordered_map<Fd, RequestEntry> requests;
+    std::unordered_map<Fd, std::shared_ptr<Connection>> timeouts;
 
-    void asyncSendRequestImpl(InflightRequest& req, WriteStatus status = FirstTry);
+    void asyncSendRequestImpl(const RequestEntry& req, WriteStatus status = FirstTry);
 
     void handleRequestsQueue();
     void handleConnectionQueue();
-    void handleIncoming(Fd fd);
-    void handleResponsePacket(Fd fd, const char* buffer, size_t totalBytes);
+    void handleIncoming(const std::shared_ptr<Connection>& connection);
+    void handleResponsePacket(const std::shared_ptr<Connection>& connection, const char* buffer, size_t totalBytes);
+    void handleTimeout(const std::shared_ptr<Connection>& connection);
 
 };
 
@@ -260,6 +285,7 @@ public:
    void shutdown();
 
 private:
+
    Io::ServiceGroup io_;
    std::string url_;
    std::string host_;
