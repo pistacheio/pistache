@@ -9,6 +9,7 @@
 #include "os.h"
 #include "http.h"
 #include "io.h"
+#include "timer_pool.h"
 #include <atomic>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -35,17 +36,20 @@ struct Connection {
                 Async::Resolver resolve, Async::Rejection reject,
                 const Http::Request& request,
                 std::string host,
+                std::chrono::milliseconds timeout,
                 OnDone onDone)
             : resolve(std::move(resolve))
             , reject(std::move(reject))
             , request(request)
             , host(std::move(host))
+            , timeout(timeout)  
             , onDone(std::move(onDone))
         { }
         Async::Resolver resolve;
         Async::Rejection reject;
 
         std::string host;
+        std::chrono::milliseconds timeout;
         Http::Request request;
         OnDone onDone;
     };
@@ -77,11 +81,13 @@ struct Connection {
     Async::Promise<Response> perform(
             const Http::Request& request,
             std::string host,
+            std::chrono::milliseconds timeout,
             OnDone onDone);
 
     void performImpl(
             const Http::Request& request,
             std::string host,
+            std::chrono::milliseconds timeout,
             Async::Resolver resolve,
             Async::Rejection reject,
             OnDone onDone);
@@ -91,10 +97,12 @@ struct Connection {
 private:
     void processRequestQueue();
 
+
     std::atomic<uint32_t> state_;
     ConnectionState connectionState_;
     std::shared_ptr<Transport> transport_;
     Queue<RequestData> requestsQueue;
+    Net::TimerPool timerPool_;
 };
 
 struct ConnectionPool {
@@ -125,6 +133,7 @@ public:
 
     void asyncSendRequest(
             Fd fd,
+            std::shared_ptr<TimerPool::Entry> timer,
             const Buffer& buffer,
             Async::Resolver resolve,
             Async::Rejection reject,
@@ -159,11 +168,13 @@ private:
         InflightRequest(
                 Async::Resolver resolve, Async::Rejection reject,
                 Fd fd,
+                std::shared_ptr<TimerPool::Entry> timer,
                 const Buffer& buffer,
                 OnResponseParsed onParsed = nullptr)
             : resolve_(std::move(resolve))
             , reject(std::move(reject))
             , fd(fd)
+            , timer(std::move(timer))
             , buffer(buffer)
             , onParsed(onParsed)
         {
@@ -185,6 +196,7 @@ private:
         Async::Resolver resolve_;
         Async::Rejection reject;
         Fd fd;
+        std::shared_ptr<TimerPool::Entry> timer;
         Buffer buffer;
 
         OnResponseParsed onParsed;
@@ -198,6 +210,7 @@ private:
 
     std::unordered_map<Fd, PendingConnection> pendingConnections;
     std::unordered_map<Fd, std::deque<InflightRequest>> inflightRequests;
+    std::unordered_map<Fd, Fd> timeouts;
 
     void asyncSendRequestImpl(InflightRequest& req, WriteStatus status = FirstTry);
 
@@ -205,6 +218,7 @@ private:
     void handleConnectionQueue();
     void handleIncoming(Fd fd);
     void handleResponsePacket(Fd fd, const char* buffer, size_t totalBytes);
+    void handleTimeout(Fd fd);
 
 };
 

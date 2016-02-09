@@ -98,7 +98,17 @@ Transport::onReady(const Io::FdSet& fds) {
         else if (entry.isReadable()) {
             auto tag = entry.getTag();
             auto fd = tag.value();
-            handleIncoming(fd);
+            auto reqIt = inflightRequests.find(fd);
+            if (reqIt != std::end(inflightRequests))
+                handleIncoming(fd);
+            else {
+                auto timerIt = timeouts.find(fd);
+                if (timerIt != std::end(timeouts))
+                    handleTimeout(fd);
+                else {
+                    throw std::runtime_error("Unknown fd");
+                }
+            }
         }
         else if (entry.isWritable()) {
             auto tag = entry.getTag();
@@ -150,18 +160,19 @@ Transport::asyncConnect(Fd fd, const struct sockaddr* address, socklen_t addr_le
 void
 Transport::asyncSendRequest(
         Fd fd,
+        std::shared_ptr<TimerPool::Entry> timer,
         const Buffer& buffer,
         Async::Resolver resolve,
         Async::Rejection reject,
         OnResponseParsed onParsed) {
 
     if (std::this_thread::get_id() != io()->thread()) {
-        InflightRequest req(std::move(resolve), std::move(reject), fd, buffer.detach(), std::move(onParsed));
+        InflightRequest req(std::move(resolve), std::move(reject), fd, std::move(timer), buffer.detach(), std::move(onParsed));
         auto detached = buffer.detach();
         auto *e = requestsQueue.allocEntry(std::move(req));
         requestsQueue.push(e);
     } else {
-        InflightRequest req(std::move(resolve), std::move(reject), fd, buffer, std::move(onParsed));
+        InflightRequest req(std::move(resolve), std::move(reject), fd, std::move(timer), buffer, std::move(onParsed));
 
         asyncSendRequestImpl(req);
     }
@@ -204,6 +215,12 @@ Transport::asyncSendRequestImpl(
             if (totalWritten == len) {
                 cleanUp();
                 auto& queue = inflightRequests[fd];
+                auto timer = req.timer;
+                if (timer) {
+                    auto timerFd = timer->fd;
+                    timeouts[timerFd] = fd;
+                    io()->registerFd(timerFd, NotifyOn::Read, Polling::Mode::Edge);
+                }
                 queue.push_back(std::move(req));
                 break;
             }
@@ -293,9 +310,26 @@ Transport::handleResponsePacket(Fd fd, const char* buffer, size_t totalBytes) {
     auto &req = queue.front();
     req.feed(buffer, totalBytes);
     if (req.parser->parse() == Private::State::Done) {
+        req.timer->disarm();
         req.resolve(std::move(req.parser->response));
         queue.pop_front();
     }
+}
+
+void
+Transport::handleTimeout(Fd fd) {
+    auto timerIt = timeouts.find(fd);
+    auto reqFd = timerIt->second;
+
+    auto reqIt = inflightRequests.find(reqFd);
+    if (reqIt == std::end(inflightRequests))
+        throw std::runtime_error("Internal condition violation, received timeout for a non-inflight request");
+
+    auto& queue = reqIt->second;
+    auto& req = queue.front();
+    req.reject(std::runtime_error("Timeout"));
+    queue.pop_front();  
+    timeouts.erase(fd);
 }
 
 void
@@ -372,14 +406,15 @@ Async::Promise<Response>
 Connection::perform(
         const Http::Request& request,
         std::string host,
+        std::chrono::milliseconds timeout,
         OnDone onDone) {
     return Async::Promise<Response>([=](Async::Resolver& resolve, Async::Rejection& reject) {
         if (!isConnected()) {
         auto* entry = requestsQueue.allocEntry(
-                RequestData(std::move(resolve), std::move(reject), request, std::move(host), std::move(onDone)));
+                RequestData(std::move(resolve), std::move(reject), request, std::move(host), timeout, std::move(onDone)));
         requestsQueue.push(entry);
         } else {
-            performImpl(request, std::move(host), std::move(resolve), std::move(reject), std::move(onDone));
+            performImpl(request, std::move(host), timeout, std::move(resolve), std::move(reject), std::move(onDone));
         }
     });
 }
@@ -388,6 +423,7 @@ void
 Connection::performImpl(
         const Http::Request& request,
         std::string host,
+        std::chrono::milliseconds timeout,
         Async::Resolver resolve,
         Async::Rejection reject,
         OnDone onDone) {
@@ -398,7 +434,13 @@ Connection::performImpl(
         reject(std::runtime_error("Could not write request"));
 
     auto buffer = buf.buffer();
-    transport_->asyncSendRequest(fd, buffer, std::move(resolve), std::move(reject), std::move(onDone));
+    std::shared_ptr<TimerPool::Entry> timer(nullptr);
+    if (timeout.count() > 0) {
+        timer = timerPool_.pickTimer();
+        timer->arm(timeout);
+    }
+
+    transport_->asyncSendRequest(fd, timer, buffer, std::move(resolve), std::move(reject), std::move(onDone));
 }
 
 void
@@ -409,7 +451,7 @@ Connection::processRequestQueue() {
 
         auto &req = entry->data();
         performImpl(req.request,
-                std::move(req.host), std::move(req.resolve), std::move(req.reject), std::move(req.onDone));
+                std::move(req.host), req.timeout, std::move(req.resolve), std::move(req.reject), std::move(req.onDone));
     }
 
 }
@@ -565,7 +607,7 @@ Client::doRequest(
     if (conn == nullptr) {
         return Async::Promise<Response>([=](Async::Resolver& resolve, Async::Rejection& reject) {
             auto entry = requestsQueue.allocEntry(
-                    Connection::RequestData(std::move(resolve), std::move(reject), request, host_, nullptr));
+                    Connection::RequestData(std::move(resolve), std::move(reject), request, host_, timeout, nullptr));
             requestsQueue.push(entry);
         });
     }
@@ -583,7 +625,7 @@ Client::doRequest(
         if (!conn->isConnected())
             conn->connect(addr_);
 
-        return conn->perform(request, host_, [=]() {
+        return conn->perform(request, host_, timeout, [=]() {
             pool.releaseConnection(conn);
             processRequestQueue();
         });
@@ -606,6 +648,7 @@ Client::processRequestQueue() {
         auto& req = entry->data();
         conn->performImpl(
                 req.request, std::move(req.host),
+                req.timeout,
                 std::move(req.resolve), std::move(req.reject),
                 [=]() {
                     pool.releaseConnection(conn);

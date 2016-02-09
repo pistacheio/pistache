@@ -19,14 +19,14 @@ int main() {
 
     using namespace Net::Http;
 
-    constexpr size_t Requests = 1000;
+    constexpr size_t Requests = 5000;
     std::atomic<int> responsesReceived(0);
 
     client.init(opts);
     for (int i = 0; i < Requests; ++i) {
         client.get(client
                 .request("/ping")
-                .cookie(Cookie("FOO", "bar")))
+                .cookie(Cookie("FOO", "bar")), std::chrono::milliseconds(1000))
         .then([&](const Http::Response& response) {
             responsesReceived.fetch_add(1);
             //std::cout << "code = " << response.code() << std::endl;
