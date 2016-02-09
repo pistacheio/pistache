@@ -39,7 +39,7 @@ public:
             return Async::Promise<ssize_t>([=](Async::Resolver& resolve, Async::Rejection& reject) {
                 BufferHolder holder(buffer);
                 auto detached = holder.detach();
-                OnHoldWrite write(std::move(resolve), std::move(reject), detached, flags);
+                WriteEntry write(std::move(resolve), std::move(reject), detached, flags);
                 write.peerFd = fd;
                 auto *e = writesQueue.allocEntry(std::move(write));
                 writesQueue.push(e);
@@ -149,8 +149,8 @@ private:
         Type type;
     };
 
-    struct OnHoldWrite {
-        OnHoldWrite(Async::Resolver resolve, Async::Rejection reject,
+    struct WriteEntry {
+        WriteEntry(Async::Resolver resolve, Async::Rejection reject,
                     BufferHolder buffer, int flags = 0)
             : resolve(std::move(resolve))
             , reject(std::move(reject))
@@ -214,8 +214,8 @@ private:
         yet and some writes are still on-hold, writes should queue-up so that when the
         fd becomes ready again, we can write everything
     */
-    PollableQueue<OnHoldWrite> writesQueue;
-    std::unordered_map<Fd, OnHoldWrite> toWrite;
+    PollableQueue<WriteEntry> writesQueue;
+    std::unordered_map<Fd, WriteEntry> toWrite;
 
     PollableQueue<TimerEntry> timersQueue;
     std::unordered_map<Fd, TimerEntry> timers;
@@ -243,7 +243,7 @@ private:
 
     void armTimerMsImpl(TimerEntry entry);
 
-    void asyncWriteImpl(Fd fd, OnHoldWrite& entry, WriteStatus status = FirstTry);
+    void asyncWriteImpl(Fd fd, WriteEntry& entry, WriteStatus status = FirstTry);
     void asyncWriteImpl(
             Fd fd, int flags, const BufferHolder& buffer,
             Async::Resolver resolve, Async::Rejection reject,

@@ -163,7 +163,7 @@ Transport::handlePeerDisconnection(const std::shared_ptr<Peer>& peer) {
 }
 
 void
-Transport::asyncWriteImpl(Fd fd, Transport::OnHoldWrite& entry, WriteStatus status) {
+Transport::asyncWriteImpl(Fd fd, Transport::WriteEntry& entry, WriteStatus status) {
     asyncWriteImpl(fd, entry.flags, entry.buffer, std::move(entry.resolve), std::move(entry.reject), status);
 }
 
@@ -200,7 +200,7 @@ Transport::asyncWriteImpl(
                 if (status == FirstTry) {
                     toWrite.insert(
                             std::make_pair(fd,
-                                OnHoldWrite(std::move(resolve), std::move(reject), buffer.detach(totalWritten), flags)));
+                                WriteEntry(std::move(resolve), std::move(reject), buffer.detach(totalWritten), flags)));
                 }
                 io()->modifyFd(fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
             }
