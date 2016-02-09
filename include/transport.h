@@ -201,8 +201,14 @@ private:
         std::atomic<bool> active;
     };
 
-    mutable std::mutex peersMutex;
-    std::unordered_map<Fd, std::shared_ptr<Peer>> peers;
+    struct PeerEntry {
+        PeerEntry(std::shared_ptr<Peer> peer)
+            : peer(std::move(peer))
+        { }
+
+        std::shared_ptr<Peer> peer;
+    };
+
     /* @Incomplete: this should be a std::dequeue.
         If an asyncWrite on a particular fd is initiated whereas the fd is not write-ready
         yet and some writes are still on-hold, writes should queue-up so that when the
@@ -213,6 +219,9 @@ private:
 
     PollableQueue<TimerEntry> timersQueue;
     std::unordered_map<Fd, TimerEntry> timers;
+
+    PollableQueue<PeerEntry> peersQueue;
+    std::unordered_map<Fd, std::shared_ptr<Peer>> peers;
 
     Optional<Async::Holder> loadRequest_;
     NotifyFd notifier;
@@ -244,8 +253,10 @@ private:
     void handleIncoming(const std::shared_ptr<Peer>& peer);
     void handleWriteQueue();
     void handleTimerQueue();
+    void handlePeerQueue();
     void handleNotify();
     void handleTimer(TimerEntry entry);
+    void handlePeer(const std::shared_ptr<Peer>& entry);
 };
 
 } // namespace Tcp

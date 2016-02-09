@@ -30,21 +30,20 @@ void
 Transport::registerPoller(Polling::Epoll& poller) {
     writesQueue.bind(poller);
     timersQueue.bind(poller);
+    peersQueue.bind(poller);
     notifier.bind(poller);
 }
 
 void
 Transport::handleNewPeer(const std::shared_ptr<Tcp::Peer>& peer) {
-    int fd = peer->fd();
-    {
-        std::unique_lock<std::mutex> guard(peersMutex);
-        peers.insert(std::make_pair(fd, peer));
+    const bool isInRightThread = std::this_thread::get_id() == io()->thread();
+    if (!isInRightThread) {
+        PeerEntry entry(peer);
+        auto *e = peersQueue.allocEntry(entry);
+        peersQueue.push(e);
+    } else {
+        handlePeer(peer);
     }
-
-    peer->associateTransport(this);
-
-    handler_->onConnection(peer);
-    io()->registerFd(fd, NotifyOn::Read | NotifyOn::Shutdown, Polling::Mode::Edge);
 }
 
 void
@@ -55,6 +54,9 @@ Transport::onReady(const Io::FdSet& fds) {
         }
         else if (entry.getTag() == timersQueue.tag()) {
             handleTimerQueue();
+        }
+        else if (entry.getTag() == peersQueue.tag()) {
+            handlePeerQueue();
         }
         else if (entry.getTag() == notifier.tag()) {
             handleNotify();
@@ -151,14 +153,11 @@ Transport::handlePeerDisconnection(const std::shared_ptr<Peer>& peer) {
     handler_->onDisconnection(peer);
 
     int fd = peer->fd();
-    {
-        std::unique_lock<std::mutex> guard(peersMutex);
-        auto it = peers.find(fd);
-        if (it == std::end(peers))
-            throw std::runtime_error("Could not find peer to erase");
+    auto it = peers.find(fd);
+    if (it == std::end(peers))
+        throw std::runtime_error("Could not find peer to erase");
 
-        peers.erase(it);
-    }
+    peers.erase(it);
 
     close(fd);
 }
@@ -292,6 +291,27 @@ Transport::handleTimerQueue() {
     }
 }
 
+void
+Transport::handlePeerQueue() {
+    for (;;) {
+        auto entry = peersQueue.popSafe();
+        if (!entry) break;
+
+        const auto &data = entry->data();
+        handlePeer(data.peer);
+    }
+}
+
+void
+Transport::handlePeer(const std::shared_ptr<Peer>& peer) {
+    int fd = peer->fd();
+    peers.insert(std::make_pair(fd, peer));
+
+    peer->associateTransport(this);
+
+    handler_->onConnection(peer);
+    io()->registerFd(fd, NotifyOn::Read | NotifyOn::Shutdown, Polling::Mode::Edge);
+}
 
 void
 Transport::handleNotify() {
@@ -334,7 +354,6 @@ Transport::handleTimer(TimerEntry entry) {
 
 bool
 Transport::isPeerFd(Fd fd) const {
-    std::unique_lock<std::mutex> guard(peersMutex);
     return peers.find(fd) != std::end(peers);
 }
 
@@ -355,7 +374,6 @@ Transport::isTimerFd(Polling::Tag tag) const {
 std::shared_ptr<Peer>&
 Transport::getPeer(Fd fd)
 {
-    std::unique_lock<std::mutex> guard(peersMutex);
     auto it = peers.find(fd);
     if (it == std::end(peers))
     {
