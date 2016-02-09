@@ -182,7 +182,7 @@ Listener::bind(const Address& address) {
     }
 
     make_non_blocking(fd);
-    poller.addFd(fd, Polling::NotifyOn::Read, Polling::Tag(fd), Polling::Mode::Edge);
+    poller.addFd(fd, Polling::NotifyOn::Read, Polling::Tag(fd));
     listen_fd = fd;
     g_listen_fd = fd;
 
