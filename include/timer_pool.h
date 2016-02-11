@@ -16,6 +16,7 @@
 #include <atomic>
 #include <unistd.h>
 #include "os.h"
+#include "io.h"
 
 namespace Net {
 
@@ -35,6 +36,7 @@ public:
 
         Entry()
             : fd(-1)
+            , registered(false)
         {
             state.store(static_cast<uint32_t>(State::Idle));
         }
@@ -53,11 +55,19 @@ public:
         }
 
         void disarm();
+        void registerIo(Io::Service* io) {
+            if (!registered) {
+                io->registerFd(fd, Polling::NotifyOn::Read);
+            }
+            registered = true;
+        }
 
     private:
         void armMs(std::chrono::milliseconds value);
         enum class State : uint32_t { Idle, Used };
         std::atomic<uint32_t> state;
+
+        bool registered;
     };
 
     std::shared_ptr<Entry> pickTimer();

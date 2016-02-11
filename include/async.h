@@ -12,6 +12,7 @@
 #include <memory>
 #include <atomic>
 #include <vector>
+#include <mutex>
 #include "optional.h"
 #include "typeid.h"
 
@@ -170,6 +171,19 @@ namespace Async {
 
             State state;
             std::exception_ptr exc;
+
+            /*
+             * We need this lock because a Promise might be resolved or rejected from a thread A
+             * while a continuation to the same Promise (Core) might be attached at the same from
+             * a thread B. If that's the case, then we need to serialize operations so that we
+             * avoid a race-condition.
+             *
+             * Since we have a lock, we have a blocking progress guarantee but I don't expect this
+             * to be a major bottleneck as I don't expect major contention on the lock
+             * If it ends up being a bottlenick, try @improving it by experimenting with a lock-free
+             * scheme
+             */
+            std::mutex mtx;
             std::vector<std::shared_ptr<Request>> requests;
             TypeId id;
 
@@ -536,10 +550,13 @@ namespace Async {
              * than runtime. However, since types are erased, this looks like
              * a difficult task
              */
-            if (core_->isVoid())
+            if (core_->isVoid()) {
                 throw Error("Attempt to resolve a void promise with arguments");
+            }
 
+            std::unique_lock<std::mutex> guard(core_->mtx);
             core_->construct<Type>(std::forward<Arg>(arg));
+
             for (const auto& req: core_->requests) {
                 req->resolve(core_);
             }
@@ -554,6 +571,7 @@ namespace Async {
             if (!core_->isVoid())
                 throw Error("Attempt ro resolve a non-void promise with no argument");
 
+            std::unique_lock<std::mutex> guard(core_->mtx);
             core_->state = State::Fulfilled;
             for (const auto& req: core_->requests) {
                 req->resolve(core_);
@@ -578,6 +596,7 @@ namespace Async {
             if (core_->state != State::Pending)
                 throw Error("Attempt to reject a fulfilled promise");
 
+            std::unique_lock<std::mutex> guard(core_->mtx);
             core_->exc = std::make_exception_ptr(exc);
             core_->state = State::Rejected;
             for (const auto& req: core_->requests) {
@@ -716,6 +735,7 @@ namespace Async {
                           std::forward<ResolveFunc>(resolveFunc),
                           std::forward<RejectFunc>(rejectFunc)));
 
+            std::unique_lock<std::mutex> guard(core_->mtx);
             if (isFulfilled()) {
                 req->resolve(core_);
             }
@@ -723,9 +743,9 @@ namespace Async {
                 req->reject(core_);
             }
 
-           core_->requests.push_back(req);
+            core_->requests.push_back(req);
 
-           return promise;
+            return promise;
         }
 
     private:

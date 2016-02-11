@@ -2,6 +2,9 @@
 #include "async.h"
 #include <thread>
 #include <algorithm>
+#include <deque>
+#include <mutex>
+#include <condition_variable>
 
 Async::Promise<int> doAsync(int N)
 {
@@ -290,4 +293,140 @@ TEST(async_test, rethrow_test) {
 
     ASSERT_TRUE(p2.isRejected());
 
+}
+
+template<typename T>
+struct MessageQueue {
+public:
+    template<typename U>
+    void push(U&& arg) {
+        std::unique_lock<std::mutex> guard(mtx);
+        q.push_back(std::forward<U>(arg));
+        cv.notify_one();
+    }
+
+    T pop() {
+        std::unique_lock<std::mutex> lock(mtx);
+        cv.wait(lock, [=]() { return !q.empty(); });
+
+        T out = std::move(q.front());
+        q.pop_front();
+
+        return out;
+    }
+
+    bool tryPop(T& out, std::chrono::milliseconds timeout) {
+        std::unique_lock<std::mutex> lock(mtx);
+        if (!cv.wait_for(lock, timeout, [=]() { return !q.empty(); }))
+            return false;
+
+        out = std::move(q.front());
+        q.pop_front();
+        return true;
+    }
+
+private:
+    std::deque<T> q;
+    std::mutex mtx;
+    std::condition_variable cv;
+};
+
+struct Worker {
+public:
+    ~Worker() {
+        thread->join();
+    }
+    void start() {
+        shutdown.store(false);
+        thread.reset(new std::thread([=]() { run(); }));
+    }
+
+    void stop() {
+        shutdown.store(true);
+    }
+
+    Async::Promise<int> doWork(int seq) {
+        return Async::Promise<int>([=](Async::Resolver& resolve, Async::Rejection& reject) {
+            queue.push(new WorkRequest(std::move(resolve), std::move(reject), seq));
+        });
+    }
+
+private:
+    void run() {
+        while (!shutdown) {
+            WorkRequest *request;
+            if (queue.tryPop(request, std::chrono::milliseconds(200))) {
+                request->resolve(request->seq);
+                delete request;
+            }
+        }
+    }
+
+    struct WorkRequest {
+        WorkRequest(Async::Resolver resolve, Async::Rejection reject, int seq)
+          : resolve(std::move(resolve))
+          , reject(std::move(reject))
+          , seq(seq)
+        {
+        }
+
+        int seq;
+
+        Async::Resolver resolve;
+        Async::Rejection reject;
+    };
+
+    std::atomic<bool> shutdown;
+    MessageQueue<WorkRequest*> queue;
+
+    std::random_device rd;
+    std::unique_ptr<std::thread> thread;
+};
+
+TEST(async_test, stress_multithreaded_test) {
+    static constexpr size_t OpsPerThread = 100000;
+    static constexpr size_t Workers = 6;
+    static constexpr size_t Ops = OpsPerThread * Workers;
+
+    std::cout << "Starting stress testing promises, hang on, this test might take some time to complete" << std::endl;
+    std::cout << "=================================================" << std::endl;
+    std::cout << "Parameters for the test: " << std::endl;
+    std::cout << "Workers      -> " << Workers << std::endl;
+    std::cout << "OpsPerThread -> " << OpsPerThread << std::endl;
+    std::cout << "Total Ops    -> " << Ops << std::endl;
+    std::cout << "=================================================" << std::endl;
+
+    std::cout << std::endl << std::endl;
+
+    std::vector<std::unique_ptr<Worker>> workers;
+    for (size_t i = 0; i < Workers; ++i) {
+        std::unique_ptr<Worker> wrk(new Worker);
+        wrk->start();
+        workers.push_back(std::move(wrk));
+    }
+    std::vector<Async::Promise<int>> promises;
+    std::atomic<int> resolved(0);
+
+    size_t wrkIndex = 0;
+
+    for (size_t i = 0; i < Ops; ++i) {
+        auto &wrk = workers[wrkIndex];
+        wrk->doWork(i).then([&](int seq) {
+            ++resolved;
+        }, Async::NoExcept);
+
+        wrkIndex = (wrkIndex + 1) % Workers;
+    }
+
+    for (;;) {
+        auto r = resolved.load();
+        std::cout << r << " promises resolved" << std::endl;
+        if (r == Ops) break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+
+    std::cout << "Stopping worker" << std::endl;
+    for (auto& wrk: workers) {
+        wrk->stop();
+    }
 }
