@@ -37,6 +37,7 @@ namespace Private {
 
 namespace Experimental {
     class Client;
+    class RequestBuilder;
 }
 
 template< class CharT, class Traits>
@@ -93,7 +94,6 @@ namespace Uri {
     };
 } // namespace Uri
 
-class RequestBuilder;
 
 // 5. Request
 class Request : public Message {
@@ -101,7 +101,7 @@ public:
     friend class Private::RequestLineStep;
     friend class Private::Parser<Http::Request>;
 
-    friend class RequestBuilder;
+    friend class Experimental::RequestBuilder;
     // @Todo: try to remove the need for friend-ness here
     friend class Experimental::Client;
 
@@ -153,32 +153,6 @@ private:
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
     std::weak_ptr<Tcp::Peer> peer_;
 #endif
-};
-
-class RequestBuilder {
-public:
-    RequestBuilder& method(Method method);
-    RequestBuilder& resource(std::string val);
-    RequestBuilder& params(const Uri::Query& query);
-    RequestBuilder& header(const std::shared_ptr<Header::Header>& header);
-
-    template<typename H, typename... Args>
-    typename
-    std::enable_if<
-        Header::IsHeader<H>::value, RequestBuilder&
-    >::type
-    header(Args&& ...args) {
-        return header(std::make_shared<H>(std::forward<Args>(args)...));
-    }
-
-    RequestBuilder& cookie(const Cookie& cookie);
-    RequestBuilder& body(std::string val);
-
-    const Request& request() const { return request_; }
-    operator Request() const { return request_; }
-
-private:
-    Request request_;
 };
 
 class Handler;

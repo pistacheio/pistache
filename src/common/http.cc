@@ -559,41 +559,6 @@ Request::peer() const {
 }
 #endif
 
-RequestBuilder&
-RequestBuilder::method(Method method)
-{
-    request_.method_ = method;
-    return *this;
-}
-
-RequestBuilder&
-RequestBuilder::resource(std::string val) {
-    request_.resource_ = std::move(val);
-    return *this;
-}
-
-RequestBuilder&
-RequestBuilder::params(const Uri::Query& params) {
-    request_.query_ = params;
-    return *this;
-}
-
-RequestBuilder&
-RequestBuilder::header(const std::shared_ptr<Header::Header>& header) {
-    request_.headers_.add(header);
-    return *this;
-}
-
-RequestBuilder&
-RequestBuilder::cookie(const Cookie& cookie) {
-    request_.cookies_.add(cookie);
-    return *this;
-}
-
-RequestBuilder&
-RequestBuilder::body(std::string val) {
-    request_.body_ = std::move(val);
-}
 
 ResponseStream::ResponseStream(
         Message&& other,

@@ -570,6 +570,47 @@ ConnectionPool::availableCount() const {
     return connections.size() - usedCount.load();
 }
 
+RequestBuilder&
+RequestBuilder::method(Method method)
+{
+    request_.method_ = method;
+    return *this;
+}
+
+RequestBuilder&
+RequestBuilder::resource(std::string val) {
+    request_.resource_ = std::move(val);
+    return *this;
+}
+
+RequestBuilder&
+RequestBuilder::params(const Uri::Query& params) {
+    request_.query_ = params;
+    return *this;
+}
+
+RequestBuilder&
+RequestBuilder::header(const std::shared_ptr<Header::Header>& header) {
+    request_.headers_.add(header);
+    return *this;
+}
+
+RequestBuilder&
+RequestBuilder::cookie(const Cookie& cookie) {
+    request_.cookies_.add(cookie);
+    return *this;
+}
+
+RequestBuilder&
+RequestBuilder::body(std::string val) {
+    request_.body_ = std::move(val);
+}
+
+Async::Promise<Response>
+RequestBuilder::send() {
+    return client_->doRequest(std::move(request_), timeout_);
+}
+
 Client::Options&
 Client::Options::threads(int val) {
     if (val > 1) {
@@ -642,47 +683,46 @@ Client::shutdown() {
 }
 
 RequestBuilder
-Client::request(std::string val) {
-    RequestBuilder builder;
-    builder.resource(std::move(val));
+Client::get(std::string resource)
+{
+    return prepareRequest(std::move(resource), Http::Method::Get);
+}
+
+RequestBuilder
+Client::post(std::string resource)
+{
+    return prepareRequest(std::move(resource), Http::Method::Post);
+}
+
+RequestBuilder
+Client::put(std::string resource)
+{
+    return prepareRequest(std::move(resource), Http::Method::Put);
+}
+
+RequestBuilder
+Client::del(std::string resource)
+{
+    return prepareRequest(std::move(resource), Http::Method::Delete);
+}
+
+RequestBuilder
+Client::prepareRequest(std::string resource, Http::Method method)
+{
+    RequestBuilder builder(this);
+    builder
+        .resource(std::move(resource))
+        .method(method);
+
     return builder;
-}
-
-Async::Promise<Http::Response>
-Client::get(const Http::Request& request, std::chrono::milliseconds timeout)
-{
-    return doRequest(request, Http::Method::Get, timeout);
-}
-
-Async::Promise<Http::Response>
-Client::post(const Http::Request& request, std::chrono::milliseconds timeout)
-{
-    return doRequest(request, Http::Method::Post, timeout);
-}
-
-Async::Promise<Http::Response>
-Client::put(const Http::Request& request, std::chrono::milliseconds timeout)
-{
-    return doRequest(request, Http::Method::Put, timeout);
-}
-
-Async::Promise<Http::Response>
-Client::del(const Http::Request& request, std::chrono::milliseconds timeout)
-{
-    return doRequest(request, Http::Method::Delete, timeout);
 }
 
 Async::Promise<Response>
 Client::doRequest(
-        const Http::Request& request,
-        Http::Method method,
+        Http::Request request,
         std::chrono::milliseconds timeout)
 {
-    unsafe {
-        auto &req = const_cast<Http::Request &>(request);
-        req.method_ = method;
-        req.headers_.remove<Header::UserAgent>();
-    }
+    request.headers_.remove<Header::UserAgent>();
 
     auto conn = pool.pickConnection();
     if (conn == nullptr) {

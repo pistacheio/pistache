@@ -240,8 +240,50 @@ namespace Default {
     constexpr bool KeepAlive = true;
 }
 
+class Client;
+
+class RequestBuilder {
+public:
+    friend class Client;
+
+    RequestBuilder& method(Method method);
+    RequestBuilder& resource(std::string val);
+    RequestBuilder& params(const Uri::Query& query);
+    RequestBuilder& header(const std::shared_ptr<Header::Header>& header);
+
+    template<typename H, typename... Args>
+    typename
+    std::enable_if<
+        Header::IsHeader<H>::value, RequestBuilder&
+    >::type
+    header(Args&& ...args) {
+        return header(std::make_shared<H>(std::forward<Args>(args)...));
+    }
+
+    RequestBuilder& cookie(const Cookie& cookie);
+    RequestBuilder& body(std::string val);
+
+    RequestBuilder& timeout(std::chrono::milliseconds value);
+
+    Async::Promise<Response> send();
+
+private:
+    RequestBuilder(Client* const client)
+        : client_(client)
+        , timeout_(std::chrono::milliseconds(0))
+    { }
+
+    Client* const client_;
+
+    Request request_;
+    std::chrono::milliseconds timeout_;
+};
+
+
 class Client {
 public:
+
+   friend class RequestBuilder;
 
    struct Options {
        friend class Client;
@@ -267,20 +309,10 @@ public:
    static Options options();
    void init(const Options& options);
 
-   RequestBuilder request(std::string resource);
-
-   Async::Promise<Response> get(
-           const Http::Request& request,
-           std::chrono::milliseconds timeout = std::chrono::milliseconds(0));
-   Async::Promise<Response> post(
-           const Http::Request& req,
-           std::chrono::milliseconds timeout = std::chrono::milliseconds(0));
-   Async::Promise<Response> put(
-           const Http::Request& req,
-           std::chrono::milliseconds timeout = std::chrono::milliseconds(0));
-   Async::Promise<Response> del(
-           const Http::Request& req,
-           std::chrono::milliseconds timeout = std::chrono::milliseconds(0));
+   RequestBuilder get(std::string resource);
+   RequestBuilder post(std::string resource);
+   RequestBuilder put(std::string resource);
+   RequestBuilder del(std::string resource);
 
    void shutdown();
 
@@ -297,9 +329,10 @@ private:
    std::atomic<uint64_t> ioIndex;
    Queue<Connection::RequestData> requestsQueue;
 
+   RequestBuilder prepareRequest(std::string resource, Http::Method method);
+
    Async::Promise<Response> doRequest(
-           const Http::Request& req,
-           Http::Method method,
+           Http::Request req,
            std::chrono::milliseconds timeout);
 
    void processRequestQueue();
