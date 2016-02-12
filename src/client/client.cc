@@ -284,6 +284,11 @@ Transport::handleIncoming(const std::shared_ptr<Connection>& connection) {
             break;
         }
         else if (bytes == 0) {
+            if (totalBytes > 0) {
+                handleResponsePacket(connection, buffer, totalBytes);
+            }
+            connections.erase(connection->fd);
+            connection->close();
             break;
         }
 
@@ -371,6 +376,7 @@ Connection::isConnected() const {
 void
 Connection::close() {
     connectionState_ = NotConnected;
+    ::close(fd);
 }
 
 void

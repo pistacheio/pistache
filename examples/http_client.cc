@@ -35,7 +35,9 @@ int main(int argc, char *argv[]) {
 
     resp.then([](Response response) {
         std::cout << "Response code = " << response.code() << std::endl;
-        std::cout << "Response body = " << response.body() << std::endl;
+        auto body = response.body();
+        if (!body.empty())
+            std::cout << "Response body = " << body << std::endl;
     }, Async::NoExcept);
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
