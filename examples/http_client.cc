@@ -7,7 +7,6 @@
 #include "net.h"
 #include "http.h"
 #include "client.h"
-#include <atomic>
 
 using namespace Net;
 using namespace Net::Http;

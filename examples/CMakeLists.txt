@@ -7,6 +7,9 @@ target_link_libraries(hello_server net)
 add_executable(http_client http_client.cc)
 target_link_libraries(http_client net)
 
+add_executable(custom_header custom_header.cc)
+target_link_libraries(custom_header net)
+
 add_executable(rest_server rest_server.cc)
 target_link_libraries(rest_server net)
 

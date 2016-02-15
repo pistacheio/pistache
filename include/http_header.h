@@ -45,7 +45,7 @@ constexpr uint64_t hash(const char* str)
 
 #ifdef SAFE_HEADER_CAST
     #define NAME(header_name) \
-        static constexpr uint64_t Hash = detail::hash(header_name); \
+        static constexpr uint64_t Hash = Net::Http::Header::detail::hash(header_name); \
         uint64_t hash() const { return Hash; } \
         static constexpr const char *Name = header_name; \
         const char *name() const { return Name; }
