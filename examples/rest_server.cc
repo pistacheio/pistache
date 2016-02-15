@@ -66,6 +66,8 @@ private:
 
     void doRecordMetric(const Rest::Request& request, Net::Http::ResponseWriter response) {
         auto name = request.param(":name").as<std::string>();
+
+        Guard guard(metricsLock);
         auto it = std::find_if(metrics.begin(), metrics.end(), [&](const Metric& metric) {
             return metric.name() == name;
         });
@@ -90,6 +92,8 @@ private:
 
     void doGetMetric(const Rest::Request& request, Net::Http::ResponseWriter response) {
         auto name = request.param(":name").as<std::string>();
+
+        Guard guard(metricsLock);
         auto it = std::find_if(metrics.begin(), metrics.end(), [&](const Metric& metric) {
             return metric.name() == name;
         });
@@ -135,6 +139,9 @@ private:
         int value_;
     };
 
+    typedef std::mutex Lock;
+    typedef std::lock_guard<Lock> Guard;
+    Lock metricsLock;
     std::vector<Metric> metrics;
 
     std::shared_ptr<Net::Http::Endpoint> httpEndpoint;
