@@ -5,6 +5,7 @@
 */
 
 #include "router.h"
+#include "description.h"
 #include <algorithm>
 
 namespace Net {
@@ -209,33 +210,43 @@ Route::match(const std::string& req) const
 
 namespace Private {
 
-HttpHandler::HttpHandler(
-        const std::unordered_map<Http::Method, std::vector<Route>>& routes)
-    : routes(routes)
+RouterHandler::RouterHandler(const Rest::Router& router)
+    : router(router)
 {
 }
 
 void
-HttpHandler::onRequest(
+RouterHandler::onRequest(
         const Http::Request& req,
         Http::ResponseWriter response)
 {
-    auto& r = routes[req.method()];
-    for (const auto& route: r) {
-        bool match;
-        std::vector<TypedParam> params;
-        std::vector<TypedParam> splats;
-        std::tie(match, params, splats) = route.match(req);
-        if (match) {
-            route.invokeHandler(Request(req, std::move(params), std::move(splats)), std::move(response));
-            return;
-        }
-    }
-
-    response.send(Http::Code::Not_Found, "Could not find a matching route");
+    router.route(req, std::move(response));
 }
 
 } // namespace Private
+
+Router
+Router::fromDescription(const Rest::Description& desc) {
+    Router router;
+    router.initFromDescription(desc);
+    return router;
+}
+
+std::shared_ptr<Private::RouterHandler>
+Router::handler() const {
+    return std::make_shared<Private::RouterHandler>(*this);
+}
+
+void
+Router::initFromDescription(const Rest::Description& desc) {
+    auto paths = desc.paths();
+    for (auto it = paths.flatBegin(), end = paths.flatEnd(); it != end; ++it) {
+        const auto& paths = *it;
+        for (const auto& path: paths) {
+            addRoute(path.method, std::move(path.value), std::move(path.handler));
+        }
+    }
+}
 
 void
 Router::get(std::string resource, Route::Handler handler) {
@@ -255,6 +266,40 @@ Router::put(std::string resource, Route::Handler handler) {
 void
 Router::del(std::string resource, Route::Handler handler) {
     addRoute(Http::Method::Delete, std::move(resource), std::move(handler));
+}
+
+void
+Router::addCustomHandler(Route::Handler handler) {
+    customHandlers.push_back(std::move(handler));
+}
+
+Router::Status
+Router::route(const Http::Request& req, Http::ResponseWriter response) {
+    auto& r = routes[req.method()];
+    for (const auto& route: r) {
+        bool match;
+        std::vector<TypedParam> params;
+        std::vector<TypedParam> splats;
+        std::tie(match, params, splats) = route.match(req);
+        if (match) {
+            route.invokeHandler(Request(req, std::move(params), std::move(splats)), std::move(response));
+            return Router::Status::Match;
+        }
+    }
+
+    /* @Major @FixMe:
+     * original response object should not be moved here. Instead, we should provide some sort of clone() method
+     * to explicit request a copy and then move that clone
+     */
+    for (const auto& handler: customHandlers) {
+        auto result = handler(Request(req, std::vector<TypedParam>(), std::vector<TypedParam>()), std::move(response));
+        if (result == Route::Result::Ok) return Router::Status::Match;
+    }
+
+    throw std::runtime_error("Fix me");
+
+    response.send(Http::Code::Not_Found, "Could not find a matching route");
+    return Router::Status::NotFound;
 }
 
 void

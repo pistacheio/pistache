@@ -75,7 +75,7 @@ bool matchSplat(
 
 Rest::Route
 makeRoute(std::string value) {
-    auto noop = [](const Net::Http::Request&, Net::Http::Response) { };
+    auto noop = [](const Net::Http::Request&, Net::Http::Response) { return Rest::Route::Result::Ok; };
     return Rest::Route(value, Net::Http::Method::Get, noop);
 }
 

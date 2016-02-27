@@ -359,6 +359,20 @@ Host::write(std::ostream& os) const {
     }
 }
 
+Location::Location(const std::string& location)
+    : location_(location)
+{ }
+
+void
+Location::parse(const std::string& data) {
+    location_ = data;
+}
+
+void
+Location::write(std::ostream& os) const {
+    os << location_;
+}
+
 void
 UserAgent::parse(const std::string& data) {
     ua_ = data;

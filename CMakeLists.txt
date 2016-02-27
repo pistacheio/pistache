@@ -16,6 +16,9 @@ include_directories (${CMAKE_CURRENT_SOURCE_DIR}/include)
 file(GLOB HEADER_FILES "include/*.h")
 install(FILES ${HEADER_FILES} DESTINATION include/rest)
 
+add_subdirectory (thirdparty)
+include_directories(${RapidJSON_SOURCE_DIR}/include)
+
 add_subdirectory (src)
 include_directories (src)
 

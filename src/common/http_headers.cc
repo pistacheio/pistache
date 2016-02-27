@@ -31,6 +31,7 @@ RegisterHeader(ContentType);
 RegisterHeader(Date);
 RegisterHeader(Expect);
 RegisterHeader(Host);
+RegisterHeader(Location);
 RegisterHeader(Server);
 RegisterHeader(UserAgent);
 

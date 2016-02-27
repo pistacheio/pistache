@@ -16,6 +16,8 @@ namespace Net {
 
 namespace Rest {
 
+class Description;
+
 namespace details {
     template<typename T> struct LexicalCast {
         static T cast(const std::string& value) {
@@ -59,7 +61,9 @@ private:
 class Request;
 
 struct Route {
-    typedef std::function<void (const Request&, Net::Http::ResponseWriter)> Handler;
+    enum class Result { Ok, Failure };
+
+    typedef std::function<Result (const Request&, Net::Http::ResponseWriter)> Handler;
 
     Route(std::string resource, Http::Method method, Handler handler)
         : resource_(std::move(resource))
@@ -128,10 +132,42 @@ private:
 };
 
 namespace Private {
+    class RouterHandler;
+}
 
-    class HttpHandler : public Net::Http::Handler {
+class Router {
+public:
+
+    enum class Status { Match, NotFound };
+
+    static Router fromDescription(const Rest::Description& desc);
+
+    std::shared_ptr<Private::RouterHandler>
+    handler() const;
+
+    void initFromDescription(const Rest::Description& desc);
+
+    void get(std::string resource, Route::Handler handler);
+    void post(std::string resource, Route::Handler handler);
+    void put(std::string resource, Route::Handler handler);
+    void del(std::string resource, Route::Handler handler);
+
+    void addCustomHandler(Route::Handler handler);
+
+    Status route(const Http::Request& request, Http::ResponseWriter response);
+
+private:
+    void addRoute(Http::Method method, std::string resource, Route::Handler handler);
+    std::unordered_map<Http::Method, std::vector<Route>> routes;
+
+    std::vector<Route::Handler> customHandlers;
+};
+
+namespace Private {
+
+    class RouterHandler : public Net::Http::Handler {
     public:
-        HttpHandler(const std::unordered_map<Http::Method, std::vector<Route>>& routes);
+        RouterHandler(const Rest::Router& router);
 
         void onRequest(
                 const Http::Request& req,
@@ -139,16 +175,16 @@ namespace Private {
 
     private:
         std::shared_ptr<Net::Tcp::Handler> clone() const {
-            return std::make_shared<HttpHandler>(routes);
+            return std::make_shared<RouterHandler>(router);
         }
 
-        std::unordered_map<Http::Method, std::vector<Route>> routes;
+        Rest::Router router;
     };
 }
 
 class Request : public Http::Request {
 public:
-    friend class Private::HttpHandler;
+    friend class Router;
 
     bool hasParam(std::string name) const;
     TypedParam param(std::string name) const;
@@ -166,23 +202,6 @@ private:
     std::vector<TypedParam> splats_;
 };
 
-class Router {
-public:
-
-    std::shared_ptr<Private::HttpHandler>
-    handler() const {
-        return std::make_shared<Private::HttpHandler>(routes);
-    }
-
-    void get(std::string resource, Route::Handler handler);
-    void post(std::string resource, Route::Handler handler);
-    void put(std::string resource, Route::Handler handler);
-    void del(std::string resource, Route::Handler handler);
-
-private:
-    void addRoute(Http::Method method, std::string resource, Route::Handler handler);
-    std::unordered_map<Http::Method, std::vector<Route>> routes;
-};
 
 namespace Routes {
 
@@ -225,6 +244,8 @@ namespace Routes {
 
         return [=](const Rest::Request& request, Http::ResponseWriter response) {
             CALL_MEMBER_FN(obj, func)(request, std::move(response));
+
+            return Route::Result::Ok;
         };
 
         #undef CALL_MEMBER_FN
@@ -236,6 +257,8 @@ namespace Routes {
 
         return [=](const Rest::Request& request, Http::ResponseWriter response) {
             func(request, std::move(response));
+
+            return Route::Result::Ok;
         };
     }
 
