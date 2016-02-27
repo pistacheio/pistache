@@ -5,6 +5,7 @@
 */
 
 #include "router.h"
+#include "description.h"
 #include <algorithm>
 
 namespace Net {
@@ -236,6 +237,21 @@ HttpHandler::onRequest(
 }
 
 } // namespace Private
+
+Router
+Router::fromDescription(const Rest::Description& desc) {
+    Router router;
+    router.initFromDescription(desc);
+    return router;
+}
+
+void
+Router::initFromDescription(const Rest::Description& desc) {
+    auto paths = desc.paths();
+    for (const auto& path: paths) {
+        addRoute(path.method, std::move(path.value), std::move(path.handler));
+    }
+}
 
 void
 Router::get(std::string resource, Route::Handler handler) {

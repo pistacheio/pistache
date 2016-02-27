@@ -13,3 +13,5 @@ target_link_libraries(custom_header net)
 add_executable(rest_server rest_server.cc)
 target_link_libraries(rest_server net)
 
+add_executable(rest_description rest_description.cc)
+target_link_libraries(rest_description net)

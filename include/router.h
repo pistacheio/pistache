@@ -16,6 +16,8 @@ namespace Net {
 
 namespace Rest {
 
+class Description;
+
 namespace details {
     template<typename T> struct LexicalCast {
         static T cast(const std::string& value) {
@@ -169,10 +171,14 @@ private:
 class Router {
 public:
 
+    static Router fromDescription(const Rest::Description& desc);
+
     std::shared_ptr<Private::HttpHandler>
     handler() const {
         return std::make_shared<Private::HttpHandler>(routes);
     }
+
+    void initFromDescription(const Rest::Description& desc);
 
     void get(std::string resource, Route::Handler handler);
     void post(std::string resource, Route::Handler handler);

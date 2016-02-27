@@ -57,6 +57,23 @@ private:
     void setupRoutes() {
         using namespace Net::Rest;
 
+#if 0
+        Rest::Description apiDescription("my-api");
+
+        auto versionPath = desc.path("/v1");
+        versionPath
+            .route(desc.get("/record/:name/:value?"))
+            .bind(&StatsEndpoint::doRecordMetric, this)
+            .produces(MIME(Text, Plain))
+            .consumes(MIME(Star, Star))
+            .parameter<Rest::Type::String>("name", "The name of the metric to record", Rest::Flag::Required)
+            .parameter<Rest::Type::String>("value", "The value to record", Rest::Flag::Optional)
+            .response(Http::Code::Created, "The metric has been created")
+            .response(Http::Code::Not_Found, "The creation of the metric failed");
+#endif
+
+
+
         Routes::Post(router, "/record/:name/:value?", Routes::bind(&StatsEndpoint::doRecordMetric, this));
         Routes::Get(router, "/value/:name", Routes::bind(&StatsEndpoint::doGetMetric, this));
         Routes::Get(router, "/ready", Routes::bind(&Generic::handleReady));
