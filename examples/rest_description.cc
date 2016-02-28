@@ -37,6 +37,13 @@ public:
     void start() {
         router.initFromDescription(desc);
 
+        Rest::Swagger swagger(desc);
+        swagger
+            .uiPath("/doc")
+            .uiDirectory("/home/octal/code/web/swagger-ui-2.1.4/dist/")
+            .apiPath("/banker-api.json")
+            .install(router);
+
         httpEndpoint->setHandler(router.handler());
         httpEndpoint->serve();
     }
@@ -97,6 +104,7 @@ private:
             .produces(MIME(Application, Json))
             .response(Http::Code::Ok, "Budget has been added to the account")
             .response(backendErrorResponse);
+
     }
 
     void retrieveAllAccounts(const Rest::Request& req, Http::ResponseWriter response) {

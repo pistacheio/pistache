@@ -15,6 +15,7 @@
 #include "mime.h"
 #include "optional.h"
 #include "router.h"
+#include "iterator_adapter.h"
 
 namespace Net {
 
@@ -115,6 +116,27 @@ struct Info {
 
     Optional<Contact> contact;
     Optional<License> license;
+
+    template<typename Writer>
+    void serialize(Writer& writer) const {
+        writer.String("info");
+        writer.StartObject();
+        {
+            writer.String("title");
+            writer.String(title.c_str());
+            writer.String("version");
+            writer.String(version.c_str());
+            if (!description.empty()) {
+                writer.String("description");
+                writer.String(description.c_str());
+            }
+            if (!termsOfService.empty()) {
+                writer.String("termsOfService");
+                writer.String(termsOfService.c_str());
+            }
+        }
+        writer.EndObject();
+    }
 };
 
 struct InfoBuilder {
@@ -161,10 +183,27 @@ struct Parameter {
         return p;
     }
 
+    template<typename Writer>
+    void serialize(Writer& writer) const {
+        writer.StartObject();
+        {
+            writer.String("name");
+            writer.String(name.c_str());
+            writer.String("description");
+            writer.String(description.c_str());
+            writer.String("required");
+            writer.Bool(required);
+            writer.String("type");
+            writer.String(type->typeName());
+        }
+        writer.EndObject();
+    } 
+
     std::string name;
     std::string description;
     bool required;
     std::shared_ptr<DataType> type;
+
 };
 
 struct Response {
@@ -172,6 +211,18 @@ struct Response {
 
     Http::Code statusCode;
     std::string description;
+
+    template<typename Writer>
+    void serialize(Writer& writer) const {
+        auto code = std::to_string(static_cast<uint32_t>(statusCode));
+        writer.String(code.c_str());
+        writer.StartObject();
+        {
+            writer.String("description");
+            writer.String(description.c_str());
+        }
+        writer.EndObject();
+    }
 };
 
 struct ResponseBuilder {
@@ -203,6 +254,104 @@ struct Path {
     std::vector<Response> responses;
 
     Route::Handler handler;
+
+    template<typename Writer>
+    void serialize(Writer& writer) const {
+        auto serializeMimes = [&](const char* name, const std::vector<Http::Mime::MediaType>& mimes) {
+            if (!mimes.empty()) {
+                writer.String(name);
+                writer.StartArray();
+                {
+                    for (const auto& mime: mimes) {
+                        auto str = mime.toString();
+                        writer.String(str.c_str());
+                    }
+                }
+                writer.EndArray();
+            }
+        };
+
+        writer.String(methodString(method));
+        writer.StartObject();
+        {
+            writer.String("description");
+            writer.String(description.c_str());
+            serializeMimes("consumes", consumeMimes);
+            serializeMimes("produces", produceMimes);
+            // @Todo: create a template to serialize vectors in a generic way
+            if (!parameters.empty()) {
+                writer.String("parameters");
+                writer.StartArray();
+                {
+                    for (const auto& parameter: parameters) {
+                        parameter.serialize(writer);
+                    }
+                }
+                writer.EndArray();
+            }
+            if (!responses.empty()) {
+                writer.String("responses");
+                writer.StartArray();
+                for (const auto& response: responses) {
+                    response.serialize(writer);
+                }
+                writer.EndArray();
+            }
+        }
+        writer.EndObject();
+    }
+};
+
+class PathGroup {
+public:
+    typedef std::unordered_map<std::string, std::vector<Path>> Map;
+    typedef Map::iterator iterator;
+    typedef Map::const_iterator const_iterator;
+
+    typedef std::vector<Path>::iterator group_iterator;
+
+    typedef FlatMapIteratorAdapter<Map> flat_iterator;
+
+    bool hasPath(const std::string& name, Http::Method method) const;
+    bool hasPath(const Path& path) const;
+
+    std::vector<Path> paths(const std::string& name) const;
+    Optional<Path> path(const std::string& name, Http::Method method) const;
+
+    group_iterator add(Path path);
+
+    template<typename... Args>
+    group_iterator emplace(Args&& ...args) {
+        return add(Path(std::forward<Args>(args)...));
+    }
+
+    const_iterator begin() const;
+    const_iterator end() const;
+
+    flat_iterator flatBegin() const;
+    flat_iterator flatEnd() const;
+
+    template<typename Writer>
+    void serialize(Writer& writer) const {
+        writer.String("paths");
+        writer.StartArray();
+        {
+            for (const auto& group: groups) {
+                writer.String(group.first.c_str());
+                writer.StartObject();
+                {
+                    for (const auto& path: group.second) {
+                        path.serialize(writer);
+                    }
+                }
+                writer.EndObject();
+            }
+        }
+        writer.EndArray();
+    }
+
+private:
+    Map groups;
 };
 
 struct PathBuilder {
@@ -246,6 +395,8 @@ struct PathBuilder {
 
         path_->handler = [=](const Rest::Request& request, Http::ResponseWriter response) {
             CALL_MEMBER_FN(obj, func)(request, std::move(response));
+
+            return Route::Result::Ok;
         };
 
         #undef CALL_MEMBER_FN
@@ -258,6 +409,8 @@ struct PathBuilder {
 
         path_->handler = [=](const Rest::Request& request, Http::ResponseWriter response) {
             func(request, std::move(response));
+
+            return Route::Result::Ok;
         };
 
         return *this;
@@ -269,7 +422,7 @@ private:
 };
 
 struct SubPath {
-    SubPath(std::string prefix, std::vector<Path>* paths);
+    SubPath(std::string prefix, PathGroup* paths);
 
     PathBuilder route(std::string path, Http::Method method, std::string description = "");
     PathBuilder route(PathFragment fragment, std::string description = "");
@@ -283,7 +436,7 @@ struct SubPath {
 
     std::string prefix;
     std::vector<Parameter> parameters;
-    std::vector<Path>* paths;
+    PathGroup* paths;
 };
 
 } // namespace Schema
@@ -316,14 +469,58 @@ public:
 
     Schema::ResponseBuilder response(Http::Code statusCode, std::string description);
 
-    std::vector<Schema::Path> paths() const { return paths_; }
+    Schema::PathGroup paths() const { return paths_; }
+
+    template<typename Writer>
+    void serialize(Writer& writer) const {
+        writer.StartObject();
+        {
+            info_.serialize(writer);
+            if (!host_.empty()) {
+                writer.String("host");
+                writer.String(host_.c_str());
+            }
+            if (!schemes_.empty()) {
+                writer.String("schemes");
+                writer.StartArray();
+                {
+                    for (const auto& scheme: schemes_) {
+                        writer.String(scheme.c_str());
+                    }
+                }
+                writer.EndArray();
+            }
+
+            paths_.serialize(writer);
+        }
+        writer.EndObject();
+    }
 
 private:
     Schema::Info info_;
     std::string host_;
     std::vector<std::string> schemes_;
 
-    std::vector<Schema::Path> paths_;
+    Schema::PathGroup paths_;
+};
+
+class Swagger {
+public:
+    Swagger(const Description& description)
+        : description_(description)
+    { }
+
+    Swagger& uiPath(std::string path);
+    Swagger& uiDirectory(std::string dir);
+    Swagger& apiPath(std::string path);
+   
+    void install(Rest::Router& router);
+
+private:
+    Description description_;
+    std::string uiPath_;
+    std::string uiDirectory_;
+    std::string apiPath_;
 };
 
 } // namespace Rest

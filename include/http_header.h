@@ -352,6 +352,23 @@ private:
     Net::Port port_;
 };
 
+class Location : public Header {
+public:
+    NAME("Location")
+
+    Location() { }
+
+    explicit Location(const std::string& location);
+
+    void parse(const std::string& data);
+    void write(std::ostream& os) const;
+
+    std::string location() const { return location_; }
+
+private:
+    std::string location_;
+};
+
 class Server : public Header {
 public:
     NAME("Server")
