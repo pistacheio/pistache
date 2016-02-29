@@ -14,6 +14,18 @@ namespace Net {
 
 namespace Rest {
 
+const char* schemeString(Scheme scheme) {
+    switch (scheme) {
+#define SCHEME(e, str) \
+        case Scheme::e: \
+            return str;
+        SCHEMES
+#undef SCHEME
+    }
+
+    return nullptr;
+}
+
 namespace Schema {
 
 Contact::Contact(
@@ -47,6 +59,7 @@ Path::Path(
     : value(std::move(value))
     , method(method)
     , description(std::move(description))
+    , hidden(false)
 { }
 
 std::string
@@ -121,11 +134,11 @@ PathGroup::hasPath(const Path& path) const {
     return hasPath(path.value, path.method);
 }
 
-std::vector<Path>
+PathGroup::Group
 PathGroup::paths(const std::string& name) const {
     auto it = groups.find(name);
     if (it == std::end(groups))
-        return std::vector<Path> { };
+        return PathGroup::Group { };
 
     return it->second;
 }
@@ -260,6 +273,12 @@ Description::info() {
 Description&
 Description::host(std::string value) {
     host_ = std::move(value);
+    return *this;
+}
+
+Description&
+Description::basePath(std::string value) {
+    basePath_ = std::move(value);
     return *this;
 }
 

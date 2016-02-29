@@ -61,12 +61,14 @@ private:
         auto backendErrorResponse =
             desc.response(Http::Code::Internal_Server_Error, "An error occured with the backend");
 
-        desc.schemes("http");
+        desc.schemes(Rest::Scheme::Http);
+        desc.basePath("/v1");
 
         desc
             .route(desc.get("/ready"))
             .bind(&Generic::handleReady)
-            .response(Http::Code::Ok, "Response to the /ready call");
+            .response(Http::Code::Ok, "Response to the /ready call")
+            .hide();
 
         auto versionPath = desc.path("/v1");
 
