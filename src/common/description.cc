@@ -48,7 +48,7 @@ Info::Info(
     , description(std::move(description))
 { }   
 
-PathFragment::PathFragment(
+PathDecl::PathDecl(
         std::string value, Http::Method method)
     : value(std::move(value))
     , method(method)
@@ -207,7 +207,7 @@ SubPath::route(std::string name, Http::Method method, std::string description) {
 }
 
 PathBuilder
-SubPath::route(PathFragment fragment, std::string description) {
+SubPath::route(PathDecl fragment, std::string description) {
     return route(std::move(fragment.value), fragment.method, std::move(description));
 }
 
@@ -282,24 +282,24 @@ Description::basePath(std::string value) {
     return *this;
 }
 
-Schema::PathFragment
+Schema::PathDecl
 Description::get(std::string name) {
-    return Schema::PathFragment(std::move(name), Http::Method::Get);
+    return Schema::PathDecl(std::move(name), Http::Method::Get);
 }
 
-Schema::PathFragment
+Schema::PathDecl
 Description::post(std::string name) {
-    return Schema::PathFragment(std::move(name), Http::Method::Post);
+    return Schema::PathDecl(std::move(name), Http::Method::Post);
 }
 
-Schema::PathFragment
+Schema::PathDecl
 Description::put(std::string name) {
-    return Schema::PathFragment(std::move(name), Http::Method::Put);
+    return Schema::PathDecl(std::move(name), Http::Method::Put);
 }
 
-Schema::PathFragment
+Schema::PathDecl
 Description::del(std::string name) {
-    return Schema::PathFragment(std::move(name), Http::Method::Delete);
+    return Schema::PathDecl(std::move(name), Http::Method::Delete);
 }
 
 Schema::SubPath
@@ -314,7 +314,7 @@ Description::route(std::string name, Http::Method method, std::string descriptio
 }
 
 Schema::PathBuilder
-Description::route(Schema::PathFragment fragment, std::string description) {
+Description::route(Schema::PathDecl fragment, std::string description) {
     return route(std::move(fragment.value), fragment.method, std::move(description));
 }
 

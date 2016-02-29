@@ -104,6 +104,32 @@ template<typename DT> struct DataTypeValidation {
 
 } // namespace Traits
 
+struct ProduceConsume {
+
+    std::vector<Http::Mime::MediaType> produce;
+    std::vector<Http::Mime::MediaType> consume;
+
+    template<typename Writer>
+    void serialize(Writer& writer) const {
+        auto serializeMimes = [&](const char* name, const std::vector<Http::Mime::MediaType>& mimes) {
+            if (!mimes.empty()) {
+                writer.String(name);
+                writer.StartArray();
+                {
+                    for (const auto& mime: mimes) {
+                        auto str = mime.toString();
+                        writer.String(str.c_str());
+                    }
+                }
+                writer.EndArray();
+            }
+        };
+
+        serializeMimes("consumes", consume);
+        serializeMimes("produces", produce);
+    }
+};
+
 struct Contact {
     Contact(std::string name, std::string url, std::string email);
 
@@ -252,8 +278,8 @@ private:
     Response response_;
 };
 
-struct PathFragment {
-    PathFragment(std::string value, Http::Method method);
+struct PathDecl {
+    PathDecl(std::string value, Http::Method method);
 
     std::string value;
     Http::Method method;
@@ -267,8 +293,7 @@ struct Path {
     std::string description;
     bool hidden;
 
-    std::vector<Http::Mime::MediaType> produceMimes;
-    std::vector<Http::Mime::MediaType> consumeMimes;
+    ProduceConsume pc;
     std::vector<Parameter> parameters;
     std::vector<Response> responses;
 
@@ -282,19 +307,6 @@ struct Path {
 
     template<typename Writer>
     void serialize(Writer& writer) const {
-        auto serializeMimes = [&](const char* name, const std::vector<Http::Mime::MediaType>& mimes) {
-            if (!mimes.empty()) {
-                writer.String(name);
-                writer.StartArray();
-                {
-                    for (const auto& mime: mimes) {
-                        auto str = mime.toString();
-                        writer.String(str.c_str());
-                    }
-                }
-                writer.EndArray();
-            }
-        };
 
         std::string methodStr(methodString(method));
         // So it looks like Swagger requires method to be in lowercase
@@ -305,8 +317,7 @@ struct Path {
         {
             writer.String("description");
             writer.String(description.c_str());
-            serializeMimes("consumes", consumeMimes);
-            serializeMimes("produces", produceMimes);
+            pc.serialize(writer);
             if (!parameters.empty()) {
                 writer.String("parameters");
                 writer.StartArray();
@@ -418,14 +429,14 @@ struct PathBuilder {
     template<typename... Mimes>
     PathBuilder& produces(Mimes... mimes) {
         const Http::Mime::MediaType m[] = { mimes... };
-        std::copy(std::begin(m), std::end(m), std::back_inserter(path_->produceMimes));
+        std::copy(std::begin(m), std::end(m), std::back_inserter(path_->pc.produce));
         return *this;
     }
 
     template<typename... Mimes>
     PathBuilder& consumes(Mimes... mimes) {
         const Http::Mime::MediaType m[] = { mimes... };
-        std::copy(std::begin(m), std::end(m), std::back_inserter(path_->consumeMimes));
+        std::copy(std::begin(m), std::end(m), std::back_inserter(path_->pc.consume));
         return *this;
     }
 
@@ -487,7 +498,7 @@ struct SubPath {
     SubPath(std::string prefix, PathGroup* paths);
 
     PathBuilder route(std::string path, Http::Method method, std::string description = "");
-    PathBuilder route(PathFragment fragment, std::string description = "");
+    PathBuilder route(PathDecl fragment, std::string description = "");
 
     SubPath path(std::string prefix);
 
@@ -511,6 +522,7 @@ public:
 
     Description& host(std::string value);
     Description& basePath(std::string value);
+
     template<typename... Schemes>
     Description& schemes(Schemes... schemes) {
 
@@ -519,15 +531,29 @@ public:
         return *this;
     }
 
-    Schema::PathFragment get(std::string name);
-    Schema::PathFragment post(std::string name);
-    Schema::PathFragment put(std::string name);
-    Schema::PathFragment del(std::string name);
+    template<typename... Mimes>
+    Description& produces(Mimes... mimes) {
+        const Http::Mime::MediaType m[] = { mimes... };
+        std::copy(std::begin(m), std::end(m), std::back_inserter(pc.produce));
+        return *this;
+    }
+
+    template<typename... Mimes>
+    Description& consumes(Mimes... mimes) {
+        const Http::Mime::MediaType m[] = { mimes... };
+        std::copy(std::begin(m), std::end(m), std::back_inserter(pc.consume));
+        return *this;
+    }
+
+    Schema::PathDecl get(std::string name);
+    Schema::PathDecl post(std::string name);
+    Schema::PathDecl put(std::string name);
+    Schema::PathDecl del(std::string name);
 
     Schema::SubPath path(std::string name);
 
     Schema::PathBuilder route(std::string name, Http::Method method, std::string description = "");
-    Schema::PathBuilder route(Schema::PathFragment fragment, std::string description = "");
+    Schema::PathBuilder route(Schema::PathDecl fragment, std::string description = "");
 
     Schema::ResponseBuilder response(Http::Code statusCode, std::string description);
 
@@ -556,6 +582,7 @@ public:
                 }
                 writer.EndArray();
             }
+            pc.serialize(writer);
 
             paths_.serialize(writer, basePath_, Schema::PathGroup::Format::Swagger);
         }
@@ -567,6 +594,7 @@ private:
     std::string host_;
     std::string basePath_;
     std::vector<Scheme> schemes_;
+    Schema::ProduceConsume pc;
 
     Schema::PathGroup paths_;
 };
