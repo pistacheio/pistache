@@ -276,6 +276,10 @@ struct Path {
 
     static std::string swaggerFormat(const std::string& path);
 
+    bool isBound() const {
+        return handler != nullptr;
+    }
+
     template<typename Writer>
     void serialize(Writer& writer) const {
         auto serializeMimes = [&](const char* name, const std::vector<Http::Mime::MediaType>& mimes) {
