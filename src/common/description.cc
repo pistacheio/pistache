@@ -49,6 +49,64 @@ Path::Path(
     , description(std::move(description))
 { }
 
+std::string
+Path::swaggerFormat(const std::string& path) {
+    if (path.empty()) return "";
+    if (path[0] != '/') throw std::invalid_argument("Invalid path, should start with a '/'");
+
+    /* @CodeDup: re-use the private Fragment class of Router */
+    auto isPositional = [](const std::string& fragment) {
+        if (fragment[0] == ':')
+            return std::make_pair(true, fragment.substr(1));
+        return std::make_pair(false, std::string());
+    };
+
+    auto isOptional = [](const std::string& fragment) {
+        auto pos = fragment.find('?');
+        // @Validation the '?' should be the last character
+        return std::make_pair(pos != std::string::npos, pos);
+    };
+
+    std::ostringstream oss;
+
+    auto processFragment = [&](std::string fragment) {
+        auto optional = isOptional(fragment);
+        if (optional.first)
+            fragment.erase(optional.second, 1);
+
+        auto positional = isPositional(fragment);
+        if (positional.first) {
+            oss << '{' << positional.second << '}';
+        } else {
+            oss << fragment;
+        }
+    };
+
+    std::istringstream iss(path);
+    std::string fragment;
+
+    std::vector<std::string> fragments;
+
+    while (std::getline(iss, fragment, '/')) {
+        fragments.push_back(std::move(fragment));
+    }
+
+    for (size_t i = 0; i < fragments.size() - 1; ++i) {
+        const auto& frag = fragments[i];
+
+        processFragment(frag);
+        oss << '/';
+    }
+
+    const auto& last = fragments.back();
+    if (last.empty()) oss << '/';
+    else {
+        processFragment(last);
+    }
+
+    return oss.str();
+}
+
 bool
 PathGroup::hasPath(const std::string& name, Http::Method method) const {
     auto group = paths(name);
@@ -272,7 +330,7 @@ Swagger::install(Rest::Router& router) {
         auto res = req.resource();
 
         /*
-         * @Export might be useful for routing also. Make it public
+         * @Export might be useful for routing also. Make it public or merge it with the Fragment class
          */
 
         struct Path {

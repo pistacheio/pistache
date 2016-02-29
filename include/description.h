@@ -11,6 +11,7 @@
 #include <vector>
 #include <type_traits>
 #include <memory>
+#include <algorithm>
 #include "http_defs.h"
 #include "mime.h"
 #include "optional.h"
@@ -119,6 +120,8 @@ struct Info {
 
     template<typename Writer>
     void serialize(Writer& writer) const {
+        writer.String("swagger");
+        writer.String("2.0");
         writer.String("info");
         writer.StartObject();
         {
@@ -189,6 +192,9 @@ struct Parameter {
         {
             writer.String("name");
             writer.String(name.c_str());
+            writer.String("in");
+            // @Feature: support other types of parameters
+            writer.String("path");
             writer.String("description");
             writer.String(description.c_str());
             writer.String("required");
@@ -255,6 +261,8 @@ struct Path {
 
     Route::Handler handler;
 
+    static std::string swaggerFormat(const std::string& path);
+
     template<typename Writer>
     void serialize(Writer& writer) const {
         auto serializeMimes = [&](const char* name, const std::vector<Http::Mime::MediaType>& mimes) {
@@ -271,14 +279,17 @@ struct Path {
             }
         };
 
-        writer.String(methodString(method));
+        std::string methodStr(methodString(method));
+        // So it looks like Swagger requires method to be in lowercase
+        std::transform(std::begin(methodStr), std::end(methodStr), std::begin(methodStr), ::tolower);
+
+        writer.String(methodStr.c_str());
         writer.StartObject();
         {
             writer.String("description");
             writer.String(description.c_str());
             serializeMimes("consumes", consumeMimes);
             serializeMimes("produces", produceMimes);
-            // @Todo: create a template to serialize vectors in a generic way
             if (!parameters.empty()) {
                 writer.String("parameters");
                 writer.StartArray();
@@ -291,11 +302,13 @@ struct Path {
             }
             if (!responses.empty()) {
                 writer.String("responses");
-                writer.StartArray();
-                for (const auto& response: responses) {
-                    response.serialize(writer);
+                writer.StartObject();
+                {
+                    for (const auto& response: responses) {
+                        response.serialize(writer);
+                    }
                 }
-                writer.EndArray();
+                writer.EndObject();
             }
         }
         writer.EndObject();
@@ -311,6 +324,8 @@ public:
     typedef std::vector<Path>::iterator group_iterator;
 
     typedef FlatMapIteratorAdapter<Map> flat_iterator;
+
+    enum class Format { Default, Swagger };
 
     bool hasPath(const std::string& name, Http::Method method) const;
     bool hasPath(const Path& path) const;
@@ -332,12 +347,17 @@ public:
     flat_iterator flatEnd() const;
 
     template<typename Writer>
-    void serialize(Writer& writer) const {
+    void serialize(Writer& writer, Format format = Format::Default) const {
         writer.String("paths");
-        writer.StartArray();
+        writer.StartObject();
         {
             for (const auto& group: groups) {
-                writer.String(group.first.c_str());
+                if (format == Format::Default) {
+                    writer.String(group.first.c_str());
+                } else {
+                    auto swaggerPath = Path::swaggerFormat(group.first);
+                    writer.String(swaggerPath.c_str());
+                }
                 writer.StartObject();
                 {
                     for (const auto& path: group.second) {
@@ -347,7 +367,7 @@ public:
                 writer.EndObject();
             }
         }
-        writer.EndArray();
+        writer.EndObject();
     }
 
 private:
@@ -491,7 +511,7 @@ public:
                 writer.EndArray();
             }
 
-            paths_.serialize(writer);
+            paths_.serialize(writer, Schema::PathGroup::Format::Swagger);
         }
         writer.EndObject();
     }
