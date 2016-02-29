@@ -243,6 +243,12 @@ Router::initFromDescription(const Rest::Description& desc) {
     for (auto it = paths.flatBegin(), end = paths.flatEnd(); it != end; ++it) {
         const auto& paths = *it;
         for (const auto& path: paths) {
+            if (!path.isBound()) {
+                std::ostringstream oss;
+                oss << "Path '" << path.value << "' is not bound";
+                throw std::runtime_error(oss.str());
+            }
+
             addRoute(path.method, std::move(path.value), std::move(path.handler));
         }
     }
