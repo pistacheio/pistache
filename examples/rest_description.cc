@@ -61,8 +61,11 @@ private:
         auto backendErrorResponse =
             desc.response(Http::Code::Internal_Server_Error, "An error occured with the backend");
 
-        desc.schemes(Rest::Scheme::Http);
-        desc.basePath("/v1");
+        desc
+            .schemes(Rest::Scheme::Http)
+            .basePath("/v1")
+            .produces(MIME(Application, Json))
+            .consumes(MIME(Application, Json));
 
         desc
             .route(desc.get("/ready"))
@@ -77,7 +80,7 @@ private:
         accountsPath
             .route(desc.get("/all"))
             .bind(&BankerService::retrieveAllAccounts, this)
-            .produces(MIME(Application, Json))
+            .produces(MIME(Application, Json), MIME(Application, Xml))
             .response(Http::Code::Ok, "The list of all account");
 
         accountsPath
