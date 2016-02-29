@@ -50,9 +50,21 @@ namespace Type {
 
 } // namespace Type
 
-enum class Flag {
-    Optional, Required
+#define SCHEMES            \
+    SCHEME(Http , "http")  \
+    SCHEME(Https, "https") \
+    SCHEME(Ws   , "ws")    \
+    SCHEME(Wss  , "wss")   \
+
+
+
+enum class Scheme {
+#define SCHEME(e, _) e,
+    SCHEMES
+#undef SCHEME
 };
+
+const char* schemeString(Scheme scheme);
 
 namespace Schema {
 
@@ -253,6 +265,7 @@ struct Path {
     std::string value;
     Http::Method method;
     std::string description;
+    bool hidden;
 
     std::vector<Http::Mime::MediaType> produceMimes;
     std::vector<Http::Mime::MediaType> consumeMimes;
@@ -317,7 +330,17 @@ struct Path {
 
 class PathGroup {
 public:
-    typedef std::unordered_map<std::string, std::vector<Path>> Map;
+    struct Group : public std::vector<Path> {
+        bool isHidden() const {
+            if (empty()) return false;
+
+            return std::all_of(begin(), end(), [](const Path& path) {
+                return path.hidden;
+            });
+        }
+    };
+
+    typedef std::unordered_map<std::string, Group> Map;
     typedef Map::iterator iterator;
     typedef Map::const_iterator const_iterator;
 
@@ -330,7 +353,7 @@ public:
     bool hasPath(const std::string& name, Http::Method method) const;
     bool hasPath(const Path& path) const;
 
-    std::vector<Path> paths(const std::string& name) const;
+    Group paths(const std::string& name) const;
     Optional<Path> path(const std::string& name, Http::Method method) const;
 
     group_iterator add(Path path);
@@ -347,21 +370,32 @@ public:
     flat_iterator flatEnd() const;
 
     template<typename Writer>
-    void serialize(Writer& writer, Format format = Format::Default) const {
+    void serialize(
+            Writer& writer, const std::string& prefix, Format format = Format::Default) const {
         writer.String("paths");
         writer.StartObject();
         {
             for (const auto& group: groups) {
+                if (group.second.isHidden()) continue;
+
+                std::string name(group.first);
+                if (!prefix.empty()) {
+                    if (!name.compare(0, prefix.size(), prefix)) {
+                        name = name.substr(prefix.size());
+                    }
+                }
+
                 if (format == Format::Default) {
-                    writer.String(group.first.c_str());
+                    writer.String(name.c_str());
                 } else {
-                    auto swaggerPath = Path::swaggerFormat(group.first);
+                    auto swaggerPath = Path::swaggerFormat(name);
                     writer.String(swaggerPath.c_str());
                 }
                 writer.StartObject();
                 {
                     for (const auto& path: group.second) {
-                        path.serialize(writer);
+                        if (!path.hidden)
+                            path.serialize(writer);
                     }
                 }
                 writer.EndObject();
@@ -436,6 +470,10 @@ struct PathBuilder {
         return *this;
     }
 
+    PathBuilder&
+    hide(bool value = true) {
+        path_->hidden = value;
+    }
 
 private:
     Path* path_;
@@ -468,11 +506,11 @@ public:
     Schema::InfoBuilder info();
 
     Description& host(std::string value);
-    template<typename... Scheme>
-    Description& schemes(Scheme... schemes) {
-        // @Improve: try to statically assert that every Scheme is convertible to string
+    Description& basePath(std::string value);
+    template<typename... Schemes>
+    Description& schemes(Schemes... schemes) {
 
-        const std::string s[] = { std::string(schemes)... };
+        const Scheme s[] = { schemes... };
         std::copy(std::begin(s), std::end(s), std::back_inserter(schemes_));
         return *this;
     }
@@ -500,18 +538,22 @@ public:
                 writer.String("host");
                 writer.String(host_.c_str());
             }
+            if (!basePath_.empty()) {
+                writer.String("basePath");
+                writer.String(basePath_.c_str());
+            }
             if (!schemes_.empty()) {
                 writer.String("schemes");
                 writer.StartArray();
                 {
                     for (const auto& scheme: schemes_) {
-                        writer.String(scheme.c_str());
+                        writer.String(schemeString(scheme));
                     }
                 }
                 writer.EndArray();
             }
 
-            paths_.serialize(writer, Schema::PathGroup::Format::Swagger);
+            paths_.serialize(writer, basePath_, Schema::PathGroup::Format::Swagger);
         }
         writer.EndObject();
     }
@@ -519,7 +561,8 @@ public:
 private:
     Schema::Info info_;
     std::string host_;
-    std::vector<std::string> schemes_;
+    std::string basePath_;
+    std::vector<Scheme> schemes_;
 
     Schema::PathGroup paths_;
 };
