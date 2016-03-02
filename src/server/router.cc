@@ -220,7 +220,11 @@ RouterHandler::onRequest(
         const Http::Request& req,
         Http::ResponseWriter response)
 {
-    router.route(req, std::move(response));
+    auto resp = response.clone();
+    auto result = router.route(req, std::move(resp));
+
+    if (result == Router::Status::NotFound)
+        response.send(Http::Code::Not_Found, "Could not find a matching route");
 }
 
 } // namespace Private
@@ -293,18 +297,12 @@ Router::route(const Http::Request& req, Http::ResponseWriter response) {
         }
     }
 
-    /* @Major @FixMe:
-     * original response object should not be moved here. Instead, we should provide some sort of clone() method
-     * to explicit request a copy and then move that clone
-     */
     for (const auto& handler: customHandlers) {
-        auto result = handler(Request(req, std::vector<TypedParam>(), std::vector<TypedParam>()), std::move(response));
+        auto resp = response.clone();
+        auto result = handler(Request(req, std::vector<TypedParam>(), std::vector<TypedParam>()), std::move(resp));
         if (result == Route::Result::Ok) return Router::Status::Match;
     }
 
-    throw std::runtime_error("Fix me");
-
-    response.send(Http::Code::Not_Found, "Could not find a matching route");
     return Router::Status::NotFound;
 }
 

@@ -215,6 +215,14 @@ public:
     }
 
 private:
+    Timeout(const Timeout& other)
+        : transport(other.transport)
+        , handler(other.handler)
+        , request(other.request)
+        , armed(other.armed)
+        , timerFd(other.timerFd)
+    { }
+
     Timeout(Tcp::Transport* transport,
             Handler* handler,
             Request request)
@@ -392,11 +400,11 @@ public:
     friend class Handler;
     friend class Timeout;
 
+    ResponseWriter& operator=(const ResponseWriter& other) = delete;
+
     friend class Private::ResponseLineStep;
     friend class Private::Parser<Http::Response>;
 
-    ResponseWriter(const ResponseWriter& other) = delete;
-    ResponseWriter& operator=(const ResponseWriter& other) = delete;
     //
     // C++11: std::weak_ptr move constructor is C++14 only so the default
     // version of move constructor / assignement operator does not work and we
@@ -474,6 +482,15 @@ public:
                 std::move(*this), peer_, transport_, std::move(timeout_), streamSize);
     }
 
+    template<typename Duration>
+    void timeoutAfter(Duration duration) {
+        timeout_.arm(duration);
+    }
+
+    Timeout& timeout() {
+        return timeout_;
+    }
+
     // Unsafe API
 
     DynamicStreamBuf *rdbuf() {
@@ -484,13 +501,9 @@ public:
        throw std::domain_error("Unimplemented");
     }
 
-    template<typename Duration>
-    void timeoutAfter(Duration duration) {
-        timeout_.arm(duration);
-    }
 
-    Timeout& timeout() {
-        return timeout_;
+    ResponseWriter clone() const {
+        return ResponseWriter(*this);
     }
 
 private:
@@ -499,6 +512,14 @@ private:
         , buf_(DefaultStreamSize)
         , transport_(transport)
         , timeout_(transport, handler, std::move(request)) 
+    { }
+
+    ResponseWriter(const ResponseWriter& other)
+        : Response(other)
+        , peer_(other.peer_)
+        , buf_(DefaultStreamSize)
+        , transport_(other.transport_)
+        , timeout_(other.timeout_)
     { }
 
     std::shared_ptr<Tcp::Peer> peer() const {
