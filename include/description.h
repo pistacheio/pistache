@@ -278,8 +278,8 @@ private:
     Response response_;
 };
 
-struct PathFragment {
-    PathFragment(std::string value, Http::Method method);
+struct PathDecl {
+    PathDecl(std::string value, Http::Method method);
 
     std::string value;
     Http::Method method;
@@ -498,7 +498,7 @@ struct SubPath {
     SubPath(std::string prefix, PathGroup* paths);
 
     PathBuilder route(std::string path, Http::Method method, std::string description = "");
-    PathBuilder route(PathFragment fragment, std::string description = "");
+    PathBuilder route(PathDecl fragment, std::string description = "");
 
     SubPath path(std::string prefix);
 
@@ -545,15 +545,15 @@ public:
         return *this;
     }
 
-    Schema::PathFragment get(std::string name);
-    Schema::PathFragment post(std::string name);
-    Schema::PathFragment put(std::string name);
-    Schema::PathFragment del(std::string name);
+    Schema::PathDecl get(std::string name);
+    Schema::PathDecl post(std::string name);
+    Schema::PathDecl put(std::string name);
+    Schema::PathDecl del(std::string name);
 
     Schema::SubPath path(std::string name);
 
     Schema::PathBuilder route(std::string name, Http::Method method, std::string description = "");
-    Schema::PathBuilder route(Schema::PathFragment fragment, std::string description = "");
+    Schema::PathBuilder route(Schema::PathDecl fragment, std::string description = "");
 
     Schema::ResponseBuilder response(Http::Code statusCode, std::string description);
 
