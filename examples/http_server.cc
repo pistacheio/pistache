@@ -175,7 +175,7 @@ int main(int argc, char *argv[]) {
         .threads(thr)
         .flags(Net::Tcp::Options::InstallSignalHandler);
     server->init(opts);
-    server->setHandler(std::make_shared<MyHandler>());
+    server->setHandler(Http::make_handler<MyHandler>());
     server->serve();
 
     std::cout << "Shutdowning server" << std::endl;

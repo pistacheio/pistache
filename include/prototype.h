@@ -15,17 +15,9 @@ struct Prototype {
     virtual std::shared_ptr<Class> clone() const = 0;
 };
 
-template<typename Base, typename Class>
-struct Prototypable {
-
-};
-
 #define PROTOTYPE_OF(Base, Class)                                        \
 private:                                                                 \
     std::shared_ptr<Base> clone() const {                                \
         return std::make_shared<Class>();                                \
     }                                                                    \
 public:
-
-#define HTTP_PROTOTYPE(Class) \
-    PROTOTYPE_OF(Net::Tcp::Handler, Class)

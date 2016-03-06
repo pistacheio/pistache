@@ -26,6 +26,23 @@ namespace Net {
 
 namespace Http {
 
+namespace details {
+    struct prototype_tag { };
+
+    template<typename P>
+    struct IsHttpPrototype {
+        template<typename U> static auto test(U *) -> decltype(typename U::tag());
+        template<typename U> static auto test(...) -> std::false_type;
+
+        static constexpr bool value =
+            std::is_same<decltype(test<P>(nullptr)), prototype_tag>::value;
+    };
+};
+
+#define HTTP_PROTOTYPE(Class) \
+    PROTOTYPE_OF(Net::Tcp::Handler, Class) \
+    typedef Net::Http::details::prototype_tag tag;
+
 namespace Private {
     class ParserBase;
     template<typename T> struct Parser;
@@ -738,6 +755,14 @@ public:
 private:
     Private::Parser<Http::Request>& getParser(const std::shared_ptr<Tcp::Peer>& peer) const;
 };
+
+template<typename H, typename... Args>
+std::shared_ptr<H> make_handler(Args&& ...args) {
+    static_assert(std::is_base_of<Handler, H>::value, "An http handler must inherit from the Http::Handler class");
+    static_assert(details::IsHttpPrototype<H>::value, "An http handler must be an http prototype, did you forget the HTTP_PROTOTYPE macro ?");
+
+    return std::make_shared<H>(std::forward<Args>(args)...);
+}
 
 } // namespace Http
 

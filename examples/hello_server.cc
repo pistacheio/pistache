@@ -26,7 +26,7 @@ int main() {
 
     Http::Endpoint server(addr);
     server.init(opts);
-    server.setHandler(std::make_shared<HelloHandler>());
+    server.setHandler(Http::make_handler<HelloHandler>());
     server.serve();
 
     server.shutdown();
