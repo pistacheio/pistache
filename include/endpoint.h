@@ -80,6 +80,22 @@ private:
     Net::Tcp::Listener listener;
 };
 
+template<typename Handler>
+void listenAndServe(Address addr)
+{
+    auto options = Endpoint::options().threads(1);
+    listenAndServe<Handler>(addr, options);
+}
+
+template<typename Handler>
+void listenAndServe(Address addr, const Endpoint::Options& options)
+{
+    Endpoint endpoint(addr);
+    endpoint.init(options);
+    endpoint.setHandler(make_handler<Handler>());
+    endpoint.serve();
+}
+
 
 } // namespace Http
 

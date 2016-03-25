@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <cstring>
 #include <stdexcept>
+#include <limits>
 
 #ifndef _KERNEL_FASTOPEN
 #define _KERNEL_FASTOPEN
@@ -29,6 +30,10 @@ public:
 
     bool isReserved() const;
     bool isUsed() const;
+
+    static constexpr uint16_t max() {
+        return std::numeric_limits<uint16_t>::max();
+    }
 
 private:
     uint16_t port;
@@ -53,6 +58,7 @@ public:
     Address();
     Address(std::string host, Port port);
     Address(std::string addr);
+    Address(const char* addr);
     Address(Ipv4 ip, Port port);
 
     Address(const Address& other) = default;
@@ -67,6 +73,7 @@ public:
     Port port() const;
 
 private:
+    void init(std::string addr);
     std::string host_;
     Port port_;
 };

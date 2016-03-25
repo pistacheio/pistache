@@ -11,6 +11,7 @@
 #include <cstring>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <iostream>
 
 using namespace std;
 
@@ -66,21 +67,12 @@ Address::Address(std::string host, Port port)
 
 Address::Address(std::string addr)
 {
-    auto pos = addr.find(':');
+    init(std::move(addr));
+}
 
-    if (pos == std::string::npos) 
-        throw std::invalid_argument("Invalid address");
-
-    std::string host = addr.substr(0, pos);
-    char *end;
-
-    const std::string portPart = addr.substr(pos + 1);
-    long port = strtol(portPart.c_str(), &end, 10);
-    if (*end != 0 || port > std::numeric_limits<Port>::max())
-        throw std::invalid_argument("Invalid port");
-
-    host_ = std::move(host);
-    port_ = port;
+Address::Address(const char* addr)
+{
+    init(std::string(addr));
 }
 
 Address::Address(Ipv4 ip, Port port)
@@ -98,12 +90,33 @@ Address::fromUnix(struct sockaddr* addr) {
     return Address(std::move(host), port);
 }
 
-std::string Address::host() const {
+std::string
+Address::host() const {
     return host_;
 }
 
-Port Address::port() const {
+Port
+Address::port() const {
     return port_;
+}
+
+void
+Address::init(std::string addr) {
+    auto pos = addr.find(':');
+
+    if (pos == std::string::npos)
+        throw std::invalid_argument("Invalid address");
+
+    std::string host = addr.substr(0, pos);
+    char *end;
+
+    const std::string portPart = addr.substr(pos + 1);
+    long port = strtol(portPart.c_str(), &end, 10);
+    if (*end != 0 || port > Port::max())
+        throw std::invalid_argument("Invalid port");
+
+    host_ = std::move(host);
+    port_ = port;
 }
 
 Error::Error(const char* message)
