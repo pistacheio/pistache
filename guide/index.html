@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title>User's Guide</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">        
+        <meta name="description" content="Pistache is a C++ REST framework focussed on high performance and clear API. Pistache is a free software written by Mathieu Stefani and available on Github - https://github.com/oktal/pistache
+">
+        <link rel="canonical" 
+        href="http://pistache.io/guide/">
+        
+        <!-- Harmony styles -->
+        <link rel="stylesheet" type="text/css" href="/assets/css/main.css">
+
+        <!-- Modernizr js -->
+        <script async src="/assets/js/modernizr.js"></script>    
+
+        <!-- IE Fixes -->
+        <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+        <!--[if lt IE 9]>
+          <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+          <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+        <![endif]-->        
+    </head>
+    <body class="theme-base-01">
+        <header class="main-header">
+            <div class="wc-container">
+                <h1><a href="/">Pistache</a></h1>
+                <h2>An elegant C++ REST framework.</h2>
+                <ul>
+    
+    
+		
+  	
+		
+  	
+		
+  	
+		
+            <li>
+                
+                  <a href="/">Pistache</a><span>/</span>
+                
+            </li>
+	    
+  	
+		
+            <li>
+                
+                  <a href="/quickstart">Getting Started</a><span>/</span>
+                
+            </li>
+	    
+  	
+		
+            <li>
+                
+                  <a class="active" href="/guide/" class="active">User's Guide</a><span>/</span>
+                
+            </li>
+	    
+  	
+
+	
+	<li>
+		<a title="Pistache on Github" 
+			href="https://github.com/oktal/pistache" target="_blank">
+			Source code
+		</a><span>/</span>
+	</li>
+	
+</ul>
+                
+            </div>
+        </header>
+        <div class="page-content wc-container">
+	<div class="post">
+		<h1>User's Guide</h1>
+		<div class="post">
+			<ul id="markdown-toc">
+  <li><a href="#namespace" id="markdown-toc-namespace">Namespace</a></li>
+  <li><a href="#http-handler" id="markdown-toc-http-handler">Http Handler</a>    <ul>
+      <li><a href="#sending-a-response" id="markdown-toc-sending-a-response">Sending a response</a></li>
+      <li><a href="#response-streaming" id="markdown-toc-response-streaming">Response streaming</a></li>
+    </ul>
+  </li>
+  <li><a href="#asynchronous-http-programming" id="markdown-toc-asynchronous-http-programming">Asynchronous HTTP programming</a></li>
+  <li><a href="#headers" id="markdown-toc-headers">Headers</a>    <ul>
+      <li><a href="#overview" id="markdown-toc-overview">Overview</a></li>
+      <li><a href="#defining-your-own-header" id="markdown-toc-defining-your-own-header">Defining your own header</a></li>
+    </ul>
+  </li>
+  <li><a href="#routing" id="markdown-toc-routing">Routing</a></li>
+  <li><a href="#rest-description" id="markdown-toc-rest-description">REST description</a>    <ul>
+      <li><a href="#swagger" id="markdown-toc-swagger">Swagger</a></li>
+    </ul>
+  </li>
+  <li><a href="#io-model" id="markdown-toc-io-model">I/O model</a></li>
+  <li><a href="#api-reference" id="markdown-toc-api-reference">API Reference</a></li>
+</ul>
+
+<h1 id="namespace">Namespace</h1>
+
+<p>Most of the components provided by <code>Pistache</code> live in the <code>Net</code> namespace. It is thus
+recommended to directly import this namespace with a <code>using-declaration</code>:</p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="k">using</span> <span class="k">namespace</span> <span class="n">Net</span><span class="p">;</span></code></pre></figure>
+
+<h1 id="http-handler">Http Handler</h1>
+
+<p>Requests that are received by <code>Pistache</code> are handled by a special class called <code>Http::Handler</code>.
+This class declares a bunch of virtual methods that can be overriden to handle special events
+that occur on the socket and/or connection.</p>
+
+<p>The <code>onRequest()</code> function <strong>must</strong> be overriden. This function is called whenever <code>Pistache</code> 
+received data and correctly parsed it as an http request.</p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="k">virtual</span> <span class="kt">void</span> <span class="nf">onRequest</span><span class="p">(</span><span class="k">const</span> <span class="n">Http</span><span class="o">::</span><span class="n">Request</span><span class="o">&amp;</span> <span class="n">request</span><span class="p">,</span> <span class="n">Http</span><span class="o">::</span><span class="n">ResponseWriter</span> <span class="n">response</span><span class="p">);</span></code></pre></figure>
+
+<p>The first argument is an object of type <code>Http::Request</code> representing the request itself.
+It contains a bunch of informations including:</p>
+
+<ul>
+  <li>The resource associated to the request</li>
+  <li>The query parameters</li>
+  <li>The headers</li>
+  <li>The body of the request</li>
+</ul>
+
+<p>The <code>Request</code> object gives a <code>read-only</code> access to these informations. You can access them
+through a couple of getters but can not modify them. An http request is <strong>immutable</strong>.</p>
+
+<h2 id="sending-a-response">Sending a response</h2>
+
+<p><code>ResponseWriter</code> is an object from which the final http response is sent to the client.
+The <code>onRequest()</code>  function does not return anything (<code>void</code>). Instead, the response is
+sent through the <code>ResponseWriter</code> class. This class provides a bunch of <code>send()</code> function
+overloads to send the response:</p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="n">Async</span><span class="o">::</span><span class="n">Promise</span><span class="o">&lt;</span><span class="kt">ssize_t</span><span class="o">&gt;</span> <span class="n">send</span><span class="p">(</span><span class="n">Code</span> <span class="n">code</span><span class="p">);</span></code></pre></figure>
+
+<p>You can use this overload to send a response with an empty body and a given
+HTTP Code (e.g <code>Http::Code::Ok</code>)</p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="n">Async</span><span class="o">::</span><span class="n">Promise</span><span class="o">&lt;</span><span class="kt">ssize_t</span><span class="o">&gt;</span> <span class="n">send</span><span class="p">(</span>
+            <span class="n">Code</span> <span class="n">code</span><span class="p">,</span>
+            <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">body</span><span class="p">,</span>
+            <span class="k">const</span> <span class="n">Mime</span><span class="o">::</span><span class="n">MediaType</span> <span class="o">&amp;</span><span class="n">mime</span> <span class="o">=</span> <span class="n">Mime</span><span class="o">::</span><span class="n">MediaType</span><span class="p">());</span></code></pre></figure>
+
+<p>This overload can be used to send a response with static, fixed-size content (body).
+A MIME type can also be specified, which will be sent through the <code>Content-Type</code> header.</p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="k">template</span><span class="o">&lt;</span><span class="kt">size_t</span> <span class="n">N</span><span class="o">&gt;</span>
+<span class="n">Async</span><span class="o">::</span><span class="n">Promise</span><span class="o">&lt;</span><span class="kt">ssize_t</span><span class="o">&gt;</span> <span class="n">send</span><span class="p">(</span>
+            <span class="n">Code</span> <span class="n">code</span><span class="p">,</span>
+            <span class="k">const</span> <span class="kt">char</span> <span class="p">(</span><span class="o">&amp;</span><span class="n">arr</span><span class="p">)[</span><span class="n">N</span><span class="p">],</span>
+            <span class="k">const</span> <span class="n">Mime</span><span class="o">::</span><span class="n">MediaType</span><span class="o">&amp;</span> <span class="n">mime</span> <span class="o">=</span> <span class="n">Mime</span><span class="o">::</span><span class="n">MediaType</span><span class="p">());</span></code></pre></figure>
+
+<p>This version can also be used to send a fixed-size response with a body except that it
+does not need to construct a string (no memory is allocated).
+The size of the content is directly deduced by the compiler.
+This version only works with raw string literals.</p>
+
+<p>These functions are <code>asynchronous</code>, meaning that they do not return a plain old <code>ssize_t</code>
+value indicating the number of bytes being sent, but instead a <code>Promise</code> that will be
+fulfilled later on. See the next section for more details on asynchronous programming with
+Pistache.</p>
+
+<h2 id="response-streaming">Response streaming</h2>
+
+<h1 id="asynchronous-http-programming">Asynchronous HTTP programming</h1>
+
+<p>Interfaces provided by <code>Pistaches</code> are <code>asynchronous</code> and <code>non-blocking</code>. Asynchronous programming allows for code
+to continue executing even if the result of a given call is not available yet. Calls that provide an asynchronous
+interface are referred to <code>asynchronous calls</code>.</p>
+
+<p>An example of such a call is the <code>send()</code> function provided by the <code>ResponseWriter</code> interface.
+This function returns the number of bytes written to the socket file descriptor associated to the connection.
+However, instead of returning directly the value to the caller and thus blocking the caller, it wraps
+the value into a component called a <code>Promise</code>.</p>
+
+<p>A <code>Promise</code> is the Pistache’s implementation of the
+<a href="https://promisesaplus.com/">Promises/A+</a> standard available in many Javascript implementations. Simply put, during an
+asynchronous call, a <code>Promise</code> separates the launch of an asynchronous operation from the retrieval of its result.
+While the asynchronous might still be running, a <code>Promise&lt;T&gt;</code> is directly returned to the caller to retrieve the final
+result when it becomes available. A so called <code>continuation</code> can be attach to a Promise to execute a callback when
+the result becomes available (when the Promise has been resolved or fulfilled).</p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="k">auto</span> <span class="n">res</span> <span class="o">=</span> <span class="n">response</span><span class="p">.</span><span class="n">send</span><span class="p">(</span><span class="n">Http</span><span class="o">::</span><span class="n">Code</span><span class="o">::</span><span class="n">Ok</span><span class="p">,</span> <span class="s">&quot;Hello World&quot;</span><span class="p">);</span>
+<span class="n">res</span><span class="p">.</span><span class="n">then</span><span class="p">(</span>
+    <span class="p">[](</span><span class="kt">ssize_t</span> <span class="n">bytes</span><span class="p">)</span> <span class="p">{</span> <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">bytes</span> <span class="o">&lt;&lt;</span> <span class="s">&quot; bytes have been sent&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span> <span class="p">},</span>
+    <span class="n">Async</span><span class="o">::</span><span class="n">NoExcept</span>
+<span class="p">);</span></code></pre></figure>
+
+<p>The <code>then()</code> member is used to attach a callback to the Promise. The first argument is a <code>callable</code> that will be called
+when the Promise has been <strong>succesfully</strong> resolved. If, for some reason, an error occurs during the asynchronous operation,
+a Promise can be <strong>rejected</strong> and will then fail. In this case, the second callable will be called. <code>Async::NoExcept</code> is
+a special callback that will call <code>std::terminate()</code> if the promise failed. This is the equivalent of the <code>noexcept</code> keyword.</p>
+
+<p>Other generic callbacks can also be used in this case:</p>
+
+<ul>
+  <li><code>Async::IgnoreException</code> will simply ignore the exception and let the program continue</li>
+  <li><code>Async::Throw</code> will “rethrow” the exception up to an eventual promise call-chain. This has the same effect than the <code>throw</code>
+keyword, except that it is suitable for promises.</li>
+</ul>
+
+<p>Exceptions in promises callbacks are propagated through an <code>exception_ptr</code>.
+Promises can also be chained together to create a whole asynchronous pipeline:</p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="lineno">1</span> <span class="k">auto</span> <span class="n">fetchOp</span> <span class="o">=</span> <span class="n">fetchDatabase</span><span class="p">();</span>
+<span class="lineno">2</span> <span class="n">fetchOp</span>
+<span class="lineno">3</span>  <span class="p">.</span><span class="n">then</span><span class="p">(</span>
+<span class="lineno">4</span>     <span class="p">[](</span><span class="k">const</span> <span class="n">User</span><span class="o">&amp;</span> <span class="n">user</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="n">fetchUserInfo</span><span class="p">(</span><span class="n">user</span><span class="p">);</span> <span class="p">},</span>
+<span class="lineno">5</span>     <span class="n">Async</span><span class="o">::</span><span class="n">Throw</span><span class="p">)</span>
+<span class="lineno">6</span>  <span class="p">.</span><span class="n">then</span><span class="p">(</span>
+<span class="lineno">7</span>     <span class="p">[](</span><span class="k">const</span> <span class="n">UserInfo</span><span class="o">&amp;</span> <span class="n">info</span><span class="p">)</span> <span class="p">{</span> <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;User name = &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">info</span><span class="p">.</span><span class="n">name</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span> <span class="p">},</span>
+<span class="lineno">8</span>     <span class="p">[](</span><span class="n">exception_ptr</span> <span class="n">ptr</span><span class="p">)</span> <span class="p">{</span> <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;An exception occured during user retrieval&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="lineno">9</span> <span class="p">});</span></code></pre></figure>
+
+<p>Line 5 will propagate the exception if <code>fetchDatabase()</code> failed and rejected the promise.</p>
+
+<h1 id="headers">Headers</h1>
+
+<h2 id="overview">Overview</h2>
+
+<p>Inspired by the <a href="https://www.rust-lang.org/">Rust</a> eco-system and <a href="http://hyper.rs">Hyper</a>, HTTP headers are represented
+as <code>type-safe</code> plain objects. Instead of representing headers as a pair of <code>(key: string, value: value)</code>, the choice has
+been made to represent them as plain objects. This greatly reduces the risk of typo errors that can not catched by the
+compiler with plain old strings.</p>
+
+<p>Instead, objects give the compiler the ability to catch errors directly at compile-time,
+as the user can not add or request a header through its name: it has to use the whole <strong>type</strong>. Types being enforced
+at compile-time, it helps reducing common typo errors.</p>
+
+<p>With <code>Pistache</code>, each HTTP Header is a <code>class</code> that inherits from the <code>Http::Header</code> base class and use the <code>NAME()</code> macro
+to define the name of the header. List of all headers inside an HTTP request or response are stored inside an internal
+<code>std::unordered_map</code>, wrapped in an <code>Header::Collection</code> class. Invidual headers can be retrieved or added to this object
+through the whole type of the header:</p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="k">auto</span> <span class="n">headers</span> <span class="o">=</span> <span class="n">request</span><span class="p">.</span><span class="n">headers</span><span class="p">();</span>
+<span class="k">auto</span> <span class="n">ct</span> <span class="o">=</span> <span class="n">headers</span><span class="p">.</span><span class="n">get</span><span class="o">&lt;</span><span class="n">Http</span><span class="o">::</span><span class="n">Header</span><span class="o">::</span><span class="n">ContentType</span><span class="o">&gt;</span><span class="p">();</span></code></pre></figure>
+
+<p><code>get&lt;H&gt;</code> will return a <code>std::shared_ptr&lt;H&gt;</code> where <code>H: Header</code> (H inherits from Header). If the header does not exist, <code>get&lt;H&gt;</code>
+will throw an exception. <code>tryGet&lt;H&gt;</code> provides a non-throwing alternative that, instead, returns a null pointer.</p>
+
+<p>Note that common headers live in the <code>Http::Header</code> namespace.</p>
+
+<h2 id="defining-your-own-header">Defining your own header</h2>
+
+<p>Common headers defined by the HTTP RFC (<a href="https://pretty-rfc.herokuapp.com/RFC2616">RFC2616</a>) are already implemented and available.
+However, some APIs might define extra headers that do not exist in <code>Pistache</code>. To support your own header types, you can define
+and register your own HTTP Header by first declaring a class that inherits the <code>Http::Header</code> class:</p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="k">class</span> <span class="nc">XProtocolVersion</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Http</span><span class="o">::</span><span class="n">Header</span> <span class="p">{</span>
+<span class="p">};</span></code></pre></figure>
+
+<p>Since every header has a name, the <code>NAME()</code> macro must be used to name the header properly:</p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="k">class</span> <span class="nc">XProtocolVersion</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Http</span><span class="o">::</span><span class="n">Header</span> <span class="p">{</span>
+    <span class="n">NAME</span><span class="p">(</span><span class="s">&quot;X-Protocol-Version&quot;</span><span class="p">)</span>
+<span class="p">};</span></code></pre></figure>
+
+<p>The <code>Http::Header</code> base class provides two virtual methods that you must override in your own implementation:</p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"> <span class="kt">void</span> <span class="nf">parse</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">data</span><span class="p">);</span> </code></pre></figure>
+
+<p>This function is used to parse the header from the string representation. Alternatively, to avoid allocating memory for the string representation,
+a <em>raw</em> version can be used:</p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="kt">void</span> <span class="nf">parseRaw</span><span class="p">(</span><span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">str</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">len</span><span class="p">);</span></code></pre></figure>
+
+<p><code>str</code> will directly point to the header buffer from the raw http stream. The <code>len</code> parameter is the total length of the header’s value.</p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"> <span class="kt">void</span> <span class="n">write</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">ostream</span><span class="o">&amp;</span> <span class="n">stream</span><span class="p">)</span> <span class="k">const</span> </code></pre></figure>
+
+<p>When writing the response back to the client, the <code>write</code> function is used to serialize the header into the network buffer.</p>
+
+<p>Let’s combine these functions together to finalize the implementation of our previously declared header:</p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="k">class</span> <span class="nc">XProtocolVersion</span> <span class="o">:</span> <span class="k">public</span> <span class="n">Http</span><span class="o">::</span><span class="n">Header</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+
+    <span class="n">NAME</span><span class="p">(</span><span class="s">&quot;X-Protocol-Version&quot;</span><span class="p">)</span>
+
+    <span class="n">XProtocolVersion</span><span class="p">()</span>
+     <span class="o">:</span> <span class="n">minor</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+     <span class="p">,</span> <span class="n">major</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="p">{</span> <span class="p">}</span>
+
+    <span class="kt">void</span> <span class="n">parse</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">data</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">auto</span> <span class="n">pos</span> <span class="o">=</span> <span class="n">data</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="sc">&#39;.&#39;</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">pos</span> <span class="o">!=</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">::</span><span class="n">npos</span><span class="p">)</span> <span class="p">{</span>
+            <span class="n">minor</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">stoi</span><span class="p">(</span><span class="n">data</span><span class="p">.</span><span class="n">substr</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">pos</span><span class="p">));</span>
+            <span class="n">major</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">stoi</span><span class="p">(</span><span class="n">data</span><span class="p">.</span><span class="n">substr</span><span class="p">(</span><span class="n">pos</span> <span class="o">+</span> <span class="mi">1</span><span class="p">));</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="kt">void</span> <span class="n">write</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">ostream</span><span class="o">&amp;</span> <span class="n">os</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+        <span class="n">os</span> <span class="o">&lt;&lt;</span> <span class="n">minor</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;.&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">major</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="k">private</span><span class="o">:</span>
+    <span class="kt">int</span> <span class="n">minor</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">major</span><span class="p">;</span>
+<span class="p">};</span></code></pre></figure>
+
+<p>And that’s it. Now all we have to do is registering the header to the registry system:</p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="n">Header</span><span class="o">::</span><span class="n">Registry</span><span class="o">::</span><span class="n">registerHeader</span><span class="o">&lt;</span><span class="n">XProtocolVersion</span><span class="o">&gt;</span><span class="p">();</span></code></pre></figure>
+
+<p>Now, the <code>XProtocolVersion</code> can be retrieved and added like any other header in the <code>Header::Collection</code> class.</p>
+
+<h1 id="routing">Routing</h1>
+
+<p>HTTP routing consists of binding an HTTP route to a C++ callback. A special component called an HTTP router will
+be in charge of dispatching HTTP requests to the right C++ callback.
+A route is composed of an HTTP verb associated to a resource:</p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="n">GET</span> <span class="o">/</span><span class="n">users</span><span class="o">/</span><span class="mi">1</span></code></pre></figure>
+
+<p>Here, <code>GET</code> is the verb and <code>/users/1</code> is the associated resource.</p>
+
+<p>To define a route, you first have to instantiate an object of type <code>Http::Router</code>:</p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="n">Http</span><span class="o">::</span><span class="n">Router</span> <span class="n">router</span></code></pre></figure>
+
+<p>Then, you can start adding routes:</p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="n">Routes</span><span class="o">::</span><span class="n">Post</span><span class="p">(</span><span class="n">router</span><span class="p">,</span> <span class="s">&quot;/record/:name/:value?&quot;</span><span class="p">,</span> <span class="n">Routes</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">StatsEndpoint</span><span class="o">::</span><span class="n">doRecordMetric</span><span class="p">,</span> <span class="k">this</span><span class="p">));</span>
+<span class="n">Routes</span><span class="o">::</span><span class="n">Get</span><span class="p">(</span><span class="n">router</span><span class="p">,</span> <span class="s">&quot;/value/:name&quot;</span><span class="p">,</span> <span class="n">Routes</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">StatsEndpoint</span><span class="o">::</span><span class="n">doGetMetric</span><span class="p">,</span> <span class="k">this</span><span class="p">));</span>
+<span class="n">Routes</span><span class="o">::</span><span class="n">Get</span><span class="p">(</span><span class="n">router</span><span class="p">,</span> <span class="s">&quot;/ready&quot;</span><span class="p">,</span> <span class="n">Routes</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">Generic</span><span class="o">::</span><span class="n">handleReady</span><span class="p">));</span></code></pre></figure>
+
+<h1 id="rest-description">REST description</h1>
+
+<h2 id="swagger">Swagger</h2>
+
+<h1 id="io-model">I/O model</h1>
+
+<h1 id="api-reference">API Reference</h1>
+
+
+		</div>
+	</div>
+</div>
+        <footer class="main-footer">
+            <div class="wc-container">
+                <div class="column one">
+                    <h6>Few more links</h6>
+<ul class="menu">
+    <li><a href="http://pistache.io/about">About</a></li>
+    <li><a href="http://pistache.io/blog">Blog</a></li>
+    <li><a href="http://pistache.io/faq">Help / FAQ</a></li>    
+</ul>		                    
+                </div>
+                <div class="column two">
+                    <h6>Follow me</h6>
+
+<ul class="social-media">
+
+
+    
+
+    
+    <li>
+        <a title="oktal on Github" 
+            href="https://github.com/oktal" 
+            class="github wc-img-replace" target="_blank">Github</a>
+    </li>
+     
+
+    
+
+    
+
+    
+
+    
+
+</ul>
+                </div>
+            </div>
+            <p class="wc-container disclaimer">
+                
+Powered by <a href="http://jekyllrb.com" target="_blank">Jekyll</a>
+            </p>
+        </footer>
+        <script type="text/javascript">
+          /* To avoid render blocking css */
+          var cb = function() {
+            var l = document.createElement('link'); l.rel = 'stylesheet';
+            l.href = 'http://fonts.googleapis.com/css?family=Ubuntu+Mono&subset=latin';
+            var h = document.getElementsByTagName('head')[0]; h.parentNode.insertBefore(l, h);
+          };
+          var raf = requestAnimationFrame || mozRequestAnimationFrame ||
+              webkitRequestAnimationFrame || msRequestAnimationFrame;
+          if (raf) raf(cb);
+          else window.addEventListener('load', cb);
+        </script>
+        <!-- jQuery -->
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+        <!-- When no internet load JQuery from local -->
+        <script>window.jQuery || document.write('<script src="/assets/js/jquery.min.js"><\/script>')</script>
+        <!-- Site js -->
+        <script src="/assets/js/all.js"></script>
+        <!-- Google analytics  -->
+        
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-xxxx-x']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+    </body>        
+</html>
