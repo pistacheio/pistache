@@ -8,7 +8,7 @@
         <meta name="description" content="Pistache is a C++ REST framework focussed on high performance and clear API. Pistache is a free software written by Mathieu Stefani and available on Github - https://github.com/oktal/pistache
 ">
         <link rel="canonical" 
-        href="http://gayan.me/">
+        href="http://pistache.io/">
         
         <!-- Harmony styles -->
         <link rel="stylesheet" type="text/css" href="/assets/css/main.css">
@@ -54,6 +54,14 @@
             </li>
 	    
   	
+		
+            <li>
+                
+                  <a href="/guide/">User's Guide</a><span>/</span>
+                
+            </li>
+	    
+  	
 
 	
 	<li>
@@ -71,27 +79,27 @@
 	<div class="post">
 		<h1>Pistache</h1>
 		<div class="post">
-			<p><code>Pistache</code> is a C++ REST framework written by <a href="https://github.com/oktal">Mathieu Stefani</a> at <a href="http://datacratic.com">Datacratic</a>
-that provides an http and REST server, as well as an http client.</p>
+			<p><code>Pistache</code> is a C++ REST framework written by <a href="https://github.com/oktal">Mathieu Stefani</a> at <a href="http://datacratic.com">Datacratic</a>.
+It is written in pure C++11 with no external dependency and provides a low-level HTTP abstraction.</p>
 
-<p>Pistache provides a clear and asynchronous API, with no external dependency.</p>
+<p><code>Pistache</code> provides both an HTTP client and server that can be used to create and query complex web and REST APIs.</p>
 
-<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="cp">#include &quot;pistache/client.h&quot;</span>
+<h2 id="modern-api">Modern API</h2>
 
-<span class="k">using</span> <span class="k">namespace</span> <span class="n">Net</span><span class="o">::</span><span class="n">Http</span><span class="p">;</span>
+<p>Playing with Pistache and its API is <code>fun</code>, <code>clean</code>, <code>easy</code> and <code>fast</code></p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="k">struct</span> <span class="nl">HelloHandler</span> <span class="p">:</span> <span class="k">public</span> <span class="n">Http</span><span class="o">::</span><span class="n">Handler</span> <span class="p">{</span>
+    <span class="kt">void</span> <span class="n">onRequest</span><span class="p">(</span><span class="k">const</span> <span class="n">Http</span><span class="o">::</span><span class="n">Request</span><span class="o">&amp;</span> <span class="n">req</span><span class="p">,</span> <span class="n">Http</span><span class="o">::</span><span class="n">ResponseWriter</span> <span class="n">response</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">response</span><span class="p">.</span><span class="n">send</span><span class="p">(</span><span class="n">Http</span><span class="o">::</span><span class="n">Code</span><span class="o">::</span><span class="n">Ok</span><span class="p">,</span> <span class="s">&quot;Hello, World&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">};</span>
 
 <span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-    <span class="k">auto</span> <span class="n">options</span> <span class="o">=</span>
-        <span class="n">Client</span><span class="o">::</span><span class="n">options</span><span class="p">().</span><span class="n">threads</span><span class="p">(</span><span class="mi">1</span><span class="p">).</span><span class="n">maxConnections</span><span class="p">(</span><span class="mi">10</span><span class="p">);</span>
-
-    <span class="n">Client</span> <span class="n">client</span><span class="p">(</span><span class="s">&quot;http://my-api.com&quot;</span><span class="p">);</span>
-    <span class="k">auto</span> <span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">&quot;/ping&quot;</span><span class="p">).</span><span class="n">cookie</span><span class="p">(</span><span class="n">Cookie</span><span class="p">(</span><span class="s">&quot;USER&quot;</span><span class="p">,</span> <span class="s">&quot;me&quot;</span><span class="p">)).</span><span class="n">send</span><span class="p">();</span>
-    <span class="n">resp</span><span class="p">.</span><span class="n">then</span><span class="p">([](</span><span class="n">Response</span> <span class="n">response</span><span class="p">)</span> <span class="p">{</span>
-        <span class="c1">// Handle response</span>
-    <span class="p">},</span> <span class="n">Async</span><span class="o">::</span><span class="n">NoExcept</span><span class="p">);</span>
-    
-    <span class="n">std</span><span class="o">::</span><span class="n">this_thread</span><span class="o">::</span><span class="n">sleep_for</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">seconds</span><span class="p">(</span><span class="mi">1</span><span class="p">));</span>
+    <span class="n">Http</span><span class="o">::</span><span class="n">listenAndServe</span><span class="o">&lt;</span><span class="n">HelloHandler</span><span class="o">&gt;</span><span class="p">(</span><span class="s">&quot;*:9080&quot;</span><span class="p">);</span>
 <span class="p">}</span></code></pre></figure>
+
+<figure class="highlight"><pre><code class="language-bash" data-lang="bash">curl http://127.0.0.1:9080
+Hello, World</code></pre></figure>
 
 
 		</div>
@@ -102,9 +110,9 @@ that provides an http and REST server, as well as an http client.</p>
                 <div class="column one">
                     <h6>Few more links</h6>
 <ul class="menu">
-    <li><a href="http://gayan.me/about">About</a></li>
-    <li><a href="http://gayan.me/blog">Blog</a></li>
-    <li><a href="http://gayan.me/faq">Help / FAQ</a></li>    
+    <li><a href="http://pistache.io/about">About</a></li>
+    <li><a href="http://pistache.io/blog">Blog</a></li>
+    <li><a href="http://pistache.io/faq">Help / FAQ</a></li>    
 </ul>		                    
                 </div>
                 <div class="column two">
@@ -136,8 +144,6 @@ that provides an http and REST server, as well as an http client.</p>
             </div>
             <p class="wc-container disclaimer">
                 
-	Made by <a href="http://gayan.me" target="_blank">Gayan Virajith</a> For everyone.      
-
 Powered by <a href="http://jekyllrb.com" target="_blank">Jekyll</a>
             </p>
         </footer>
