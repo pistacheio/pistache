@@ -27,7 +27,7 @@
     <body class="theme-base-01">
         <header class="main-header">
             <div class="wc-container">
-                <h1><a href="/">Pistache</a></h1>
+                <img src="/assets/images/logo.png" width=200 height=200/><h1><a href="/">Pistache</a></h1>
                 <h2>An elegant C++ REST framework.</h2>
                 <ul>
     
@@ -90,6 +90,7 @@
   <li><a href="#headers" id="markdown-toc-headers">Headers</a>    <ul>
       <li><a href="#overview" id="markdown-toc-overview">Overview</a></li>
       <li><a href="#defining-your-own-header" id="markdown-toc-defining-your-own-header">Defining your own header</a></li>
+      <li><a href="#mime-types" id="markdown-toc-mime-types">MIME types</a></li>
     </ul>
   </li>
   <li><a href="#routing" id="markdown-toc-routing">Routing</a></li>
@@ -311,6 +312,8 @@ a <em>raw</em> version can be used:</p>
 <figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="n">Header</span><span class="o">::</span><span class="n">Registry</span><span class="o">::</span><span class="n">registerHeader</span><span class="o">&lt;</span><span class="n">XProtocolVersion</span><span class="o">&gt;</span><span class="p">();</span></code></pre></figure>
 
 <p>Now, the <code>XProtocolVersion</code> can be retrieved and added like any other header in the <code>Header::Collection</code> class.</p>
+
+<h2 id="mime-types">MIME types</h2>
 
 <h1 id="routing">Routing</h1>
 
