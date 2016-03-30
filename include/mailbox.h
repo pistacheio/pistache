@@ -193,7 +193,7 @@ public:
         prev->next = entry;
     }
 
-    Entry* pop() {
+    virtual Entry* pop() {
         auto *res = tail;
         auto *next = res->next.load(std::memory_order_acquire);
         if (next) {
