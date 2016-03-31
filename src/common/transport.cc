@@ -164,13 +164,13 @@ Transport::handlePeerDisconnection(const std::shared_ptr<Peer>& peer) {
 
 void
 Transport::asyncWriteImpl(Fd fd, Transport::WriteEntry& entry, WriteStatus status) {
-    asyncWriteImpl(fd, entry.flags, entry.buffer, std::move(entry.resolve), std::move(entry.reject), status);
+    asyncWriteImpl(fd, entry.flags, entry.buffer, std::move(entry.deferred), status);
 }
 
 void
 Transport::asyncWriteImpl(
         Fd fd, int flags, const BufferHolder& buffer,
-        Async::Resolver resolve, Async::Rejection reject, WriteStatus status)
+        Async::Deferred<ssize_t> deferred, WriteStatus status)
 {
     auto cleanUp = [&]() {
         if (buffer.isRaw()) {
@@ -200,13 +200,13 @@ Transport::asyncWriteImpl(
                 if (status == FirstTry) {
                     toWrite.insert(
                             std::make_pair(fd,
-                                WriteEntry(std::move(resolve), std::move(reject), buffer.detach(totalWritten), flags)));
+                                WriteEntry(std::move(deferred), buffer.detach(totalWritten), flags)));
                 }
                 io()->modifyFd(fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
             }
             else {
                 cleanUp();
-                reject(Net::Error::system("Could not write data"));
+                deferred.reject(Net::Error::system("Could not write data"));
             }
             break;
         }
@@ -214,7 +214,7 @@ Transport::asyncWriteImpl(
             totalWritten += bytesWritten;
             if (totalWritten == len) {
                 cleanUp();
-                resolve(totalWritten);
+                deferred.resolve(totalWritten);
                 break;
             }
         }
@@ -224,9 +224,10 @@ Transport::asyncWriteImpl(
 void
 Transport::armTimerMs(
         Fd fd, std::chrono::milliseconds value,
-        Async::Resolver resolve, Async::Rejection reject) {
+        Async::Deferred<uint64_t> deferred) {
     const bool isInRightThread = std::this_thread::get_id() == io()->thread();
-    TimerEntry entry(fd, value, std::move(resolve), std::move(reject));
+    TimerEntry entry(fd, value, std::move(deferred));
+
     if (!isInRightThread) {
         auto *e = timersQueue.allocEntry(std::move(entry));
         timersQueue.push(e);
@@ -240,7 +241,7 @@ Transport::armTimerMsImpl(TimerEntry entry) {
 
     auto it = timers.find(entry.fd);
     if (it != std::end(timers)) {
-        entry.reject(std::runtime_error("Timer is already armed"));
+        entry.deferred.reject(std::runtime_error("Timer is already armed"));
         return;
     }
 
@@ -260,7 +261,7 @@ Transport::armTimerMsImpl(TimerEntry entry) {
 
     int res = timerfd_settime(entry.fd, 0, &spec, 0);
     if (res == -1) {
-        entry.reject(Net::Error::system("Could not set timer time"));
+        entry.deferred.reject(Net::Error::system("Could not set timer time"));
         return;
     }
 
@@ -315,19 +316,16 @@ Transport::handlePeer(const std::shared_ptr<Peer>& peer) {
 
 void
 Transport::handleNotify() {
-    optionally_do(loadRequest_, [&](const Async::Holder& async) {
-        while (this->notifier.tryRead()) ;
+    while (this->notifier.tryRead()) ;
 
-        rusage now;
+    rusage now;
 
-        auto res = getrusage(RUSAGE_THREAD, &now);
-        if (res == -1)
-            async.reject(std::runtime_error("Could not compute usage"));
+    auto res = getrusage(RUSAGE_THREAD, &now);
+    if (res == -1)
+        loadRequest_.reject(std::runtime_error("Could not compute usage"));
 
-        async.resolve(now);
-    });
-
-    loadRequest_ = None();
+    loadRequest_.resolve(now);
+    loadRequest_.clear();
 }
 
 void
@@ -339,14 +337,14 @@ Transport::handleTimer(TimerEntry entry) {
             if (errno == EAGAIN || errno == EWOULDBLOCK)
                 return;
             else
-                entry.reject(Net::Error::system("Could not read timerfd"));
+                entry.deferred.reject(Net::Error::system("Could not read timerfd"));
         } else {
             if (res != sizeof(numWakeups)) {
-                entry.reject(Net::Error("Read invalid number of bytes for timer fd: "
+                entry.deferred.reject(Net::Error("Read invalid number of bytes for timer fd: "
                             + std::to_string(entry.fd)));
             }
             else {
-                entry.resolve(numWakeups);
+                entry.deferred.resolve(numWakeups);
             }
         }
     }

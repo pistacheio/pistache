@@ -541,6 +541,8 @@ namespace Async {
 
         template<typename Arg>
         bool operator()(Arg&& arg) const {
+            if (!core_) return false;
+
             typedef typename std::remove_reference<Arg>::type Type;
 
             if (core_->state != State::Pending)
@@ -565,6 +567,8 @@ namespace Async {
         }
 
         bool operator()() const {
+            if (!core_) return false;
+
             if (core_->state != State::Pending)
                 throw Error("Attempt to resolve a fulfilled promise");
 
@@ -580,6 +584,10 @@ namespace Async {
             return true;
         }
 
+        void clear() {
+            core_ = nullptr;
+        }
+
     private:
         std::shared_ptr<Private::Core> core_;
     };
@@ -593,6 +601,8 @@ namespace Async {
 
         template<typename Exc>
         bool operator()(Exc exc) const {
+            if (!core_) return false;
+
             if (core_->state != State::Pending)
                 throw Error("Attempt to reject a fulfilled promise");
 
@@ -606,28 +616,90 @@ namespace Async {
             return true;
         }
 
+        void clear() {
+            core_ = nullptr;
+        }
+
     private:
         std::shared_ptr<Private::Core> core_;
 
     };
 
-    struct Holder {
-        Holder(Resolver resolver, Rejection rejection)
-            : resolver(std::move(resolver))
-            , rejection(std::move(rejection))
+    template<typename T>
+    class Deferred {
+    public:
+
+        Deferred()
+            : resolver(nullptr)
+            , rejection(nullptr)
         { }
 
-        template<typename Arg>
-        void resolve(Arg&& arg) const {
-            resolver(std::forward<Arg>(arg));
+        Deferred(const Deferred& other) = delete;
+        Deferred& operator=(const Deferred& other) = delete;
+
+        Deferred(Deferred&& other) = default;
+        Deferred& operator=(Deferred&& other) = default;
+
+        Deferred(Resolver resolver, Rejection reject)
+            : resolver(std::move(resolver))
+            , rejection(std::move(reject))
+        { }
+
+        template<typename U>
+        bool resolve(U&& arg) {
+            typedef typename std::remove_reference<U>::type CleanU;
+
+            static_assert(std::is_same<T, CleanU>::value || std::is_convertible<U, T>::value,
+                    "Types mismatch");
+
+            return resolver(std::forward<U>(arg));
         }
 
-        void resolve() const {
+        template<typename... Args>
+        void emplaceResolve(Args&& ...args) {
+        }
+
+        template<typename Exc>
+        bool reject(Exc exc) {
+            return rejection(std::move(exc));
+        }
+
+        void clear() {
+            resolver.clear();
+            rejection.clear();
+        }
+
+    private:
+        Resolver resolver;
+        Rejection rejection;
+    };
+
+    template<>
+    class Deferred<void> {
+    public:
+
+        Deferred()
+            : resolver(nullptr)
+            , rejection(nullptr)
+        { }
+
+        Deferred(const Deferred& other) = delete;
+        Deferred& operator=(const Deferred& other) = delete;
+
+        Deferred(Deferred&& other) = default;
+        Deferred& operator=(Deferred&& other) = default;
+
+        Deferred(Resolver resolver, Rejection reject)
+            : resolver(std::move(resolver))
+            , rejection(std::move(reject))
+        { }
+
+        void resolve() {
             resolver();
         }
 
         template<typename Exc>
-        void reject(Exc exc) const {
+        void reject(Exc exc) {
             rejection(std::move(exc));
         }
 
@@ -636,10 +708,23 @@ namespace Async {
         Rejection rejection;
     };
 
-
     static constexpr Private::IgnoreException IgnoreException{};
     static constexpr Private::NoExcept NoExcept{};
     static constexpr Private::Throw Throw{};
+
+    namespace details {
+        template<typename T, typename Func>
+        typename std::result_of<Func(Resolver&, Rejection&)>::type
+        callAsync(Func func, Resolver& resolver, Rejection& rejection) {
+            func(resolver, rejection);
+        }
+
+        template<typename T, typename Func>
+        typename std::result_of<Func(Deferred<T>)>::type
+        callAsync(Func func, Resolver& resolver, Rejection& rejection) {
+            func(Deferred<T>(std::move(resolver), std::move(rejection)));
+        }
+   };
 
     template<typename T>
     class Promise : public PromiseBase
@@ -647,16 +732,16 @@ namespace Async {
     public:
         template<typename U> friend class Promise;
 
-        typedef std::function<void (Resolver&, Rejection&)> ResolveFunc;
         typedef Private::CoreT<T> Core;
 
-
-        Promise(ResolveFunc func)
+        template<typename Func>
+        Promise(Func func)
             : core_(std::make_shared<Core>())
             , resolver_(core_)
             , rejection_(core_)
         { 
-            func(resolver_, rejection_);
+            //func(resolver_, rejection_);
+            details::callAsync<T>(func, resolver_, rejection_);
         }
 
         Promise(const Promise<T>& other) = delete;

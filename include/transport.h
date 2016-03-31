@@ -36,10 +36,10 @@ public:
         // it in our own thread so that we make sure that every I/O operation happens in the right thread
         const bool isInRightThread = std::this_thread::get_id() == io()->thread();
         if (!isInRightThread) {
-            return Async::Promise<ssize_t>([=](Async::Resolver& resolve, Async::Rejection& reject) {
+            return Async::Promise<ssize_t>([=](Async::Deferred<ssize_t> deferred) {
                 BufferHolder holder(buffer);
                 auto detached = holder.detach();
-                WriteEntry write(std::move(resolve), std::move(reject), detached, flags);
+                WriteEntry write(std::move(deferred), detached, flags);
                 write.peerFd = fd;
                 auto *e = writesQueue.allocEntry(std::move(write));
                 writesQueue.push(e);
@@ -53,24 +53,24 @@ public:
                 return;
             }
 
-            asyncWriteImpl(fd, flags, BufferHolder(buffer), std::move(resolve), std::move(reject));
+            asyncWriteImpl(fd, flags, BufferHolder(buffer), Async::Deferred<ssize_t>(std::move(resolve), std::move(reject)));
 
         });
     }
 
     Async::Promise<rusage> load() {
-        return Async::Promise<rusage>([=](Async::Resolver& resolve, Async::Rejection& reject) {
-            loadRequest_ = Some(Async::Holder(std::move(resolve), std::move(reject)));
+        return Async::Promise<rusage>([=](Async::Deferred<rusage> deferred) {
+            loadRequest_ = std::move(deferred);
             notifier.notify();
         });
     }
 
 
     template<typename Duration>
-    void armTimer(Fd fd, Duration timeout, Async::Resolver resolve, Async::Rejection reject) {
+    void armTimer(Fd fd, Duration timeout, Async::Deferred<uint64_t> deferred) {
         armTimerMs(
                 fd, std::chrono::duration_cast<std::chrono::milliseconds>(timeout),
-                std::move(resolve), std::move(reject));
+                std::move(deferred));
 
     }
 
@@ -150,17 +150,15 @@ private:
     };
 
     struct WriteEntry {
-        WriteEntry(Async::Resolver resolve, Async::Rejection reject,
+        WriteEntry(Async::Deferred<ssize_t> deferred,
                     BufferHolder buffer, int flags = 0)
-            : resolve(std::move(resolve))
-            , reject(std::move(reject))
+            : deferred(std::move(deferred))
             , buffer(std::move(buffer))
             , flags(flags)
             , peerFd(-1)
         { }
 
-        Async::Resolver resolve;
-        Async::Rejection reject;
+        Async::Deferred<ssize_t> deferred;
         BufferHolder buffer;
         int flags;
         Fd peerFd;
@@ -168,12 +166,10 @@ private:
 
     struct TimerEntry {
         TimerEntry(Fd fd, std::chrono::milliseconds value,
-                Async::Resolver resolve,
-                Async::Rejection reject)
+                Async::Deferred<uint64_t> deferred)
           : fd(fd)
           , value(value)
-          , resolve(std::move(resolve))
-          , reject(std::move(reject))
+          , deferred(std::move(deferred))
         {
             active.store(true, std::memory_order_relaxed);
         }
@@ -181,8 +177,7 @@ private:
         TimerEntry(TimerEntry&& other)
             : fd(other.fd)
             , value(other.value)
-            , resolve(std::move(other.resolve))
-            , reject(std::move(other.reject))
+            , deferred(std::move(other.deferred))
             , active(other.active.load())
         { }
 
@@ -196,8 +191,7 @@ private:
 
         Fd fd;
         std::chrono::milliseconds value;
-        Async::Resolver resolve;
-        Async::Rejection reject;
+        Async::Deferred<uint64_t> deferred;
         std::atomic<bool> active;
     };
 
@@ -223,7 +217,7 @@ private:
     PollableQueue<PeerEntry> peersQueue;
     std::unordered_map<Fd, std::shared_ptr<Peer>> peers;
 
-    Optional<Async::Holder> loadRequest_;
+    Async::Deferred<rusage> loadRequest_;
     NotifyFd notifier;
 
     std::shared_ptr<Tcp::Handler> handler_;
@@ -239,14 +233,14 @@ private:
     void
     armTimerMs(Fd fd,
               std::chrono::milliseconds value,
-              Async::Resolver resolver, Async::Rejection reject);
+              Async::Deferred<uint64_t> deferred);
 
     void armTimerMsImpl(TimerEntry entry);
 
     void asyncWriteImpl(Fd fd, WriteEntry& entry, WriteStatus status = FirstTry);
     void asyncWriteImpl(
             Fd fd, int flags, const BufferHolder& buffer,
-            Async::Resolver resolve, Async::Rejection reject,
+            Async::Deferred<ssize_t> deferred,
             WriteStatus status = FirstTry);
 
     void handlePeerDisconnection(const std::shared_ptr<Peer>& peer);

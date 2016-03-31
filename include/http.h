@@ -203,9 +203,9 @@ public:
 
     template<typename Duration>
     void arm(Duration duration) {
-        Async::Promise<uint64_t> p([=](Async::Resolver& resolve, Async::Rejection& reject) {
+        Async::Promise<uint64_t> p([=](Async::Deferred<uint64_t> deferred) {
             timerFd = TRY_RET(timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK));
-            transport->armTimer(timerFd, duration, std::move(resolve), std::move(reject));
+            transport->armTimer(timerFd, duration, std::move(deferred));
         });
 
         p.then(
