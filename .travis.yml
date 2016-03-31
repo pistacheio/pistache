@@ -1,5 +1,5 @@
 language: cpp
-script: cmake
+script: mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make
 compiler:
     - clang
     - gcc
