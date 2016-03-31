@@ -1,0 +1,9 @@
+language: cpp
+script: cmake
+compiler:
+    - clang
+    - gcc
+branches:
+    only:
+        - master
+
