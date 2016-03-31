@@ -585,10 +585,10 @@ ResponseStream::ResponseStream(
          * Correctly handle non-keep alive requests
          * Do not put Keep-Alive if version == Http::11 and request.keepAlive == true
         */
-        if (!writeHeader<Header::Connection>(os, ConnectionControl::KeepAlive));
-            throw Error("Response exceeded buffer size");
-        if (!writeHeader<Header::TransferEncoding>(os, Header::Encoding::Chunked))
-            throw Error("Response exceeded buffer size");
+        writeHeader<Header::Connection>(os, ConnectionControl::KeepAlive);
+        if (!os) throw Error("Response exceeded buffer size");
+        writeHeader<Header::TransferEncoding>(os, Header::Encoding::Chunked);
+        if (!os) throw Error("Response exceeded buffer size");
         os << crlf;
     }
 }
