@@ -97,6 +97,7 @@
       <li><a href="#sending-a-response" id="markdown-toc-sending-a-response">Sending a response</a></li>
       <li><a href="#response-streaming" id="markdown-toc-response-streaming">Response streaming</a></li>
       <li><a href="#static-file-serving" id="markdown-toc-static-file-serving">Static file serving</a></li>
+      <li><a href="#controlling-timeout" id="markdown-toc-controlling-timeout">Controlling timeout</a></li>
     </ul>
   </li>
   <li><a href="#asynchronous-http-programming" id="markdown-toc-asynchronous-http-programming">Asynchronous HTTP programming</a></li>
@@ -124,7 +125,6 @@
       <li><a href="#swagger" id="markdown-toc-swagger">Swagger</a></li>
     </ul>
   </li>
-  <li><a href="#io-model" id="markdown-toc-io-model">I/O model</a></li>
   <li><a href="#api-reference" id="markdown-toc-api-reference">API Reference</a></li>
 </ul>
 
@@ -252,6 +252,36 @@ After starting a stream, headers become immutable. They must be written to the r
            <h4>Return value </h4>
            <p>
 serveFile also returns a Promise representing the total number of bytes being sent to the wire
+</p>
+       </div>
+
+<h2 id="controlling-timeout">Controlling timeout</h2>
+
+<p>Sometimes, you might require to timeout after a certain amount of time. For example, if you are designing an HTTP API
+with soft real-time constraints, you will have a time constraint to send a response back to the client.
+That is why Pistache provides the ability to control the timeout on a per-request basis. To arm a timeout on a response,
+you can use the <code>timeoufterAfter()</code> member function directly on the <code>ResponseWriter</code> object:</p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="n">response</span><span class="p">.</span><span class="n">timeoutAfter</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">500</span><span class="p">));</span></code></pre></figure>
+
+<p>This will trigger a timeout if a response has not been sent within 500 milliseconds. <code>timeoutAfter</code> accepts any kind
+of duration.</p>
+
+<p>When a timeout triggers, the <code>onTimeout()</code> function from your handler will be called. By default, this method does nothing. If you
+want to handle your timeout properly, you should then override this function inside your own handler:</p>
+
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="kt">void</span> <span class="nf">onTimeout</span><span class="p">(</span><span class="k">const</span> <span class="n">Http</span><span class="o">::</span><span class="n">Request</span><span class="o">&amp;</span> <span class="n">request</span><span class="p">,</span> <span class="n">Http</span><span class="o">::</span><span class="n">ResponseWriter</span> <span class="n">writer</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">request</span><span class="p">.</span><span class="n">send</span><span class="p">(</span><span class="n">Http</span><span class="o">::</span><span class="n">Code</span><span class="o">::</span><span class="n">No_Content</span><span class="p">);</span>
+<span class="p">}</span></code></pre></figure>
+
+<p>The <code>Request</code> object that is passed to the onTimeout is the exact same request that triggered the timeout. The <code>ResponseWriter</code> is a
+complete new writer object.</p>
+
+<div class="note note-info" role="note">
+           <h4>ResponseWriter state </h4>
+           <p>
+Since the ResponseWriter object is a complete new object, state is not preserved with the ResponseWriter from the onRequest() callback,
+which means that you will have to write the complete response again, including headers and cookies.
 </p>
        </div>
 
@@ -399,6 +429,13 @@ a <em>raw</em> version can be used:</p>
 <p>And that’s it. Now all we have to do is registering the header to the registry system:</p>
 
 <figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="n">Header</span><span class="o">::</span><span class="n">Registry</span><span class="o">::</span><span class="n">registerHeader</span><span class="o">&lt;</span><span class="n">XProtocolVersion</span><span class="o">&gt;</span><span class="p">();</span></code></pre></figure>
+
+<div class="note note-info" role="note">
+           <h4>Header's instantation </h4>
+           <p>
+You should always provide a default constructor for your header so that it can be instantiated by the registry system
+</p>
+       </div>
 
 <p>Now, the <code>XProtocolVersion</code> can be retrieved and added like any other header in the <code>Header::Collection</code> class.</p>
 
@@ -564,8 +601,6 @@ just call the <code>handler()</code> member function on the router object:</p>
 <a href="https://github.com/oktal/pistache/blob/master/examples/rest_description.cc">rest_description</a> example</p>
 
 <h2 id="swagger">Swagger</h2>
-
-<h1 id="io-model">I/O model</h1>
 
 <h1 id="api-reference">API Reference</h1>
 
