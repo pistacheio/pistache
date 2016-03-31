@@ -97,7 +97,7 @@ class MyHandler : public Net::Http::Handler {
                     std::cout << "Using chunked encoding" << std::endl;
 
                     response.headers()
-                        .add<Header::Server>("lys")
+                        .add<Header::Server>("pistache/0.1")
                         .add<Header::ContentType>(MIME(Text, Plain));
 
                     response.cookies()
@@ -117,6 +117,8 @@ class MyHandler : public Net::Http::Handler {
         else if (req.resource() == "/echo") {
             if (req.method() == Net::Http::Method::Post) {
                 response.send(Net::Http::Code::Ok, req.body(), MIME(Text, Plain));
+            } else {
+                response.send(Net::Http::Code::Method_Not_Allowed);
             }
         }
         else if (req.resource() == "/exception") {
@@ -125,20 +127,14 @@ class MyHandler : public Net::Http::Handler {
         else if (req.resource() == "/timeout") {
             response.timeoutAfter(std::chrono::seconds(2));
         }
-#if 0
-        else if (req.resource() == "/async") {
-            std::thread([](Net::Http::Response response) {
-                std::this_thread::sleep_for(std::chrono::seconds(1));
-                response.send(Net::Http::Code::Ok, "Async response");
-            }, std::move(response)).detach();
-        }
-#endif
         else if (req.resource() == "/static") {
             if (req.method() == Net::Http::Method::Get) {
                 Net::Http::serveFile(response, "README.md").then([](ssize_t bytes) {;
                     std::cout << "Sent " << bytes << " bytes" << std::endl;
                 }, Async::NoExcept);
             }
+        } else {
+            response.send(Http::Code::Not_Found);
         }
 
     }
