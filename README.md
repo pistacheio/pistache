@@ -24,6 +24,6 @@ struct HelloHandler : public Http::Handler {
 };
 
 int main() {
-    Http::listenAndServer<HelloHandler>("*:9080");
+    Http::listenAndServe<HelloHandler>("*:9080");
 }
 ```
