@@ -1,4 +1,6 @@
 language: cpp
+sudo: required
+dist: trusty
 script: mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make
 compiler:
     - clang
