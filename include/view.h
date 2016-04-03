@@ -129,6 +129,10 @@ struct View<std::string> : public ViewBase<char> {
 
     typedef ViewBase<char> Base;
 
+    explicit View(std::nullptr_t)
+        : Base(nullptr)
+    { }
+
     explicit View(const char* begin, size_t end)
         : Base(begin, end)
     { }

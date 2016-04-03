@@ -12,19 +12,14 @@ using namespace Net;
 using namespace Net::Http;
 
 int main(int argc, char *argv[]) {
-    if (argc < 2) {
-        std::cerr << "Usage: http_client host [page]" << std::endl;
+    if (argc < 1) {
+        std::cerr << "Usage: http_client page" << std::endl;
         return 1;
     }
 
-    std::string host = argv[1];
-    std::string page;
-    if (argc == 3)
-       page = argv[2];
-    else
-        page = "/";
+    std::string page = argv[1];
 
-    Experimental::Client client(host);
+    Experimental::Client client;
 
     auto opts = Http::Experimental::Client::options()
         .threads(1)

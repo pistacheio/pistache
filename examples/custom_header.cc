@@ -61,23 +61,4 @@ private:
 
 int main() {
     Header::Registry::registerHeader<XProtocolVersion>();
-
-    Experimental::Client client("http://supnetwork.org:9080");
-    
-    auto ops = Experimental::Client::options()
-        .threads(1)
-        .maxConnections(64);
-    client.init(ops);
-    auto resp = client.get("/ping").header<XProtocolVersion>(1, 0).send();
-
-    resp.then([](Response response) {
-        std::cout << "Response code = " << response.code() << std::endl;
-        auto body = response.body();
-        if (!body.empty())
-            std::cout << "Response body = " << body << std::endl;
-    }, Async::NoExcept);
-
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-
-    client.shutdown();
 }

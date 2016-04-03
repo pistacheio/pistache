@@ -10,6 +10,7 @@
 #include "http.h"
 #include "io.h"
 #include "timer_pool.h"
+#include "view.h"
 #include <atomic>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -23,6 +24,8 @@ namespace Experimental {
 
 class ConnectionPool;
 class Transport;
+
+std::pair<StringView, StringView> splitUrl(const std::string& url);
 
 struct Connection : public std::enable_shared_from_this<Connection> {
 
@@ -44,13 +47,11 @@ struct Connection : public std::enable_shared_from_this<Connection> {
         RequestData(
                 Async::Resolver resolve, Async::Rejection reject,
                 const Http::Request& request,
-                std::string host,
                 std::chrono::milliseconds timeout,
                 OnDone onDone)
             : resolve(std::move(resolve))
             , reject(std::move(reject))
             , request(request)
-            , host(std::move(host))
             , timeout(timeout)  
             , onDone(std::move(onDone))
         { }
@@ -58,7 +59,6 @@ struct Connection : public std::enable_shared_from_this<Connection> {
         Async::Rejection reject;
 
         Http::Request request;
-        std::string host;
         std::chrono::milliseconds timeout;
         OnDone onDone;
     };
@@ -76,19 +76,18 @@ struct Connection : public std::enable_shared_from_this<Connection> {
 
     void connect(Net::Address addr);
     void close();
+    bool isIdle() const;
     bool isConnected() const;
     bool hasTransport() const;
     void associateTransport(const std::shared_ptr<Transport>& transport);
 
     Async::Promise<Response> perform(
             const Http::Request& request,
-            std::string host,
             std::chrono::milliseconds timeout,
             OnDone onDone);
 
     void performImpl(
             const Http::Request& request,
-            std::string host,
             std::chrono::milliseconds timeout,
             Async::Resolver resolve,
             Async::Rejection reject,
@@ -138,16 +137,23 @@ private:
 };
 
 struct ConnectionPool {
-    void init(size_t max = 1);
-
-    std::shared_ptr<Connection> pickConnection();
+    std::shared_ptr<Connection> pickConnection(const std::string& domain);
     void releaseConnection(const std::shared_ptr<Connection>& connection);
 
-    size_t availableCount() const;
+    size_t usedConnections(const std::string& domain) const;
+    size_t idleConnections(const std::string& domain) const;
+
+    size_t availableConnections(const std::string& domain) const;
+
+    void closeIdleConnections(const std::string& domain);
 
 private:
-    std::atomic<uint32_t> usedCount;
-    std::vector<std::shared_ptr<Connection>> connections;
+    typedef std::vector<std::shared_ptr<Connection>> Connections;
+    typedef std::mutex Lock;
+    typedef std::lock_guard<Lock> Guard;
+
+    mutable Lock connsLock;
+    std::unordered_map<std::string, Connections> conns;
 };
 
 class Transport : public Io::Handler {
@@ -298,13 +304,16 @@ public:
        Options& threads(int val);
        Options& maxConnections(int val);
        Options& keepAlive(bool val);
+       Options& maxConnectionsPerHost(int val);
+
    private:
        int threads_;
        int maxConnections_;
+       int maxConnectionsPerHost_;
        bool keepAlive_;
    };
 
-   Client(const std::string &base);
+   Client();
 
    static Options options();
    void init(const Options& options);
@@ -319,9 +328,6 @@ public:
 private:
 
    Io::ServiceGroup io_;
-   std::string url_;
-   std::string host_;
-   Net::Address addr_;
 
    ConnectionPool pool;
    std::shared_ptr<Transport> transport_;
