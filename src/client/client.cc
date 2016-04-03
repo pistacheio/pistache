@@ -6,6 +6,7 @@
 
 #include "client.h"
 #include "stream.h"
+#include <algorithm>
 #include <sys/sendfile.h>
 #include <netdb.h>
 
@@ -15,9 +16,41 @@ namespace Net {
 
 namespace Http {
 
+namespace {
+    Net::Address httpAddr(const StringView& view) {
+        auto str = view.toString();
+        auto pos = str.find(':');
+        if (pos == std::string::npos) {
+            return Net::Address(std::move(str), 80);
+        }
+
+        auto host = str.substr(0, pos);
+        auto port = std::stoi(str.substr(pos + 1));
+        return Net::Address(std::move(host), port);
+    }
+}
+
 namespace Experimental {
 
 static constexpr const char* UA = "pistache/0.1";
+
+std::pair<StringView, StringView>
+splitUrl(const std::string& url) {
+    RawStreamBuf<char> buf(const_cast<char *>(&url[0]), url.size());
+    StreamCursor cursor(&buf);
+
+    match_string("http://", std::strlen("http://"), cursor);
+    match_string("www", std::strlen("www"), cursor);
+    match_literal('.', cursor);
+
+    StreamCursor::Token hostToken(cursor);
+    match_until('/', cursor);
+
+    StringView host(hostToken.rawText(), hostToken.size());
+    StringView page(cursor.offset(), buf.endptr());
+
+    return std::make_pair(std::move(host), std::move(page));
+}
 
 struct ExceptionPrinter {
     void operator()(std::exception_ptr exc) {
@@ -73,18 +106,24 @@ namespace {
 
     }
 
-    bool writeRequest(const Http::Request& request, std::string host, DynamicStreamBuf &buf) {
+    bool writeRequest(const Http::Request& request, DynamicStreamBuf &buf) {
         std::ostream os(&buf);
 
+        auto res = request.resource();
+        auto s = splitUrl(res);
+
+        auto host = s.first;
+        auto path = s.second;
+
         OUT(os << request.method() << " ");
-        OUT(os << request.resource());
+        OUT(os << path.toString());
         OUT(os << " HTTP/1.1" << crlf);
 
         if (!writeCookies(request.cookies(), buf)) return false;
         if (!writeHeaders(request.headers(), buf)) return false;
 
         if (!writeHeader<Header::UserAgent>(os, UA)) return false;
-        if (!writeHeader<Header::Host>(os, std::move(host))) return false;
+        if (!writeHeader<Header::Host>(os, host.toString())) return false;
         OUT(os << crlf);
 
         return true;
@@ -369,6 +408,11 @@ Connection::dump() const {
 }
 
 bool
+Connection::isIdle() const {
+    return static_cast<Connection::State>(state_.load()) == Connection::State::Idle;
+}
+
+bool
 Connection::isConnected() const {
     return connectionState_ == Connected;
 }
@@ -424,7 +468,6 @@ Connection::handleTimeout() {
 Async::Promise<Response>
 Connection::perform(
         const Http::Request& request,
-        std::string host,
         std::chrono::milliseconds timeout,
         Connection::OnDone onDone) {
     return Async::Promise<Response>([=](Async::Resolver& resolve, Async::Rejection& reject) {
@@ -434,12 +477,11 @@ Connection::perform(
                     std::move(resolve),
                     std::move(reject),
                     request,
-                    std::move(host),
                     timeout,
                     std::move(onDone)));
             requestsQueue.push(entry);
         } else {
-            performImpl(request, std::move(host), timeout, std::move(resolve), std::move(reject), std::move(onDone));
+            performImpl(request, timeout, std::move(resolve), std::move(reject), std::move(onDone));
         }
     });
 }
@@ -483,7 +525,6 @@ MoveOnCopy<T> make_copy_mover(T arg) {
 void
 Connection::performImpl(
         const Http::Request& request,
-        std::string host,
         std::chrono::milliseconds timeout,
         Async::Resolver resolve,
         Async::Rejection reject,
@@ -491,7 +532,7 @@ Connection::performImpl(
 
     DynamicStreamBuf buf(128);
 
-    if (!writeRequest(request, std::move(host), buf))
+    if (!writeRequest(request, buf))
         reject(std::runtime_error("Could not write request"));
 
     auto buffer = buf.buffer();
@@ -534,30 +575,36 @@ Connection::processRequestQueue() {
         if (!entry) break;
 
         auto &req = entry->data();
-        performImpl(req.request,
-                std::move(req.host), req.timeout, std::move(req.resolve), std::move(req.reject), std::move(req.onDone));
+        performImpl(
+                req.request,
+                req.timeout, std::move(req.resolve), std::move(req.reject), std::move(req.onDone));
     }
 
-}
-
-void
-ConnectionPool::init(size_t max)
-{
-    for (size_t i = 0; i < max; ++i) {
-        connections.push_back(std::make_shared<Connection>());
-    }
-
-    usedCount.store(0);
 }
 
 std::shared_ptr<Connection>
-ConnectionPool::pickConnection() {
-    for (auto& conn: connections) {
+ConnectionPool::pickConnection(const std::string& domain) {
+    Connections pool;
+
+    {
+        Guard guard(connsLock);
+        auto poolIt = conns.find(domain);
+        if (poolIt == std::end(conns)) {
+            Connections connections;
+            for (size_t i = 0; i < 128; ++i) {
+                connections.push_back(std::make_shared<Connection>());
+            }
+
+            poolIt = conns.insert(std::make_pair(domain, std::move(connections))).first;
+        }
+        pool = poolIt->second;
+    }
+
+    for (auto& conn: pool) {
         auto& state = conn->state_;
         auto curState = static_cast<uint32_t>(Connection::State::Idle);
         auto newState = static_cast<uint32_t>(Connection::State::Used);
         if (state.compare_exchange_strong(curState, newState)) {
-            usedCount.fetch_add(1);
             return conn;
         }
     }
@@ -568,12 +615,49 @@ ConnectionPool::pickConnection() {
 void
 ConnectionPool::releaseConnection(const std::shared_ptr<Connection>& connection) {
     connection->state_.store(static_cast<uint32_t>(Connection::State::Idle));
-    usedCount.fetch_add(-1);
 }
 
 size_t
-ConnectionPool::availableCount() const {
-    return connections.size() - usedCount.load();
+ConnectionPool::usedConnections(const std::string& domain) const {
+    Connections pool;
+    {
+        Guard guard(connsLock);
+        auto it = conns.find(domain);
+        if (it == std::end(conns)) {
+            return 0;
+        }
+        pool = it->second;
+    }
+
+    return std::count_if(pool.begin(), pool.end(), [](const std::shared_ptr<Connection>& conn) {
+        return conn->isConnected();
+    });
+}
+
+size_t
+ConnectionPool::idleConnections(const std::string& domain) const {
+    Connections pool;
+    {
+        Guard guard(connsLock);
+        auto it = conns.find(domain);
+        if (it == std::end(conns)) {
+            return 0;
+        }
+        pool = it->second;
+    }
+
+    return std::count_if(pool.begin(), pool.end(), [](const std::shared_ptr<Connection>& conn) {
+        return conn->isIdle();
+    });
+}
+
+size_t
+ConnectionPool::availableConnections(const std::string& domain) const {
+    return 0;
+}
+
+void
+ConnectionPool::closeIdleConnections(const std::string& domain) {
 }
 
 RequestBuilder&
@@ -635,17 +719,18 @@ Client::Options::maxConnections(int val) {
 Client::Options&
 Client::Options::keepAlive(bool val) {
     keepAlive_ = val;
+    return *this;
 }
 
-Client::Client(const std::string& base)
-    : url_(base)
-    , ioIndex(0)
+Client::Options&
+Client::Options::maxConnectionsPerHost(int val) {
+    maxConnectionsPerHost_ = val;
+    return *this;
+}
+
+Client::Client()
+    : ioIndex(0)
 {
-    host_ = url_;
-    constexpr const char *Http = "http://";
-    constexpr size_t Size = sizeof("http://") - 1;
-    if (!host_.compare(0, Size, Http))
-        host_.erase(0, Size);
 }
 
 Client::Options
@@ -658,29 +743,6 @@ Client::init(const Client::Options& options) {
     transport_.reset(new Transport);
     io_.init(options.threads_, transport_);
     io_.start();
-
-    constexpr const char *Http = "http://";
-    constexpr size_t Size = sizeof("http://") - 1;
-
-    std::string url(url_);
-    if (!url.compare(0, Size, Http)) {
-        url.erase(0, Size);
-    }
-
-    auto pos = url.find(':');
-    Port port(80);
-    std::string host;
-    if (pos != std::string::npos) {
-        host = url.substr(0, pos);
-        port = std::stol(url.substr(pos + 1));
-    }
-    else {
-        host = url;
-    }
-
-    addr_ = Net::Address(host, port);
-
-    pool.init(options.maxConnections_);
 }
 
 void
@@ -729,12 +791,15 @@ Client::doRequest(
         std::chrono::milliseconds timeout)
 {
     request.headers_.remove<Header::UserAgent>();
+    auto resource = request.resource();
 
-    auto conn = pool.pickConnection();
+    auto s = splitUrl(resource);
+    auto conn = pool.pickConnection(s.first);
+
     if (conn == nullptr) {
         return Async::Promise<Response>([=](Async::Resolver& resolve, Async::Rejection& reject) {
             auto entry = requestsQueue.allocEntry(
-                    Connection::RequestData(std::move(resolve), std::move(reject), request, host_, timeout, nullptr));
+                    Connection::RequestData(std::move(resolve), std::move(reject), request, timeout, nullptr));
             requestsQueue.push(entry);
         });
     }
@@ -749,38 +814,50 @@ Client::doRequest(
 
         }
 
-        if (!conn->isConnected())
-            conn->connect(addr_);
+        if (!conn->isConnected()) {
+            conn->connect(httpAddr(s.first));
+        }
 
-        return conn->perform(request, host_, timeout, [=]() {
+        return conn->perform(request, timeout, [=]() {
             pool.releaseConnection(conn);
             processRequestQueue();
         });
     }
-
 }
 
 void
 Client::processRequestQueue() {
-    for (;;) {
-        auto conn = pool.pickConnection();
-        if (!conn) break;
+    std::vector<Queue<Connection::RequestData>::Entry *> skippedRequests;
 
-        auto entry = requestsQueue.popSafe();
+    for (;;) {
+
+        auto entry = requestsQueue.pop();
         if (!entry) {
-            pool.releaseConnection(conn);
             break;
         }
 
         auto& req = entry->data();
+        auto resource = req.request.resource();
+        auto s = splitUrl(resource);
+        auto conn = pool.pickConnection(s.first);
+        if (!conn) {
+            skippedRequests.push_back(entry);
+            continue;
+        }
+
         conn->performImpl(
-                req.request, std::move(req.host),
+                req.request,
                 req.timeout,
                 std::move(req.resolve), std::move(req.reject),
                 [=]() {
                     pool.releaseConnection(conn);
                     processRequestQueue();
                 });
+        delete entry;
+    }
+
+    for (auto& skipped: skippedRequests) {
+        requestsQueue.push(skipped);
     }
 }
 
