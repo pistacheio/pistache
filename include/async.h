@@ -13,6 +13,8 @@
 #include <atomic>
 #include <vector>
 #include <mutex>
+#include <condition_variable>
+#include <condition_variable>
 #include "optional.h"
 #include "typeid.h"
 
@@ -864,8 +866,57 @@ namespace Async {
         Rejection rejection_;
     };
 
+    template<typename T>
+    class Barrier {
+    public:
+        Barrier(Promise<T>& promise)
+            : promise_(promise) {
+        }
+
+        void wait() {
+            if (promise_.isFulfilled() || promise_.isRejected()) return;
+
+            promise_.then([&](const T&) {
+                std::unique_lock<std::mutex> guard(mtx);
+                cv.notify_one();
+            }, [&](std::exception_ptr) {
+                std::unique_lock<std::mutex> guard(mtx);
+                cv.notify_one();
+            });
+
+            std::unique_lock<std::mutex> guard(mtx);
+            cv.wait(guard, [&] { return promise_.isFulfilled() || promise_.isRejected(); });
+        }
+
+        template<class Rep, class Period>
+        std::cv_status wait_for(const std::chrono::duration<Rep, Period>& period) {
+            if (promise_.isFulfilled() || promise_.isRejected()) return std::cv_status::no_timeout;
+
+            promise_.then([&](const T&) {
+                std::unique_lock<std::mutex> guard(mtx);
+                cv.notify_one();
+            }, [&](std::exception_ptr) {
+                std::unique_lock<std::mutex> guard(mtx);
+                cv.notify_one();
+            });
+
+            std::unique_lock<std::mutex> guard(mtx);
+            return cv.wait_for(guard, period);
+        }
+
+    private:
+        Promise<T>& promise_;
+        mutable std::mutex mtx;
+        std::condition_variable cv;
+    };
+
     namespace Impl {
         struct Any;
+    }
+
+    template<typename T>
+    Barrier<T> make_barrier(Promise<T>& promise) {
+        return Barrier<T>(promise);
     }
 
     class Any {
