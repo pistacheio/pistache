@@ -27,6 +27,8 @@ int main(int argc, char *argv[]) {
     client.init(opts);
     auto resp = client.get(page).cookie(Cookie("FOO", "bar")).send();
 
+    Async::Barrier<Response> barrier(resp);
+
     resp.then([](Response response) {
         std::cout << "Response code = " << response.code() << std::endl;
         auto body = response.body();
@@ -34,7 +36,7 @@ int main(int argc, char *argv[]) {
             std::cout << "Response body = " << body << std::endl;
     }, Async::NoExcept);
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    barrier.wait_for(std::chrono::seconds(2));
 
     client.shutdown();
 }
