@@ -205,6 +205,12 @@ public:
         return nullptr;
     }
 
+    bool empty() {
+        auto *res = tail;
+        auto* next = res->next.load(std::memory_order_acquire);
+        return next != nullptr;
+    }
+
     std::unique_ptr<Entry> popSafe() {
         return std::unique_ptr<Entry>(pop());
     }

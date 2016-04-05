@@ -582,6 +582,11 @@ Connection::processRequestQueue() {
 
 }
 
+void
+ConnectionPool::init(size_t maxConnsPerHost) {
+    maxConnectionsPerHost = maxConnsPerHost;
+}
+
 std::shared_ptr<Connection>
 ConnectionPool::pickConnection(const std::string& domain) {
     Connections pool;
@@ -591,7 +596,7 @@ ConnectionPool::pickConnection(const std::string& domain) {
         auto poolIt = conns.find(domain);
         if (poolIt == std::end(conns)) {
             Connections connections;
-            for (size_t i = 0; i < 128; ++i) {
+            for (size_t i = 0; i < maxConnectionsPerHost; ++i) {
                 connections.push_back(std::make_shared<Connection>());
             }
 
@@ -711,12 +716,6 @@ Client::Options::threads(int val) {
 }
 
 Client::Options&
-Client::Options::maxConnections(int val) {
-    maxConnections_ = val;
-    return *this;
-}
-
-Client::Options&
 Client::Options::keepAlive(bool val) {
     keepAlive_ = val;
     return *this;
@@ -740,6 +739,7 @@ Client::options() {
 
 void
 Client::init(const Client::Options& options) {
+    pool.init(options.maxConnectionsPerHost_);
     transport_.reset(new Transport);
     io_.init(options.threads_, transport_);
     io_.start();
@@ -798,9 +798,12 @@ Client::doRequest(
 
     if (conn == nullptr) {
         return Async::Promise<Response>([=](Async::Resolver& resolve, Async::Rejection& reject) {
-            auto entry = requestsQueue.allocEntry(
+            Guard guard(queuesLock);
+
+            auto& queue = requestsQueues[s.first];
+            auto entry = queue.allocEntry(
                     Connection::RequestData(std::move(resolve), std::move(reject), request, timeout, nullptr));
-            requestsQueue.push(entry);
+            queue.push(entry);
         });
     }
     else {
@@ -827,37 +830,36 @@ Client::doRequest(
 
 void
 Client::processRequestQueue() {
-    std::vector<Queue<Connection::RequestData>::Entry *> skippedRequests;
+    Guard guard(queuesLock);
 
-    for (;;) {
+    for (auto& queues: requestsQueues) {
+        const auto& domain = queues.first;
+        auto& queue = queues.second;
 
-        auto entry = requestsQueue.pop();
-        if (!entry) {
-            break;
+        if (queue.empty()) continue;
+
+        for (;;) {
+            auto conn = pool.pickConnection(domain);
+            if (!conn)
+                break;
+
+            auto& queue = queues.second;
+            auto entry = queue.popSafe();
+            if (!entry) {
+                pool.releaseConnection(conn);
+                break;
+            }
+
+            auto& req = entry->data();
+            conn->performImpl(
+                    req.request,
+                    req.timeout,
+                    std::move(req.resolve), std::move(req.reject),
+                    [=]() {
+                        pool.releaseConnection(conn);
+                        processRequestQueue();
+                    });
         }
-
-        auto& req = entry->data();
-        auto resource = req.request.resource();
-        auto s = splitUrl(resource);
-        auto conn = pool.pickConnection(s.first);
-        if (!conn) {
-            skippedRequests.push_back(entry);
-            continue;
-        }
-
-        conn->performImpl(
-                req.request,
-                req.timeout,
-                std::move(req.resolve), std::move(req.reject),
-                [=]() {
-                    pool.releaseConnection(conn);
-                    processRequestQueue();
-                });
-        delete entry;
-    }
-
-    for (auto& skipped: skippedRequests) {
-        requestsQueue.push(skipped);
     }
 }
 
