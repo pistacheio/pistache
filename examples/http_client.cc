@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
 
     auto opts = Http::Experimental::Client::options()
         .threads(1)
-        .maxConnections(64);
+        .maxConnectionsPerHost(8);
     client.init(opts);
     auto resp = client.get(page).cookie(Cookie("FOO", "bar")).send();
 

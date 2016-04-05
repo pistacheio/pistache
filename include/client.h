@@ -137,6 +137,9 @@ private:
 };
 
 struct ConnectionPool {
+
+    void init(size_t maxConnsPerHost);
+
     std::shared_ptr<Connection> pickConnection(const std::string& domain);
     void releaseConnection(const std::shared_ptr<Connection>& connection);
 
@@ -154,6 +157,7 @@ private:
 
     mutable Lock connsLock;
     std::unordered_map<std::string, Connections> conns;
+    size_t maxConnectionsPerHost;
 };
 
 class Transport : public Io::Handler {
@@ -242,7 +246,7 @@ private:
 
 namespace Default {
     constexpr int Threads = 1;
-    constexpr int MaxConnections = 8;
+    constexpr int MaxConnectionsPerHost = 8;
     constexpr bool KeepAlive = true;
 }
 
@@ -296,19 +300,17 @@ public:
 
        Options()
            : threads_(Default::Threads)
-           , maxConnections_(Default::MaxConnections)
+           , maxConnectionsPerHost_(Default::MaxConnectionsPerHost)
            , keepAlive_(Default::KeepAlive)
 
        { }
 
        Options& threads(int val);
-       Options& maxConnections(int val);
        Options& keepAlive(bool val);
        Options& maxConnectionsPerHost(int val);
 
    private:
        int threads_;
-       int maxConnections_;
        int maxConnectionsPerHost_;
        bool keepAlive_;
    };
@@ -333,7 +335,12 @@ private:
    std::shared_ptr<Transport> transport_;
 
    std::atomic<uint64_t> ioIndex;
-   Queue<Connection::RequestData> requestsQueue;
+
+   typedef std::mutex Lock;
+   typedef std::lock_guard<Lock> Guard;
+
+   Lock queuesLock;
+   std::unordered_map<std::string, Queue<Connection::RequestData>> requestsQueues;
 
    RequestBuilder prepareRequest(std::string resource, Http::Method method);
 
