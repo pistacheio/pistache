@@ -729,15 +729,24 @@ namespace Async {
     static constexpr Private::Throw Throw{};
 
     namespace details {
+
+        /*
+         * Note that we could use std::result_of to SFINAE-out and dispatch to the right call
+         * However, gcc 4.7 does not correctly support std::result_of for SFINAE purposes, so we
+         * use a decltype SFINAE-expression instead.
+         *
+         * See http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3462.html and
+         * https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56283 for reference
+         */
         template<typename T, typename Func>
-        typename std::result_of<Func(Resolver&, Rejection&)>::type
-        callAsync(Func func, Resolver& resolver, Rejection& rejection) {
+        auto callAsync(Func func, Resolver& resolver, Rejection& rejection)
+            -> decltype(std::declval<Func>()(resolver, rejection), void()) {
             func(resolver, rejection);
         }
 
         template<typename T, typename Func>
-        typename std::result_of<Func(Deferred<T>)>::type
-        callAsync(Func func, Resolver& resolver, Rejection& rejection) {
+        auto callAsync(Func func, Resolver& resolver, Rejection& rejection)
+            -> decltype(std::declval<Func>()(Deferred<T>()), void()) {
             func(Deferred<T>(std::move(resolver), std::move(rejection)));
         }
    };
@@ -756,7 +765,6 @@ namespace Async {
             , resolver_(core_)
             , rejection_(core_)
         { 
-            //func(resolver_, rejection_);
             details::callAsync<T>(func, resolver_, rejection_);
         }
 

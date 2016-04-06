@@ -9,6 +9,7 @@
 #include "flags.h"
 #include "prototype.h"
 #include <memory>
+#include <stdexcept>
 
 namespace Net {
 

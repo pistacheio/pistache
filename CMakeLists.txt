@@ -24,7 +24,13 @@ include_directories (src)
 
 add_subdirectory (examples)
 
-ADD_SUBDIRECTORY (googletest-release-1.7.0)
+find_package(GTest)
+if (GTEST_FOUND)
+    include_directories(${GTEST_INCLUDE_DIRS})
+else()
+    ADD_SUBDIRECTORY (googletest-release-1.7.0)
+    include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
+endif()
+
 enable_testing()
-include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 add_subdirectory(tests)

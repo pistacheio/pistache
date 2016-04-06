@@ -11,10 +11,12 @@
 
 #include <atomic>
 #include <stdexcept>
+#include <array>
 #include <sys/eventfd.h>
 #include <unistd.h>
 
 static constexpr size_t CachelineSize = 64;
+typedef char cacheline_pad_t[CachelineSize];
 
 template<typename T>
 class Mailbox {
@@ -314,6 +316,25 @@ public:
     MPMCQueue(const MPMCQueue& other) = delete;
     MPMCQueue& operator=(const MPMCQueue& other) = delete;
 
+    /*
+     * Note that you should not move a queue. This is somehow needed for gcc 4.7, otherwise
+     * the client won't compile
+     * @Investigate why
+     */
+    MPMCQueue(MPMCQueue&& other) {
+        *this = std::move(other);
+    }
+
+    MPMCQueue& operator=(MPMCQueue&& other) {
+        for (size_t i = 0; i < Size; ++i) {
+            cells_[i].sequence.store(other.cells_[i].sequence.load(std::memory_order_relaxed), std::memory_order_relaxed);
+            cells_[i].data = std::move(other.cells_[i].data);
+        }
+
+        enqueueIndex.store(other.enqueueIndex.load(), std::memory_order_relaxed);
+        dequeueIndex.store(other.enqueueIndex.load(), std::memory_order_relaxed);
+    }
+
     MPMCQueue() {
         for (size_t i = 0; i < Size; ++i) {
             cells_[i].sequence.store(i, std::memory_order_relaxed);
@@ -387,6 +408,9 @@ private:
 
     std::array<Cell, Size> cells_;
 
-    alignas(CachelineSize) std::atomic<size_t> enqueueIndex;
-    alignas(CachelineSize) std::atomic<size_t> dequeueIndex;
+    cacheline_pad_t pad0;
+    std::atomic<size_t> enqueueIndex;
+
+    cacheline_pad_t pad1;
+    std::atomic<size_t> dequeueIndex;
 };

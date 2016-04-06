@@ -57,7 +57,6 @@ namespace Type {
     SCHEME(Wss  , "wss")   \
 
 
-
 enum class Scheme {
 #define SCHEME(e, _) e,
     SCHEMES
@@ -428,14 +427,14 @@ struct PathBuilder {
 
     template<typename... Mimes>
     PathBuilder& produces(Mimes... mimes) {
-        const Http::Mime::MediaType m[] = { mimes... };
+        Http::Mime::MediaType m[sizeof...(Mimes)] = { mimes... };
         std::copy(std::begin(m), std::end(m), std::back_inserter(path_->pc.produce));
         return *this;
     }
 
     template<typename... Mimes>
     PathBuilder& consumes(Mimes... mimes) {
-        const Http::Mime::MediaType m[] = { mimes... };
+        Http::Mime::MediaType m[sizeof...(Mimes)] = { mimes... };
         std::copy(std::begin(m), std::end(m), std::back_inserter(path_->pc.consume));
         return *this;
     }
@@ -525,22 +524,21 @@ public:
 
     template<typename... Schemes>
     Description& schemes(Schemes... schemes) {
-
-        const Scheme s[] = { schemes... };
+        Scheme s[sizeof...(Schemes)] = { schemes... };
         std::copy(std::begin(s), std::end(s), std::back_inserter(schemes_));
         return *this;
     }
 
     template<typename... Mimes>
     Description& produces(Mimes... mimes) {
-        const Http::Mime::MediaType m[] = { mimes... };
+        Http::Mime::MediaType m[sizeof...(Mimes)] = { mimes... };
         std::copy(std::begin(m), std::end(m), std::back_inserter(pc.produce));
         return *this;
     }
 
     template<typename... Mimes>
     Description& consumes(Mimes... mimes) {
-        const Http::Mime::MediaType m[] = { mimes... };
+        Http::Mime::MediaType m[sizeof...(Mimes)] = { mimes... };
         std::copy(std::begin(m), std::end(m), std::back_inserter(pc.consume));
         return *this;
     }
