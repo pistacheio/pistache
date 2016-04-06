@@ -542,30 +542,19 @@ Connection::performImpl(
         timer->arm(timeout);
     }
 
+    auto rejectClone = reject.clone();
+    auto rejectCloneMover = make_copy_mover(std::move(rejectClone));
+
     // Move the resolver and rejecter inside the lambda
     auto resolveMover = make_copy_mover(std::move(resolve));
     auto rejectMover = make_copy_mover(std::move(reject));
 
-    /*
-     * @Incomplete: currently, if the promise is rejected in asyncSendRequest,
-     * it will abort the current execution (NoExcept). Instead, it should reject
-     * the original promise from the request. The thing is that we currently can not
-     * do that since we transfered the ownership of the original rejecter to the
-     * mover so that it will be moved inside the continuation lambda.
-     *
-     * Since Resolver and Rejection objects are not copyable by default, we could
-     * implement a clone() member function so that it's explicit that a copy operation
-     * has been originated from the user
-     *
-     * The reason why Resolver and Rejection copy constructors is disabled is to avoid
-     * double-resolve and double-reject of a promise
-     */
 
     transport_->asyncSendRequest(shared_from_this(), timer, buffer).then(
         [=](ssize_t bytes) mutable {
             inflightRequests.push_back(RequestEntry(std::move(resolveMover), std::move(rejectMover), std::move(timer), std::move(onDone)));
-        }
-   , Async::NoExcept);
+        },
+        [=](std::exception_ptr e) { rejectCloneMover.val(e); });
 }
 
 void
