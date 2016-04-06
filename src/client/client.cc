@@ -718,6 +718,18 @@ Client::Client()
 {
 }
 
+Client::~Client() {
+    for (auto& queues: requestsQueues) {
+        auto& q = queues.second;
+        for (;;) {
+            Connection::RequestData* d;
+            if (!q.dequeue(d)) break;
+
+            delete d;
+        }
+    }
+}
+
 Client::Options
 Client::options() {
     return Client::Options();

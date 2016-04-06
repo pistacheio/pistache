@@ -316,6 +316,7 @@ public:
    };
 
    Client();
+   ~Client();
 
    static Options options();
    void init(const Options& options);
