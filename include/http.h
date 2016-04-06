@@ -363,6 +363,16 @@ public:
     friend class Private::ResponseLineStep;
     friend class Private::Parser<Http::Response>;
 
+    Response()
+        : Message()
+    { }
+
+    Response(Version version)
+        : Message()
+    {
+        version_ = version;
+    }
+
     Response(const Response& other) = default;
     Response& operator=(const Response& other) = default;
     Response(Response&& other) = default;
@@ -396,16 +406,6 @@ public:
         return version_;
     }
 
-protected:
-    Response()
-        : Message()
-    { }
-
-    Response(Version version)
-        : Message()
-    {
-        version_ = version;
-    }
 };
 
 class ResponseWriter : public Response {

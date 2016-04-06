@@ -14,6 +14,7 @@
 #include <sys/eventfd.h>
 #include <unistd.h>
 
+static constexpr size_t CachelineSize = 64;
 
 template<typename T>
 class Mailbox {
@@ -299,4 +300,93 @@ public:
     }
 private:
     int event_fd;
+};
+
+// A Multi-Producer Multi-Consumer bounded queue
+// taken from http://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
+template<typename T, size_t Size>
+class MPMCQueue {
+
+    static_assert(Size >= 2 && ((Size & (Size - 1)) == 0), "The size must be a power of 2");
+    static constexpr size_t Mask = Size - 1;
+
+public:
+    MPMCQueue(const MPMCQueue& other) = delete;
+    MPMCQueue& operator=(const MPMCQueue& other) = delete;
+
+    MPMCQueue() {
+        for (size_t i = 0; i < Size; ++i) {
+            cells_[i].sequence.store(i, std::memory_order_relaxed);
+        }
+
+        enqueueIndex.store(0, std::memory_order_relaxed);
+        dequeueIndex.store(0, std::memory_order_relaxed);
+    }
+
+    template<typename U>
+    bool enqueue(U&& data) {
+        Cell* target;
+        size_t index = enqueueIndex.load(std::memory_order_relaxed);
+        for (;;) {
+            target = cell(index);
+            size_t seq = target->sequence.load(std::memory_order_acquire);
+            auto diff = static_cast<std::intptr_t>(seq) - static_cast<std::intptr_t>(index);
+            if (diff == 0) {
+                if (enqueueIndex.compare_exchange_weak
+                        (index, index + 1, std::memory_order_relaxed))
+                    break;
+            }
+
+            else if (diff < 0) return false;
+            else {
+                index = enqueueIndex.load(std::memory_order_relaxed);
+            }
+        }
+        target->data = std::forward<U>(data);
+        target->sequence.store(index + 1, std::memory_order_release);
+        return true;
+    }
+
+    bool dequeue(T& data) {
+        Cell* target;
+        size_t index = dequeueIndex.load(std::memory_order_relaxed);
+        for (;;) {
+            target = cell(index);
+            size_t seq = target->sequence.load(std::memory_order_acquire);
+            auto diff = static_cast<std::intptr_t>(seq) - static_cast<std::intptr_t>(index + 1);
+            if (diff == 0) {
+                if (dequeueIndex.compare_exchange_weak
+                        (index, index + 1, std::memory_order_relaxed))
+                    break;
+            }
+            else if (diff < 0)
+                return false;
+            else {
+                index = dequeueIndex.load(std::memory_order_relaxed);
+            }
+        }
+        data = target->data;
+        target->sequence.store(index + Mask + 1, std::memory_order_release);
+        return true;
+
+    }
+
+private:
+    struct Cell {
+        std::atomic<size_t> sequence;
+        T data;
+    };
+
+    size_t cellIndex(size_t index) const {
+        return index & Mask;
+    }
+
+    Cell* cell(size_t index) {
+        return &cells_[cellIndex(index)];
+    }
+
+    std::array<Cell, Size> cells_;
+
+    alignas(CachelineSize) std::atomic<size_t> enqueueIndex;
+    alignas(CachelineSize) std::atomic<size_t> dequeueIndex;
 };
