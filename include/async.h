@@ -590,6 +590,10 @@ namespace Async {
             core_ = nullptr;
         }
 
+        Resolver clone() {
+            return Resolver(core_);
+        }
+
     private:
         std::shared_ptr<Private::Core> core_;
     };
@@ -600,6 +604,12 @@ namespace Async {
         Rejection(const std::shared_ptr<Private::Core>& core)
             : core_(core)
         { }
+
+        Rejection(const Rejection& other) = delete;
+        Rejection& operator=(const Rejection& other) = delete;
+
+        Rejection(Rejection&& other) = default;
+        Rejection& operator=(Rejection&& other) = default;
 
         template<typename Exc>
         bool operator()(Exc exc) const {
@@ -620,6 +630,10 @@ namespace Async {
 
         void clear() {
             core_ = nullptr;
+        }
+
+        Rejection clone() {
+            return Rejection(core_);
         }
 
     private:
@@ -912,11 +926,6 @@ namespace Async {
 
     namespace Impl {
         struct Any;
-    }
-
-    template<typename T>
-    Barrier<T> make_barrier(Promise<T>& promise) {
-        return Barrier<T>(promise);
     }
 
     class Any {

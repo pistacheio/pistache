@@ -708,9 +708,6 @@ RequestBuilder::send() {
 
 Client::Options&
 Client::Options::threads(int val) {
-    if (val > 1) {
-        throw std::invalid_argument("Multi-threaded client is not yet supported");
-    }
     threads_ = val;
     return *this;
 }
@@ -800,10 +797,14 @@ Client::doRequest(
         return Async::Promise<Response>([=](Async::Resolver& resolve, Async::Rejection& reject) {
             Guard guard(queuesLock);
 
+            std::unique_ptr<Connection::RequestData> data(
+                    new Connection::RequestData(std::move(resolve), std::move(reject), request, timeout, nullptr));
+
             auto& queue = requestsQueues[s.first];
-            auto entry = queue.allocEntry(
-                    Connection::RequestData(std::move(resolve), std::move(reject), request, timeout, nullptr));
-            queue.push(entry);
+            if (!queue.enqueue(data.get()))
+                data->reject(std::runtime_error("Queue is full"));
+            else
+                data.release();
         });
     }
     else {
@@ -836,29 +837,28 @@ Client::processRequestQueue() {
         const auto& domain = queues.first;
         auto& queue = queues.second;
 
-        if (queue.empty()) continue;
-
         for (;;) {
             auto conn = pool.pickConnection(domain);
             if (!conn)
                 break;
 
             auto& queue = queues.second;
-            auto entry = queue.popSafe();
-            if (!entry) {
+            Connection::RequestData *data;
+            if (!queue.dequeue(data)) {
                 pool.releaseConnection(conn);
                 break;
             }
 
-            auto& req = entry->data();
             conn->performImpl(
-                    req.request,
-                    req.timeout,
-                    std::move(req.resolve), std::move(req.reject),
+                    data->request,
+                    data->timeout,
+                    std::move(data->resolve), std::move(data->reject),
                     [=]() {
                         pool.releaseConnection(conn);
                         processRequestQueue();
                     });
+
+            delete data;
         }
     }
 }
