@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 2.8.7)
-project (restgear)
+project (pistache)
 include(CheckCXXCompilerFlag)
 
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
@@ -14,7 +14,7 @@ endif()
 
 include_directories (${CMAKE_CURRENT_SOURCE_DIR}/include)
 file(GLOB HEADER_FILES "include/*.h")
-install(FILES ${HEADER_FILES} DESTINATION include/rest)
+install(FILES ${HEADER_FILES} DESTINATION include/pistache)
 
 add_subdirectory (thirdparty)
 include_directories(${RapidJSON_SOURCE_DIR}/include)
