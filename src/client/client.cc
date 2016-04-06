@@ -30,8 +30,6 @@ namespace {
     }
 }
 
-namespace Experimental {
-
 static constexpr const char* UA = "pistache/0.1";
 
 std::pair<StringView, StringView>
@@ -863,8 +861,6 @@ Client::processRequestQueue() {
         }
     }
 }
-
-} // namespace Experimental
 
 } // namespace Http
 

@@ -25,7 +25,3 @@ add_test( cookie_test run_cookie_test )
 add_executable( run_view_test view_test.cc )
 target_link_libraries(run_view_test gtest gtest_main net)
 add_test( view_test run_view_test )
-
-add_executable( run_client_test http_client_test.cc )
-target_link_libraries(run_client_test gtest gtest_main net)
-add_test( client_test run_client_test )

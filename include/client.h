@@ -20,8 +20,6 @@ namespace Net {
 
 namespace Http {
 
-namespace Experimental {
-
 class ConnectionPool;
 class Transport;
 
@@ -352,8 +350,6 @@ private:
    void processRequestQueue();
 
 };
-
-} // namespace Experimental
 
 } // namespace Http
 

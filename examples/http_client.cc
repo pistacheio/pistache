@@ -9,7 +9,6 @@
 #include "client.h"
 
 using namespace Net;
-using namespace Net::Http;
 
 int main(int argc, char *argv[]) {
     if (argc < 1) {
@@ -23,14 +22,14 @@ int main(int argc, char *argv[]) {
         count = std::stoi(argv[2]);
     }
 
-    Experimental::Client client;
+    Http::Client client;
 
-    auto opts = Http::Experimental::Client::options()
+    auto opts = Http::Client::options()
         .threads(1)
         .maxConnectionsPerHost(8);
     client.init(opts);
 
-    std::vector<Async::Promise<Response>> responses;
+    std::vector<Async::Promise<Http::Response>> responses;
 
     std::atomic<size_t> completedRequests(0);
     std::atomic<size_t> failedRequests(0);
@@ -38,8 +37,8 @@ int main(int argc, char *argv[]) {
     auto start = std::chrono::system_clock::now();
 
     for (int i = 0; i < count; ++i) {
-        auto resp = client.get(page).cookie(Cookie("FOO", "bar")).send();
-        resp.then([&](Response response) {
+        auto resp = client.get(page).cookie(Http::Cookie("FOO", "bar")).send();
+        resp.then([&](Http::Response response) {
                 ++completedRequests;
             std::cout << "Response code = " << response.code() << std::endl;
             auto body = response.body();
@@ -50,12 +49,12 @@ int main(int argc, char *argv[]) {
     }
 
     auto sync = Async::whenAll(responses.begin(), responses.end());
-    Async::Barrier<std::vector<Response>> barrier(sync);
+    Async::Barrier<std::vector<Http::Response>> barrier(sync);
 
     barrier.wait_for(std::chrono::seconds(5));
 
     auto end = std::chrono::system_clock::now();
-    std::cout << "Summary of excution" << std::endl
+    std::cout << "Summary of execution" << std::endl
               << "Total number of requests sent     : " << count << std::endl
               << "Total number of responses received: " << completedRequests.load() << std::endl
               << "Total number of requests failed   : " << failedRequests.load() << std::endl
