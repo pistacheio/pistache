@@ -36,7 +36,7 @@ public:
     CpuSet& setRange(size_t begin, size_t end);
     CpuSet& unsetRange(size_t begin, size_t end);
 
-    bool isset(size_t cpu) const;
+    bool isSet(size_t cpu) const;
     size_t count() const;
 
     cpu_set_t toPosix() const;

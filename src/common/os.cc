@@ -112,7 +112,7 @@ CpuSet::unsetRange(size_t begin, size_t end) {
 }
 
 bool
-CpuSet::isset(size_t cpu) const {
+CpuSet::isSet(size_t cpu) const {
     if (cpu >= Size) {
         throw std::invalid_argument("Trying to test invalid cpu number");
     }
