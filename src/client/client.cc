@@ -109,6 +109,7 @@ namespace {
 
         auto res = request.resource();
         auto s = splitUrl(res);
+        auto body = request.body();
 
         auto host = s.first;
         auto path = s.second;
@@ -122,7 +123,14 @@ namespace {
 
         if (!writeHeader<Header::UserAgent>(os, UA)) return false;
         if (!writeHeader<Header::Host>(os, host.toString())) return false;
+        if (!body.empty()) {
+            if (!writeHeader<Header::ContentLength>(os, body.size())) return false;
+        }
         OUT(os << crlf);
+
+        if (!body.empty()) {
+            OUT(os << body);
+        }
 
         return true;
 
