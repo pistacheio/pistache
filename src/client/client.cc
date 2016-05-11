@@ -686,6 +686,7 @@ RequestBuilder::cookie(const Cookie& cookie) {
 RequestBuilder&
 RequestBuilder::body(std::string val) {
     request_.body_ = std::move(val);
+    return *this;
 }
 
 Async::Promise<Response>
