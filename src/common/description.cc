@@ -8,7 +8,6 @@
 #include "http_header.h"
 #include <sstream>
 #include <algorithm>
-#include "rapidjson/prettywriter.h"
 
 namespace Net {
 
@@ -136,8 +135,8 @@ PathGroup::hasPath(const Path& path) const {
 
 PathGroup::Group
 PathGroup::paths(const std::string& name) const {
-    auto it = groups.find(name);
-    if (it == std::end(groups))
+    auto it = groups_.find(name);
+    if (it == std::end(groups_))
         return PathGroup::Group { };
 
     return it->second;
@@ -161,28 +160,28 @@ PathGroup::add(Path path) {
     if (hasPath(path))
         return PathGroup::group_iterator { };
 
-    auto &group = groups[path.value];
+    auto &group = groups_[path.value];
     return group.insert(group.end(), std::move(path));
 }
 
 PathGroup::const_iterator
 PathGroup::begin() const {
-    return groups.begin();
+    return groups_.begin();
 }
 
 PathGroup::const_iterator
 PathGroup::end() const {
-    return groups.end();
+    return groups_.end();
 }
 
 PathGroup::flat_iterator
 PathGroup::flatBegin() const {
-    return makeFlatMapIterator(groups, begin());
+    return makeFlatMapIterator(groups_, begin());
 }
 
 PathGroup::flat_iterator
 PathGroup::flatEnd()  const {
-    return makeFlatMapIterator(groups, end());
+    return makeFlatMapIterator(groups_, end());
 }
 
 PathBuilder::PathBuilder(Path* path)
@@ -342,6 +341,12 @@ Swagger::apiPath(std::string path) {
     return *this;
 }
 
+Swagger&
+Swagger::serializer(Swagger::Serializer serialize) {
+    serializer_ = std::move(serialize);
+    return *this;
+}
+
 void
 Swagger::install(Rest::Router& router) {
 
@@ -430,12 +435,7 @@ Swagger::install(Rest::Router& router) {
         }
 
         else if (res == apiPath_) {
-            rapidjson::StringBuffer sb;
-            rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(sb);
-
-            description_.serialize(writer);
-
-            response.send(Http::Code::Ok, sb.GetString(), MIME(Application, Json));
+            response.send(Http::Code::Ok, serializer_(description_), MIME(Application, Json));
             return Route::Result::Ok;
         }
 

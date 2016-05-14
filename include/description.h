@@ -107,26 +107,6 @@ struct ProduceConsume {
 
     std::vector<Http::Mime::MediaType> produce;
     std::vector<Http::Mime::MediaType> consume;
-
-    template<typename Writer>
-    void serialize(Writer& writer) const {
-        auto serializeMimes = [&](const char* name, const std::vector<Http::Mime::MediaType>& mimes) {
-            if (!mimes.empty()) {
-                writer.String(name);
-                writer.StartArray();
-                {
-                    for (const auto& mime: mimes) {
-                        auto str = mime.toString();
-                        writer.String(str.c_str());
-                    }
-                }
-                writer.EndArray();
-            }
-        };
-
-        serializeMimes("consumes", consume);
-        serializeMimes("produces", produce);
-    }
 };
 
 struct Contact {
@@ -154,29 +134,6 @@ struct Info {
 
     Optional<Contact> contact;
     Optional<License> license;
-
-    template<typename Writer>
-    void serialize(Writer& writer) const {
-        writer.String("swagger");
-        writer.String("2.0");
-        writer.String("info");
-        writer.StartObject();
-        {
-            writer.String("title");
-            writer.String(title.c_str());
-            writer.String("version");
-            writer.String(version.c_str());
-            if (!description.empty()) {
-                writer.String("description");
-                writer.String(description.c_str());
-            }
-            if (!termsOfService.empty()) {
-                writer.String("termsOfService");
-                writer.String(termsOfService.c_str());
-            }
-        }
-        writer.EndObject();
-    }
 };
 
 struct InfoBuilder {
@@ -223,25 +180,6 @@ struct Parameter {
         return p;
     }
 
-    template<typename Writer>
-    void serialize(Writer& writer) const {
-        writer.StartObject();
-        {
-            writer.String("name");
-            writer.String(name.c_str());
-            writer.String("in");
-            // @Feature: support other types of parameters
-            writer.String("path");
-            writer.String("description");
-            writer.String(description.c_str());
-            writer.String("required");
-            writer.Bool(required);
-            writer.String("type");
-            writer.String(type->typeName());
-        }
-        writer.EndObject();
-    } 
-
     std::string name;
     std::string description;
     bool required;
@@ -254,18 +192,6 @@ struct Response {
 
     Http::Code statusCode;
     std::string description;
-
-    template<typename Writer>
-    void serialize(Writer& writer) const {
-        auto code = std::to_string(static_cast<uint32_t>(statusCode));
-        writer.String(code.c_str());
-        writer.StartObject();
-        {
-            writer.String("description");
-            writer.String(description.c_str());
-        }
-        writer.EndObject();
-    }
 };
 
 struct ResponseBuilder {
@@ -302,43 +228,6 @@ struct Path {
 
     bool isBound() const {
         return handler != nullptr;
-    }
-
-    template<typename Writer>
-    void serialize(Writer& writer) const {
-
-        std::string methodStr(methodString(method));
-        // So it looks like Swagger requires method to be in lowercase
-        std::transform(std::begin(methodStr), std::end(methodStr), std::begin(methodStr), ::tolower);
-
-        writer.String(methodStr.c_str());
-        writer.StartObject();
-        {
-            writer.String("description");
-            writer.String(description.c_str());
-            pc.serialize(writer);
-            if (!parameters.empty()) {
-                writer.String("parameters");
-                writer.StartArray();
-                {
-                    for (const auto& parameter: parameters) {
-                        parameter.serialize(writer);
-                    }
-                }
-                writer.EndArray();
-            }
-            if (!responses.empty()) {
-                writer.String("responses");
-                writer.StartObject();
-                {
-                    for (const auto& response: responses) {
-                        response.serialize(writer);
-                    }
-                }
-                writer.EndObject();
-            }
-        }
-        writer.EndObject();
     }
 };
 
@@ -383,43 +272,10 @@ public:
     flat_iterator flatBegin() const;
     flat_iterator flatEnd() const;
 
-    template<typename Writer>
-    void serialize(
-            Writer& writer, const std::string& prefix, Format format = Format::Default) const {
-        writer.String("paths");
-        writer.StartObject();
-        {
-            for (const auto& group: groups) {
-                if (group.second.isHidden()) continue;
-
-                std::string name(group.first);
-                if (!prefix.empty()) {
-                    if (!name.compare(0, prefix.size(), prefix)) {
-                        name = name.substr(prefix.size());
-                    }
-                }
-
-                if (format == Format::Default) {
-                    writer.String(name.c_str());
-                } else {
-                    auto swaggerPath = Path::swaggerFormat(name);
-                    writer.String(swaggerPath.c_str());
-                }
-                writer.StartObject();
-                {
-                    for (const auto& path: group.second) {
-                        if (!path.hidden)
-                            path.serialize(writer);
-                    }
-                }
-                writer.EndObject();
-            }
-        }
-        writer.EndObject();
-    }
+    Map groups() const { return groups_; }
 
 private:
-    Map groups;
+    Map groups_;
 };
 
 struct PathBuilder {
@@ -555,37 +411,12 @@ public:
 
     Schema::ResponseBuilder response(Http::Code statusCode, std::string description);
 
-    Schema::PathGroup paths() const { return paths_; }
-
-    template<typename Writer>
-    void serialize(Writer& writer) const {
-        writer.StartObject();
-        {
-            info_.serialize(writer);
-            if (!host_.empty()) {
-                writer.String("host");
-                writer.String(host_.c_str());
-            }
-            if (!basePath_.empty()) {
-                writer.String("basePath");
-                writer.String(basePath_.c_str());
-            }
-            if (!schemes_.empty()) {
-                writer.String("schemes");
-                writer.StartArray();
-                {
-                    for (const auto& scheme: schemes_) {
-                        writer.String(schemeString(scheme));
-                    }
-                }
-                writer.EndArray();
-            }
-            pc.serialize(writer);
-
-            paths_.serialize(writer, basePath_, Schema::PathGroup::Format::Swagger);
-        }
-        writer.EndObject();
-    }
+    Schema::Info rawInfo() const { return info_; }
+    std::string rawHost() const { return host_; }
+    std::string rawBasePath() const { return basePath_; }
+    std::vector<Scheme> rawSchemes() const { return schemes_; }
+    Schema::ProduceConsume rawPC() const { return pc; }
+    Schema::PathGroup rawPaths() const { return paths_; }
 
 private:
     Schema::Info info_;
@@ -603,9 +434,12 @@ public:
         : description_(description)
     { }
 
+    typedef std::function<std::string (const Description&)> Serializer;
+
     Swagger& uiPath(std::string path);
     Swagger& uiDirectory(std::string dir);
     Swagger& apiPath(std::string path);
+    Swagger& serializer(Serializer serialize);
    
     void install(Rest::Router& router);
 
@@ -614,6 +448,7 @@ private:
     std::string uiPath_;
     std::string uiDirectory_;
     std::string apiPath_;
+    Serializer serializer_;
 };
 
 } // namespace Rest

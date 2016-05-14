@@ -244,7 +244,7 @@ Router::handler() const {
 
 void
 Router::initFromDescription(const Rest::Description& desc) {
-    auto paths = desc.paths();
+    auto paths = desc.rawPaths();
     for (auto it = paths.flatBegin(), end = paths.flatEnd(); it != end; ++it) {
         const auto& paths = *it;
         for (const auto& path: paths) {

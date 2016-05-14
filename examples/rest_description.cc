@@ -7,6 +7,7 @@
 #include "http.h"
 #include "description.h"
 #include "endpoint.h"
+#include "serializer/rapidjson.h"
 
 using namespace std;
 using namespace Net;
@@ -42,6 +43,7 @@ public:
             .uiPath("/doc")
             .uiDirectory("/home/octal/code/web/swagger-ui-2.1.4/dist")
             .apiPath("/banker-api.json")
+            .serializer(&Rest::Serializer::rapidJson)
             .install(router);
 
         httpEndpoint->setHandler(router.handler());
