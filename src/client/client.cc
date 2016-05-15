@@ -165,20 +165,22 @@ Transport::onReady(const Io::FdSet& fds) {
                 }
             }
         }
-        else if (entry.isWritable()) {
+        else {
             auto tag = entry.getTag();
             auto fd = tag.value();
-
             auto connIt = connections.find(fd);
             if (connIt != std::end(connections)) {
                 auto& conn = connIt->second;
-                conn.resolve();
-                // We are connected, we can start reading data now
-                io()->modifyFd(conn.connection->fd, NotifyOn::Read);
-                continue; 
+                if (entry.isHangup())
+                    conn.reject(Error::system("Could not connect"));
+                else {
+                    conn.resolve();
+                    // We are connected, we can start reading data now
+                    io()->modifyFd(conn.connection->fd, NotifyOn::Read);
+                }
+            } else {
+                throw std::runtime_error("Unknown fd");
             }
-
-            throw std::runtime_error("Unknown fd");
         }
     }
 }
@@ -292,7 +294,7 @@ Transport::handleConnectionQueue() {
         int res = ::connect(conn->fd, data.addr, data.addr_len);
         if (res == -1) {
             if (errno == EINPROGRESS) {
-                io()->registerFdOneShot(conn->fd, NotifyOn::Write);
+                io()->registerFdOneShot(conn->fd, NotifyOn::Write | NotifyOn::Hangup | NotifyOn::Shutdown);
             }
             else {
                 data.reject(Error::system("Failed to connect"));
