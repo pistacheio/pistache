@@ -42,7 +42,7 @@ splitUrl(const std::string& url) {
     match_literal('.', cursor);
 
     StreamCursor::Token hostToken(cursor);
-    match_until('/', cursor);
+    match_until({ '?', '/' }, cursor);
 
     StringView host(hostToken.rawText(), hostToken.size());
     StringView page(cursor.offset(), buf.endptr());
@@ -114,8 +114,12 @@ namespace {
         auto host = s.first;
         auto path = s.second;
 
+        auto pathStr = path.toString();
+
         OUT(os << request.method() << " ");
-        OUT(os << path.toString());
+        if (pathStr[0] != '/')
+            OUT(os << '/');
+        OUT(os << pathStr);
         OUT(os << " HTTP/1.1" << crlf);
 
         if (!writeCookies(request.cookies(), buf)) return false;
@@ -322,17 +326,15 @@ Transport::handleIncoming(const std::shared_ptr<Connection>& connection) {
                     handleResponsePacket(connection, buffer, totalBytes);
                 }
             } else {
-                if (errno == ECONNRESET) {
-                }
-                else {
-                    throw std::runtime_error(strerror(errno));
-                }
+                connection->handleError(strerror(errno));
             }
             break;
         }
         else if (bytes == 0) {
             if (totalBytes > 0) {
                 handleResponsePacket(connection, buffer, totalBytes);
+            } else {
+                connection->handleError("Remote closed connection");
             }
             connections.erase(connection->fd);
             connection->close();
@@ -460,6 +462,18 @@ Connection::handleResponsePacket(const char* buffer, size_t bytes) {
         req.resolve(std::move(parser_.response));
         req.onDone();
     }
+}
+
+void
+Connection::handleError(const char* error) {
+    auto req = std::move(inflightRequests.front());
+    if (req.timer) {
+        req.timer->disarm();
+        timerPool_.releaseTimer(req.timer);
+    }
+
+    req.reject(Net::Error(error));
+    req.onDone();
 }
 
 void

@@ -94,6 +94,7 @@ struct Connection : public std::enable_shared_from_this<Connection> {
     Fd fd;
 
     void handleResponsePacket(const char* buffer, size_t totalBytes);
+    void handleError(const char* error);
     void handleTimeout();
 
     std::string dump() const;
