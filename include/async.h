@@ -1199,6 +1199,8 @@ namespace Async {
                     WhenContinuation<T> cont(data, index);
 
                     it->then(std::move(cont), [=](std::exception_ptr ptr) {
+                        if (data->rejected) return;
+
                         data->rejected.store(true);
                         data->reject(std::move(ptr));
                     });
