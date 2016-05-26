@@ -461,6 +461,7 @@ Connection::handleResponsePacket(const char* buffer, size_t bytes) {
 
         req.resolve(std::move(parser_.response));
         req.onDone();
+        parser_.reset();
     }
 }
 
