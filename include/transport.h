@@ -36,7 +36,7 @@ public:
         // it in our own thread so that we make sure that every I/O operation happens in the right thread
         const bool isInRightThread = std::this_thread::get_id() == io()->thread();
         if (!isInRightThread) {
-            return Async::Promise<ssize_t>([=](Async::Deferred<ssize_t> deferred) {
+            return Async::Promise<ssize_t>([=](Async::Deferred<ssize_t> deferred) mutable {
                 BufferHolder holder(buffer);
                 auto detached = holder.detach();
                 WriteEntry write(std::move(deferred), detached, flags);

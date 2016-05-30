@@ -1059,10 +1059,10 @@ namespace Async {
         void wait() {
             if (promise_.isFulfilled() || promise_.isRejected()) return;
 
-            promise_.then([&](const T&) {
+            promise_.then([&](const T&) mutable {
                 std::unique_lock<std::mutex> guard(mtx);
                 cv.notify_one();
-            }, [&](std::exception_ptr) {
+            }, [&](std::exception_ptr) mutable {
                 std::unique_lock<std::mutex> guard(mtx);
                 cv.notify_one();
             });
@@ -1075,10 +1075,10 @@ namespace Async {
         std::cv_status wait_for(const std::chrono::duration<Rep, Period>& period) {
             if (promise_.isFulfilled() || promise_.isRejected()) return std::cv_status::no_timeout;
 
-            promise_.then([&](const T&) {
+            promise_.then([&](const T&) mutable {
                 std::unique_lock<std::mutex> guard(mtx);
                 cv.notify_one();
-            }, [&](std::exception_ptr) {
+            }, [&](std::exception_ptr) mutable {
                 std::unique_lock<std::mutex> guard(mtx);
                 cv.notify_one();
             });
