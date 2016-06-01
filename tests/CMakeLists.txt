@@ -11,7 +11,7 @@ target_link_libraries(run_async_test gtest gtest_main net_static)
 add_test( async_test run_async_test )
 
 add_executable( run_typeid_test typeid_test.cc )
-target_link_libraries(run_typeid_test gtest gtest_main)
+target_link_libraries(run_typeid_test gtest gtest_main pthread)
 add_test( typeid_test run_typeid_test )
 
 add_executable( run_router_test router_test.cc )
