@@ -7,6 +7,7 @@
 #pragma once
 
 #include "io.h"
+#include "reactor.h"
 #include "mailbox.h"
 #include "optional.h"
 #include "async.h"
@@ -19,7 +20,7 @@ namespace Tcp {
 class Peer;
 class Handler;
 
-class Transport : public Io::Handler {
+class Transport : public Aio::Handler {
 public:
     Transport(const std::shared_ptr<Tcp::Handler>& handler);
 
@@ -28,13 +29,14 @@ public:
     void registerPoller(Polling::Epoll& poller);
 
     void handleNewPeer(const std::shared_ptr<Peer>& peer);
-    void onReady(const Io::FdSet& fds);
+    void onReady(const Aio::FdSet& fds);
 
     template<typename Buf>
     Async::Promise<ssize_t> asyncWrite(Fd fd, const Buf& buffer, int flags = 0) {
         // If the I/O operation has been initiated from an other thread, we queue it and we'll process
         // it in our own thread so that we make sure that every I/O operation happens in the right thread
-        const bool isInRightThread = std::this_thread::get_id() == io()->thread();
+        auto ctx = context();
+        const bool isInRightThread = std::this_thread::get_id() == ctx.thread();
         if (!isInRightThread) {
             return Async::Promise<ssize_t>([=](Async::Deferred<ssize_t> deferred) {
                 BufferHolder holder(buffer);
@@ -76,7 +78,7 @@ public:
 
     void disarmTimer(Fd fd);
 
-    std::shared_ptr<Io::Handler> clone() const;
+    std::shared_ptr<Aio::Handler> clone() const;
 
 private:
     enum WriteStatus {

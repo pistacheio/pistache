@@ -188,7 +188,10 @@ Listener::bind(const Address& address) {
 
     transport_.reset(new Transport(handler_));
 
-    io_.init(workers_, transport_);
+    reactor_.init(Aio::AsyncContext(workers_));
+    transportKey = reactor_.addHandler(transport_);
+
+    //io_.init(workers_, transport_);
     io_.start();
 
     return true;
@@ -201,6 +204,8 @@ Listener::isBound() const {
 
 void
 Listener::run() {
+    reactor_.run();
+
     for (;;) {
         std::vector<Polling::Event> events;
 
@@ -311,8 +316,8 @@ Listener::handleNewConnection() {
 
 void
 Listener::dispatchPeer(const std::shared_ptr<Peer>& peer) {
-    auto service = io_.service(peer->fd());
-    auto transport = std::static_pointer_cast<Transport>(service->handler());
+    auto handler = reactor_.handler(transportKey, peer->fd());
+    auto transport = std::static_pointer_cast<Transport>(handler);
 
     transport->handleNewPeer(peer);
 

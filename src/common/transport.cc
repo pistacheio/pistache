@@ -21,7 +21,7 @@ Transport::init(const std::shared_ptr<Tcp::Handler>& handler) {
     handler_->associateTransport(this);
 }
 
-std::shared_ptr<Io::Handler>
+std::shared_ptr<Aio::Handler>
 Transport::clone() const {
     return std::make_shared<Transport>(handler_->clone());
 }
@@ -36,7 +36,8 @@ Transport::registerPoller(Polling::Epoll& poller) {
 
 void
 Transport::handleNewPeer(const std::shared_ptr<Tcp::Peer>& peer) {
-    const bool isInRightThread = std::this_thread::get_id() == io()->thread();
+    auto ctx = context();
+    const bool isInRightThread = std::this_thread::get_id() == ctx.thread();
     if (!isInRightThread) {
         PeerEntry entry(peer);
         auto *e = peersQueue.allocEntry(entry);
@@ -47,7 +48,7 @@ Transport::handleNewPeer(const std::shared_ptr<Tcp::Peer>& peer) {
 }
 
 void
-Transport::onReady(const Io::FdSet& fds) {
+Transport::onReady(const Aio::FdSet& fds) {
     for (const auto& entry: fds) {
         if (entry.getTag() == writesQueue.tag()) {
             handleWriteQueue();
@@ -87,7 +88,7 @@ Transport::onReady(const Io::FdSet& fds) {
                 throw std::runtime_error("Assertion Error: could not find write data");
             }
 
-            io()->modifyFd(fd, NotifyOn::Read, Polling::Mode::Edge);
+            key().modifyFd(fd, NotifyOn::Read, Polling::Mode::Edge);
 
             auto& write = it->second;
             asyncWriteImpl(fd, write, Retry);
@@ -202,7 +203,8 @@ Transport::asyncWriteImpl(
                             std::make_pair(fd,
                                 WriteEntry(std::move(deferred), buffer.detach(totalWritten), flags)));
                 }
-                io()->modifyFd(fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
+
+                key().modifyFd(fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
             }
             else {
                 cleanUp();
@@ -225,7 +227,9 @@ void
 Transport::armTimerMs(
         Fd fd, std::chrono::milliseconds value,
         Async::Deferred<uint64_t> deferred) {
-    const bool isInRightThread = std::this_thread::get_id() == io()->thread();
+
+    auto ctx = context();
+    const bool isInRightThread = std::this_thread::get_id() == ctx.thread();
     TimerEntry entry(fd, value, std::move(deferred));
 
     if (!isInRightThread) {
@@ -265,7 +269,7 @@ Transport::armTimerMsImpl(TimerEntry entry) {
         return;
     }
 
-    io()->registerFdOneShot(entry.fd, NotifyOn::Read, Polling::Mode::Edge);
+    key().registerFdOneShot(entry.fd, NotifyOn::Read, Polling::Mode::Edge);
     timers.insert(std::make_pair(entry.fd, std::move(entry)));
 }
 
@@ -311,7 +315,7 @@ Transport::handlePeer(const std::shared_ptr<Peer>& peer) {
     peer->associateTransport(this);
 
     handler_->onConnection(peer);
-    io()->registerFd(fd, NotifyOn::Read | NotifyOn::Shutdown, Polling::Mode::Edge);
+    reactor()->registerFd(key(), fd, NotifyOn::Read | NotifyOn::Shutdown, Polling::Mode::Edge);
 }
 
 void

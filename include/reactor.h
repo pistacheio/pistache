@@ -91,7 +91,7 @@ private:
 };
 
 class Handler;
-class Context;
+class ExecutionContext;
 
 class Reactor : public std::enable_shared_from_this<Reactor> {
 public:
@@ -99,8 +99,11 @@ public:
     class Impl;
 
     Reactor();
+    ~Reactor();
 
     struct Key {
+
+        Key();
 
         friend class Reactor;
         friend class Impl;
@@ -118,13 +121,24 @@ public:
                 Fd fd, Polling::NotifyOn interest, Polling::Tag tag,
                 Polling::Mode mode = Polling::Mode::Level);
 
+        void registerFd(
+                Fd fd, Polling::NotifyOn interest, Polling::Mode mode = Polling::Mode::Level);
+        void registerFdOneShot(
+                Fd fd, Polling::NotifyOn interest, Polling::Mode mode = Polling::Mode::Level);
+
+        void modifyFd(
+                Fd fd, Polling::NotifyOn interest, Polling::Tag tag,
+                Polling::Mode mode = Polling::Mode::Level);
+        void modifyFd(
+            Fd fd, Polling::NotifyOn interest, Polling::Mode mode = Polling::Mode::Level);
+
         size_t index() const {
             return index_;
         }
 
     private:
-        Key();
         Key(size_t index, const std::shared_ptr<Handler>& handler);
+
         size_t index_;
         std::shared_ptr<Handler> handler_;
     };
@@ -133,15 +147,32 @@ public:
     static std::shared_ptr<Reactor> create();
 
     void init();
-    void init(const Context& context);
+    void init(const ExecutionContext& context);
 
     Key addHandler(const std::shared_ptr<Handler>& handler);
+
+    std::shared_ptr<Handler> handler(const Key& key, Fd fd);
 
     void registerFd(
             const Key& key, Fd fd, Polling::NotifyOn interest, Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level);
     void registerFdOneShot(
             const Key& key, Fd fd, Polling::NotifyOn intereset, Polling::Tag tag,
+            Polling::Mode mode = Polling::Mode::Level);
+
+    void registerFd(
+            const Key& key, Fd fd, Polling::NotifyOn interest,
+            Polling::Mode mode = Polling::Mode::Level);
+    void registerFdOneShot(
+            const Key& key, Fd fd, Polling::NotifyOn interest,
+            Polling::Mode mode = Polling::Mode::Level);
+
+    void modifyFd(
+            const Key& key, Fd fd, Polling::NotifyOn interest,
+            Polling::Mode mode = Polling::Mode::Level);
+
+    void modifyFd(
+            const Key& key, Fd fd, Polling::NotifyOn interest, Polling::Tag tag, 
             Polling::Mode mode = Polling::Mode::Level);
 
     void runOnce();
@@ -156,23 +187,23 @@ private:
 
 };
 
-class Context {
+class ExecutionContext {
 public:
-    virtual Reactor::Impl* makeImpl(const Reactor* reactor) const = 0;
+    virtual Reactor::Impl* makeImpl(Reactor* reactor) const = 0;
 };
 
-class SyncContext : public Context {
+class SyncContext : public ExecutionContext {
 public:
-    Reactor::Impl* makeImpl(const Reactor* reactor) const;
+    Reactor::Impl* makeImpl(Reactor* reactor) const;
 };
 
-class AsyncContext : public Context {
+class AsyncContext : public ExecutionContext {
 public:
     AsyncContext(size_t threads)
         : threads_(threads)
     { }
 
-    Reactor::Impl* makeImpl(const Reactor* reactor) const;
+    Reactor::Impl* makeImpl(Reactor* reactor) const;
 
     static AsyncContext singleThreaded();
 
@@ -183,6 +214,17 @@ private:
 class Handler : public Prototype<Handler> {
 public:
     friend class Reactor;
+    friend class SyncImpl;
+    friend class AsyncImpl;
+
+    struct Context {
+        friend class SyncImpl;
+
+        std::thread::id thread() const { return tid; }
+
+    private:
+        std::thread::id tid;
+    };
 
     virtual void onReady(const FdSet& fds) = 0;
     virtual void registerPoller(Polling::Epoll& poller) { }
@@ -191,8 +233,19 @@ public:
         return reactor_;
     }
 
+    Context context() const {
+        return context_;
+    }
+
+    Reactor::Key key() const {
+        return key_;
+    };
+
 private:
     Reactor* reactor_;
+    Context context_;
+
+    Reactor::Key key_;
 };
 
 } // namespace Aio
