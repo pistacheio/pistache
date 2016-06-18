@@ -75,12 +75,14 @@ void setSocketOptions(Fd fd, Flags<Options> options) {
 Listener::Listener()
     : listen_fd(-1)
     , backlog_(Const::MaxBacklog)
+    , reactor_(Aio::Reactor::create())
 { }
 
 Listener::Listener(const Address& address)
     : addr_(address)
     , listen_fd(-1)
     , backlog_(Const::MaxBacklog)
+    , reactor_(Aio::Reactor::create())
 {
 }
 
@@ -188,11 +190,8 @@ Listener::bind(const Address& address) {
 
     transport_.reset(new Transport(handler_));
 
-    reactor_.init(Aio::AsyncContext(workers_));
-    transportKey = reactor_.addHandler(transport_);
-
-    //io_.init(workers_, transport_);
-    io_.start();
+    reactor_->init(Aio::AsyncContext(workers_));
+    transportKey = reactor_->addHandler(transport_);
 
     return true;
 }
@@ -204,7 +203,7 @@ Listener::isBound() const {
 
 void
 Listener::run() {
-    reactor_.run();
+    reactor_->run();
 
     for (;;) {
         std::vector<Polling::Event> events;
@@ -239,7 +238,7 @@ Listener::runThreaded() {
 void
 Listener::shutdown() {
     if (shutdownFd.isBound()) shutdownFd.notify();
-    io_.shutdown();
+    reactor_->shutdown();
 }
 
 Async::Promise<Listener::Load>
@@ -316,8 +315,9 @@ Listener::handleNewConnection() {
 
 void
 Listener::dispatchPeer(const std::shared_ptr<Peer>& peer) {
-    auto handler = reactor_.handler(transportKey, peer->fd());
-    auto transport = std::static_pointer_cast<Transport>(handler);
+    auto handlers = reactor_->handlers(transportKey);
+    auto idx = peer->fd() % handlers.size();
+    auto transport = std::static_pointer_cast<Transport>(handlers[idx]);
 
     transport->handleNewPeer(peer);
 

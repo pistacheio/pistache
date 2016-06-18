@@ -77,11 +77,11 @@ private:
     std::unique_ptr<std::thread> acceptThread;
 
     size_t workers_;
-    Io::ServiceGroup io_;
     std::shared_ptr<Transport> transport_;
+    Io::ServiceGroup io_;
     std::shared_ptr<Handler> handler_;
 
-    Aio::Reactor reactor_;
+    std::shared_ptr<Aio::Reactor> reactor_;
     Aio::Reactor::Key transportKey;
 
     void handleNewConnection();

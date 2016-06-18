@@ -110,37 +110,13 @@ public:
         friend class SyncImpl;
         friend class AsyncImpl;
 
-        std::shared_ptr<Handler> handler() const {
-            return handler_;
-        }
-
-        void registerFd(
-                Fd fd, Polling::NotifyOn interest, Polling::Tag tag,
-                Polling::Mode mode = Polling::Mode::Level);
-        void registerFdOneShot(
-                Fd fd, Polling::NotifyOn interest, Polling::Tag tag,
-                Polling::Mode mode = Polling::Mode::Level);
-
-        void registerFd(
-                Fd fd, Polling::NotifyOn interest, Polling::Mode mode = Polling::Mode::Level);
-        void registerFdOneShot(
-                Fd fd, Polling::NotifyOn interest, Polling::Mode mode = Polling::Mode::Level);
-
-        void modifyFd(
-                Fd fd, Polling::NotifyOn interest, Polling::Tag tag,
-                Polling::Mode mode = Polling::Mode::Level);
-        void modifyFd(
-            Fd fd, Polling::NotifyOn interest, Polling::Mode mode = Polling::Mode::Level);
-
-        size_t index() const {
-            return index_;
+        uint64_t data() const {
+            return data_;
         }
 
     private:
-        Key(size_t index, const std::shared_ptr<Handler>& handler);
-
-        size_t index_;
-        std::shared_ptr<Handler> handler_;
+        Key(uint64_t data);
+        uint64_t data_;
     };
 
 
@@ -151,7 +127,7 @@ public:
 
     Key addHandler(const std::shared_ptr<Handler>& handler);
 
-    std::shared_ptr<Handler> handler(const Key& key, Fd fd);
+    std::vector<std::shared_ptr<Handler>> handlers(const Key& key);
 
     void registerFd(
             const Key& key, Fd fd, Polling::NotifyOn interest, Polling::Tag tag,
@@ -182,9 +158,7 @@ public:
 
 private:
     Impl* impl() const;
-
     std::unique_ptr<Impl> impl_;
-
 };
 
 class ExecutionContext {
@@ -244,7 +218,6 @@ public:
 private:
     Reactor* reactor_;
     Context context_;
-
     Reactor::Key key_;
 };
 

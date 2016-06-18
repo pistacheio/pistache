@@ -65,6 +65,7 @@ Transport::onReady(const Aio::FdSet& fds) {
 
         else if (entry.isReadable()) {
             auto tag = entry.getTag();
+            auto val = tag.value();
             if (isPeerFd(tag)) {
                 auto& peer = getPeer(tag);
                 handleIncoming(peer);
@@ -88,7 +89,7 @@ Transport::onReady(const Aio::FdSet& fds) {
                 throw std::runtime_error("Assertion Error: could not find write data");
             }
 
-            key().modifyFd(fd, NotifyOn::Read, Polling::Mode::Edge);
+            reactor()->modifyFd(key(), fd, NotifyOn::Read, Polling::Mode::Edge);
 
             auto& write = it->second;
             asyncWriteImpl(fd, write, Retry);
@@ -204,7 +205,7 @@ Transport::asyncWriteImpl(
                                 WriteEntry(std::move(deferred), buffer.detach(totalWritten), flags)));
                 }
 
-                key().modifyFd(fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
+                reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
             }
             else {
                 cleanUp();
@@ -269,7 +270,7 @@ Transport::armTimerMsImpl(TimerEntry entry) {
         return;
     }
 
-    key().registerFdOneShot(entry.fd, NotifyOn::Read, Polling::Mode::Edge);
+    reactor()->registerFdOneShot(key(), entry.fd, NotifyOn::Read, Polling::Mode::Edge);
     timers.insert(std::make_pair(entry.fd, std::move(entry)));
 }
 

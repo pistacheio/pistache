@@ -17,10 +17,10 @@ struct Reactor::Impl {
     virtual ~Impl() = default;
 
     virtual Reactor::Key addHandler(
-            const std::shared_ptr<Handler>& handler) = 0;
+            const std::shared_ptr<Handler>& handler, bool setKey) = 0;
 
-    virtual std::shared_ptr<Handler> handler(
-            const Reactor::Key& key, Fd fd) const = 0;
+    virtual std::vector<std::shared_ptr<Handler>> handlers(
+            const Reactor::Key& key) const = 0;
 
     virtual void registerFd(
             const Reactor::Key& key,
@@ -51,29 +51,39 @@ struct Reactor::Impl {
     Reactor* reactor_;
 };
 
+/* Synchronous implementation of the reactor that polls in the context
+ * of the same thread
+ */
 struct SyncImpl : public Reactor::Impl {
 
     SyncImpl(Reactor* reactor)
         : Reactor::Impl(reactor)
-    { }
+    {
+        shutdownFd.bind(poller);
+    }
 
     Reactor::Key addHandler(
-            const std::shared_ptr<Handler>& handler) {
+            const std::shared_ptr<Handler>& handler, bool setKey = true) {
 
         handler->registerPoller(poller);
 
         handler->reactor_ = reactor_;
 
-        auto key = handlers.add(handler);
-        handler->key_ = key;
+        auto key = handlers_.add(handler);
+        if (setKey) handler->key_ = key;
 
         return key;
     }
 
-    std::shared_ptr<Handler> handler(
-            const Reactor::Key& key,
-            Fd fd) const {
-        return handlers[key.index()];
+    std::shared_ptr<Handler> handler(const Reactor::Key& key) const {
+        return handlers_[key.data()];
+    }
+
+    std::vector<std::shared_ptr<Handler>> handlers(const Reactor::Key& key) const {
+        std::vector<std::shared_ptr<Handler>> res;
+
+        res.push_back(handler(key));
+        return res;
     }
 
     void registerFd(
@@ -83,8 +93,8 @@ struct SyncImpl : public Reactor::Impl {
             Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level) {
 
-        auto pollKey = pollTag(key, tag);
-        poller.addFd(fd, interest, pollKey, mode);
+        auto pollTag = encodeTag(key, tag);
+        poller.addFd(fd, interest, pollTag, mode);
     }
 
     void registerFdOneShot(
@@ -93,8 +103,9 @@ struct SyncImpl : public Reactor::Impl {
             Polling::NotifyOn interest,
             Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level) {
-        auto pollKey = pollTag(key, tag);
-        poller.addFdOneShot(fd, interest, pollKey, mode);
+
+        auto pollTag = encodeTag(key, tag);
+        poller.addFdOneShot(fd, interest, pollTag, mode);
     }
 
     void modifyFd(
@@ -103,12 +114,13 @@ struct SyncImpl : public Reactor::Impl {
             Polling::NotifyOn interest,
             Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level) {
-        auto pollKey = pollTag(key, tag);
-        poller.rearmFd(fd, interest, tag, mode);
+
+        auto pollTag = encodeTag(key, tag);
+        poller.rearmFd(fd, interest, pollTag, mode);
     }
 
     void runOnce() {
-        if (handlers.empty())
+        if (handlers_.empty())
             throw std::runtime_error("You need to set at least one handler");
 
         std::chrono::milliseconds timeout(-1);
@@ -130,7 +142,7 @@ struct SyncImpl : public Reactor::Impl {
     }
 
     void run() {
-        handlers.forEachHandler([](const std::shared_ptr<Handler> handler) {
+        handlers_.forEachHandler([](const std::shared_ptr<Handler> handler) {
             handler->context_.tid = std::this_thread::get_id();
         });
 
@@ -145,20 +157,20 @@ struct SyncImpl : public Reactor::Impl {
 
 private:
 
-    Polling::Tag pollTag(const Reactor::Key& key, Polling::Tag tag) const {
+    Polling::Tag encodeTag(const Reactor::Key& key, Polling::Tag tag) const {
         uint64_t value = tag.value();
-        auto encodedValue = HandlerList::encodeValue(key, value);
-
+        return HandlerList::encodeTag(key, value);
     }
+
     std::pair<size_t, uint64_t> decodeTag(const Polling::Tag& tag) const {
-        return HandlerList::decodeValue(tag);
+        return HandlerList::decodeTag(tag);
     }
 
     void handleFds(std::vector<Polling::Event> events) const {
         // Fast-path: if we only have one handler, do not bother scanning the fds to find
         // the right handlers
-        if (handlers.size() == 1)
-            handlers[0]->onReady(FdSet(std::move(events)));
+        if (handlers_.size() == 1)
+            handlers_[0]->onReady(FdSet(std::move(events)));
         else {
             std::unordered_map<std::shared_ptr<Handler>, std::vector<Polling::Event>> fdHandlers;
 
@@ -167,7 +179,7 @@ private:
                 uint64_t value;
 
                 std::tie(index, value) = decodeTag(event.tag);
-                auto handler = handlers[index];
+                auto handler = handlers_[index];
                 auto& evs = fdHandlers[handler];
                 evs.push_back(std::move(event));
             }
@@ -205,7 +217,7 @@ private:
             if (index_ == MaxHandlers)
                 throw std::runtime_error("Maximum handlers reached");
 
-            Reactor::Key key(index_, handler);
+            Reactor::Key key(index_);
             handlers[index_++] = handler;
 
             return key;
@@ -230,8 +242,8 @@ private:
             return index_;
         }
 
-        static Polling::Tag encodeValue(const Reactor::Key& key, uint64_t value) {
-            auto index = key.index();
+        static Polling::Tag encodeTag(const Reactor::Key& key, uint64_t value) {
+            auto index = key.data();
             // The reason why we are using the most significant bits to encode
             // the index of the handler is that in the fast path, we won't need
             // to shift the value to retrieve the fd if there is only one handler as
@@ -240,7 +252,7 @@ private:
             return Polling::Tag(value);
         }
 
-        static std::pair<size_t, uint64_t> decodeValue(const Polling::Tag& tag) {
+        static std::pair<size_t, uint64_t> decodeTag(const Polling::Tag& tag) {
             auto value = tag.value();
             size_t index = value >> HandlerShift;
             uint64_t fd = value & DataMask;
@@ -268,7 +280,7 @@ private:
         size_t index_;
     };
 
-    HandlerList handlers;
+    HandlerList handlers_;
 
     std::atomic<bool> shutdown_;
     NotifyFd shutdownFd;
@@ -276,9 +288,36 @@ private:
     Polling::Epoll poller;
 };
 
+/* Asynchronous implementation of the reactor that spawns a number N of threads
+ * and creates a polling fd per thread
+ *
+ * Implementation detail:
+ *
+ *  Here is how it works: the implementation simply starts a synchronous variant
+ *  of the implementation in its own std::thread. When adding an handler, it will
+ *  add a clone() of the handler to every worker (thread), and assign its own key
+ *  to the handler. Here is where things start to get interesting. Here is how the
+ *  key encoding works for every handler:
+ *
+ *  [     handler idx      ] [       worker idx         ]
+ *  ------------------------ ----------------------------
+ *       ^ 32 bits                   ^ 32 bits
+ *  -----------------------------------------------------
+ *                       ^ 64 bits
+ *
+ * Since we have up to 64 bits of data for every key, we encode the index of the handler
+ * that has been assigned by the SyncImpl in the upper 32 bits, and encode the index of the
+ * worker thread in the lowest 32 bits.
+ *
+ * When registering a fd for a given key, the AsyncImpl then knows which worker to use by
+ * looking at the lowest 32 bits of the Key's data. The SyncImpl will then use the highest
+ * 32 bits to retrieve the index of the handler.
+ */
+
 struct AsyncImpl : public Reactor::Impl {
     AsyncImpl(Reactor* reactor, size_t threads)
         : Reactor::Impl(reactor) {
+
         for (size_t i = 0; i < threads; ++i) {
             std::unique_ptr<Worker> wrk(new Worker(reactor));
             workers_.push_back(std::move(wrk));
@@ -286,22 +325,33 @@ struct AsyncImpl : public Reactor::Impl {
     }
 
     Reactor::Key addHandler(
-            const std::shared_ptr<Handler>& handler) {
+            const std::shared_ptr<Handler>& handler, bool) {
 
-        // @Invariant: the key should always be the same for every worker
         Reactor::Key key;
 
-        for (auto& wrk: workers_) {
-            key = wrk->sync->addHandler(handler->clone());
+        for (size_t i = 0; i < workers_.size(); ++i) {
+            auto &wrk = workers_[i];
+
+            auto cl = handler->clone();
+            key = wrk->sync->addHandler(cl, false /* setKey */);
+            auto newKey = encodeKey(key, i);
+            cl->key_ = newKey;
         }
 
         return key;
     }
 
-    std::shared_ptr<Handler> handler(
-            const Reactor::Key& key, Fd fd) const {
-        auto& worker = workers_[fd & workers_.size()];
-        return worker->sync->handler(key, fd);
+    std::vector<std::shared_ptr<Handler>> handlers(const Reactor::Key& key) const {
+        auto idx = decodeKey(key).first;
+        Reactor::Key originalKey(idx);
+
+        std::vector<std::shared_ptr<Handler>> res;
+        res.reserve(workers_.size());
+        for (auto& wrk: workers_) {
+            res.push_back(wrk->sync->handler(originalKey));
+        }
+
+        return res;
     }
 
     void registerFd(
@@ -310,10 +360,7 @@ struct AsyncImpl : public Reactor::Impl {
             Polling::NotifyOn interest,
             Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level) {
-        auto& worker = workers_[fd & workers_.size()];
-
-        worker->sync->registerFd(
-                key, fd, interest, tag, mode);
+        dispatchCall(key, &SyncImpl::registerFd, fd, interest, tag, mode);
     }
 
     void registerFdOneShot(
@@ -322,10 +369,7 @@ struct AsyncImpl : public Reactor::Impl {
             Polling::NotifyOn interest,
             Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level) {
-        auto& worker = workers_[fd & workers_.size()];
-
-        worker->sync->registerFdOneShot(
-                key, fd, interest, tag, mode);
+        dispatchCall(key, &SyncImpl::registerFdOneShot, fd, interest, tag, mode);
     }
 
     void modifyFd(
@@ -334,9 +378,7 @@ struct AsyncImpl : public Reactor::Impl {
             Polling::NotifyOn interest,
             Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level) {
-        auto& worker = workers_[fd & workers_.size()];
-
-        worker->sync->modifyFd(key, fd, interest, tag, mode);
+        dispatchCall(key, &SyncImpl::modifyFd, fd, interest, tag, mode);
     }
 
     void runOnce() {
@@ -353,6 +395,33 @@ struct AsyncImpl : public Reactor::Impl {
     }
 
 private:
+    Reactor::Key encodeKey(const Reactor::Key& originalKey, uint32_t value) const
+    {
+        auto data = originalKey.data();
+        auto newValue = data << 32 | value;
+        return Reactor::Key(newValue);
+    }
+
+    std::pair<uint32_t, uint32_t> decodeKey(const Reactor::Key& encodedKey) const {
+        auto data = encodedKey.data();
+        uint32_t hi = data >> 32;
+        uint32_t lo = data & 0xFFFFFFFF;
+        return std::make_pair(hi, lo);
+    }
+
+#define CALL_MEMBER_FN(obj, pmf) (obj->*(pmf))
+
+    template<typename Func, typename... Args>
+    void dispatchCall(const Reactor::Key& key, Func func, Args&& ...args) const {
+        auto decoded = decodeKey(key);
+        auto& wrk = workers_[decoded.second];
+
+        Reactor::Key originalKey(decoded.second);
+        CALL_MEMBER_FN(wrk->sync.get(), func)(originalKey, std::forward<Args>(args)...);
+    }
+
+#undef CALL_MEMBER_FN
+
     struct Worker {
 
         Worker(Reactor* reactor) {
@@ -382,81 +451,13 @@ private:
 };
 
 Reactor::Key::Key()
-    : index_(0)
-    , handler_(nullptr)
+    : data_(0)
 { }
 
 Reactor::Key::Key(
-        size_t index, const std::shared_ptr<Handler>& handler)
-    : index_(index)
-    , handler_(handler)
+        uint64_t data)
+    : data_(data)
 { }
-
-void
-Reactor::Key::registerFd(
-        Fd fd,
-        Polling::NotifyOn interest, Polling::Tag tag,
-        Polling::Mode mode)
-{
-    auto reactor = handler_->reactor();
-
-    reactor->registerFd(*this, fd, interest, tag, mode);
-}
-
-void
-Reactor::Key::registerFdOneShot(
-        Fd fd,
-        Polling::NotifyOn interest, Polling::Tag tag,
-        Polling::Mode mode)
-{
-    auto reactor = handler_->reactor();
-    reactor->registerFdOneShot(*this, fd, interest, tag, mode);
-}
-
-void
-Reactor::Key::registerFd(
-        Fd fd,
-        Polling::NotifyOn interest,
-        Polling::Mode mode)
-{
-    auto reactor = handler_->reactor();
-
-    reactor->registerFd(*this, fd, interest, Polling::Tag(fd), mode);
-}
-
-void
-Reactor::Key::registerFdOneShot(
-        Fd fd,
-        Polling::NotifyOn interest,
-        Polling::Mode mode)
-{
-    auto reactor = handler_->reactor();
-
-    reactor->registerFdOneShot(*this, fd, interest, Polling::Tag(fd), mode);
-}
-
-void
-Reactor::Key::modifyFd(
-        Fd fd,
-        Polling::NotifyOn interest,
-        Polling::Tag tag,
-        Polling::Mode mode)
-{
-    auto reactor = handler_->reactor();
-
-    reactor->modifyFd(*this, fd, interest, tag, mode);
-}
-
-void
-Reactor::Key::modifyFd(
-        Fd fd,
-        Polling::NotifyOn interest,
-        Polling::Mode mode)
-{
-    auto reactor = handler_->reactor();
-
-    reactor->modifyFd(*this, fd, interest, Polling::Tag(fd), mode);
-}
 
 Reactor::Reactor() = default;
 
@@ -480,12 +481,12 @@ Reactor::init(const ExecutionContext& context) {
 
 Reactor::Key
 Reactor::addHandler(const std::shared_ptr<Handler>& handler) {
-    return impl()->addHandler(handler);
+    return impl()->addHandler(handler, true);
 }
 
-std::shared_ptr<Handler>
-Reactor::handler(const Reactor::Key& key, Fd fd) {
-    return impl()->handler(key, fd);
+std::vector<std::shared_ptr<Handler>>
+Reactor::handlers(const Reactor::Key& key) {
+    return impl()->handlers(key);
 }
 
 void
