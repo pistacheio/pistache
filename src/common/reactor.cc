@@ -136,7 +136,7 @@ struct SyncImpl : public Reactor::Impl {
 
                     handleFds(std::move(events));
 
-                    timeout = std::chrono::milliseconds(0);
+                    timeout = std::chrono::milliseconds(-1);
             }
         }
     }
@@ -153,6 +153,10 @@ struct SyncImpl : public Reactor::Impl {
     void shutdown() {
         shutdown_.store(true);
         shutdownFd.notify();
+    }
+
+    static constexpr size_t MaxHandlers() {
+        return HandlerList::MaxHandlers;
     }
 
 private:
@@ -191,6 +195,14 @@ private:
     }
 
     struct HandlerList {
+
+        // We are using the highest 8 bits of the fd to encode the index of the handler,
+        // which gives us a maximum of 2**8 - 1 handler, 255
+        static constexpr size_t HandlerBits = 8;
+        static constexpr size_t HandlerShift = sizeof(uint64_t) - HandlerBits;
+        static constexpr uint64_t DataMask = uint64_t(-1) >> HandlerBits;
+
+        static constexpr size_t MaxHandlers = (1 << HandlerBits) - 1;
 
         HandlerList() {
             std::fill(std::begin(handlers), std::end(handlers), nullptr);
@@ -267,15 +279,6 @@ private:
         }
 
     private:
-
-        // We are using the highest 8 bits of the fd to encode the index of the handler,
-        // which gives us a maximum of 2**8 - 1 handler, 255
-        static constexpr size_t HandlerBits = 8;
-        static constexpr size_t HandlerShift = sizeof(uint64_t) - HandlerBits;
-        static constexpr uint64_t DataMask = uint64_t(-1) >> HandlerBits;
-
-        static constexpr size_t MaxHandlers = (1 << HandlerBits) - 1;
-
         std::array<std::shared_ptr<Handler>, MaxHandlers> handlers;
         size_t index_;
     };
@@ -315,6 +318,9 @@ private:
  */
 
 struct AsyncImpl : public Reactor::Impl {
+
+    static constexpr uint32_t KeyMarker = 0xBADB0B;
+
     AsyncImpl(Reactor* reactor, size_t threads)
         : Reactor::Impl(reactor) {
 
@@ -327,22 +333,32 @@ struct AsyncImpl : public Reactor::Impl {
     Reactor::Key addHandler(
             const std::shared_ptr<Handler>& handler, bool) {
 
-        Reactor::Key key;
+        Reactor::Key keys[SyncImpl::MaxHandlers()];
 
         for (size_t i = 0; i < workers_.size(); ++i) {
             auto &wrk = workers_[i];
 
             auto cl = handler->clone();
-            key = wrk->sync->addHandler(cl, false /* setKey */);
+            auto key = wrk->sync->addHandler(cl, false /* setKey */);
             auto newKey = encodeKey(key, i);
             cl->key_ = newKey;
+
+            keys[i] = key;
         }
 
-        return key;
+        auto data = keys[0].data() << 32 | KeyMarker;
+
+        return Reactor::Key(data);
     }
 
     std::vector<std::shared_ptr<Handler>> handlers(const Reactor::Key& key) const {
-        auto idx = decodeKey(key).first;
+
+        uint32_t idx;
+        uint32_t marker;
+        std::tie(idx, marker) = decodeKey(key);
+        if (marker != KeyMarker)
+            throw std::runtime_error("Invalid key");
+
         Reactor::Key originalKey(idx);
 
         std::vector<std::shared_ptr<Handler>> res;
@@ -416,7 +432,7 @@ private:
         auto decoded = decodeKey(key);
         auto& wrk = workers_[decoded.second];
 
-        Reactor::Key originalKey(decoded.second);
+        Reactor::Key originalKey(decoded.first);
         CALL_MEMBER_FN(wrk->sync.get(), func)(originalKey, std::forward<Args>(args)...);
     }
 

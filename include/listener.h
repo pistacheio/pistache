@@ -78,7 +78,6 @@ private:
 
     size_t workers_;
     std::shared_ptr<Transport> transport_;
-    Io::ServiceGroup io_;
     std::shared_ptr<Handler> handler_;
 
     std::shared_ptr<Aio::Reactor> reactor_;
