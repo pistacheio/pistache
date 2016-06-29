@@ -12,6 +12,7 @@
 #include "flags.h"
 #include "async.h"
 #include "io.h"
+#include "reactor.h"
 #include <vector>
 #include <memory>
 #include <thread>
@@ -66,8 +67,6 @@ public:
     void pinWorker(size_t worker, const CpuSet& set);
 
 private: 
-    struct TransportFactory;
-
     Address addr_; 
     int listen_fd;
     int backlog_;
@@ -78,9 +77,11 @@ private:
     std::unique_ptr<std::thread> acceptThread;
 
     size_t workers_;
-    Io::ServiceGroup io_;
     std::shared_ptr<Transport> transport_;
     std::shared_ptr<Handler> handler_;
+
+    std::shared_ptr<Aio::Reactor> reactor_;
+    Aio::Reactor::Key transportKey;
 
     void handleNewConnection();
     void dispatchPeer(const std::shared_ptr<Peer>& peer);
