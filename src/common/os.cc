@@ -5,7 +5,6 @@
 
 #include "os.h"
 #include "common.h"
-#include "io.h"
 #include <unistd.h>
 #include <fcntl.h>
 #include <fstream>

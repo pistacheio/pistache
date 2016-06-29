@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "io.h"
 #include "reactor.h"
 #include "mailbox.h"
 #include "optional.h"

@@ -11,7 +11,6 @@
 #include "os.h"
 #include "flags.h"
 #include "async.h"
-#include "io.h"
 #include "reactor.h"
 #include <vector>
 #include <memory>

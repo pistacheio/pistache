@@ -16,7 +16,6 @@
 #include <atomic>
 #include <unistd.h>
 #include "os.h"
-#include "io.h"
 #include "reactor.h"
 
 namespace Net {
