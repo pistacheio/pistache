@@ -8,7 +8,7 @@
 #include "async.h" 
 #include "os.h"
 #include "http.h"
-#include "io.h"
+#include "reactor.h"
 #include "timer_pool.h"
 #include "view.h"
 #include <atomic>
@@ -159,14 +159,14 @@ private:
     size_t maxConnectionsPerHost;
 };
 
-class Transport : public Io::Handler {
+class Transport : public Aio::Handler {
 public:
 
-    PROTOTYPE_OF(Io::Handler, Transport)
+    PROTOTYPE_OF(Aio::Handler, Transport)
 
     typedef std::function<void()> OnResponseParsed;
 
-    void onReady(const Io::FdSet& fds);
+    void onReady(const Aio::FdSet& fds);
     void registerPoller(Polling::Epoll& poller);
 
     Async::Promise<void>
@@ -328,11 +328,11 @@ public:
    void shutdown();
 
 private:
-
-   Io::ServiceGroup io_;
+   std::shared_ptr<Aio::Reactor> reactor_;
 
    ConnectionPool pool;
    std::shared_ptr<Transport> transport_;
+   Aio::Reactor::Key transportKey;
 
    std::atomic<uint64_t> ioIndex;
 

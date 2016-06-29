@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include "os.h"
 #include "io.h"
+#include "reactor.h"
 
 namespace Net {
 
@@ -55,11 +56,13 @@ public:
         }
 
         void disarm();
-        void registerIo(Io::Service* io) {
+
+        void
+        registerReactor(const Aio::Reactor::Key& key, Aio::Reactor* reactor) {
             if (!registered) {
-                io->registerFd(fd, Polling::NotifyOn::Read);
+                reactor->registerFd(key, fd, Polling::NotifyOn::Read);
+                registered = true;
             }
-            registered = true;
         }
 
     private:

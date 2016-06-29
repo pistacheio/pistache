@@ -11,7 +11,7 @@
 using namespace Net;
 
 int main(int argc, char *argv[]) {
-    if (argc < 1) {
+    if (argc < 2) {
         std::cerr << "Usage: http_client page [count]" << std::endl;
         return 1;
     }

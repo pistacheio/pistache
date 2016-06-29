@@ -145,7 +145,7 @@ namespace {
 }
 
 void
-Transport::onReady(const Io::FdSet& fds) {
+Transport::onReady(const Aio::FdSet& fds) {
     for (const auto& entry: fds) {
         if (entry.getTag() == connectionsQueue.tag()) {
             handleConnectionQueue();
@@ -180,7 +180,7 @@ Transport::onReady(const Io::FdSet& fds) {
                 else {
                     conn.resolve();
                     // We are connected, we can start reading data now
-                    io()->modifyFd(conn.connection->fd, NotifyOn::Read);
+                    reactor()->modifyFd(key(), conn.connection->fd, NotifyOn::Read);
                 }
             } else {
                 throw std::runtime_error("Unknown fd");
@@ -212,7 +212,8 @@ Transport::asyncSendRequest(
         const Buffer& buffer) {
 
     return Async::Promise<ssize_t>([&](Async::Resolver& resolve, Async::Rejection& reject) {
-        if (std::this_thread::get_id() != io()->thread()) {
+        auto ctx = context();
+        if (std::this_thread::get_id() != ctx.thread()) {
             RequestEntry req(std::move(resolve), std::move(reject), connection, std::move(timer), buffer.detach());
             auto *e = requestsQueue.allocEntry(std::move(req));
             requestsQueue.push(e);
@@ -250,7 +251,7 @@ Transport::asyncSendRequestImpl(
                 if (status == FirstTry) {
                     throw std::runtime_error("Unimplemented, fix me!");
                 }
-                io()->modifyFd(fd, NotifyOn::Write, Polling::Mode::Edge);
+                reactor()->modifyFd(key(), fd, NotifyOn::Write, Polling::Mode::Edge);
             }
             else {
                 cleanUp();
@@ -265,7 +266,7 @@ Transport::asyncSendRequestImpl(
                 if (req.timer) {
                     timeouts.insert(
                           std::make_pair(req.timer->fd, conn));
-                    req.timer->registerIo(io());
+                    req.timer->registerReactor(key(), reactor());
                 }
                 req.resolve(totalWritten);
                 break;
@@ -298,7 +299,7 @@ Transport::handleConnectionQueue() {
         int res = ::connect(conn->fd, data.addr, data.addr_len);
         if (res == -1) {
             if (errno == EINPROGRESS) {
-                io()->registerFdOneShot(conn->fd, NotifyOn::Write | NotifyOn::Hangup | NotifyOn::Shutdown);
+                reactor()->registerFdOneShot(key(), conn->fd, NotifyOn::Write | NotifyOn::Hangup | NotifyOn::Shutdown);
             }
             else {
                 data.reject(Error::system("Failed to connect"));
@@ -738,7 +739,8 @@ Client::Options::maxConnectionsPerHost(int val) {
 }
 
 Client::Client()
-    : ioIndex(0)
+    : reactor_(Aio::Reactor::create())
+    , ioIndex(0)
 {
 }
 
@@ -763,13 +765,14 @@ void
 Client::init(const Client::Options& options) {
     pool.init(options.maxConnectionsPerHost_);
     transport_.reset(new Transport);
-    io_.init(options.threads_, transport_);
-    io_.start();
+    reactor_->init(Aio::AsyncContext(options.threads_));
+    transportKey = reactor_->addHandler(transport_);
+    reactor_->run();
 }
 
 void
 Client::shutdown() {
-    io_.shutdown();
+    reactor_->shutdown();
 }
 
 RequestBuilder
@@ -835,10 +838,10 @@ Client::doRequest(
     else {
 
         if (!conn->hasTransport()) {
-            auto index = ioIndex.fetch_add(1) % io_.size();
-            auto service = io_.service(index);
+            auto transports = reactor_->handlers(transportKey);
+            auto index = ioIndex.fetch_add(1) % transports.size();
 
-            auto transport = std::static_pointer_cast<Transport>(service->handler()); 
+            auto transport = std::static_pointer_cast<Transport>(transports[index]);
             conn->associateTransport(transport);
 
         }
