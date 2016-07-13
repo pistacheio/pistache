@@ -58,6 +58,10 @@ struct SyncImpl : public Reactor::Impl {
 
     SyncImpl(Reactor* reactor)
         : Reactor::Impl(reactor)
+        , handlers_()
+        , shutdown_()
+        , shutdownFd()
+        , poller()
     {
         shutdownFd.bind(poller);
     }
@@ -204,7 +208,10 @@ private:
 
         static constexpr size_t MaxHandlers = (1 << HandlerBits) - 1;
 
-        HandlerList() {
+        HandlerList()
+            :handlers()
+            , index_()
+        {
             std::fill(std::begin(handlers), std::end(handlers), nullptr);
         }
 
