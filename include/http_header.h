@@ -70,6 +70,7 @@ const char* encodingString(Encoding encoding);
 
 class Header {
 public:
+    virtual ~Header() {}
     virtual const char *name() const = 0;
 
     virtual void parse(const std::string& data);
