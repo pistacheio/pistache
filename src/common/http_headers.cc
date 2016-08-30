@@ -77,7 +77,6 @@ Registry::isRegistered(const std::string& name) {
 Collection&
 Collection::add(const std::shared_ptr<Header>& header) {
     headers.insert(std::make_pair(header->name(), header));
-    
     return *this;
 }
 

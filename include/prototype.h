@@ -12,6 +12,7 @@
 /* In a sense, a Prototype is just a class that provides a clone() method */
 template<typename Class>
 struct Prototype {
+    virtual ~Prototype() {}
     virtual std::shared_ptr<Class> clone() const = 0;
 };
 

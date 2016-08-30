@@ -75,6 +75,8 @@ public:
     Message(Message&& other) = default;
     Message& operator=(Message&& other) = default;
 
+    virtual ~Message() {}
+
 protected:
     Version version_;
     Code code_;
@@ -150,12 +152,14 @@ private:
     Request();
 
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
+public:
     void associatePeer(const std::shared_ptr<Tcp::Peer>& peer) {
         if (peer_.use_count() > 0)
             throw std::runtime_error("A peer was already associated to the response");
 
         peer_ = peer;
     }
+private:
 #endif
 
     Method method_;
@@ -576,6 +580,7 @@ namespace Private {
         Step(Message* request)
             : message(request)
         { }
+        virtual ~Step() {}
 
         virtual State apply(StreamCursor& cursor) = 0;
 
@@ -662,6 +667,8 @@ namespace Private {
 
         ParserBase(const ParserBase& other) = delete;
         ParserBase(ParserBase&& other) = default;
+
+        virtual ~ParserBase() {}
 
         bool feed(const char* data, size_t len);
         virtual void reset();

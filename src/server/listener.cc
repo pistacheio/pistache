@@ -210,7 +210,7 @@ Listener::run() {
 
         int ready_fds = poller.poll(events, 128, std::chrono::milliseconds(-1));
         if (ready_fds == -1) {
-            if (errno == EINTR && g_listen_fd == -1) return;
+            if (errno == EINTR) continue;
             throw Error::system("Polling");
         }
         else if (ready_fds > 0) {

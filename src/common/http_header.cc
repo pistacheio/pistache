@@ -417,6 +417,12 @@ Accept::parseRaw(const char *str, size_t len) {
 
 void
 Accept::write(std::ostream& os) const {
+    for (size_t i = 0; i < mediaRange_.size(); i++) {
+        os << mediaRange_[i].toString();
+        if (i != mediaRange_.size() - 1) {
+            os << ",";
+        }
+    }
 }
 
 void
