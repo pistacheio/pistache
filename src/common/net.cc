@@ -4,8 +4,8 @@
 */
 
 
-#include "net.h"
-#include "common.h"
+#include "pistache/net.h"
+#include "pistache/common.h"
 #include <stdexcept>
 #include <limits>
 #include <cstring>

@@ -4,7 +4,7 @@
    Headers registry
 */
 
-#include "http_headers.h"
+#include "pistache/http_headers.h"
 #include <unordered_map>
 #include <iterator>
 #include <stdexcept>

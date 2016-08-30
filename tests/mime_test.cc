@@ -1,6 +1,6 @@
 #include "gtest/gtest.h"
-#include "mime.h"
-#include "http.h"
+#include "pistache/mime.h"
+#include "pistache/http.h"
 
 using namespace Net::Http;
 using namespace Net::Http::Mime;

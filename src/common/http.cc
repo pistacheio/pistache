@@ -13,11 +13,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include "common.h"
-#include "http.h"
-#include "net.h"
-#include "peer.h"
-#include "transport.h"
+#include "pistache/common.h"
+#include "pistache/http.h"
+#include "pistache/net.h"
+#include "pistache/peer.h"
+#include "pistache/transport.h"
 
 using namespace std;
 

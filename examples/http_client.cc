@@ -4,9 +4,9 @@
  * Http client example
 */
 
-#include "net.h"
-#include "http.h"
-#include "client.h"
+#include "pistache/net.h"
+#include "pistache/http.h"
+#include "pistache/client.h"
 
 using namespace Net;
 

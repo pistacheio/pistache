@@ -4,8 +4,8 @@
    Cookie implementation
 */
 
-#include "cookie.h"
-#include "stream.h"
+#include "pistache/cookie.h"
+#include "pistache/stream.h"
 #include <iterator>
 #include <unordered_map>
 

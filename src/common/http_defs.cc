@@ -4,8 +4,8 @@
    Implementation of http definitions
 */
 
-#include "http_defs.h"
-#include "common.h"
+#include "pistache/http_defs.h"
+#include "pistache/common.h"
 #include <iostream>
 #include <iomanip>
 

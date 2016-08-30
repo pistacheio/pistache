@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "typeid.h"
+#include "pistache/typeid.h"
 
 TEST(type_id_test, basic_test) {
     ASSERT_EQ(TypeId::of<int>(), TypeId::of<int>());

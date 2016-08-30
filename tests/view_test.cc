@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "view.h"
+#include "pistache/view.h"
 
 template<typename T>
 std::vector<T> make_vec(std::initializer_list<T> list) {

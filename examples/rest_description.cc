@@ -4,9 +4,9 @@
    Example of how to use the Description mechanism
 */
 
-#include "http.h"
-#include "description.h"
-#include "endpoint.h"
+#include "pistache/http.h"
+#include "pistache/description.h"
+#include "pistache/endpoint.h"
 #include "serializer/rapidjson.h"
 
 using namespace std;

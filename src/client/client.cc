@@ -4,8 +4,8 @@
    Implementation of the Http client
 */
 
-#include "client.h"
-#include "stream.h"
+#include "pistache/client.h"
+#include "pistache/stream.h"
 #include <algorithm>
 #include <sys/sendfile.h>
 #include <netdb.h>

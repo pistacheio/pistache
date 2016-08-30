@@ -4,9 +4,9 @@
    Example of a REST endpoint with routing
 */
 
-#include "http.h"
-#include "router.h"
-#include "endpoint.h"
+#include "pistache/http.h"
+#include "pistache/router.h"
+#include "pistache/endpoint.h"
 #include <algorithm>
 
 using namespace std;

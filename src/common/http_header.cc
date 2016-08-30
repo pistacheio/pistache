@@ -4,10 +4,10 @@
    Implementation of common HTTP headers described by the RFC
 */
 
-#include "http_header.h"
-#include "common.h"
-#include "http.h"
-#include "stream.h"
+#include "pistache/http_header.h"
+#include "pistache/common.h"
+#include "pistache/http.h"
+#include "pistache/stream.h"
 #include <stdexcept>
 #include <iterator>
 #include <cstring>

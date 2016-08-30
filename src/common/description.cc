@@ -4,8 +4,8 @@
    Implementation of the description system
 */
 
-#include "description.h"
-#include "http_header.h"
+#include "pistache/description.h"
+#include "pistache/http_header.h"
 #include <sstream>
 #include <algorithm>
 

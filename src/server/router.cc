@@ -4,8 +4,8 @@
    Rest routing implementation
 */
 
-#include "router.h"
-#include "description.h"
+#include "pistache/router.h"
+#include "pistache/description.h"
 #include <algorithm>
 
 namespace Net {

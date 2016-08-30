@@ -3,9 +3,9 @@
    
 */
 
-#include "peer.h"
-#include "async.h"
-#include "transport.h"
+#include "pistache/peer.h"
+#include "pistache/async.h"
+#include "pistache/transport.h"
 #include <iostream>
 #include <stdexcept>
 #include <sys/socket.h>

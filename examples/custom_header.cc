@@ -4,9 +4,9 @@
    Example of custom headers registering
 */
 
-#include "net.h"
-#include "http_headers.h"
-#include "client.h"
+#include "pistache/net.h"
+#include "pistache/http_headers.h"
+#include "pistache/client.h"
 
 using namespace Net;
 using namespace Net::Http;

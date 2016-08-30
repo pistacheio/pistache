@@ -4,8 +4,8 @@
    TCP
 */
 
-#include "tcp.h"
-#include "peer.h"
+#include "pistache/tcp.h"
+#include "pistache/peer.h"
 
 namespace Net {
 

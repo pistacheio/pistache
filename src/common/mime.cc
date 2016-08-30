@@ -4,8 +4,8 @@
    Implementaton of MIME Type parsing
 */
 
-#include "mime.h"
-#include "http.h"
+#include "pistache/mime.h"
+#include "pistache/http.h"
 #include <cstring>
 
 using namespace std;

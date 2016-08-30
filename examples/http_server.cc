@@ -4,12 +4,12 @@
    Example of an http server
 */
 
-#include "net.h"
-#include "http.h"
-#include "peer.h"
-#include "http_headers.h"
-#include "cookie.h"
-#include "endpoint.h"
+#include "pistache/net.h"
+#include "pistache/http.h"
+#include "pistache/peer.h"
+#include "pistache/http_headers.h"
+#include "pistache/cookie.h"
+#include "pistache/endpoint.h"
 
 using namespace std;
 using namespace Net;

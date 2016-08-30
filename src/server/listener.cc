@@ -17,11 +17,11 @@
 #include <sys/sendfile.h>
 #include <cassert>
 #include <cstring>
-#include "listener.h"
-#include "peer.h"
-#include "common.h"
-#include "os.h"
-#include "transport.h"
+#include "pistache/listener.h"
+#include "pistache/peer.h"
+#include "pistache/common.h"
+#include "pistache/os.h"
+#include "pistache/transport.h"
 
 using namespace std;
 

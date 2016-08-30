@@ -5,9 +5,9 @@
 */
 
 
-#include "endpoint.h"
-#include "tcp.h"
-#include "peer.h"
+#include "pistache/endpoint.h"
+#include "pistache/tcp.h"
+#include "pistache/peer.h"
 
 namespace Net {
 

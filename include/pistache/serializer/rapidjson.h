@@ -6,10 +6,10 @@
 
 #pragma once
 
-#include "description.h"
+#include "pistache/description.h"
 #include <rapidjson/prettywriter.h>
-#include "http_defs.h"
-#include "mime.h"
+#include "pistache/http_defs.h"
+#include "pistache/mime.h"
 
 namespace Net {
 
