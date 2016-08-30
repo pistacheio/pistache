@@ -13,7 +13,7 @@ else()
 endif()
 
 include_directories (${CMAKE_CURRENT_SOURCE_DIR}/include)
-file(GLOB HEADER_FILES "include/*.h")
+file(GLOB HEADER_FILES "include/pistache/*.h")
 install(FILES ${HEADER_FILES} DESTINATION include/pistache)
 
 add_subdirectory (src)
