@@ -22,6 +22,7 @@ namespace Http {
     METHOD(Post, "POST") \
     METHOD(Head, "HEAD") \
     METHOD(Put, "PUT") \
+    METHOD(Patch, "PATCH") \
     METHOD(Delete, "DELETE") \
     METHOD(Trace, "TRACE") \
     METHOD(Connect, "CONNECT")
