@@ -794,6 +794,12 @@ Client::put(std::string resource)
 }
 
 RequestBuilder
+Client::patch(std::string resource)
+{
+    return prepareRequest(std::move(resource), Http::Method::Patch);
+}
+
+RequestBuilder
 Client::del(std::string resource)
 {
     return prepareRequest(std::move(resource), Http::Method::Delete);

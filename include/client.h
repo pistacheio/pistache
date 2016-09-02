@@ -323,6 +323,7 @@ public:
    RequestBuilder get(std::string resource);
    RequestBuilder post(std::string resource);
    RequestBuilder put(std::string resource);
+   RequestBuilder patch(std::string resource);
    RequestBuilder del(std::string resource);
 
    void shutdown();
