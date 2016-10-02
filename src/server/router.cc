@@ -280,6 +280,11 @@ Router::del(std::string resource, Route::Handler handler) {
 }
 
 void
+Router::options(std::string resource, Route::Handler handler) {
+    addRoute(Http::Method::Options, std::move(resource), std::move(handler));
+}
+
+void
 Router::addCustomHandler(Route::Handler handler) {
     customHandlers.push_back(std::move(handler));
 }
@@ -331,6 +336,10 @@ void Put(Router& router, std::string resource, Route::Handler handler) {
 
 void Delete(Router& router, std::string resource, Route::Handler handler) {
     router.del(std::move(resource), std::move(handler));
+}
+
+void Options(Router& router, std::string resource, Route::Handler handler) {
+    router.options(std::move(resource), std::move(handler));
 }
 
 } // namespace Routing
