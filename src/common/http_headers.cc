@@ -7,6 +7,7 @@
 #include "http_headers.h"
 #include <unordered_map>
 #include <iterator>
+#include <algorithm>
 #include <stdexcept>
 #include <iostream>
 
@@ -18,6 +19,12 @@ namespace Header {
 
 namespace {
     std::unordered_map<std::string, Registry::RegistryFunc> registry;
+
+    bool incasesensitiveCompare(std::string part1, std::string part2) {
+        std::transform(part1.begin(),part1.end(),part1.begin(),toupper);
+        std::transform(part2.begin(),part2.end(),part2.begin(),toupper);
+        return part1 == part2;
+    }
 }
 
 RegisterHeader(Accept);
@@ -60,7 +67,9 @@ Registry::headersList() {
 
 std::unique_ptr<Header>
 Registry::makeHeader(const std::string& name) {
-    auto it = registry.find(name);
+    auto it = std::find_if(registry.begin(),registry.end(),[&](const std::pair<std::string,Registry::RegistryFunc>& header) {
+        return incasesensitiveCompare(name,header.first);
+    });
     if (it == std::end(registry)) {
         throw std::runtime_error("Unknown header");
     }
@@ -70,7 +79,9 @@ Registry::makeHeader(const std::string& name) {
 
 bool
 Registry::isRegistered(const std::string& name) {
-    auto it = registry.find(name);
+    auto it = std::find_if(registry.begin(),registry.end(),[&](const std::pair<std::string,Registry::RegistryFunc>& header) {
+        return incasesensitiveCompare(name,header.first);
+    });
     return it != std::end(registry);
 }
 
@@ -181,7 +192,9 @@ Collection::clear() {
 
 std::pair<bool, std::shared_ptr<Header>>
 Collection::getImpl(const std::string& name) const {
-    auto it = headers.find(name);
+    auto it = std::find_if(headers.begin(),headers.end(),[&](const std::pair<std::string,std::shared_ptr<Header>>& header) {
+        return incasesensitiveCompare(name,header.first);
+    });
     if (it == std::end(headers)) {
         return std::make_pair(false, nullptr);
     }
