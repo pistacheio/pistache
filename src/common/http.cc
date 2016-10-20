@@ -442,6 +442,7 @@ namespace Private {
         else {
             raise("Unsupported Transfer-Encoding", Code::Not_Implemented);
         }
+        return State::Done;
     }
 
     State
