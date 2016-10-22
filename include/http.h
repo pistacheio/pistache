@@ -194,6 +194,7 @@ public:
         armed = other.armed;
         timerFd = other.timerFd;
         other.timerFd = -1;
+        return *this;
     }
 
     template<typename Duration>

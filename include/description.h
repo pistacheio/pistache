@@ -343,6 +343,7 @@ struct PathBuilder {
     PathBuilder&
     hide(bool value = true) {
         path_->hidden = value;
+        return *this;
     }
 
 private:

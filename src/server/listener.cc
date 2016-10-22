@@ -87,7 +87,7 @@ Listener::Listener(const Address& address)
 }
 
 Listener::~Listener() {
-    shutdown();
+    if (isBound()) shutdown();
     if (acceptThread) acceptThread->join();
 }
 
