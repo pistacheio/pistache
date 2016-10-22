@@ -150,6 +150,7 @@ public:
     void get(std::string resource, Route::Handler handler);
     void post(std::string resource, Route::Handler handler);
     void put(std::string resource, Route::Handler handler);
+    void patch(std::string resource, Route::Handler handler);
     void del(std::string resource, Route::Handler handler);
 
     void addCustomHandler(Route::Handler handler);
@@ -208,6 +209,7 @@ namespace Routes {
     void Get(Router& router, std::string resource, Route::Handler handler);
     void Post(Router& router, std::string resource, Route::Handler handler);
     void Put(Router& router, std::string resource, Route::Handler handler);
+    void Patch(Router& router, std::string resource, Route::Handler handler);
     void Delete(Router& router, std::string resource, Route::Handler handler);
 
     namespace details {

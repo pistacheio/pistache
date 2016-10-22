@@ -275,6 +275,11 @@ Router::put(std::string resource, Route::Handler handler) {
 }
 
 void
+Router::patch(std::string resource, Route::Handler handler) {
+    addRoute(Http::Method::Patch, std::move(resource), std::move(handler));
+}
+
+void
 Router::del(std::string resource, Route::Handler handler) {
     addRoute(Http::Method::Delete, std::move(resource), std::move(handler));
 }
@@ -327,6 +332,10 @@ void Post(Router& router, std::string resource, Route::Handler handler) {
 
 void Put(Router& router, std::string resource, Route::Handler handler) {
     router.put(std::move(resource), std::move(handler));
+}
+
+void Patch(Router& router, std::string resource, Route::Handler handler) {
+    router.patch(std::move(resource), std::move(handler));
 }
 
 void Delete(Router& router, std::string resource, Route::Handler handler) {
