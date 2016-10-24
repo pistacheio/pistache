@@ -76,10 +76,10 @@ private:
         listener.setHandler(handler_);
 
         if (listener.bind()) {
-            const auto& addr = listener.address();
-            std::string out = "Now listening on http://";
             if(logCallback_)
             {
+                const auto& addr = listener.address();
+                std::string out = "Now listening on http://";
                 out.append(addr.host());
                 out.append(":");
                 out.append(std::to_string(addr.port()));
