@@ -1,5 +1,5 @@
 /* http_server.cc
-   Mathieu Stefani, 07 février 2016
+   Mathieu Stefani, 07 f��vrier 2016
    
    Example of an http server
 */
@@ -160,7 +160,6 @@ int main(int argc, char *argv[]) {
     }
 
     Net::Address addr(Net::Ipv4::any(), port);
-    static constexpr size_t Workers = 4;
 
     cout << "Cores = " << hardware_concurrency() << endl;
     cout << "Using " << thr << " threads" << endl;

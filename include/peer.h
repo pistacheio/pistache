@@ -57,12 +57,11 @@ private:
     void associateTransport(Transport* transport);
     Transport* transport() const;
 
-    Transport* transport_;
-
-    Address addr;
-    std::string hostname_;
     Fd fd_;
+    Transport* transport_;
+    Address addr;
     std::unordered_map<std::string, std::shared_ptr<void>> data_;
+    std::string hostname_;
 };
 
 std::ostream& operator<<(std::ostream& os, const Peer& peer);

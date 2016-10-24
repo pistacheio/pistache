@@ -176,12 +176,12 @@ public:
     friend class ResponseWriter;
 
     Timeout(Timeout&& other)
-        : handler(other.handler)
+        : transport(other.transport)
+        , handler(other.handler)
         , request(std::move(other.request))
-        , peer(std::move(other.peer))
-        , transport(other.transport)
         , armed(other.armed)
         , timerFd(other.timerFd)
+        , peer(std::move(other.peer))
     {
         other.timerFd = -1;
     }
@@ -254,14 +254,12 @@ private:
 
     void onTimeout(uint64_t numWakeup);
 
+    Tcp::Transport* transport;
     Handler* handler;
     Request request;
-
-    std::weak_ptr<Tcp::Peer> peer;
-
-    Tcp::Transport* transport;
     bool armed;
     Fd timerFd;
+    std::weak_ptr<Tcp::Peer> peer;
 };
 
 class ResponseStream : public Message {
@@ -669,15 +667,16 @@ namespace Private {
 
         State parse();
 
-        ArrayStreamBuf<Const::MaxBuffer> buffer;
-        StreamCursor cursor;
+
 
     protected:
         static constexpr size_t StepsCount = 3;
-
-        std::array<std::unique_ptr<Step>, StepsCount> allSteps;
         size_t currentStep;
+        std::array<std::unique_ptr<Step>, StepsCount> allSteps;
 
+    public:
+        ArrayStreamBuf<Const::MaxBuffer> buffer;
+        StreamCursor cursor;
     };
 
     template<typename Message> struct Parser;

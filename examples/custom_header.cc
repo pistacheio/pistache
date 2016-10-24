@@ -1,5 +1,5 @@
 /* 
-   Mathieu Stefani, 15 février 2016
+   Mathieu Stefani, 15 f��vrier 2016
    
    Example of custom headers registering
 */
@@ -21,8 +21,8 @@ public:
     { }
 
     XProtocolVersion(uint32_t major, uint32_t minor)
-        : maj(major)
-        , min(minor)
+        : min(minor)
+        , maj(major)
     { }
 
     void parse(const std::string& str) {

@@ -289,9 +289,9 @@ namespace Async {
             virtual void doResolve(const std::shared_ptr<CoreT<T>>& core) = 0;
             virtual void doReject(const std::shared_ptr<CoreT<T>>& core) = 0;
 
+            std::shared_ptr<Core> chain_;
             size_t resolveCount_;
             size_t rejectCount_;
-            std::shared_ptr<Core> chain_;
         };
 
         namespace impl {

@@ -223,7 +223,7 @@ TEST(async_test, when_all) {
 
     Async::whenAll(std::begin(vec), std::end(vec)).then([&](const std::vector<int>& results) {
         resolved = true;
-        ASSERT_EQ(results.size(), 2);
+        ASSERT_EQ(results.size(), size_t(2));
         ASSERT_EQ(results[0], 10);
         ASSERT_EQ(results[1], 123);
     },
@@ -371,10 +371,9 @@ private:
         {
         }
 
-        int seq;
-
         Async::Resolver resolve;
         Async::Rejection reject;
+        int seq;
     };
 
     std::atomic<bool> shutdown;

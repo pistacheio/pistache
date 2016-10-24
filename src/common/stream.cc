@@ -66,11 +66,11 @@ DynamicStreamBuf::reserve(size_t size)
 }
 
 bool
-StreamCursor::advance(size_t count) {
+StreamCursor::advance(ssize_t count) {
     if (count > buf->in_avail())
         return false;
 
-    for (size_t i = 0; i < count; ++i) {
+    for (ssize_t i = 0; i < count; ++i) {
         buf->sbumpc();
     }
 

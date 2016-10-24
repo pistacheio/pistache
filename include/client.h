@@ -100,6 +100,8 @@ struct Connection : public std::enable_shared_from_this<Connection> {
     std::string dump() const;
 
 private:
+    ConnectionState connectionState_;
+
     std::atomic<int> inflightCount;
     std::atomic<int> responsesReceived;
     struct sockaddr_in saddr;
@@ -125,7 +127,7 @@ private:
     };
 
     std::atomic<uint32_t> state_;
-    ConnectionState connectionState_;
+
     std::shared_ptr<Transport> transport_;
     Queue<RequestData> requestsQueue;
 

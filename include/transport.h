@@ -89,15 +89,15 @@ private:
         enum Type { Raw, File };
 
         explicit BufferHolder(const Buffer& buffer)
-            : type(Raw)
-            , u(buffer)
+            : u(buffer),
+              type(Raw)
         {
             size_ = buffer.len;
         }
 
         explicit BufferHolder(const FileBuffer& buffer)
-            : type(File)
-            , u(buffer.fd())
+            : u(buffer.fd()),
+              type(File)
         {
             size_ = buffer.size();
         }
@@ -146,8 +146,11 @@ private:
             U(Buffer buffer) : raw(buffer) { }
             U(Fd fd) : fd(fd) { }
         } u;
+
+
         size_t size_;
         Type type;
+
     };
 
     struct WriteEntry {

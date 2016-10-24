@@ -296,7 +296,7 @@ public:
 
     };
 
-    bool advance(size_t count);
+    bool advance(ssize_t count);
     operator size_t() const { return buf->position(); }
 
     bool eol() const;

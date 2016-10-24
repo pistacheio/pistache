@@ -22,9 +22,9 @@ Peer::Peer()
 { }
 
 Peer::Peer(const Address& addr)
-    : addr(addr)
-    , fd_(-1)
+    : fd_(-1)
     , transport_(nullptr)
+    , addr(addr)
 { }
 
 Address

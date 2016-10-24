@@ -243,7 +243,7 @@ Transport::asyncSendRequestImpl(
     ssize_t totalWritten = 0;
     for (;;) {
         ssize_t bytesWritten = 0;
-        auto len = buffer.len - totalWritten;
+        ssize_t len = buffer.len - totalWritten;
         auto ptr = buffer.data + totalWritten;
         bytesWritten = ::send(fd, ptr, len, 0);
         if (bytesWritten < 0) {
@@ -869,7 +869,6 @@ Client::processRequestQueue() {
 
     for (auto& queues: requestsQueues) {
         const auto& domain = queues.first;
-        auto& queue = queues.second;
 
         for (;;) {
             auto conn = pool.pickConnection(domain);

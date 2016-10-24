@@ -406,7 +406,7 @@ namespace Private {
 
         message->body_.reserve(size);
         StreamCursor::Token chunkData(cursor);
-        const size_t available = cursor.remaining();
+        const ssize_t available = cursor.remaining();
 
         if (available < size) {
             cursor.advance(available);

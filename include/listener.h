@@ -43,7 +43,7 @@ public:
 
     Listener(const Address& address);
     void init(
-            size_t workers,
+            ssize_t workers,
             Flags<Options> options = Options::None,
             int backlog = Const::MaxBacklog);
     void setHandler(const std::shared_ptr<Handler>& handler);

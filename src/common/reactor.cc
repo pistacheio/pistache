@@ -262,12 +262,12 @@ private:
         }
 
         static Polling::Tag encodeTag(const Reactor::Key& key, uint64_t value) {
-            auto index = key.data();
+          //  auto index = key.data();
             // The reason why we are using the most significant bits to encode
             // the index of the handler is that in the fast path, we won't need
             // to shift the value to retrieve the fd if there is only one handler as
             // all the bits will already be set to 0.
-            auto encodedValue = (index << HandlerShift) | value;
+           // auto encodedValue = (index << HandlerShift) | value;
             return Polling::Tag(value);
         }
 

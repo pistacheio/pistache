@@ -93,7 +93,7 @@ Listener::~Listener() {
 
 void
 Listener::init(
-    size_t workers,
+    ssize_t workers,
     Flags<Options> options, int backlog)
 {
     if (workers > hardware_concurrency()) {
@@ -219,7 +219,7 @@ Listener::run() {
                     return;
                 else {
                     if (event.flags.hasFlag(Polling::NotifyOn::Read)) {
-                        auto fd = event.tag.value();
+                        ssize_t fd = event.tag.value();
                         if (fd == listen_fd)
                             handleNewConnection();
                     }

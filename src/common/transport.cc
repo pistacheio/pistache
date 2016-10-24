@@ -65,7 +65,7 @@ Transport::onReady(const Aio::FdSet& fds) {
 
         else if (entry.isReadable()) {
             auto tag = entry.getTag();
-            auto val = tag.value();
+
             if (isPeerFd(tag)) {
                 auto& peer = getPeer(tag);
                 handleIncoming(peer);
@@ -187,7 +187,7 @@ Transport::asyncWriteImpl(
     ssize_t totalWritten = 0;
     for (;;) {
         ssize_t bytesWritten = 0;
-        auto len = buffer.size() - totalWritten;
+        ssize_t len = buffer.size() - totalWritten;
         if (buffer.isRaw()) {
             auto raw = buffer.raw();
             auto ptr = raw.data + totalWritten;
