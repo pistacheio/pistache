@@ -10,6 +10,7 @@
 #include "net.h"
 #include "http.h"
 #include <functional>
+#include <iostream>
 
 namespace Net {
 
@@ -77,11 +78,13 @@ private:
         if (listener.bind()) {
             const auto& addr = listener.address();
             std::string out = "Now listening on http://";
-            out.append(addr.host());
-            out.append(":");
-            out.append(std::to_string(addr.port()));
-
-            logCallback_(out);
+            if(logCallback_)
+            {
+                out.append(addr.host());
+                out.append(":");
+                out.append(std::to_string(addr.port()));
+                logCallback_(out);
+            }
             CALL_MEMBER_FN(listener, method)();
         }
 #undef CALL_MEMBER_FN

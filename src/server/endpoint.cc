@@ -37,12 +37,12 @@ Endpoint::Options::backlog(int val) {
 }
 
 Endpoint::Endpoint() { 
-    logCallback_ = [](std::string log) { std::cout << log << std::cout; };
+    logCallback_ = [](std::string log) { std::cout << log << std::endl; };
 }
 
 Endpoint::Endpoint(const Net::Address& addr)
     : listener(addr) {
-    logCallback_ = [](std::string log) { std::cout << log << std::cout; };
+    logCallback_ = [](std::string log) { std::cout << log << std::endl; };
 }
 
 void
