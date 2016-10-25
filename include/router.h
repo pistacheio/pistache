@@ -228,11 +228,12 @@ namespace Routes {
         template<typename... Args>
         void static_checks() {
             static_assert(sizeof...(Args) == 2, "Function should take 2 parameters");
+#if 0
             typedef details::TypeList<Args...> Arguments;
             // Disabled now as it
             // 1/ does not compile
             // 2/ might not be relevant
-#if 0
+
             static_assert(std::is_same<Arguments::At<0>::Type, const Rest::Request&>::value, "First argument should be a const Rest::Request&");
             static_assert(std::is_same<typename Arguments::At<0>::Type, Http::Response>::value, "Second argument should be a Http::Response");
 #endif
