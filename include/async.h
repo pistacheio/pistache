@@ -156,7 +156,7 @@ namespace Async {
             }
         };
 
-        class Core;
+        struct Core;
 
         class Request {
         public:
@@ -1094,7 +1094,7 @@ namespace Async {
     };
 
     namespace Impl {
-        struct Any;
+      class Any;
     }
 
     class Any {
@@ -1184,7 +1184,8 @@ namespace Async {
             }
         };
 
-        struct Any {
+        class Any {
+        public:
 
             struct Data {
                 Data(size_t, Resolver resolver, Rejection rejection)

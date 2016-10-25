@@ -109,7 +109,7 @@ MediaType::parseRaw(const char* str, size_t len) {
 
     raw_ = string(str, len);
 
-    Mime::Type top;
+    Mime::Type top{};
 
     // The reason we are using a do { } while (0); syntax construct here is to emulate
     // if / else-if. Since we are using items-list macros to compare the strings,

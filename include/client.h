@@ -137,7 +137,8 @@ private:
     Private::Parser<Http::Response> parser_;
 };
 
-struct ConnectionPool {
+class ConnectionPool {
+public:
 
     void init(size_t maxConnsPerHost);
 

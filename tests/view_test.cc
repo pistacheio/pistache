@@ -41,7 +41,7 @@ TEST(view_test, test_vector)  {
 }
 
 TEST(view_test, test_array) {
-    std::array<int, 4> arr1 { 4, 5, 6, 7 };
+    std::array<int, 4> arr1 = {{ 4, 5, 6, 7 }};
     auto v1 = make_view(arr1);
 
     ASSERT_EQ(v1.size(), size_t(4));
@@ -53,10 +53,10 @@ TEST(view_test, test_array) {
     ASSERT_EQ(v2[1], 5);
     ASSERT_THROW(v2.at(3), std::invalid_argument);
 
-    std::array<int, 4> arr2 { 6, 8, 1, 2 };
+    std::array<int, 4> arr2 = {{ 6, 8, 1, 2 }};
     ASSERT_NE(make_view(arr2), v1);
 
-    std::array<int, 4> arr3 { 4, 5, 6, 7 };
+    std::array<int, 4> arr3 = {{ 4, 5, 6, 7 }};
     ASSERT_EQ(v1, make_view(arr3));
 }
 

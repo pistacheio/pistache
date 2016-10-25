@@ -45,7 +45,7 @@ namespace details {
 
 namespace Private {
     class ParserBase;
-    template<typename T> struct Parser;
+    template<typename T> class Parser;
     class RequestLineStep;
     class ResponseLineStep;
     class HeadersStep;
@@ -571,7 +571,8 @@ namespace Private {
 
     enum class State { Again, Next, Done };
 
-    struct Step {
+    class Step {
+    public:
         Step(Message* request)
             : message(request)
         { }
@@ -583,7 +584,8 @@ namespace Private {
         Message *message;
     };
 
-    struct RequestLineStep : public Step {
+    class RequestLineStep : public Step {
+    public:
         RequestLineStep(Request* request)
             : Step(request)
         { }
@@ -591,7 +593,8 @@ namespace Private {
         State apply(StreamCursor& cursor);
     };
 
-    struct ResponseLineStep : public Step {
+    class ResponseLineStep : public Step {
+    public:
         ResponseLineStep(Response* response)
             : Step(response)
         { }
@@ -599,7 +602,8 @@ namespace Private {
         State apply(StreamCursor& cursor);
     };
 
-    struct HeadersStep : public Step {
+    class HeadersStep : public Step {
+    public:
         HeadersStep(Message* request)
             : Step(request)
         { }
@@ -607,7 +611,8 @@ namespace Private {
         State apply(StreamCursor& cursor);
     };
 
-    struct BodyStep : public Step {
+    class BodyStep : public Step {
+    public:
         BodyStep(Message* message)
             : Step(message)
             , chunk(message)
@@ -646,7 +651,8 @@ namespace Private {
         size_t bytesRead;
     };
 
-    struct ParserBase {
+    class ParserBase {
+    public:
         ParserBase()
             : currentStep(0)
             , cursor(&buffer)
@@ -679,9 +685,10 @@ namespace Private {
         StreamCursor cursor;
     };
 
-    template<typename Message> struct Parser;
+    template<typename Message> class Parser;
 
-    template<> struct Parser<Http::Request> : public ParserBase {
+    template<> class Parser<Http::Request> : public ParserBase {
+    public:
         Parser()
             : ParserBase()
         { 
@@ -712,7 +719,8 @@ namespace Private {
         Request request;
     };
 
-    template<> struct Parser<Http::Response> : public ParserBase {
+    template<> class Parser<Http::Response> : public ParserBase {
+    public:
         Parser()
             : ParserBase()
         {

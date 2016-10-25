@@ -8,7 +8,8 @@
 
 namespace Aio {
 
-struct Reactor::Impl {
+class Reactor::Impl {
+public:
 
     Impl(Reactor* reactor)
         : reactor_(reactor)
@@ -54,7 +55,8 @@ struct Reactor::Impl {
 /* Synchronous implementation of the reactor that polls in the context
  * of the same thread
  */
-struct SyncImpl : public Reactor::Impl {
+class SyncImpl : public Reactor::Impl {
+public:
 
     SyncImpl(Reactor* reactor)
         : Reactor::Impl(reactor)
@@ -324,7 +326,8 @@ private:
  * 32 bits to retrieve the index of the handler.
  */
 
-struct AsyncImpl : public Reactor::Impl {
+class AsyncImpl : public Reactor::Impl {
+public:
 
     static constexpr uint32_t KeyMarker = 0xBADB0B;
 
