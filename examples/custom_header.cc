@@ -1,5 +1,5 @@
 /* 
-   Mathieu Stefani, 15 f��vrier 2016
+   Mathieu Stefani, 15 février 2016
    
    Example of custom headers registering
 */

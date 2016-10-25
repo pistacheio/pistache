@@ -104,7 +104,7 @@ CacheControl::parseRaw(const char* str, size_t len) {
         VALUE("no-cache"        , NoCache        ),
         VALUE("no-store"        , NoStore        ),
         VALUE("no-transform"    , NoTransform    ),
-        VALUE("only-if-cacmemsizehed"  , OnlyIfCached   ),
+        VALUE("only-if-cached"  , OnlyIfCached   ),
         VALUE("public"          , Public         ),
         VALUE("private"         , Private        ),
         VALUE("must-revalidate" , MustRevalidate ),
