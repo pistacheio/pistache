@@ -8,11 +8,11 @@ set(SOURCE_FILES
     ${CLIENT_SOURCE_FILES}
 )
 
-add_library(net_static ${SOURCE_FILES})
-target_link_libraries(net_static pthread)
-install(TARGETS net_static DESTINATION lib)
+add_library(pistache_static ${SOURCE_FILES})
+target_link_libraries(pistache_static pthread)
+install(TARGETS pistache_static DESTINATION lib)
 
-add_library(net SHARED ${SOURCE_FILES})
-target_link_libraries(net pthread)
-install(TARGETS net DESTINATION lib)
+add_library(pistache SHARED ${SOURCE_FILES})
+target_link_libraries(pistache pthread)
+install(TARGETS pistache DESTINATION lib)
 
