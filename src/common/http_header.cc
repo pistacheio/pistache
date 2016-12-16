@@ -286,6 +286,26 @@ Connection::write(std::ostream& os) const {
     }
 }
 
+
+void
+ContentDisposition::parseRaw(const char* str, size_t len) {
+}
+
+void
+ContentDisposition::write(std::ostream& os) const {
+    switch(disposition_) {
+    case Disposition::Inline:
+        os << "inline";
+        break;
+    case Disposition::Attachment:
+        os << "attachment";
+        if(!filename_.empty()) {
+          os << "; filename=" << filename_;
+        }
+        break;
+    }
+}
+
 void
 ContentLength::parse(const std::string& data) {
     try {
@@ -311,6 +331,7 @@ Date::parseRaw(const char* str, size_t len) {
 
 void
 Date::write(std::ostream& os) const {
+  fullDate_.write(os, Net::Http::FullDate::Type::RFC1123);
 }
 
 void
@@ -358,6 +379,17 @@ Host::write(std::ostream& os) const {
         os << ":" << port_;
     }
 }
+
+void
+LastModified::parseRaw(const char* str, size_t len) {
+    fullDate_ = FullDate::fromRaw(str, len);
+}
+
+void
+LastModified::write(std::ostream& os) const {
+  fullDate_.write(os, Net::Http::FullDate::Type::RFC1123);
+}
+
 
 Location::Location(const std::string& location)
     : location_(location)

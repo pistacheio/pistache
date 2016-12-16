@@ -66,6 +66,12 @@ enum class Encoding {
     Unknown
 };
 
+// Content Dispositions
+enum class Disposition {
+    Inline,
+    Attachment
+};
+
 const char* encodingString(Encoding encoding);
 
 class Header {
@@ -249,6 +255,33 @@ public:
     { }
 };
 
+class ContentDisposition : public Header {
+public:
+    NAME("Content-Disposition");
+
+    ContentDisposition()
+       : disposition_(Disposition::Inline)
+       , filename_("")
+    { }
+
+    ContentDisposition(Disposition disposition)
+       : disposition_(disposition)
+       , filename_("")
+    { }
+
+    ContentDisposition(Disposition disposition, const std::string & filename)
+       : disposition_(disposition)
+       , filename_(filename)
+    { }
+
+    void parseRaw(const char* str, size_t len);
+    void write(std::ostream& os) const;
+
+private:
+    Disposition disposition_;
+    std::string filename_;
+};
+
 class ContentLength : public Header {
 public:
     NAME("Content-Length");
@@ -351,6 +384,25 @@ public:
 private:
     std::string host_;
     Net::Port port_;
+};
+
+class LastModified : public Header {
+public:
+    NAME("Last-Modified")
+
+    LastModified() { }
+
+    explicit LastModified(const FullDate& date) :
+        fullDate_(date)
+    { }
+
+    void parseRaw(const char* str, size_t len);
+    void write(std::ostream& os) const;
+
+    FullDate fullDate() const { return fullDate_; }
+
+private:
+    FullDate fullDate_;
 };
 
 class Location : public Header {
