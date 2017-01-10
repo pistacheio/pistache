@@ -13,12 +13,14 @@
 
 FileBuffer::FileBuffer(const char* fileName)
     : fileName_(fileName)
+    , fd_(-1)
 {
     init(fileName);
 }
 
 FileBuffer::FileBuffer(const std::string& fileName)
     : fileName_(fileName)
+    , fd_(-1)
 {
     init(fileName.c_str());
 }
