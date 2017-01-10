@@ -681,6 +681,11 @@ serveFile(ResponseWriter& response, const char* fileName, const Mime::MediaType&
         throw HttpError(Code::Internal_Server_Error, "");
     }
 
+    res = ::close(fd);
+    if (res == -1) {
+        throw HttpError(Code::Internal_Server_Error, "");
+    }
+
     auto *buf = response.rdbuf();
 
     std::ostream os(buf);

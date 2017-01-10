@@ -153,6 +153,7 @@ struct Buffer {
 
 struct FileBuffer {
     FileBuffer() { }
+    ~FileBuffer();
 
     FileBuffer(const char* fileName);
     FileBuffer(const std::string& fileName);
