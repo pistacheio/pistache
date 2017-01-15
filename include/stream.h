@@ -137,7 +137,7 @@ struct Buffer {
     { }
 
     Buffer detach(size_t fromIndex = 0) const {
-        if (fromIndex > 0)
+        if (fromIndex > len)
             throw std::invalid_argument("Invalid index (> len)");
 
         char *newData = new char[len - fromIndex];
