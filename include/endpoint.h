@@ -69,8 +69,6 @@ private:
 
         if (listener.bind()) {
             const auto& addr = listener.address();
-            std::cout << "Now listening on " << "http://" + addr.host() << ":"
-                      << addr.port() << std::endl;
             CALL_MEMBER_FN(listener, method)();
         }
 #undef CALL_MEMBER_FN
