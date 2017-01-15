@@ -9,6 +9,8 @@
 #include "listener.h"
 #include "net.h"
 #include "http.h"
+#include <functional>
+#include <iostream>
 
 namespace Net {
 
@@ -52,11 +54,17 @@ public:
         return listener.isBound();
     }
 
+    void setLogCallback(std::function<void(std::string)> cb){
+        logCallback_ = cb;
+    }
+
     Async::Promise<Tcp::Listener::Load> requestLoad(const Tcp::Listener::Load& old);
 
     static Options options();
 
 private:
+
+    std::function<void(std::string)> logCallback_;
 
     template<typename Method>
     void serveImpl(Method method)
@@ -68,9 +76,15 @@ private:
         listener.setHandler(handler_);
 
         if (listener.bind()) {
-            const auto& addr = listener.address();
-            std::cout << "Now listening on " << "http://" + addr.host() << ":"
-                      << addr.port() << std::endl;
+            if(logCallback_)
+            {
+                const auto& addr = listener.address();
+                std::string out = "Now listening on http://";
+                out.append(addr.host());
+                out.append(":");
+                out.append(std::to_string(addr.port()));
+                logCallback_(out);
+            }
             CALL_MEMBER_FN(listener, method)();
         }
 #undef CALL_MEMBER_FN
