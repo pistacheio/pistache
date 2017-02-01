@@ -85,7 +85,7 @@ Address::fromUnix(struct sockaddr* addr) {
     struct sockaddr_in *in_addr = reinterpret_cast<struct sockaddr_in *>(addr);
     std::string host = TRY_RET(inet_ntoa(in_addr->sin_addr));
 
-    int port = in_addr->sin_port;
+    int port = ntohs(in_addr->sin_port);
 
     return Address(std::move(host), port);
 }
