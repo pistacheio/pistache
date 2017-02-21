@@ -143,7 +143,7 @@ struct Buffer {
         char *newData = new char[len - fromIndex];
         std::copy(data + fromIndex, data + len, newData);
 
-        return Buffer(newData, len, true);
+        return Buffer(newData, len - fromIndex, true);
     }
 
     const char* const data;
