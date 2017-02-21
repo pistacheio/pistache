@@ -215,7 +215,7 @@ Transport::asyncWriteImpl(
         }
         else {
             totalWritten += bytesWritten;
-            if (totalWritten == len) {
+            if (totalWritten == buffer.size()) {
                 cleanUp();
                 deferred.resolve(totalWritten);
                 break;
