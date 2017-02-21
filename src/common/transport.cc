@@ -166,12 +166,12 @@ Transport::handlePeerDisconnection(const std::shared_ptr<Peer>& peer) {
 
 void
 Transport::asyncWriteImpl(Fd fd, Transport::WriteEntry& entry, WriteStatus status) {
-    asyncWriteImpl(fd, entry.flags, entry.buffer, std::move(entry.deferred), status);
+    asyncWriteImpl(fd, entry.flags, entry.buffer, entry.bytesWritten, std::move(entry.deferred), status);
 }
 
 void
 Transport::asyncWriteImpl(
-        Fd fd, int flags, const BufferHolder& buffer,
+        Fd fd, int flags, const BufferHolder& buffer, ssize_t& totalWritten,
         Async::Deferred<ssize_t> deferred, WriteStatus status)
 {
     auto cleanUp = [&]() {
@@ -184,7 +184,6 @@ Transport::asyncWriteImpl(
             toWrite.erase(fd);
     };
 
-    ssize_t totalWritten = 0;
     for (;;) {
         ssize_t bytesWritten = 0;
         auto len = buffer.size() - totalWritten;

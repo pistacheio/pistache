@@ -54,7 +54,8 @@ public:
                 return;
             }
 
-            asyncWriteImpl(fd, flags, BufferHolder(buffer), Async::Deferred<ssize_t>(std::move(resolve), std::move(reject)));
+            ssize_t bytesWritten = 0;
+            asyncWriteImpl(fd, flags, BufferHolder(buffer), bytesWritten, Async::Deferred<ssize_t>(std::move(resolve), std::move(reject)));
 
         });
     }
@@ -157,12 +158,14 @@ private:
             , buffer(std::move(buffer))
             , flags(flags)
             , peerFd(-1)
+            , bytesWritten(0)
         { }
 
         Async::Deferred<ssize_t> deferred;
         BufferHolder buffer;
         int flags;
         Fd peerFd;
+        ssize_t bytesWritten;
     };
 
     struct TimerEntry {
@@ -240,7 +243,7 @@ private:
 
     void asyncWriteImpl(Fd fd, WriteEntry& entry, WriteStatus status = FirstTry);
     void asyncWriteImpl(
-            Fd fd, int flags, const BufferHolder& buffer,
+            Fd fd, int flags, const BufferHolder& buffer, ssize_t& bytesWritten,
             Async::Deferred<ssize_t> deferred,
             WriteStatus status = FirstTry);
 
