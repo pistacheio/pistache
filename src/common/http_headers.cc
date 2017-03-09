@@ -34,6 +34,7 @@ RegisterHeader(Host);
 RegisterHeader(Location);
 RegisterHeader(Server);
 RegisterHeader(UserAgent);
+RegisterHeader(AccessControl);
 
 void
 Registry::registerHeader(std::string name, Registry::RegistryFunc func)

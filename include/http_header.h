@@ -270,6 +270,32 @@ private:
     uint64_t value_;
 };
 
+
+
+class AccessControl : public Header {
+public:
+    NAME("Access-Control-Allow-Origin")
+
+    AccessControl()
+        : origin_("*") 
+    { }
+
+    explicit AccessControl(const char* origin)
+        : origin_(origin)
+    { }
+
+    explicit AccessControl(const std::string& origin) :
+        origin_(origin)
+    { }
+
+    void parse(const std::string& data);
+    void write(std::ostream& os) const;
+
+private:
+    std::string origin_;
+};
+
+
 class ContentType : public Header {
 public:
     NAME("Content-Type")

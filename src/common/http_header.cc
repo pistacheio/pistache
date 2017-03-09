@@ -305,6 +305,16 @@ ContentLength::write(std::ostream& os) const {
 }
 
 void
+AccessControl::parse(const std::string& data) {
+    origin_ = data;
+}
+
+void
+AccessControl::write(std::ostream& os) const {
+    os << origin_;
+}
+
+void
 Date::parseRaw(const char* str, size_t len) {
     fullDate_ = FullDate::fromRaw(str, len);
 }
