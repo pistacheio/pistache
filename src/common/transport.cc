@@ -130,7 +130,7 @@ void Transport::handleIncoming(const std::shared_ptr<Peer> &peer) {
 
     else {
       totalBytes += bytes;
-      std::cout << "totalBytes now " << totalBytes << std::endl;
+
       if (totalBytes >= vbuffer.size()) {
         vbuffer.resize(vbuffer.size() + Const::MaxBuffer);
       }
