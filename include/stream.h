@@ -70,27 +70,62 @@ public:
 
   template <size_t M> ArrayStreamBuf(char (&arr)[M]) {
     static_assert(M <= N, "Source array exceeds maximum capacity");
+    bytes = std::make_shared<std::vector<char>>(N);
     memcpy(bytes->data(), arr, M);
     size = M;
     Base::setg(bytes->data(), bytes->data(), bytes->data() + M);
   }
 
   bool feed(const char *data, size_t len) {
+      std::stringstream ss;
+    ss << "feed len " << len << " N " << N <<"size " << size <<std::endl;
+    std::vector <char> v;
 
-    if (size + len >= N)
-      bytes->resize(size + len);
+      std::cout << "data contents " << std::endl;
+      v.insert(v.begin(),data,data+len);
+    std::cout << ss.str() << std::endl;
+
+      for (auto&& i :v)
+          std::cout<< i ;
+      std::cout << std::endl;
+
+
+    if (size + len >= N) {
+        bytes->resize(bytes->size() + size + len);
+        memset(bytes->data()+ N ,0, size + len);
+        std::cout << "after memset" << std::endl;
+        for (auto&& i :v)
+            std::cout<< i ;
+        std::cout << std::endl;
+    }
+
 
     memcpy(bytes->data() + size, data, len);
 
+      std::cout << "new data " << std::endl;
+      for (auto&& i :v)
+          std::cout<< i ;
+      std::cout << std::endl;
+
+
     CharT *cur = nullptr;
-    if (this->gptr()) {
-      cur = this->gptr();
-    } else {
+
+    if (size + len >= N) {
       cur = bytes->data() + size;
+
+    } else {
+      if (this->gptr()) {
+        std::cout << "not null" << std::endl;
+        cur = this->gptr();
+        std::cout << "addr cur" << cur << std::endl;
+      } else {
+        cur = bytes->data() + size;
+        std::cout << "else addr cur" << cur << std::endl;
+      }
     }
 
     Base::setg(bytes->data(), cur, bytes->data() + size + len);
-
+    std::cout << "end stream" <<std::endl;
     size += len;
     return true;
   }

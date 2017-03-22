@@ -99,7 +99,7 @@ void Transport::disarmTimer(Fd fd) {
 void Transport::handleIncoming(const std::shared_ptr<Peer> &peer) {
 
   std::vector<char> vbuffer(Const::MaxBuffer);
-
+  memset(&vbuffer[0], 0, sizeof(vbuffer[0]) * vbuffer.size());
   ssize_t totalBytes = 0;
 
   int fd = peer->fd();
@@ -133,6 +133,17 @@ void Transport::handleIncoming(const std::shared_ptr<Peer> &peer) {
 
       if (totalBytes >= vbuffer.size()) {
         vbuffer.resize(vbuffer.size() + Const::MaxBuffer);
+        std::cout << "vbuf: b4" << std::endl;
+          for (auto&& i : vbuffer) {
+              std::cout << i ;
+          }
+         std::cout <<  std::endl;
+        memset(&vbuffer[0]+(vbuffer.size() - Const::MaxBuffer),0,Const::MaxBuffer);
+          std::cout << "vbuf: after" << std::endl;
+          for (auto&& i : vbuffer) {
+              std::cout << i ;
+          }
+          std::cout << std::endl;
       }
     }
   }
