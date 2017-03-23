@@ -132,18 +132,8 @@ void Transport::handleIncoming(const std::shared_ptr<Peer> &peer) {
       totalBytes += bytes;
 
       if (totalBytes >= vbuffer.size()) {
-        vbuffer.resize(vbuffer.size() + Const::MaxBuffer);
-        std::cout << "vbuf: b4" << std::endl;
-          for (auto&& i : vbuffer) {
-              std::cout << i ;
-          }
-         std::cout <<  std::endl;
-        memset(&vbuffer[0]+(vbuffer.size() - Const::MaxBuffer),0,Const::MaxBuffer);
-          std::cout << "vbuf: after" << std::endl;
-          for (auto&& i : vbuffer) {
-              std::cout << i ;
-          }
-          std::cout << std::endl;
+        vbuffer.resize(vbuffer.size() + bytes);
+        memset(&vbuffer[0]+(vbuffer.size() - bytes),0,bytes);
       }
     }
   }

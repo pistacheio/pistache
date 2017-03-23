@@ -15,6 +15,26 @@
 #include <streambuf>
 #include <vector>
 
+namespace {
+void hexdump(void *ptr, int buflen) {
+  unsigned char *buf = (unsigned char *)ptr;
+  int i, j;
+  for (i = 0; i < buflen; i += 16) {
+    printf("%06x: ", i);
+    for (j = 0; j < 16; j++)
+      if (i + j < buflen)
+        printf("%02x ", buf[i + j]);
+      else
+        printf("   ");
+    printf(" ");
+    for (j = 0; j < 16; j++)
+      if (i + j < buflen)
+        printf("%c", isprint(buf[i + j]) ? buf[i + j] : '.');
+    printf("\n");
+  }
+}
+}
+
 static constexpr char CR = 0xD;
 static constexpr char LF = 0xA;
 
@@ -77,61 +97,32 @@ public:
   }
 
   bool feed(const char *data, size_t len) {
-      std::stringstream ss;
-    ss << "feed len " << len << " N " << N <<"size " << size <<std::endl;
-    std::vector <char> v;
-
-      std::cout << "data contents " << std::endl;
-      v.insert(v.begin(),data,data+len);
-    std::cout << ss.str() << std::endl;
-
-      for (auto&& i :v)
-          std::cout<< i ;
-      std::cout << std::endl;
-
 
     if (size + len >= N) {
-        bytes->resize(bytes->size() + size + len);
-        memset(bytes->data()+ N ,0, size + len);
-        std::cout << "after memset" << std::endl;
-        for (auto&& i :v)
-            std::cout<< i ;
-        std::cout << std::endl;
+      bytes->resize(bytes->size() + len + 1);
+      memset(bytes->data() + size, 0, len);
     }
-
 
     memcpy(bytes->data() + size, data, len);
 
-      std::cout << "new data " << std::endl;
-      for (auto&& i :v)
-          std::cout<< i ;
-      std::cout << std::endl;
-
-
     CharT *cur = nullptr;
 
-    if (size + len >= N) {
-      cur = bytes->data() + size;
+    if (this->gptr() && (size + len < N)) {
+
+      cur = this->gptr();
 
     } else {
-      if (this->gptr()) {
-        std::cout << "not null" << std::endl;
-        cur = this->gptr();
-        std::cout << "addr cur" << cur << std::endl;
-      } else {
-        cur = bytes->data() + size;
-        std::cout << "else addr cur" << cur << std::endl;
-      }
+      cur = bytes->data() + size;
     }
 
     Base::setg(bytes->data(), cur, bytes->data() + size + len);
-    std::cout << "end stream" <<std::endl;
     size += len;
+
     return true;
   }
 
   void reset() {
-    memset(bytes->data(), 0, N);
+    memset(bytes->data(), 0, bytes->size());
     size = 0;
     Base::setg(bytes->data(), bytes->data(), bytes->data());
   }
