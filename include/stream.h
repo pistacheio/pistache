@@ -99,7 +99,7 @@ public:
   bool feed(const char *data, size_t len) {
 
     if (size + len >= N) {
-      bytes->resize(bytes->size() + len + 1);
+      bytes->resize(bytes->size() + size + len + 1);
       memset(bytes->data() + size, 0, len);
     }
 
