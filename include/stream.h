@@ -83,27 +83,27 @@ class ArrayStreamBuf : public StreamBuf<CharT> {
 public:
   typedef StreamBuf<CharT> Base;
 
-  ArrayStreamBuf() : size(0), bytes(std::make_shared<std::vector<char>>(N)) {
-    memset(bytes->data(), 0, N);
-    Base::setg(bytes->data(), bytes->data(), bytes->data() + N);
+  ArrayStreamBuf() : size(0), bytes(N) {
+    memset(bytes.data(), 0, N);
+    Base::setg(bytes.data(), bytes.data(), bytes.data() + N);
   }
 
   template <size_t M> ArrayStreamBuf(char (&arr)[M]) {
     static_assert(M <= N, "Source array exceeds maximum capacity");
     bytes = std::make_shared<std::vector<char>>(N);
-    memcpy(bytes->data(), arr, M);
+    memcpy(bytes.data(), arr, M);
     size = M;
-    Base::setg(bytes->data(), bytes->data(), bytes->data() + M);
+    Base::setg(bytes.data(), bytes.data(), bytes.data() + M);
   }
 
   bool feed(const char *data, size_t len) {
 
     if (size + len >= N) {
-      bytes->resize(bytes->size() + size + len + 1);
-      memset(bytes->data() + size, 0, len);
+      bytes.resize(bytes.size() + size + len + 1);
+      memset(bytes.data() + size, 0, len);
     }
 
-    memcpy(bytes->data() + size, data, len);
+    memcpy(bytes.data() + size, data, len);
 
     CharT *cur = nullptr;
 
@@ -112,23 +112,24 @@ public:
       cur = this->gptr();
 
     } else {
-      cur = bytes->data() + size;
+      cur = bytes.data() + size;
     }
 
-    Base::setg(bytes->data(), cur, bytes->data() + size + len);
+    Base::setg(bytes.data(), cur, bytes.data() + size + len);
     size += len;
 
     return true;
   }
 
   void reset() {
-    memset(bytes->data(), 0, bytes->size());
+    memset(bytes.data(), 0, bytes.size());
     size = 0;
-    Base::setg(bytes->data(), bytes->data(), bytes->data());
+    Base::setg(bytes.data(), bytes.data(), bytes.data());
   }
 
 private:
-  std::shared_ptr<std::vector<char>> bytes;
+  //std::shared_ptr<std::vector<char>> bytes;
+    std::vector<char> bytes;
   size_t size;
 };
 
