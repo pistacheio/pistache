@@ -98,7 +98,7 @@ void Transport::disarmTimer(Fd fd) {
 
 void Transport::handleIncoming(const std::shared_ptr<Peer> &peer) {
 
-  std::vector<char> vbuffer(Const::MaxBuffer);
+  std::vector<char> vbuffer(Const::SmallBuffer);
   memset(&vbuffer[0], 0, sizeof(vbuffer[0]) * vbuffer.size());
   ssize_t totalBytes = 0;
 
@@ -126,15 +126,15 @@ void Transport::handleIncoming(const std::shared_ptr<Peer> &peer) {
     } else if (bytes == 0) {
       handlePeerDisconnection(peer);
       break;
-    }
-
-    else {
-      totalBytes += bytes;
-
-      if (totalBytes >= vbuffer.size()) {
-        vbuffer.resize(vbuffer.size() + bytes);
-        memset(&vbuffer[0]+(vbuffer.size() - bytes),0,bytes);
-      }
+    } else {
+        totalBytes += bytes;
+        if (totalBytes >= Const::MaxBuffer) {
+            std::cerr << "Too long packet MaxBuffer allowed is " << Const::MaxBuffer <<" bytes" << std::endl;
+            break;
+        } else if (totalBytes >= vbuffer.size()) {
+            vbuffer.resize(vbuffer.size() + bytes);
+            memset(&vbuffer[0] + (vbuffer.size() - bytes), 0, bytes);
+        }
     }
   }
 }
