@@ -44,28 +44,39 @@ public:
     typedef std::basic_streambuf<CharT> Base;
     typedef typename Base::traits_type traits_type;
 
-    void setArea(char *begin, char *current, char *end) {
+    void setArea(char* begin, char *current, char *end) {
         this->setg(begin, current, end);
     }
 
-    CharT *begptr() const { return this->eback(); }
+    CharT *begptr() const {
+        return this->eback();
+    }
 
-    CharT *curptr() const { return this->gptr(); }
+    CharT* curptr() const {
+        return this->gptr();
+    }
 
-    CharT *endptr() const { return this->egptr(); }
+    CharT* endptr() const {
+        return this->egptr();
+    }
 
-    size_t position() const { return this->gptr() - this->eback(); }
+    size_t position() const {
+        return this->gptr() - this->eback();
+    }
 
-    void reset() { this->setg(nullptr, nullptr, nullptr); }
+    void reset() {
+        this->setg(nullptr, nullptr, nullptr);
+    }
 
     typename Base::int_type snext() const {
         if (this->gptr() == this->egptr()) {
             return traits_type::eof();
         }
 
-        const CharT *gptr = this->gptr();
+        const CharT* gptr = this->gptr();
         return *(gptr + 1);
     }
+
 };
 
 template<typename CharT = char>
@@ -73,11 +84,13 @@ class RawStreamBuf : public StreamBuf<CharT> {
 public:
     typedef StreamBuf<CharT> Base;
 
-    RawStreamBuf(char *begin, char *end) { Base::setg(begin, begin, end); }
-
-    RawStreamBuf(char *begin, size_t len) {
+    RawStreamBuf(char* begin, char* end) {
+        Base::setg(begin, begin, end);
+    }
+    RawStreamBuf(char* begin, size_t len) {
         Base::setg(begin, begin, begin + len);
     }
+
 };
 
 template<size_t N, typename CharT = char>
@@ -98,7 +111,7 @@ public:
         Base::setg(bytes.data(), bytes.data(), bytes.data() + M);
     }
 
-    bool feed(const char *data, size_t len) {
+    bool feed(const char* data, size_t len) {
 
         if (size + len >= Const::MaxBuffer ) {
             return false;
@@ -123,7 +136,6 @@ public:
 
         Base::setg(bytes.data(), cur, bytes.data() + size + len);
         size += len;
-
         return true;
     }
 
@@ -139,10 +151,17 @@ private:
 };
 
 struct Buffer {
-    Buffer() : data(nullptr), len(0), isOwned(false) {}
+    Buffer()
+            : data(nullptr)
+            , len(0)
+            , isOwned(false)
+    { }
 
-    Buffer(const char *const data, size_t len, bool own = false)
-            : data(data), len(len), isOwned(own) {}
+    Buffer(const char * const data, size_t len, bool own = false)
+            : data(data)
+            , len(len)
+            , isOwned(own)
+    { }
 
     Buffer detach(size_t fromIndex = 0) const {
         if (fromIndex > len)
@@ -154,27 +173,23 @@ struct Buffer {
         return Buffer(newData, len, true);
     }
 
-    const char *const data;
+    const char* const data;
     const size_t len;
     const bool isOwned;
 };
 
 struct FileBuffer {
-    FileBuffer() {}
+    FileBuffer() { }
 
-    FileBuffer(const char *fileName);
-
-    FileBuffer(const std::string &fileName);
+    FileBuffer(const char* fileName);
+    FileBuffer(const std::string& fileName);
 
     std::string fileName() const { return fileName_; }
-
     Fd fd() const { return fd_; }
-
     size_t size() const { return size_; }
 
 private:
-    void init(const char *fileName);
-
+    void init(const char* fileName);
     std::string fileName_;
     Fd fd_;
     size_t size_;
@@ -182,27 +197,30 @@ private:
 
 class DynamicStreamBuf : public StreamBuf<char> {
 public:
+
     typedef StreamBuf<char> Base;
     typedef typename Base::traits_type traits_type;
     typedef typename Base::int_type int_type;
 
-    DynamicStreamBuf(size_t size,
-                     size_t maxSize = std::numeric_limits<uint32_t>::max())
-            : maxSize_(maxSize) {
+    DynamicStreamBuf(
+            size_t size,
+            size_t maxSize = std::numeric_limits<uint32_t>::max())
+            : maxSize_(maxSize)
+    {
         reserve(size);
     }
 
-    DynamicStreamBuf(const DynamicStreamBuf &other) = delete;
+    DynamicStreamBuf(const DynamicStreamBuf& other) = delete;
+    DynamicStreamBuf& operator=(const DynamicStreamBuf& other) = delete;
 
-    DynamicStreamBuf &operator=(const DynamicStreamBuf &other) = delete;
-
-    DynamicStreamBuf(DynamicStreamBuf &&other)
-            : maxSize_(other.maxSize_), data_(std::move(other.data_)) {
+    DynamicStreamBuf(DynamicStreamBuf&& other)
+            : maxSize_(other.maxSize_)
+            , data_(std::move(other.data_)) {
         setp(other.pptr(), other.epptr());
         other.setp(nullptr, nullptr);
     }
 
-    DynamicStreamBuf &operator=(DynamicStreamBuf &&other) {
+    DynamicStreamBuf& operator=(DynamicStreamBuf&& other) {
         maxSize_ = other.maxSize_;
         data_ = std::move(other.data_);
         setp(other.pptr(), other.epptr());
@@ -210,7 +228,9 @@ public:
         return *this;
     }
 
-    Buffer buffer() const { return Buffer(data_.data(), pptr() - &data_[0]); }
+    Buffer buffer() const {
+        return Buffer(data_.data(), pptr() - &data_[0]);
+    }
 
     void clear() {
         data_.clear();
@@ -229,30 +249,43 @@ private:
 
 class StreamCursor {
 public:
-    StreamCursor(StreamBuf<char> *buf, size_t initialPos = 0) : buf(buf) {
+    StreamCursor(StreamBuf<char>* buf, size_t initialPos = 0)
+            : buf(buf)
+    {
         advance(initialPos);
     }
 
     static constexpr int Eof = -1;
 
     struct Token {
-        Token(StreamCursor &cursor)
-                : cursor(cursor), position(cursor.buf->position()),
-                  eback(cursor.buf->begptr()), gptr(cursor.buf->curptr()),
-                  egptr(cursor.buf->endptr()) {}
+        Token(StreamCursor& cursor)
+                : cursor(cursor)
+                , position(cursor.buf->position())
+                , eback(cursor.buf->begptr())
+                , gptr(cursor.buf->curptr())
+                , egptr(cursor.buf->endptr())
+        { }
 
         size_t start() const { return position; }
 
-        size_t end() const { return cursor.buf->position(); }
+        size_t end() const {
+            return cursor.buf->position();
+        }
 
-        size_t size() const { return end() - start(); }
+        size_t size() const {
+            return end() - start();
+        }
 
-        std::string text() { return std::string(gptr, size()); }
+        std::string text() {
+            return std::string(gptr, size());
+        }
 
-        const char *rawText() const { return gptr; }
+        const char* rawText() const {
+            return gptr;
+        }
 
     private:
-        StreamCursor &cursor;
+        StreamCursor& cursor;
         size_t position;
         char *eback;
         char *gptr;
@@ -260,74 +293,69 @@ public:
     };
 
     struct Revert {
-        Revert(StreamCursor &cursor)
-                : cursor(cursor), eback(cursor.buf->begptr()),
-                  gptr(cursor.buf->curptr()), egptr(cursor.buf->endptr()),
-                  active(true) {}
+        Revert(StreamCursor& cursor)
+                : cursor(cursor)
+                , eback(cursor.buf->begptr())
+                , gptr(cursor.buf->curptr())
+                , egptr(cursor.buf->endptr())
+                , active(true)
+        { }
 
         ~Revert() {
             if (active)
                 revert();
         }
 
-        void revert() { cursor.buf->setArea(eback, gptr, egptr); }
+        void revert() {
+            cursor.buf->setArea(eback, gptr, egptr);
+        }
 
-        void ignore() { active = false; }
+        void ignore() {
+            active = false;
+        }
 
     private:
-        StreamCursor &cursor;
+        StreamCursor& cursor;
         char *eback;
         char *gptr;
         char *egptr;
         bool active;
+
     };
 
     bool advance(size_t count);
-
     operator size_t() const { return buf->position(); }
 
     bool eol() const;
-
     bool eof() const;
-
     int next() const;
-
     char current() const;
 
-    const char *offset() const;
-
-    const char *offset(size_t off) const;
+    const char* offset() const;
+    const char* offset(size_t off) const;
 
     size_t diff(size_t other) const;
-
-    size_t diff(const StreamCursor &other) const;
+    size_t diff(const StreamCursor& other) const;
 
     size_t remaining() const;
 
     void reset();
 
 public:
-    StreamBuf<char> *buf;
+    StreamBuf<char>* buf;
 };
+
 
 enum class CaseSensitivity {
     Sensitive, Insensitive
 };
 
-bool match_raw(const void *buf, size_t len, StreamCursor &cursor);
-
-bool match_string(const char *str, size_t len, StreamCursor &cursor,
+bool match_raw(const void* buf, size_t len, StreamCursor& cursor);
+bool match_string(const char *str, size_t len, StreamCursor& cursor,
                   CaseSensitivity cs = CaseSensitivity::Insensitive);
+bool match_literal(char c, StreamCursor& cursor, CaseSensitivity cs = CaseSensitivity::Insensitive);
+bool match_until(char c, StreamCursor& cursor, CaseSensitivity cs = CaseSensitivity::Insensitive);
+bool match_until(std::initializer_list<char> chars, StreamCursor& cursor, CaseSensitivity cs = CaseSensitivity::Insensitive);
+bool match_double(double* val, StreamCursor& cursor);
 
-bool match_literal(char c, StreamCursor &cursor,
-                   CaseSensitivity cs = CaseSensitivity::Insensitive);
-
-bool match_until(char c, StreamCursor &cursor,
-                 CaseSensitivity cs = CaseSensitivity::Insensitive);
-
-bool match_until(std::initializer_list<char> chars, StreamCursor &cursor,
-                 CaseSensitivity cs = CaseSensitivity::Insensitive);
-
-bool match_double(double *val, StreamCursor &cursor);
-
-void skip_whitespaces(StreamCursor &cursor);
+void skip_whitespaces(StreamCursor& cursor);
