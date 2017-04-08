@@ -1,6 +1,6 @@
 /* endpoint.cc
    Mathieu Stefani, 22 janvier 2016
-   
+
    Implementation of the http endpoint
 */
 
@@ -51,6 +51,16 @@ Endpoint::init(const Endpoint::Options& options) {
 void
 Endpoint::setHandler(const std::shared_ptr<Handler>& handler) {
     handler_ = handler;
+}
+
+void
+Endpoint::bind() {
+    listener.bind();
+}
+
+void
+Endpoint::bind(const Address& addr) {
+    listener.bind(addr);
 }
 
 void

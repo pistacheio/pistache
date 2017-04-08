@@ -351,7 +351,7 @@ void Options(Router& router, std::string resource, Route::Handler handler) {
     router.options(std::move(resource), std::move(handler));
 }
 
-} // namespace Routing
+} // namespace Routes
 
 } // namespace Rest
 
