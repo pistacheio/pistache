@@ -46,11 +46,11 @@ public:
         os << "." << min;
     }
 
-    uint32_t major() const {
+    uint32_t majorVersion() const {
         return maj;
     }
 
-    uint32_t minor() const {
+    uint32_t minorVersion() const {
         return min;
     }
 
