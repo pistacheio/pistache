@@ -222,4 +222,4 @@ inline bool operator==(const MediaType& lhs, const MediaType& rhs) {
     Net::Http::Mime::MediaType(Net::Http::Mime::Type::top, Net::Http::Mime::Subtype::sub)
 
 #define MIME3(top, sub, suffix) \
-    Net::Http::Mime::MediaType(Net::Http::Mime::Type::top, Net::Http::Mime::Subtype::sub, Net::Http::Mime::Suffix::suffix);
+    Net::Http::Mime::MediaType(Net::Http::Mime::Type::top, Net::Http::Mime::Subtype::sub, Net::Http::Mime::Suffix::suffix)
