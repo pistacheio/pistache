@@ -193,7 +193,7 @@ Transport::asyncWriteImpl(
             toWrite.erase(fd);
     };
 
-    ssize_t totalWritten = 0;
+    ssize_t totalWritten = buffer.offset();
     for (;;) {
         ssize_t bytesWritten = 0;
         auto len = buffer.size() - totalWritten;
@@ -209,6 +209,7 @@ Transport::asyncWriteImpl(
         if (bytesWritten < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if (status == FirstTry) {
+                    toWrite.erase(fd);
                     toWrite.insert(
                             std::make_pair(fd,
                                 WriteEntry(std::move(deferred), buffer.detach(totalWritten), flags)));
@@ -224,10 +225,14 @@ Transport::asyncWriteImpl(
         }
         else {
             totalWritten += bytesWritten;
-            if (totalWritten == len) {
+            if (totalWritten >= buffer.size()) {
                 cleanUp();
                 deferred.resolve(totalWritten);
                 break;
+            }
+            else if (bytesWritten > 0)
+            {
+                status = FirstTry;
             }
         }
     }
