@@ -53,6 +53,8 @@ public:
 
     Async::Promise<ssize_t> send(const Buffer& buffer, int flags = 0);
 
+    size_t getMaxBufferSize() const;
+
 private:
     void associateTransport(Transport* transport);
     Transport* transport() const;

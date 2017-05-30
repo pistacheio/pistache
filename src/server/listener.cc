@@ -93,7 +93,9 @@ Listener::~Listener() {
 void
 Listener::init(
     size_t workers,
-    Flags<Options> options, int backlog)
+    Flags<Options> options,
+    int backlog,
+    size_t maxBufferSize)
 {
     if (workers > hardware_concurrency()) {
         // Log::warning() << "More workers than available cores"
@@ -101,6 +103,7 @@ Listener::init(
 
     options_ = options;
     backlog_ = backlog;
+    maxBufferSize_ = maxBufferSize;
 
     if (options_.hasFlag(Options::InstallSignalHandler)) {
         if (signal(SIGINT, handle_sigint) == SIG_ERR) {
@@ -187,7 +190,7 @@ Listener::bind(const Address& address) {
     listen_fd = fd;
     g_listen_fd = fd;
 
-    transport_.reset(new Transport(handler_));
+    transport_.reset(new Transport(handler_, maxBufferSize_));
 
     reactor_->init(Aio::AsyncContext(workers_));
     transportKey = reactor_->addHandler(transport_);

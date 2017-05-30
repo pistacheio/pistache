@@ -16,6 +16,8 @@ namespace Http {
 
 Endpoint::Options::Options()
     : threads_(1)
+    , backlog_(Const::MaxBacklog)
+    , maxBufferSize_(Const::BufferSize)
 { }
 
 Endpoint::Options&
@@ -36,6 +38,12 @@ Endpoint::Options::backlog(int val) {
     return *this;
 }
 
+Endpoint::Options&
+Endpoint::Options::maxBufferSize(size_t val) {
+    maxBufferSize_ = val;
+    return *this;
+}
+
 Endpoint::Endpoint()
 { }
 
@@ -45,7 +53,7 @@ Endpoint::Endpoint(const Net::Address& addr)
 
 void
 Endpoint::init(const Endpoint::Options& options) {
-    listener.init(options.threads_, options.flags_);
+    listener.init(options.threads_, options.flags_, options.backlog_, options.maxBufferSize_);
 }
 
 void

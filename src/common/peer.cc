@@ -84,6 +84,11 @@ Peer::send(const Buffer& buffer, int flags) {
     return transport()->asyncWrite(fd_, buffer, flags);
 }
 
+size_t
+Peer::getMaxBufferSize() const {
+    return transport()->getMaxBufferSize();
+}
+
 std::ostream& operator<<(std::ostream& os, const Peer& peer) {
     const auto& addr = peer.address();
     os << "(" << addr.host() << ", " << addr.port() << ") [" << peer.hostname() << "]";

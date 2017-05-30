@@ -45,7 +45,8 @@ public:
     void init(
             size_t workers,
             Flags<Options> options = Options::None,
-            int backlog = Const::MaxBacklog);
+            int backlog = Const::MaxBacklog,
+            size_t maxBufferSize = Const::BufferSize);
     void setHandler(const std::shared_ptr<Handler>& handler);
 
     bool bind();
@@ -69,6 +70,7 @@ private:
     Address addr_; 
     int listen_fd;
     int backlog_;
+    size_t maxBufferSize_;
     NotifyFd shutdownFd;
     Polling::Epoll poller;
 

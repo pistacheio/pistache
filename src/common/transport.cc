@@ -11,7 +11,9 @@ namespace Net {
 
 namespace Tcp {
 
-Transport::Transport(const std::shared_ptr<Tcp::Handler>& handler) {
+Transport::Transport(const std::shared_ptr<Tcp::Handler>& handler, size_t maxBufferSize)
+    : maxBufferSize_(maxBufferSize)
+{
     init(handler);
 }
 
@@ -23,7 +25,12 @@ Transport::init(const std::shared_ptr<Tcp::Handler>& handler) {
 
 std::shared_ptr<Aio::Handler>
 Transport::clone() const {
-    return std::make_shared<Transport>(handler_->clone());
+    return std::make_shared<Transport>(handler_->clone(), maxBufferSize_);
+}
+
+size_t
+Transport::getMaxBufferSize() const {
+    return maxBufferSize_;
 }
 
 void
@@ -109,7 +116,7 @@ Transport::disarmTimer(Fd fd) {
 
 void
 Transport::handleIncoming(const std::shared_ptr<Peer>& peer) {
-    char buffer[Const::MaxBuffer];
+    char buffer[Const::BufferSize];
     memset(buffer, 0, sizeof buffer);
 
     ssize_t totalBytes = 0;
@@ -119,7 +126,7 @@ Transport::handleIncoming(const std::shared_ptr<Peer>& peer) {
 
         ssize_t bytes;
 
-        bytes = recv(fd, buffer + totalBytes, Const::MaxBuffer - totalBytes, 0);
+        bytes = recv(fd, buffer + totalBytes, sizeof(buffer) - totalBytes, 0);
         if (bytes == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if (totalBytes > 0) {
@@ -142,9 +149,9 @@ Transport::handleIncoming(const std::shared_ptr<Peer>& peer) {
 
         else {
             totalBytes += bytes;
-            if (totalBytes >= Const::MaxBuffer) {
-                std::cerr << "Too long packet" << std::endl;
-                break;
+            if (totalBytes == sizeof(buffer)) {
+                handler_->onInput(buffer, totalBytes, peer);
+                totalBytes = 0;
             }
         }
     }

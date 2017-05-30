@@ -118,6 +118,10 @@ public:
         Base::setg(bytes, bytes, bytes);
     }
 
+    size_t getSize() const {
+        return size;
+    }
+
 private:
     char bytes[N];
     size_t size;

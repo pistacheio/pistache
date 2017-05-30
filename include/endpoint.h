@@ -22,11 +22,13 @@ public:
         Options& threads(int val);
         Options& flags(Flags<Tcp::Options> flags);
         Options& backlog(int val);
+        Options& maxBufferSize(size_t val);
 
     private:
         int threads_;
         Flags<Tcp::Options> flags_;
         int backlog_;
+        size_t maxBufferSize_;
         Options();
     };
     Endpoint();
