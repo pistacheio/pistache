@@ -63,6 +63,10 @@ Endpoint::bind(const Address& addr) {
     listener.bind(addr);
 }
 
+Address Endpoint::address() const {
+    return listener.address();
+}
+
 void
 Endpoint::serve()
 {

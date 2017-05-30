@@ -81,6 +81,7 @@ Listener::Listener(const Address& address)
     : addr_(address)
     , listen_fd(-1)
     , backlog_(Const::MaxBacklog)
+    , workers_(1)
     , reactor_(Aio::Reactor::create())
 {
 }
@@ -191,6 +192,14 @@ Listener::bind(const Address& address) {
 
     reactor_->init(Aio::AsyncContext(workers_));
     transportKey = reactor_->addHandler(transport_);
+
+    struct sockaddr realAddr;
+    socklen_t addrLen = sizeof(realAddr);
+
+    if (!addr_.port() && !::getsockname(fd, &realAddr, &addrLen))
+    {
+        addr_ = Address::fromUnix(&realAddr);
+    }
 
     return true;
 }

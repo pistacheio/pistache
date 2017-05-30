@@ -52,6 +52,8 @@ public:
         return listener.isBound();
     }
 
+    Address address() const;
+
     Async::Promise<Tcp::Listener::Load> requestLoad(const Tcp::Listener::Load& old);
 
     static Options options();
