@@ -90,6 +90,8 @@ namespace Uri {
 
     class Query {
     public:
+        using const_iterator = std::unordered_map<std::string, std::string>::const_iterator;
+
         Query();
         Query(std::initializer_list<std::pair<const std::string, std::string>> params);
 
@@ -99,6 +101,14 @@ namespace Uri {
 
         void clear() {
             params.clear();
+        }
+
+        const_iterator begin() const {
+            return params.begin();
+        }
+
+        const_iterator end() const {
+            return params.end();
         }
 
     private:
