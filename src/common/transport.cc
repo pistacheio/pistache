@@ -171,7 +171,7 @@ Transport::asyncWriteImpl(Fd fd, Transport::WriteEntry& entry, WriteStatus statu
 
 void
 Transport::asyncWriteImpl(
-        Fd fd, int flags, const BufferHolder& buffer,
+        Fd fd, int flags, BufferHolder& buffer,
         Async::Deferred<ssize_t> deferred, WriteStatus status)
 {
     auto cleanUp = [&]() {
@@ -184,17 +184,16 @@ Transport::asyncWriteImpl(
             toWrite.erase(fd);
     };
 
-    ssize_t totalWritten = 0;
     for (;;) {
         ssize_t bytesWritten = 0;
-        auto len = buffer.size() - totalWritten;
+        auto len = buffer.size() - buffer.totalWritten();
         if (buffer.isRaw()) {
             auto raw = buffer.raw();
-            auto ptr = raw.data + totalWritten;
+            auto ptr = raw.data + buffer.totalWritten();
             bytesWritten = ::send(fd, ptr, len, flags);
         } else {
             auto file = buffer.fd();
-            off_t offset = totalWritten;
+            off_t offset = buffer.totalWritten();
             bytesWritten = ::sendfile(fd, file, &offset, len);
         }
         if (bytesWritten < 0) {
@@ -202,7 +201,7 @@ Transport::asyncWriteImpl(
                 if (status == FirstTry) {
                     toWrite.insert(
                             std::make_pair(fd,
-                                WriteEntry(std::move(deferred), buffer.detach(totalWritten), flags)));
+                                WriteEntry(std::move(deferred), buffer.detach(buffer.totalWritten()), flags)));
                 }
 
                 reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
@@ -214,10 +213,10 @@ Transport::asyncWriteImpl(
             break;
         }
         else {
-            totalWritten += bytesWritten;
-            if (totalWritten == len) {
+            buffer.addBytesWritten(bytesWritten);
+            if (buffer.totalWritten() == buffer.size()) {
                 cleanUp();
-                deferred.resolve(totalWritten);
+                deferred.resolve(buffer.totalWritten());
                 break;
             }
         }

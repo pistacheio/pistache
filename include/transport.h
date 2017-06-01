@@ -54,7 +54,8 @@ public:
                 return;
             }
 
-            asyncWriteImpl(fd, flags, BufferHolder(buffer), Async::Deferred<ssize_t>(std::move(resolve), std::move(reject)));
+            BufferHolder bufferHolder(buffer);
+            asyncWriteImpl(fd, flags, bufferHolder, Async::Deferred<ssize_t>(std::move(resolve), std::move(reject)));
 
         });
     }
@@ -91,6 +92,7 @@ private:
         explicit BufferHolder(const Buffer& buffer)
             : type(Raw)
             , u(buffer)
+            , totalWritten_(0)
         {
             size_ = buffer.len;
         }
@@ -98,6 +100,7 @@ private:
         explicit BufferHolder(const FileBuffer& buffer)
             : type(File)
             , u(buffer.fd())
+            , totalWritten_(0)
         {
             size_ = buffer.size();
         }
@@ -105,6 +108,7 @@ private:
         bool isFile() const { return type == File; }
         bool isRaw() const { return type == Raw; }
         size_t size() const { return size_; }
+        size_t totalWritten() const { return totalWritten_; }
 
         Fd fd() const {
             if (!isFile())
@@ -119,6 +123,10 @@ private:
                 throw std::runtime_error("Tried to retrieve raw data of a non-buffer");
 
             return u.raw;
+        }
+
+        void addBytesWritten(size_t count) {
+            totalWritten_ += count;
         }
 
         BufferHolder detach(size_t offset = 0) const {
@@ -137,6 +145,7 @@ private:
          : u(fd)
          , size_(size)
          , type(File)
+         , totalWritten_(0)
         { }
 
         union U {
@@ -148,6 +157,7 @@ private:
         } u;
         size_t size_;
         Type type;
+        size_t totalWritten_;
     };
 
     struct WriteEntry {
@@ -240,7 +250,7 @@ private:
 
     void asyncWriteImpl(Fd fd, WriteEntry& entry, WriteStatus status = FirstTry);
     void asyncWriteImpl(
-            Fd fd, int flags, const BufferHolder& buffer,
+            Fd fd, int flags, BufferHolder& buffer,
             Async::Deferred<ssize_t> deferred,
             WriteStatus status = FirstTry);
 
