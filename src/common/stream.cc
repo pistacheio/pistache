@@ -59,10 +59,12 @@ DynamicStreamBuf::overflow(DynamicStreamBuf::int_type ch) {
 void
 DynamicStreamBuf::reserve(size_t size)
 {
+    const auto getpos = this->gptr() - this->eback();
     if (size > maxSize_) size = maxSize_;
     const size_t oldSize = data_.size();
     data_.resize(size);
     this->setp(&data_[0] + oldSize, &data_[0] + size);
+    this->setg(&data_[0], &data_[0] + getpos, &data_[0] + size);
 }
 
 bool

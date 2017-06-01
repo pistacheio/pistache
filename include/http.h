@@ -670,7 +670,7 @@ namespace Private {
 
         State parse();
 
-        ArrayStreamBuf<Const::BufferSize> buffer;
+        SmallStreamBuf<Const::BufferSize> buffer;
         StreamCursor cursor;
 
     protected:

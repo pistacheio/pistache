@@ -44,7 +44,7 @@ public:
         return this->gptr() - this->eback();
     }
 
-    void reset() {
+    virtual void reset() {
         this->setg(nullptr, nullptr, nullptr);
     }
 
@@ -122,6 +122,10 @@ public:
         return size;
     }
 
+    const char *data() const {
+        return bytes;
+    }
+
 private:
     char bytes[N];
     size_t size;
@@ -182,7 +186,8 @@ public:
     DynamicStreamBuf(
             size_t size,
             size_t maxSize = std::numeric_limits<uint32_t>::max())
-        : maxSize_(maxSize)
+        : size_(0)
+        , maxSize_(maxSize)
     {
         reserve(size);
     }
@@ -191,17 +196,23 @@ public:
     DynamicStreamBuf& operator=(const DynamicStreamBuf& other) = delete;
 
     DynamicStreamBuf(DynamicStreamBuf&& other)
-       : maxSize_(other.maxSize_)
+       : size_(other.size_)
+       , maxSize_(other.maxSize_)
        , data_(std::move(other.data_)) {
            setp(other.pptr(), other.epptr());
+           setg(other.eback(), other.gptr(), other.egptr());
            other.setp(nullptr, nullptr);
+           other.setg(nullptr, nullptr, nullptr);
     }
 
     DynamicStreamBuf& operator=(DynamicStreamBuf&& other) {
+        size_ = other.size_;
         maxSize_ = other.maxSize_;
         data_ = std::move(other.data_);
         setp(other.pptr(), other.epptr());
+        setg(other.eback(), other.gptr(), other.egptr());
         other.setp(nullptr, nullptr);
+        other.setg(nullptr, nullptr, nullptr);
         return *this;
     }
 
@@ -209,9 +220,33 @@ public:
         return Buffer(data_.data(), pptr() - &data_[0]);
     }
 
+    void feed(const char *data, size_t len) {
+        size_ += len;
+        this->sputn(data, len);
+
+        char *cur = nullptr;
+        if (this->gptr()) {
+            cur = this->gptr();
+        } else {
+            cur = &data_[0] + size_;
+        }
+
+        this->setg(&data_[0], cur, &data_[0] + size_);
+    }
+
     void clear() {
         data_.clear();
         this->setp(&data_[0], &data_[0] + data_.capacity());
+        this->setg(nullptr, nullptr, nullptr);
+        size_ = 0;
+    }
+
+    void reset() {
+        clear();
+    }
+
+    size_t getSize() const {
+        return size_;
     }
 
 protected:
@@ -220,8 +255,60 @@ protected:
 private:
     void reserve(size_t size);
 
+    size_t size_;
     size_t maxSize_;
     std::vector<char> data_;
+};
+
+template<size_t N, typename CharT = char>
+class SmallStreamBuf : public StreamBuf<CharT> {
+public:
+    SmallStreamBuf()
+        : buf_(&array_)
+    { }
+
+    ~SmallStreamBuf() {
+        if (buf_ != &array_) {
+            getDynamic()->~DynamicStreamBuf();
+        }
+    }
+
+    void feed(const char *data, size_t len) {
+        if (buf_ == &array_) {
+            if (!array_.feed(data, len)) {
+                auto dynamic = new (&dynamic_) DynamicStreamBuf(array_.getSize() + len);
+                dynamic->feed(array_.data(), array_.getSize());
+                dynamic->feed(data, len);
+                buf_ = dynamic;
+            }
+        } else {
+            getDynamic()->feed(data, len);
+        }
+
+        this->setg(buf_->begptr(), buf_->curptr(), buf_->endptr());
+    }
+
+    void reset() {
+        buf_->reset();
+        this->setg(buf_->begptr(), buf_->curptr(), buf_->endptr());
+    }
+
+    size_t getSize() const {
+        return (buf_ == &array_) ? array_.getSize() : getDynamic()->getSize();
+    }
+
+private:
+    DynamicStreamBuf *getDynamic() {
+        return reinterpret_cast<DynamicStreamBuf*>(&dynamic_);
+    }
+
+    const DynamicStreamBuf *getDynamic() const {
+        return reinterpret_cast<const DynamicStreamBuf*>(&dynamic_);
+    }
+
+    ArrayStreamBuf<N, CharT> array_;
+    std::aligned_storage<sizeof(DynamicStreamBuf), alignof(DynamicStreamBuf)>::type dynamic_;
+    StreamBuf<CharT> *buf_;
 };
 
 class StreamCursor {

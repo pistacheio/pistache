@@ -462,7 +462,8 @@ namespace Private {
 
     bool
     ParserBase::feed(const char* data, size_t len) {
-        return buffer.feed(data, len) && (!maxBufferSize || buffer.getSize() <= maxBufferSize);
+        buffer.feed(data, len);
+        return (!maxBufferSize || buffer.getSize() <= maxBufferSize);
     }
 
     void
