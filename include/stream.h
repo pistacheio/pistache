@@ -1,19 +1,39 @@
 /* stream.h
    Mathieu Stefani, 05 September 2015
-   
+
    A set of classes to control input over a sequence of bytes
 */
 
 #pragma once
 
+#include "os.h"
 #include <cstddef>
-#include <stdexcept>
 #include <cstring>
+#include <iostream>
+#include <limits>
+#include <stdexcept>
 #include <streambuf>
 #include <vector>
-#include <limits>
-#include <iostream>
-#include "os.h"
+
+namespace {
+    void hexdump(void *ptr, int buflen) {
+        unsigned char *buf = (unsigned char *) ptr;
+        int i, j;
+        for (i = 0; i < buflen; i += 16) {
+            printf("%06x: ", i);
+            for (j = 0; j < 16; j++)
+                if (i + j < buflen)
+                    printf("%02x ", buf[i + j]);
+                else
+                    printf("   ");
+            printf(" ");
+            for (j = 0; j < 16; j++)
+                if (i + j < buflen)
+                    printf("%c", isprint(buf[i + j]) ? buf[i + j] : '.');
+            printf("\n");
+        }
+    }
+}
 
 static constexpr char CR = 0xD;
 static constexpr char LF = 0xA;
@@ -78,62 +98,69 @@ class ArrayStreamBuf : public StreamBuf<CharT> {
 public:
     typedef StreamBuf<CharT> Base;
 
-    ArrayStreamBuf()
-      : size(0)
-    {
-        memset(bytes, 0, N);
-        Base::setg(bytes, bytes, bytes + N);
+    ArrayStreamBuf() : size(0),bytes(N) {
+        memset(bytes.data(), 0, N);
+        Base::setg(bytes.data(), bytes.data(), bytes.data() + N);
     }
 
     template<size_t M>
     ArrayStreamBuf(char (&arr)[M]) {
         static_assert(M <= N, "Source array exceeds maximum capacity");
-        memcpy(bytes, arr, M);
+        memcpy(bytes.data(), arr, M);
         size = M;
-        Base::setg(bytes, bytes, bytes + M);
+        Base::setg(bytes.data(), bytes.data(), bytes.data() + M);
     }
 
     bool feed(const char* data, size_t len) {
-        if (size + len >= N) {
+
+        if (size + len >= Const::MaxBuffer ) {
             return false;
         }
 
-        memcpy(bytes + size, data, len);
-        CharT *cur = nullptr;
-        if (this->gptr()) {
-            cur = this->gptr();
-        } else {
-            cur = bytes + size;
+        if (size + len >= N) {
+            bytes.resize(bytes.size() + size + len + 1);
+            memset(bytes.data() + size, 0, len);
         }
 
-        Base::setg(bytes, cur, bytes + size + len);
+        memcpy(bytes.data() + size, data, len);
 
+        CharT *cur = nullptr;
+
+        if (this->gptr() && (size + len < N)) {
+
+            cur = this->gptr();
+
+        } else {
+            cur = bytes.data() + size;
+        }
+
+        Base::setg(bytes.data(), cur, bytes.data() + size + len);
         size += len;
         return true;
     }
 
     void reset() {
-        memset(bytes, 0, N);
+        memset(bytes.data(), 0, bytes.size());
         size = 0;
-        Base::setg(bytes, bytes, bytes);
+        Base::setg(bytes.data(), bytes.data(), bytes.data());
     }
 
 private:
-    char bytes[N];
+    std::vector<char> bytes;
     size_t size;
 };
 
 struct Buffer {
     Buffer()
-        : data(nullptr)
-        , len(0)
-        , isOwned(false)
+            : data(nullptr)
+            , len(0)
+            , isOwned(false)
     { }
 
     Buffer(const char * const data, size_t len, bool own = false)
-        : data(data)
-        , len(len)
-        , isOwned(own)
+            : data(data)
+            , len(len)
+            , isOwned(own)
     { }
 
     Buffer detach(size_t fromIndex = 0) const {
@@ -178,7 +205,7 @@ public:
     DynamicStreamBuf(
             size_t size,
             size_t maxSize = std::numeric_limits<uint32_t>::max())
-        : maxSize_(maxSize)
+            : maxSize_(maxSize)
     {
         reserve(size);
     }
@@ -187,10 +214,10 @@ public:
     DynamicStreamBuf& operator=(const DynamicStreamBuf& other) = delete;
 
     DynamicStreamBuf(DynamicStreamBuf&& other)
-       : maxSize_(other.maxSize_)
-       , data_(std::move(other.data_)) {
-           setp(other.pptr(), other.epptr());
-           other.setp(nullptr, nullptr);
+            : maxSize_(other.maxSize_)
+            , data_(std::move(other.data_)) {
+        setp(other.pptr(), other.epptr());
+        other.setp(nullptr, nullptr);
     }
 
     DynamicStreamBuf& operator=(DynamicStreamBuf&& other) {
@@ -223,7 +250,7 @@ private:
 class StreamCursor {
 public:
     StreamCursor(StreamBuf<char>* buf, size_t initialPos = 0)
-        : buf(buf)
+            : buf(buf)
     {
         advance(initialPos);
     }
@@ -232,11 +259,11 @@ public:
 
     struct Token {
         Token(StreamCursor& cursor)
-            : cursor(cursor)
-            , position(cursor.buf->position())
-            , eback(cursor.buf->begptr())
-            , gptr(cursor.buf->curptr())
-            , egptr(cursor.buf->endptr())
+                : cursor(cursor)
+                , position(cursor.buf->position())
+                , eback(cursor.buf->begptr())
+                , gptr(cursor.buf->curptr())
+                , egptr(cursor.buf->endptr())
         { }
 
         size_t start() const { return position; }
@@ -267,11 +294,11 @@ public:
 
     struct Revert {
         Revert(StreamCursor& cursor)
-            : cursor(cursor)
-            , eback(cursor.buf->begptr())
-            , gptr(cursor.buf->curptr())
-            , egptr(cursor.buf->endptr())
-            , active(true)
+                : cursor(cursor)
+                , eback(cursor.buf->begptr())
+                , gptr(cursor.buf->curptr())
+                , egptr(cursor.buf->endptr())
+                , active(true)
         { }
 
         ~Revert() {
@@ -325,7 +352,7 @@ enum class CaseSensitivity {
 
 bool match_raw(const void* buf, size_t len, StreamCursor& cursor);
 bool match_string(const char *str, size_t len, StreamCursor& cursor,
-        CaseSensitivity cs = CaseSensitivity::Insensitive);
+                  CaseSensitivity cs = CaseSensitivity::Insensitive);
 bool match_literal(char c, StreamCursor& cursor, CaseSensitivity cs = CaseSensitivity::Insensitive);
 bool match_until(char c, StreamCursor& cursor, CaseSensitivity cs = CaseSensitivity::Insensitive);
 bool match_until(std::initializer_list<char> chars, StreamCursor& cursor, CaseSensitivity cs = CaseSensitivity::Insensitive);
