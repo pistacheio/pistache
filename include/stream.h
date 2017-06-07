@@ -140,10 +140,11 @@ struct Buffer {
         if (fromIndex > len)
             throw std::invalid_argument("Invalid index (> len)");
 
-        char *newData = new char[len - fromIndex];
-        std::copy(data + fromIndex, data + len - fromIndex, newData);
+        const auto newLen = len - fromIndex;
+        char *newData = new char[newLen];
+        std::copy(data + fromIndex, data + fromIndex + newLen, newData);
 
-        return Buffer(newData, len, true);
+        return Buffer(newData, newLen, true);
     }
 
     const char* const data;
