@@ -156,7 +156,7 @@ namespace Async {
             }
         };
 
-        class Core;
+        struct Core;
 
         class Request {
         public:
@@ -1099,7 +1099,7 @@ namespace Async {
 
     class Any {
     public:
-        friend class Impl::Any;
+        friend struct Impl::Any;
 
         Any(const Any& other) = default;
         Any& operator=(const Any& other) = default;
