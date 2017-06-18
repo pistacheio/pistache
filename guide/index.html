@@ -8,7 +8,7 @@
         <meta name="description" content="Pistache is a C++ REST framework focussed on high performance and clear API. Pistache is a free software written by Mathieu Stefani and available on Github - https://github.com/oktal/pistache
 ">
         <link rel="canonical" 
-        href="http://pistache.io/guide/">
+        href="http://localhost:4000/guide/">
         
         <!-- Harmony styles -->
         <link rel="stylesheet" type="text/css" href="/assets/css/main.css">
@@ -45,14 +45,14 @@
 		
   	
 		
-  	
-		
             <li>
                 
                   <a href="/">Pistache</a><span>/</span>
                 
             </li>
 	    
+  	
+		
   	
 		
             <li>
@@ -215,11 +215,11 @@ The ResponseStream class provides an <code>iostream</code> like interface that o
 <span class="n">stream</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;NG&quot;</span></code></pre></figure>
 
 <p>The first line will write a chunk of size 2 with the content PO to the stream’s buffer. The second line will write a second
-chunk of size 2 with the content “NG”. To end the stream and flush the content, use the special <code>end</code> marker:</p>
+chunk of size 2 with the content “NG”. To end the stream and flush the content, use the special <code>ends</code> marker:</p>
 
-<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="n">stream</span> <span class="o">&lt;&lt;</span> <span class="n">end</span></code></pre></figure>
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="n">stream</span> <span class="o">&lt;&lt;</span> <span class="n">ends</span></code></pre></figure>
 
-<p>The <code>end</code> marker will write the last chunk of size 0 and send the final data over the network. To simply flush the stream’s buffer
+<p>The <code>ends</code> marker will write the last chunk of size 0 and send the final data over the network. To simply flush the stream’s buffer
 without ending the stream, you can use the <code>flush</code> marker:</p>
 
 <figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="n">stream</span> <span class="o">&lt;&lt;</span> <span class="n">flush</span></code></pre></figure>
@@ -235,7 +235,7 @@ After starting a stream, headers become immutable. They must be written to the r
     <span class="p">.</span><span class="n">add</span><span class="o">&lt;</span><span class="n">Header</span><span class="o">::</span><span class="n">ContentType</span><span class="o">&gt;</span><span class="p">(</span><span class="n">MIME</span><span class="p">(</span><span class="n">Text</span><span class="p">,</span> <span class="n">Plain</span><span class="p">));</span>
 
 <span class="k">auto</span> <span class="n">stream</span> <span class="o">=</span> <span class="n">response</span><span class="p">.</span><span class="n">stream</span><span class="p">();</span>
-<span class="n">stream</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;PO&quot;</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;NG&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">end</span><span class="p">;</span></code></pre></figure>
+<span class="n">stream</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;PO&quot;</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;NG&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">ends</span><span class="p">;</span></code></pre></figure>
 
 </p>
        </div>
@@ -325,15 +325,15 @@ keyword, except that it is suitable for promises.</li>
 <p>Exceptions in promises callbacks are propagated through an <code>exception_ptr</code>.
 Promises can also be chained together to create a whole asynchronous pipeline:</p>
 
-<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="lineno">1</span> <span class="k">auto</span> <span class="n">fetchOp</span> <span class="o">=</span> <span class="n">fetchDatabase</span><span class="p">();</span>
-<span class="lineno">2</span> <span class="n">fetchOp</span>
-<span class="lineno">3</span>  <span class="p">.</span><span class="n">then</span><span class="p">(</span>
-<span class="lineno">4</span>     <span class="p">[](</span><span class="k">const</span> <span class="n">User</span><span class="o">&amp;</span> <span class="n">user</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="n">fetchUserInfo</span><span class="p">(</span><span class="n">user</span><span class="p">);</span> <span class="p">},</span>
-<span class="lineno">5</span>     <span class="n">Async</span><span class="o">::</span><span class="n">Throw</span><span class="p">)</span>
-<span class="lineno">6</span>  <span class="p">.</span><span class="n">then</span><span class="p">(</span>
-<span class="lineno">7</span>     <span class="p">[](</span><span class="k">const</span> <span class="n">UserInfo</span><span class="o">&amp;</span> <span class="n">info</span><span class="p">)</span> <span class="p">{</span> <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;User name = &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">info</span><span class="p">.</span><span class="n">name</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span> <span class="p">},</span>
-<span class="lineno">8</span>     <span class="p">[](</span><span class="n">exception_ptr</span> <span class="n">ptr</span><span class="p">)</span> <span class="p">{</span> <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;An exception occured during user retrieval&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
-<span class="lineno">9</span> <span class="p">});</span></code></pre></figure>
+<figure class="highlight"><pre><code class="language-cpp" data-lang="cpp"><span class="lineno">1 </span><span class="k">auto</span> <span class="n">fetchOp</span> <span class="o">=</span> <span class="n">fetchDatabase</span><span class="p">();</span>
+<span class="lineno">2 </span><span class="n">fetchOp</span>
+<span class="lineno">3 </span> <span class="p">.</span><span class="n">then</span><span class="p">(</span>
+<span class="lineno">4 </span>    <span class="p">[](</span><span class="k">const</span> <span class="n">User</span><span class="o">&amp;</span> <span class="n">user</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="n">fetchUserInfo</span><span class="p">(</span><span class="n">user</span><span class="p">);</span> <span class="p">},</span>
+<span class="lineno">5 </span>    <span class="n">Async</span><span class="o">::</span><span class="n">Throw</span><span class="p">)</span>
+<span class="lineno">6 </span> <span class="p">.</span><span class="n">then</span><span class="p">(</span>
+<span class="lineno">7 </span>    <span class="p">[](</span><span class="k">const</span> <span class="n">UserInfo</span><span class="o">&amp;</span> <span class="n">info</span><span class="p">)</span> <span class="p">{</span> <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;User name = &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">info</span><span class="p">.</span><span class="n">name</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span> <span class="p">},</span>
+<span class="lineno">8 </span>    <span class="p">[](</span><span class="n">exception_ptr</span> <span class="n">ptr</span><span class="p">)</span> <span class="p">{</span> <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;An exception occured during user retrieval&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="lineno">9 </span><span class="p">});</span></code></pre></figure>
 
 <p>Line 5 will propagate the exception if <code>fetchDatabase()</code> failed and rejected the promise.</p>
 
