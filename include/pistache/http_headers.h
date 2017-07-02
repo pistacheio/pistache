@@ -1,6 +1,6 @@
 /* http_headers.h
    Mathieu Stefani, 19 August 2015
-   
+
    A list of HTTP headers
 */
 

@@ -1,6 +1,6 @@
 /* http_header.cc
    Mathieu Stefani, 19 August 2015
-   
+
    Implementation of common HTTP headers described by the RFC
 */
 
@@ -416,6 +416,16 @@ Accept::parseRaw(const char *str, size_t len) {
 
 void
 Accept::write(std::ostream& os) const {
+}
+
+void
+AccessControlAllowOrigin::parse(const std::string& data) {
+  uri_ = data;
+}
+
+void
+AccessControlAllowOrigin::write(std::ostream& os) const {
+  os << uri_;
 }
 
 void
