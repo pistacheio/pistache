@@ -3,13 +3,17 @@
    
 */
 
-#include "stream.h"
-#include <algorithm>
 #include <iostream>
+#include <algorithm>
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
+
+#include <pistache/stream.h>
+
+namespace Pistache {
 
 FileBuffer::FileBuffer(const char* fileName)
     : fileName_(fileName)
@@ -236,3 +240,5 @@ skip_whitespaces(StreamCursor& cursor) {
         cursor.advance(1);
     }
 }
+
+} // namespace Pistache

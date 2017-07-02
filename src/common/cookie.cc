@@ -4,13 +4,13 @@
    Cookie implementation
 */
 
-#include "cookie.h"
-#include "stream.h"
 #include <iterator>
 #include <unordered_map>
 
-namespace Net {
+#include <pistache/cookie.h>
+#include <pistache/stream.h>
 
+namespace Pistache {
 namespace Http {
 
 namespace {
@@ -226,5 +226,4 @@ CookieJar::has(const std::string& name) const {
 }
 
 } // namespace Http
-
-} // namespace Net
+} // namespace Pistache

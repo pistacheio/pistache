@@ -4,12 +4,12 @@
    Rest routing implementation
 */
 
-#include "router.h"
-#include "description.h"
 #include <algorithm>
 
-namespace Net {
+#include <pistache/router.h>
+#include <pistache/description.h>
 
+namespace Pistache {
 namespace Rest {
 
 Request::Request(
@@ -352,7 +352,5 @@ void Options(Router& router, std::string resource, Route::Handler handler) {
 }
 
 } // namespace Routes
-
 } // namespace Rest
-
-} // namespace Net
+} // namespace Pistache

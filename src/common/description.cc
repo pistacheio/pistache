@@ -4,13 +4,13 @@
    Implementation of the description system
 */
 
-#include "description.h"
-#include "http_header.h"
 #include <sstream>
 #include <algorithm>
 
-namespace Net {
+#include <pistache/description.h>
+#include <pistache/http_header.h>
 
+namespace Pistache {
 namespace Rest {
 
 const char* schemeString(Scheme scheme) {
@@ -447,5 +447,4 @@ Swagger::install(Rest::Router& router) {
 
 
 } // namespace Rest
-
-} // namespace Net
+} // namespace Pistache
