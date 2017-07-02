@@ -13,13 +13,8 @@ else()
 endif()
 
 include_directories (${CMAKE_CURRENT_SOURCE_DIR}/include)
-file(GLOB HEADER_FILES "include/*.h")
-install(FILES ${HEADER_FILES} DESTINATION include/pistache)
-
-file(GLOB SERIALIZER_HEADER_FILES "include/serializer/*.h")
-install(FILES ${SERIALIZER_HEADER_FILES} DESTINATION include/pistache/serializer)
-
 add_subdirectory (src)
+
 include_directories (src)
 
 add_subdirectory (examples)

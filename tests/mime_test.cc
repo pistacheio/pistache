@@ -1,9 +1,10 @@
 #include "gtest/gtest.h"
-#include "mime.h"
-#include "http.h"
 
-using namespace Net::Http;
-using namespace Net::Http::Mime;
+#include <pistache/mime.h>
+#include <pistache/http.h>
+
+using namespace Pistache::Http;
+using namespace Pistache::Http::Mime;
 
 TEST(mime_test, basic_test) {
     MediaType m1(Type::Text, Subtype::Plain);

@@ -6,10 +6,11 @@
 
 
 #include "gtest/gtest.h"
-#include "router.h"
 #include <algorithm>
 
-using namespace Net;
+#include <pistache/router.h>
+
+using namespace Pistache;
 
 bool match(const Rest::Route& route, const std::string& req) {
     return std::get<0>(route.match(req));
@@ -75,8 +76,8 @@ bool matchSplat(
 
 Rest::Route
 makeRoute(std::string value) {
-    auto noop = [](const Net::Http::Request&, Net::Http::Response) { return Rest::Route::Result::Ok; };
-    return Rest::Route(value, Net::Http::Method::Get, noop);
+    auto noop = [](const Http::Request&, Http::Response) { return Rest::Route::Result::Ok; };
+    return Rest::Route(value, Http::Method::Get, noop);
 }
 
 TEST(router_test, test_fixed_routes) {

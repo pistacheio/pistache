@@ -1,13 +1,22 @@
-#include "transport.h"
-#include "peer.h"
-#include "tcp.h"
-#include "os.h"
+/* traqnsport.cc
+   Mathieu Stefani, 02 July 2017
+
+   TCP transport handling
+   
+*/
+
 #include <sys/sendfile.h>
 #include <sys/timerfd.h>
 
-using namespace Polling;
+#include <pistache/transport.h>
+#include <pistache/peer.h>
+#include <pistache/tcp.h>
+#include <pistache/os.h>
 
-namespace Net {
+
+namespace Pistache {
+
+using namespace Polling;
 
 namespace Tcp {
 
@@ -209,7 +218,7 @@ Transport::asyncWriteImpl(
             }
             else {
                 cleanUp();
-                deferred.reject(Net::Error::system("Could not write data"));
+                deferred.reject(Pistache::Error::system("Could not write data"));
             }
             break;
         }
@@ -266,7 +275,7 @@ Transport::armTimerMsImpl(TimerEntry entry) {
 
     int res = timerfd_settime(entry.fd, 0, &spec, 0);
     if (res == -1) {
-        entry.deferred.reject(Net::Error::system("Could not set timer time"));
+        entry.deferred.reject(Pistache::Error::system("Could not set timer time"));
         return;
     }
 
@@ -342,10 +351,10 @@ Transport::handleTimer(TimerEntry entry) {
             if (errno == EAGAIN || errno == EWOULDBLOCK)
                 return;
             else
-                entry.deferred.reject(Net::Error::system("Could not read timerfd"));
+                entry.deferred.reject(Pistache::Error::system("Could not read timerfd"));
         } else {
             if (res != sizeof(numWakeups)) {
-                entry.deferred.reject(Net::Error("Read invalid number of bytes for timer fd: "
+                entry.deferred.reject(Pistache::Error("Read invalid number of bytes for timer fd: "
                             + std::to_string(entry.fd)));
             }
             else {
@@ -392,5 +401,4 @@ Transport::getPeer(Polling::Tag tag)
 }
 
 } // namespace Tcp
-
-} // namespace Net
+} // namespace Pistache

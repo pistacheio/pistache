@@ -4,8 +4,9 @@
    Implementation of the Reactor
 */
 
-#include "reactor.h"
+#include <pistache/reactor.h>
 
+namespace Pistache {
 namespace Aio {
 
 struct Reactor::Impl {
@@ -599,3 +600,4 @@ AsyncContext::singleThreaded() {
 }
 
 } // namespace Aio
+} // namespace Pistache

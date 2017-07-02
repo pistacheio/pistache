@@ -1,7 +1,8 @@
 #include "gtest/gtest.h"
-#include "http_headers.h"
 
-using namespace Net::Http;
+#include <pistache/http_headers.h>
+
+using namespace Pistache::Http;
 
 TEST(headers_test, accept) {
     Header::Accept a1;
