@@ -14,7 +14,6 @@
 
 #include <pistache/os.h>
 #include <pistache/common.h>
-#include <pistache/io.h>
 
 using namespace std;
 
