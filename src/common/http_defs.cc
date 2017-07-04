@@ -25,12 +25,20 @@ namespace {
         ss >> std::get_time(&tm, "%A, %d-%b-%y %H:%M:%S %Z");
         return !ss.fail();
     }
+    
+    bool parseAscTimeDateRaw(std::tm& tm, const char* str, size_t len) {
+        char *p = strptime(str, "%a %b  %d %H:%M:%S %Y", &tm);
+        return p != NULL;
+    }
 
     bool parseAscTimeDate(std::tm& tm, const std::string& str) {
-        std::istringstream ss(str);
-        ss >> std::get_time(&tm, "%a %b  %d %H:%M:%S %Y");
-        return !ss.fail();
+        //FIXME this always fail. Why? https://stackoverflow.com/questions/44901711/convert-ansi-cs-asctime-format-using-stdget-time
+        //std::istringstream ss(str);
+        //ss >> std::get_time(&tm, "%a %b  %d %H:%M:%S %Y");
+        //return !ss.fail();
+        return parseAscTimeDateRaw(tm, str.c_str(), str.size());
     }
+    
 } // anonymous namespace
 
 CacheDirective::CacheDirective(Directive directive)
