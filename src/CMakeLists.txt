@@ -40,3 +40,23 @@ install(
   DIRECTORY "${PROJECT_SOURCE_DIR}/include/pistache"
   DESTINATION ${include_install_dir}
   FILES_MATCHING PATTERN "*.*h")
+install(TARGETS pistache
+        EXPORT PistacheTargets
+        DESTINATION lib)
+install(EXPORT PistacheTargets
+        DESTINATION "lib/cmake/pistache"
+        EXPORT_LINK_INTERFACE_LIBRARIES
+        COMPONENT cmake-config
+)
+
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+    "PistacheConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/PistacheConfig.cmake"
+    INSTALL_DESTINATION "lib/cmake/pistache"
+)
+install(
+    FILES "${CMAKE_CURRENT_BINARY_DIR}/PistacheConfig.cmake"
+    DESTINATION "lib/cmake/pistache"
+    COMPONENT cmake-config
+)
