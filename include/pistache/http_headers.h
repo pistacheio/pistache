@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <functional>
+#include <algorithm>
 #include <unordered_map>
 #include <vector>
 #include <memory>
@@ -15,6 +17,21 @@
 namespace Pistache {
 namespace Http {
 namespace Header {
+
+std::string
+toLowercase(std::string str);
+
+struct LowercaseHash {
+    size_t operator()(const std::string& key) const {
+        return std::hash<std::string>{}(toLowercase(key));
+    }
+};
+
+struct LowercaseEqual {
+    bool operator()(const std::string& left, const std::string& right) const {
+        return toLowercase(left) == toLowercase(right);
+    }
+};
 
 class Collection {
 public:
@@ -94,7 +111,12 @@ public:
 private:
     std::pair<bool, std::shared_ptr<Header>> getImpl(const std::string& name) const;
 
-    std::unordered_map<std::string, std::shared_ptr<Header>> headers;
+    std::unordered_map<
+        std::string,
+        std::shared_ptr<Header>,
+        LowercaseHash,
+        LowercaseEqual
+    > headers;
     std::unordered_map<std::string, Raw> rawHeaders;
 };
 

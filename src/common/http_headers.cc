@@ -16,7 +16,12 @@ namespace Http {
 namespace Header {
 
 namespace {
-    std::unordered_map<std::string, Registry::RegistryFunc> registry;
+    std::unordered_map<
+        std::string,
+        Registry::RegistryFunc,
+        LowercaseHash,
+        LowercaseEqual
+    > registry;
 }
 
 RegisterHeader(Accept);
@@ -33,6 +38,12 @@ RegisterHeader(Host);
 RegisterHeader(Location);
 RegisterHeader(Server);
 RegisterHeader(UserAgent);
+
+std::string
+toLowercase(std::string str) {
+    std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+    return str;
+}
 
 void
 Registry::registerHeader(std::string name, Registry::RegistryFunc func)
