@@ -403,15 +403,15 @@ Connection::connect(Address addr)
 
         make_non_blocking(sfd);
 
-        connectionState_ = Connecting;
+        setConnecting();
         fd = sfd;
 
         transport_->asyncConnect(shared_from_this(), addr->ai_addr, addr->ai_addrlen)
             .then([=]() { 
                 socklen_t len = sizeof(saddr);
                 getsockname(sfd, (struct sockaddr *)&saddr, &len);
-                connectionState_ = Connected;
-                processRequestQueue();
+
+                this->setConnectedProcessRequestQueue();
             }, ExceptionPrinter());
         break;
 
@@ -435,12 +435,50 @@ Connection::isIdle() const {
 }
 
 bool
-Connection::isConnected() const {
+Connection::isConnected() {
+    std::lock_guard<std::mutex> grd(connectionStateMutex_);
     return connectionState_ == Connected;
+}
+
+bool Connection::isConnectedPushReqEntryIfNot(Async::Resolver & resolve,
+                                      Async::Rejection & reject,
+                                      const Http::Request& request,
+                                      std::chrono::milliseconds timeout,
+                                      const OnDone & onDone)
+{
+    std::lock_guard<std::mutex> grd(connectionStateMutex_);
+
+    if (connectionState_ == Connected)
+        return(true);
+
+    auto* entry = requestsQueue.allocEntry(RequestData(
+                                               std::move(resolve),
+                                               std::move(reject),
+                                               request,
+                                               timeout,
+                                               std::move(onDone)));
+    
+    requestsQueue.push(entry);
+    return(false);
+}
+
+void Connection::setConnectedProcessRequestQueue()
+{
+    std::lock_guard<std::mutex> grd(connectionStateMutex_);
+    connectionState_ = Connected;
+    processRequestQueue();
+}
+
+void Connection::setConnecting()
+{
+    std::lock_guard<std::mutex> grd(connectionStateMutex_);
+    connectionState_ = Connecting;
 }
 
 void
 Connection::close() {
+    std::lock_guard<std::mutex> grd(connectionStateMutex_);
+    
     connectionState_ = NotConnected;
     ::close(fd);
 }
@@ -506,18 +544,10 @@ Connection::perform(
         std::chrono::milliseconds timeout,
         Connection::OnDone onDone) {
     return Async::Promise<Response>([=](Async::Resolver& resolve, Async::Rejection& reject) {
-        if (!isConnected()) {
-            auto* entry = requestsQueue.allocEntry(
-                RequestData(
-                    std::move(resolve),
-                    std::move(reject),
-                    request,
-                    timeout,
-                    std::move(onDone)));
-            requestsQueue.push(entry);
-        } else {
-            performImpl(request, timeout, std::move(resolve), std::move(reject), std::move(onDone));
-        }
+            if (isConnectedPushReqEntryIfNot(resolve, reject, request,
+                                             timeout, onDone))
+                performImpl(request, timeout, std::move(resolve),
+                            std::move(reject), std::move(onDone));
     });
 }
 

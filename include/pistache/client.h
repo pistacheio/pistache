@@ -76,9 +76,18 @@ struct Connection : public std::enable_shared_from_this<Connection> {
     void connect(Address addr);
     void close();
     bool isIdle() const;
-    bool isConnected() const;
+    bool isConnected();
     bool hasTransport() const;
     void associateTransport(const std::shared_ptr<Transport>& transport);
+
+    bool isConnectedPushReqEntryIfNot(Async::Resolver & resolve,
+                                      Async::Rejection & reject,
+                                      const Http::Request& request,
+                                      std::chrono::milliseconds timeout,
+                                      const OnDone & onDone);
+
+    void setConnectedProcessRequestQueue();
+    void setConnecting();
 
     Async::Promise<Response> perform(
             const Http::Request& request,
@@ -126,6 +135,7 @@ private:
     };
 
     std::atomic<uint32_t> state_;
+    std::mutex connectionStateMutex_;
     ConnectionState connectionState_;
     std::shared_ptr<Transport> transport_;
     Queue<RequestData> requestsQueue;
