@@ -1,6 +1,6 @@
 /* http_headers.cc
    Mathieu Stefani, 19 August 2015
-   
+
    Headers registry
 */
 
@@ -20,6 +20,7 @@ namespace {
 }
 
 RegisterHeader(Accept);
+RegisterHeader(AccessControlAllowOrigin);
 RegisterHeader(Allow);
 RegisterHeader(CacheControl);
 RegisterHeader(Connection);
@@ -76,7 +77,7 @@ Registry::isRegistered(const std::string& name) {
 Collection&
 Collection::add(const std::shared_ptr<Header>& header) {
     headers.insert(std::make_pair(header->name(), header));
-    
+
     return *this;
 }
 
