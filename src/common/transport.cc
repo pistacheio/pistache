@@ -2,7 +2,7 @@
    Mathieu Stefani, 02 July 2017
 
    TCP transport handling
-   
+
 */
 
 #include <sys/sendfile.h>
@@ -193,7 +193,7 @@ Transport::asyncWriteImpl(
             toWrite.erase(fd);
     };
 
-    ssize_t totalWritten = 0;
+    ssize_t totalWritten = buffer.offset();
     for (;;) {
         ssize_t bytesWritten = 0;
         auto len = buffer.size() - totalWritten;
@@ -208,11 +208,14 @@ Transport::asyncWriteImpl(
         }
         if (bytesWritten < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                if (status == FirstTry) {
-                    toWrite.insert(
-                            std::make_pair(fd,
-                                WriteEntry(std::move(deferred), buffer.detach(totalWritten), flags)));
+                // save for a future retry with the totalWritten offset.
+                if (status == Retry) {
+                    toWrite.erase(fd);
                 }
+
+                toWrite.insert(
+                        std::make_pair(fd,
+                            WriteEntry(std::move(deferred), buffer.detach(totalWritten), flags)));
 
                 reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
             }
@@ -224,7 +227,7 @@ Transport::asyncWriteImpl(
         }
         else {
             totalWritten += bytesWritten;
-            if (totalWritten == len) {
+            if (totalWritten >= buffer.size()) {
                 cleanUp();
                 deferred.resolve(totalWritten);
                 break;
