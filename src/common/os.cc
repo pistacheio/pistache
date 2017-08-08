@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iterator>
 #include <algorithm>
+#include <thread>
 
 #include <unistd.h>
 #include <fcntl.h>
@@ -19,15 +20,8 @@ using namespace std;
 
 namespace Pistache {
 
-int hardware_concurrency() {
-    std::ifstream cpuinfo("/proc/cpuinfo");
-    if (cpuinfo) {
-        return std::count(std::istream_iterator<std::string>(cpuinfo),
-                          std::istream_iterator<std::string>(),
-                          std::string("processor"));
-    }
-
-    return sysconf(_SC_NPROCESSORS_ONLN);
+unsigned int hardware_concurrency() {
+	return std::thread::hardware_concurrency();
 }
 
 

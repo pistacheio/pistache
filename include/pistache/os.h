@@ -20,7 +20,7 @@ namespace Pistache {
 
 typedef int Fd;
 
-int hardware_concurrency();
+unsigned int hardware_concurrency();
 bool make_non_blocking(int fd);
 
 class CpuSet {
