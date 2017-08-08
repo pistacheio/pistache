@@ -15,7 +15,7 @@ if(COMPILER_SUPPORTS_CXX11)
 elseif(COMPILER_SUPPORTS_CXX0X)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 else()
-    message(FATAL "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
+    message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif()
 
 include_directories (${CMAKE_CURRENT_LIST_DIR}/include)
@@ -35,7 +35,7 @@ find_package(GTest)
       ADD_SUBDIRECTORY (googletest-release-1.7.0)
       include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
   endif()
-  
+
   enable_testing()
   add_subdirectory(tests)
 endif(BUILD_PISTACHE_TESTS)
