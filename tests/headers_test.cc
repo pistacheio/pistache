@@ -270,3 +270,11 @@ TEST(headers_test, content_type) {
     ASSERT_EQ(mime, MIME(Text, Html));
     ASSERT_EQ(mime.getParam("charset").getOrElse(""), "ISO-8859-4");
 }
+
+TEST(headers_test, access_control_allow_origin_test)
+{
+    Header::AccessControlAllowOrigin allowOrigin;
+
+    allowOrigin.parse("http://foo.bar");
+    ASSERT_EQ(allowOrigin.uri(), "http://foo.bar");
+}

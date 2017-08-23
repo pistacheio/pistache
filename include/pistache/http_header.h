@@ -1,6 +1,6 @@
 /* http_header.h
    Mathieu Stefani, 19 August 2015
-   
+
   Declaration of common http headers
 */
 
@@ -158,6 +158,32 @@ public:
 
 private:
     std::vector<Mime::MediaType> mediaRange_;
+};
+
+class AccessControlAllowOrigin : public Header {
+public:
+  NAME("Access-Control-Allow-Origin")
+
+  AccessControlAllowOrigin() { }
+
+  explicit AccessControlAllowOrigin(const char* uri)
+    : uri_(uri)
+  { }
+  explicit AccessControlAllowOrigin(const std::string& uri)
+    : uri_(uri)
+  { }
+
+  void parse(const std::string& data);
+  void write(std::ostream& os) const;
+
+  void setUri(std::string uri) {
+    uri_ = std::move(uri);
+  }
+
+  std::string uri() const { return uri_; }
+
+private:
+  std::string uri_;
 };
 
 class CacheControl : public Header {
