@@ -14,31 +14,20 @@ namespace Pistache {
 namespace Http {
 
 namespace {
-    bool parseRFC1123Date(std::tm& tm, const std::string& str) {
-        std::istringstream ss(str);
-        ss >> std::get_time(&tm, "%a, %d %b %Y %H:%M:%S %Z");
-        return !ss.fail();
-    }
-
-    bool parseRFC850Date(std::tm& tm, const std::string& str) {
-        std::istringstream ss(str);
-        ss >> std::get_time(&tm, "%A, %d-%b-%y %H:%M:%S %Z");
-        return !ss.fail();
-    }
-    
-    bool parseAscTimeDateRaw(std::tm& tm, const char* str, size_t len) {
-        char *p = strptime(str, "%a %b  %d %H:%M:%S %Y", &tm);
+    bool parseRFC1123Date(std::tm& tm, const char* str, size_t len) {
+        char *p = strptime(str, "%a, %d %b %Y %H:%M:%S %Z", &tm);
         return p != NULL;
     }
 
-    bool parseAscTimeDate(std::tm& tm, const std::string& str) {
-        //FIXME this always fail. Why? https://stackoverflow.com/questions/44901711/convert-ansi-cs-asctime-format-using-stdget-time
-        //std::istringstream ss(str);
-        //ss >> std::get_time(&tm, "%a %b  %d %H:%M:%S %Y");
-        //return !ss.fail();
-        return parseAscTimeDateRaw(tm, str.c_str(), str.size());
+    bool parseRFC850Date(std::tm& tm, const char* str, size_t len) {
+        char *p = strptime(str, "%A, %d-%b-%y %H:%M:%S %Z", &tm);
+        return p != NULL;
     }
-    
+
+    bool parseAscTimeDate(std::tm& tm, const char* str, size_t len) {
+        char *p = strptime(str, "%a %b  %d %H:%M:%S %Y", &tm);
+        return p != NULL;
+    }
 } // anonymous namespace
 
 CacheDirective::CacheDirective(Directive directive)
@@ -95,30 +84,28 @@ FullDate::FullDate() {
 FullDate
 FullDate::fromRaw(const char* str, size_t len)
 {
-    const std::string s = std::string(str, len);
-    return fromString(s);
-}
-
-FullDate
-FullDate::fromString(const std::string& str) {
-    
     // As per the RFC, implementation MUST support all three formats.
     std::tm tm = {};
-    if(parseRFC1123Date(tm, str)){
+    if (parseRFC1123Date(tm, str, len)) {
         return FullDate(tm);
     }
-    
+
     memset(&tm, 0, sizeof tm);
-    if(parseRFC850Date(tm, str)){
+    if (parseRFC850Date(tm, str, len)) {
         return FullDate(tm);
     }
-    
     memset(&tm, 0, sizeof tm);
-    if(parseAscTimeDate(tm, str)) {
+
+    if (parseAscTimeDate(tm, str, len)) {
         return FullDate(tm);
     }
 
     throw std::runtime_error("Invalid Date format");
+}
+
+FullDate
+FullDate::fromString(const std::string& str) {
+    return FullDate::fromRaw(str.c_str(), str.size());
 }
 
 void
