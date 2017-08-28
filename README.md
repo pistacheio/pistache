@@ -18,6 +18,8 @@ Full documentation is located at [http://pistache.io](http://pistache.io).
 using namespace Net;
 
 struct HelloHandler : public Http::Handler {
+    HTTP_PROTOTYPE(HelloHandler)
+
     void onRequest(const Http::Request& request, Http::ResponseWriter writer) {
         writer.send(Http::Code::Ok, "Hello, World!");
     }

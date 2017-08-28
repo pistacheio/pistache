@@ -1,13 +1,22 @@
-#include "transport.h"
-#include "peer.h"
-#include "tcp.h"
-#include "os.h"
+/* traqnsport.cc
+   Mathieu Stefani, 02 July 2017
+
+   TCP transport handling
+
+*/
+
 #include <sys/sendfile.h>
 #include <sys/timerfd.h>
 
-using namespace Polling;
+#include <pistache/transport.h>
+#include <pistache/peer.h>
+#include <pistache/tcp.h>
+#include <pistache/os.h>
 
-namespace Net {
+
+namespace Pistache {
+
+using namespace Polling;
 
 namespace Tcp {
 
@@ -184,7 +193,7 @@ Transport::asyncWriteImpl(
             toWrite.erase(fd);
     };
 
-    ssize_t totalWritten = 0;
+    ssize_t totalWritten = buffer.offset();
     for (;;) {
         ssize_t bytesWritten = 0;
         auto len = buffer.size() - totalWritten;
@@ -199,23 +208,26 @@ Transport::asyncWriteImpl(
         }
         if (bytesWritten < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                if (status == FirstTry) {
-                    toWrite.insert(
-                            std::make_pair(fd,
-                                WriteEntry(std::move(deferred), buffer.detach(totalWritten), flags)));
+                // save for a future retry with the totalWritten offset.
+                if (status == Retry) {
+                    toWrite.erase(fd);
                 }
+
+                toWrite.insert(
+                        std::make_pair(fd,
+                            WriteEntry(std::move(deferred), buffer.detach(totalWritten), flags)));
 
                 reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
             }
             else {
                 cleanUp();
-                deferred.reject(Net::Error::system("Could not write data"));
+                deferred.reject(Pistache::Error::system("Could not write data"));
             }
             break;
         }
         else {
             totalWritten += bytesWritten;
-            if (totalWritten == len) {
+            if (totalWritten >= buffer.size()) {
                 cleanUp();
                 deferred.resolve(totalWritten);
                 break;
@@ -266,7 +278,7 @@ Transport::armTimerMsImpl(TimerEntry entry) {
 
     int res = timerfd_settime(entry.fd, 0, &spec, 0);
     if (res == -1) {
-        entry.deferred.reject(Net::Error::system("Could not set timer time"));
+        entry.deferred.reject(Pistache::Error::system("Could not set timer time"));
         return;
     }
 
@@ -342,10 +354,10 @@ Transport::handleTimer(TimerEntry entry) {
             if (errno == EAGAIN || errno == EWOULDBLOCK)
                 return;
             else
-                entry.deferred.reject(Net::Error::system("Could not read timerfd"));
+                entry.deferred.reject(Pistache::Error::system("Could not read timerfd"));
         } else {
             if (res != sizeof(numWakeups)) {
-                entry.deferred.reject(Net::Error("Read invalid number of bytes for timer fd: "
+                entry.deferred.reject(Pistache::Error("Read invalid number of bytes for timer fd: "
                             + std::to_string(entry.fd)));
             }
             else {
@@ -392,5 +404,4 @@ Transport::getPeer(Polling::Tag tag)
 }
 
 } // namespace Tcp
-
-} // namespace Net
+} // namespace Pistache

@@ -4,16 +4,15 @@
    Headers registry
 */
 
-#include "http_headers.h"
 #include <unordered_map>
 #include <iterator>
 #include <stdexcept>
 #include <iostream>
 
-namespace Net {
+#include <pistache/http_headers.h>
 
+namespace Pistache {
 namespace Http {
-
 namespace Header {
 
 namespace {
@@ -190,7 +189,5 @@ Collection::getImpl(const std::string& name) const {
 }
 
 } // namespace Header
-
 } // namespace Http
-
-} // namespace Net
+} // namespace Pistache

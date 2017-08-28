@@ -4,12 +4,11 @@
    Example of custom headers registering
 */
 
-#include "net.h"
-#include "http_headers.h"
-#include "client.h"
+#include <pistache/net.h>
+#include <pistache/http_headers.h>
 
-using namespace Net;
-using namespace Net::Http;
+using namespace Pistache;
+using namespace Pistache::Http;
 
 class XProtocolVersion : public Header::Header {
 public:

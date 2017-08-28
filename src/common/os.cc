@@ -3,17 +3,21 @@
    
 */
 
-#include "os.h"
-#include "common.h"
-#include <unistd.h>
-#include <fcntl.h>
 #include <fstream>
 #include <iterator>
 #include <algorithm>
+
+#include <unistd.h>
+#include <fcntl.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 
+#include <pistache/os.h>
+#include <pistache/common.h>
+
 using namespace std;
+
+namespace Pistache {
 
 int hardware_concurrency() {
     std::ifstream cpuinfo("/proc/cpuinfo");
@@ -289,3 +293,5 @@ NotifyFd::tryRead() const {
 
     return true;
 }
+
+} // namespace Pistache

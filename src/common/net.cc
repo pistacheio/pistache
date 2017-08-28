@@ -3,19 +3,20 @@
    
 */
 
-
-#include "net.h"
-#include "common.h"
 #include <stdexcept>
 #include <limits>
 #include <cstring>
+
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <iostream>
 
+#include <pistache/net.h>
+#include <pistache/common.h>
+
 using namespace std;
 
-namespace Net {
+namespace Pistache {
 
 Port::Port(uint16_t port)
     : port(port)
@@ -139,4 +140,4 @@ Error::system(const char* message) {
 
 }
 
-} // namespace Net
+} // namespace Pistache

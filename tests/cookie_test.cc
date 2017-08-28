@@ -1,8 +1,9 @@
 #include "gtest/gtest.h"
-#include "cookie.h"
 
-using namespace Net;
-using namespace Net::Http;
+#include <pistache/cookie.h>
+
+using namespace Pistache;
+using namespace Pistache::Http;
 
 void parse(const char* str, std::function<void (const Cookie&)> testFunc)
 {

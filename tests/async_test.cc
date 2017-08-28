@@ -1,11 +1,15 @@
 #include "gtest/gtest.h"
-#include "async.h"
+
 #include <thread>
 #include <algorithm>
 #include <deque>
 #include <mutex>
 #include <condition_variable>
 #include <random>
+
+#include <pistache/async.h>
+
+using namespace Pistache;
 
 Async::Promise<int> doAsync(int N)
 {

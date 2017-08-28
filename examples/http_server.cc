@@ -4,15 +4,15 @@
    Example of an http server
 */
 
-#include "net.h"
-#include "http.h"
-#include "peer.h"
-#include "http_headers.h"
-#include "cookie.h"
-#include "endpoint.h"
+#include <pistache/net.h>
+#include <pistache/http.h>
+#include <pistache/peer.h>
+#include <pistache/http_headers.h>
+#include <pistache/cookie.h>
+#include <pistache/endpoint.h>
 
 using namespace std;
-using namespace Net;
+using namespace Pistache;
 
 struct PrintException {
     void operator()(std::exception_ptr exc) const {
@@ -25,7 +25,7 @@ struct PrintException {
 };
 
 struct LoadMonitor {
-    LoadMonitor(const std::shared_ptr<Net::Http::Endpoint>& endpoint)
+    LoadMonitor(const std::shared_ptr<Http::Endpoint>& endpoint)
         : endpoint_(endpoint)
         , interval(std::chrono::seconds(1))
     { }
@@ -49,18 +49,18 @@ struct LoadMonitor {
     }
 
 private:
-    std::shared_ptr<Net::Http::Endpoint> endpoint_;
+    std::shared_ptr<Http::Endpoint> endpoint_;
     std::unique_ptr<std::thread> thread;
     std::chrono::seconds interval;
 
     std::atomic<bool> shutdown_;
 
     void run() {
-        Net::Tcp::Listener::Load old;
+        Tcp::Listener::Load old;
         while (!shutdown_) {
             if (!endpoint_->isBound()) continue;
 
-            endpoint_->requestLoad(old).then([&](const Net::Tcp::Listener::Load& load) {
+            endpoint_->requestLoad(old).then([&](const Tcp::Listener::Load& load) {
                 old = load;
 
                 double global = load.global;
@@ -79,18 +79,18 @@ private:
 };
 
 
-class MyHandler : public Net::Http::Handler {
+class MyHandler : public Http::Handler {
 
     HTTP_PROTOTYPE(MyHandler)
 
     void onRequest(
-            const Net::Http::Request& req,
-            Net::Http::ResponseWriter response) {
+            const Http::Request& req,
+            Http::ResponseWriter response) {
 
         if (req.resource() == "/ping") {
-            if (req.method() == Net::Http::Method::Get) {
+            if (req.method() == Http::Method::Get) {
 
-                using namespace Net::Http;
+                using namespace Http;
 
                 auto query = req.query();
                 if (query.has("chunked")) {
@@ -103,22 +103,22 @@ class MyHandler : public Net::Http::Handler {
                     response.cookies()
                         .add(Cookie("lang", "en-US"));
 
-                    auto stream = response.stream(Net::Http::Code::Ok);
+                    auto stream = response.stream(Http::Code::Ok);
                     stream << "PO";
                     stream << "NG";
                     stream << ends;
                 }
                 else {
-                    response.send(Net::Http::Code::Ok, "PONG");
+                    response.send(Http::Code::Ok, "PONG");
                 }
 
             }
         }
         else if (req.resource() == "/echo") {
-            if (req.method() == Net::Http::Method::Post) {
-                response.send(Net::Http::Code::Ok, req.body(), MIME(Text, Plain));
+            if (req.method() == Http::Method::Post) {
+                response.send(Http::Code::Ok, req.body(), MIME(Text, Plain));
             } else {
-                response.send(Net::Http::Code::Method_Not_Allowed);
+                response.send(Http::Code::Method_Not_Allowed);
             }
         }
         else if (req.resource() == "/exception") {
@@ -128,8 +128,8 @@ class MyHandler : public Net::Http::Handler {
             response.timeoutAfter(std::chrono::seconds(2));
         }
         else if (req.resource() == "/static") {
-            if (req.method() == Net::Http::Method::Get) {
-                Net::Http::serveFile(response, "README.md").then([](ssize_t bytes) {;
+            if (req.method() == Http::Method::Get) {
+                Http::serveFile(response, "README.md").then([](ssize_t bytes) {;
                     std::cout << "Sent " << bytes << " bytes" << std::endl;
                 }, Async::NoExcept);
             }
@@ -139,16 +139,16 @@ class MyHandler : public Net::Http::Handler {
 
     }
 
-    void onTimeout(const Net::Http::Request& req, Net::Http::ResponseWriter response) {
+    void onTimeout(const Http::Request& req, Http::ResponseWriter response) {
         response
-            .send(Net::Http::Code::Request_Timeout, "Timeout")
+            .send(Http::Code::Request_Timeout, "Timeout")
             .then([=](ssize_t) { }, PrintException());
     }
 
 };
 
 int main(int argc, char *argv[]) {
-    Net::Port port(9080);
+    Port port(9080);
 
     int thr = 2;
 
@@ -159,17 +159,17 @@ int main(int argc, char *argv[]) {
             thr = std::stol(argv[2]);
     }
 
-    Net::Address addr(Net::Ipv4::any(), port);
+    Address addr(Ipv4::any(), port);
     static constexpr size_t Workers = 4;
 
     cout << "Cores = " << hardware_concurrency() << endl;
     cout << "Using " << thr << " threads" << endl;
 
-    auto server = std::make_shared<Net::Http::Endpoint>(addr);
+    auto server = std::make_shared<Http::Endpoint>(addr);
 
-    auto opts = Net::Http::Endpoint::options()
+    auto opts = Http::Endpoint::options()
         .threads(thr)
-        .flags(Net::Tcp::Options::InstallSignalHandler);
+        .flags(Tcp::Options::InstallSignalHandler);
     server->init(opts);
     server->setHandler(Http::make_handler<MyHandler>());
     server->serve();

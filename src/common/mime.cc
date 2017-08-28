@@ -4,16 +4,15 @@
    Implementaton of MIME Type parsing
 */
 
-#include "mime.h"
-#include "http.h"
 #include <cstring>
+
+#include <pistache/mime.h>
+#include <pistache/http.h>
 
 using namespace std;
 
-namespace Net {
-
+namespace Pistache {
 namespace Http {
-
 namespace Mime {
 
 std::string
@@ -329,8 +328,5 @@ MediaType::isValid() const {
 }
 
 } // namespace Mime
-
 } // namespace Http
-
-} // namespace Net
-
+} // namespace Pistache

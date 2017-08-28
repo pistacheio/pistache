@@ -4,15 +4,16 @@
    Example of a REST endpoint with routing
 */
 
-#include "http.h"
-#include "router.h"
-#include "endpoint.h"
 #include <algorithm>
 
-using namespace std;
-using namespace Net;
+#include <pistache/http.h>
+#include <pistache/router.h>
+#include <pistache/endpoint.h>
 
-void printCookies(const Net::Http::Request& req) {
+using namespace std;
+using namespace Pistache;
+
+void printCookies(const Http::Request& req) {
     auto cookies = req.cookies();
     std::cout << "Cookies: [" << std::endl;
     const std::string indent(4, ' ');
@@ -32,14 +33,14 @@ void handleReady(const Rest::Request&, Http::ResponseWriter response) {
 
 class StatsEndpoint {
 public:
-    StatsEndpoint(Net::Address addr)
-        : httpEndpoint(std::make_shared<Net::Http::Endpoint>(addr))
+    StatsEndpoint(Address addr)
+        : httpEndpoint(std::make_shared<Http::Endpoint>(addr))
     { }
 
     void init(size_t thr = 2) {
-        auto opts = Net::Http::Endpoint::options()
+        auto opts = Http::Endpoint::options()
             .threads(thr)
-            .flags(Net::Tcp::Options::InstallSignalHandler);
+            .flags(Tcp::Options::InstallSignalHandler);
         httpEndpoint->init(opts);
         setupRoutes();
     }
@@ -55,7 +56,7 @@ public:
 
 private:
     void setupRoutes() {
-        using namespace Net::Rest;
+        using namespace Rest;
 
         Routes::Post(router, "/record/:name/:value?", Routes::bind(&StatsEndpoint::doRecordMetric, this));
         Routes::Get(router, "/value/:name", Routes::bind(&StatsEndpoint::doGetMetric, this));
@@ -64,7 +65,7 @@ private:
 
     }
 
-    void doRecordMetric(const Rest::Request& request, Net::Http::ResponseWriter response) {
+    void doRecordMetric(const Rest::Request& request, Http::ResponseWriter response) {
         auto name = request.param(":name").as<std::string>();
 
         Guard guard(metricsLock);
@@ -90,7 +91,7 @@ private:
 
     }
 
-    void doGetMetric(const Rest::Request& request, Net::Http::ResponseWriter response) {
+    void doGetMetric(const Rest::Request& request, Http::ResponseWriter response) {
         auto name = request.param(":name").as<std::string>();
 
         Guard guard(metricsLock);
@@ -107,7 +108,7 @@ private:
 
     }
 
-    void doAuth(const Rest::Request& request, Net::Http::ResponseWriter response) {
+    void doAuth(const Rest::Request& request, Http::ResponseWriter response) {
         printCookies(request);
         response.cookies()
             .add(Http::Cookie("lang", "en-US"));
@@ -144,12 +145,12 @@ private:
     Lock metricsLock;
     std::vector<Metric> metrics;
 
-    std::shared_ptr<Net::Http::Endpoint> httpEndpoint;
+    std::shared_ptr<Http::Endpoint> httpEndpoint;
     Rest::Router router;
 };
 
 int main(int argc, char *argv[]) {
-    Net::Port port(9080);
+    Port port(9080);
 
     int thr = 2;
 
@@ -160,7 +161,7 @@ int main(int argc, char *argv[]) {
             thr = std::stol(argv[2]);
     }
 
-    Net::Address addr(Net::Ipv4::any(), port);
+    Address addr(Ipv4::any(), port);
 
     cout << "Cores = " << hardware_concurrency() << endl;
     cout << "Using " << thr << " threads" << endl;
