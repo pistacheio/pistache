@@ -152,8 +152,8 @@ struct Buffer {
 };
 
 struct FileBuffer {
-    FileBuffer() { }
-    ~FileBuffer();
+    FileBuffer();
+    ~FileBuffer() {}
 
     FileBuffer(const char* fileName);
     FileBuffer(const std::string& fileName);
@@ -167,6 +167,7 @@ private:
     std::string fileName_;
     Fd fd_;
     size_t size_;
+    const FdScopeGuard fdScope_;
 };
 
 class DynamicStreamBuf : public StreamBuf<char> {

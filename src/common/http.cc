@@ -676,12 +676,9 @@ serveFile(ResponseWriter& response, const char* fileName, const Mime::MediaType&
         throw HttpError(Net::Http::Code::Not_Found, "");
     }
 
-    int res = ::fstat(fd, &sb);
-    if (res == -1) {
-        throw HttpError(Code::Internal_Server_Error, "");
-    }
+    FdScopeGuard fdScope(fd);
 
-    res = ::close(fd);
+    int res = ::fstat(fd, &sb);
     if (res == -1) {
         throw HttpError(Code::Internal_Server_Error, "");
     }

@@ -135,3 +135,13 @@ private:
     int event_fd;
 };
 
+
+class FdScopeGuard {
+public:
+    FdScopeGuard(int &fd);
+
+    ~FdScopeGuard();
+
+private:
+    int &fd_;
+};

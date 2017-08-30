@@ -11,9 +11,19 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+FileBuffer::FileBuffer()
+    : fileName_()
+    , fd_(-1)
+    , size_(0)
+    , fdScope_(fd_)
+{
+}
+
 FileBuffer::FileBuffer(const char* fileName)
     : fileName_(fileName)
     , fd_(-1)
+    , size_(0)
+    , fdScope_(fd_)
 {
     init(fileName);
 }
@@ -21,18 +31,10 @@ FileBuffer::FileBuffer(const char* fileName)
 FileBuffer::FileBuffer(const std::string& fileName)
     : fileName_(fileName)
     , fd_(-1)
+    , size_(0)
+    , fdScope_(fd_)
 {
     init(fileName.c_str());
-}
-
-FileBuffer::~FileBuffer()
-{
-    if( -1 != fd_ ) {
-        int res = ::close(fd_);
-        if (res == -1) {
-            throw std::runtime_error("Could not get file stats");
-        }
-    }
 }
 
 void

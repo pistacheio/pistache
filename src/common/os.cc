@@ -285,3 +285,15 @@ NotifyFd::tryRead() const {
 
     return true;
 }
+
+FdScopeGuard::FdScopeGuard(int &fd)
+    : fd_(fd)
+{
+}
+
+FdScopeGuard::~FdScopeGuard()
+{
+    if(fd_ > 2) {
+        ::close(fd_);
+    }
+}
