@@ -6,14 +6,13 @@
 
 #pragma once
 
-#include "reactor.h"
-#include "mailbox.h"
-#include "optional.h"
-#include "async.h"
-#include "stream.h"
+#include <pistache/reactor.h>
+#include <pistache/mailbox.h>
+#include <pistache/optional.h>
+#include <pistache/async.h>
+#include <pistache/stream.h>
 
-namespace Net {
-
+namespace Pistache {
 namespace Tcp {
 
 class Peer;
@@ -50,7 +49,7 @@ public:
 
             auto it = toWrite.find(fd);
             if (it != std::end(toWrite)) {
-                reject(Net::Error("Multiple writes on the same fd"));
+                reject(Pistache::Error("Multiple writes on the same fd"));
                 return;
             }
 
@@ -88,23 +87,26 @@ private:
     struct BufferHolder {
         enum Type { Raw, File };
 
-        explicit BufferHolder(const Buffer& buffer)
+        explicit BufferHolder(const Buffer& buffer, off_t offset = 0)
             : type(Raw)
             , u(buffer)
         {
+            offset_ = offset;
             size_ = buffer.len;
         }
 
-        explicit BufferHolder(const FileBuffer& buffer)
+        explicit BufferHolder(const FileBuffer& buffer, off_t offset = 0)
             : type(File)
             , u(buffer.fd())
         {
+            offset_ = offset;
             size_ = buffer.size();
         }
 
         bool isFile() const { return type == File; }
         bool isRaw() const { return type == Raw; }
         size_t size() const { return size_; }
+        size_t offset() const { return offset_; }
 
         Fd fd() const {
             if (!isFile())
@@ -123,19 +125,20 @@ private:
 
         BufferHolder detach(size_t offset = 0) const {
             if (!isRaw())
-                return BufferHolder(u.fd, size_);
+                return BufferHolder(u.fd, size_, offset);
 
             if (u.raw.isOwned)
-                return BufferHolder(u.raw);
+                return BufferHolder(u.raw, offset);
 
             auto detached = u.raw.detach(offset);
             return BufferHolder(detached);
         }
 
     private:
-        BufferHolder(Fd fd, size_t size)
+        BufferHolder(Fd fd, size_t size, off_t offset = 0)
          : u(fd)
          , size_(size)
+         , offset_(offset)
          , type(File)
         { }
 
@@ -146,7 +149,8 @@ private:
             U(Buffer buffer) : raw(buffer) { }
             U(Fd fd) : fd(fd) { }
         } u;
-        size_t size_;
+        size_t size_= 0;
+        off_t offset_ = 0;
         Type type;
     };
 
@@ -255,5 +259,4 @@ private:
 };
 
 } // namespace Tcp
-
-} // namespace Net
+} // namespace Pistache

@@ -1,26 +1,25 @@
 /* http_header.h
    Mathieu Stefani, 19 August 2015
-   
+
   Declaration of common http headers
 */
 
 #pragma once
 
-#include "mime.h"
-#include "net.h"
-#include "http_defs.h"
 #include <string>
 #include <type_traits>
 #include <memory>
 #include <ostream>
 #include <vector>
 
+#include <pistache/mime.h>
+#include <pistache/net.h>
+#include <pistache/http_defs.h>
+
 #define SAFE_HEADER_CAST
 
-namespace Net {
-
+namespace Pistache {
 namespace Http {
-
 namespace Header {
 
 #ifdef SAFE_HEADER_CAST
@@ -45,7 +44,7 @@ constexpr uint64_t hash(const char* str)
 
 #ifdef SAFE_HEADER_CAST
     #define NAME(header_name) \
-        static constexpr uint64_t Hash = Net::Http::Header::detail::hash(header_name); \
+        static constexpr uint64_t Hash = Pistache::Http::Header::detail::hash(header_name); \
         uint64_t hash() const { return Hash; } \
         static constexpr const char *Name = header_name; \
         const char *name() const { return Name; }
@@ -159,6 +158,32 @@ public:
 
 private:
     std::vector<Mime::MediaType> mediaRange_;
+};
+
+class AccessControlAllowOrigin : public Header {
+public:
+  NAME("Access-Control-Allow-Origin")
+
+  AccessControlAllowOrigin() { }
+
+  explicit AccessControlAllowOrigin(const char* uri)
+    : uri_(uri)
+  { }
+  explicit AccessControlAllowOrigin(const std::string& uri)
+    : uri_(uri)
+  { }
+
+  void parse(const std::string& data);
+  void write(std::ostream& os) const;
+
+  void setUri(std::string uri) {
+    uri_ = std::move(uri);
+  }
+
+  std::string uri() const { return uri_; }
+
+private:
+  std::string uri_;
 };
 
 class CacheControl : public Header {
@@ -337,7 +362,7 @@ public:
     { }
 
     explicit Host(const std::string& host);
-    explicit Host(const std::string& host, Net::Port port)
+    explicit Host(const std::string& host, Port port)
         : host_(host)
         , port_(port)
     { }
@@ -346,11 +371,11 @@ public:
     void write(std::ostream& os) const;
 
     std::string host() const { return host_; }
-    Net::Port port() const { return port_; }
+    Port port() const { return port_; }
 
 private:
     std::string host_;
-    Net::Port port_;
+    Port port_;
 };
 
 class Location : public Header {
@@ -438,8 +463,5 @@ private:
 };
 
 } // namespace Header
-
 } // namespace Http
-
-} // namespace Net
-
+} // namespace Pistache

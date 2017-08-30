@@ -1,18 +1,16 @@
 /* endpoint.cc
    Mathieu Stefani, 22 janvier 2016
-   
+
    Implementation of the http endpoint
 */
 
 
-#include "endpoint.h"
-#include "tcp.h"
-#include "peer.h"
+#include <pistache/endpoint.h>
+#include <pistache/tcp.h>
+#include <pistache/peer.h>
 
-namespace Net {
-
+namespace Pistache {
 namespace Http {
-
 
 Endpoint::Options::Options()
     : threads_(1)
@@ -39,7 +37,7 @@ Endpoint::Options::backlog(int val) {
 Endpoint::Endpoint()
 { }
 
-Endpoint::Endpoint(const Net::Address& addr)
+Endpoint::Endpoint(const Address& addr)
     : listener(addr)
 { }
 
@@ -51,6 +49,16 @@ Endpoint::init(const Endpoint::Options& options) {
 void
 Endpoint::setHandler(const std::shared_ptr<Handler>& handler) {
     handler_ = handler;
+}
+
+void
+Endpoint::bind() {
+    listener.bind();
+}
+
+void
+Endpoint::bind(const Address& addr) {
+    listener.bind(addr);
 }
 
 void
@@ -82,5 +90,4 @@ Endpoint::options() {
 }
 
 } // namespace Http
-
-} // namespace Net
+} // namespace Pistache

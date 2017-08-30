@@ -14,10 +14,11 @@
 #include <vector>
 #include <mutex>
 #include <condition_variable>
-#include <condition_variable>
-#include "optional.h"
-#include "typeid.h"
 
+#include <pistache/optional.h>
+#include <pistache/typeid.h>
+
+namespace Pistache {
 namespace Async {
 
     class Error : public std::runtime_error {
@@ -156,7 +157,7 @@ namespace Async {
             }
         };
 
-        class Core;
+        struct Core;
 
         class Request {
         public:
@@ -1099,7 +1100,7 @@ namespace Async {
 
     class Any {
     public:
-        friend class Impl::Any;
+        friend struct Impl::Any;
 
         Any(const Any& other) = default;
         Any& operator=(const Any& other) = default;
@@ -1537,3 +1538,4 @@ namespace Async {
     }
 
 } // namespace Async
+} // namespace Pistache

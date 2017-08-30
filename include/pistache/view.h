@@ -13,6 +13,8 @@
 #include <cstring>
 #include <stdexcept>
 
+namespace Pistache {
+
 template<typename T>
 class ViewBase {
 public:
@@ -253,3 +255,5 @@ View<typename impl::ViewBuilder<Cont>::Type> make_view(const Cont& cont, size_t 
 {
     return impl::ViewBuilder<Cont>::buildSized(cont, size);
 }
+
+} // namespace Pistache

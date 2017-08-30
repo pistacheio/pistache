@@ -14,11 +14,13 @@
 #include <vector>
 #include <mutex>
 #include <atomic>
-#include <unistd.h>
-#include "os.h"
-#include "reactor.h"
 
-namespace Net {
+#include <unistd.h>
+
+#include <pistache/os.h>
+#include <pistache/reactor.h>
+
+namespace Pistache {
 
 namespace Default {
     static constexpr size_t InitialPoolSize = 128;
@@ -79,4 +81,4 @@ private:
     std::vector<std::shared_ptr<Entry>> timers;
 };
 
-} // namespace Net
+} // namespace Pistache

@@ -3,15 +3,16 @@
    
 */
 
-#include "peer.h"
-#include "async.h"
-#include "transport.h"
 #include <iostream>
 #include <stdexcept>
+
 #include <sys/socket.h>
 
-namespace Net {
+#include <pistache/peer.h>
+#include <pistache/async.h>
+#include <pistache/transport.h>
 
+namespace Pistache {
 namespace Tcp {
 
 using namespace std;
@@ -104,5 +105,4 @@ Peer::transport() const {
 }
 
 } // namespace Tcp
-
-} // namespace Net
+} // namespace Pistache

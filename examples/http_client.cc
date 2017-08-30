@@ -4,11 +4,14 @@
  * Http client example
 */
 
-#include "net.h"
-#include "http.h"
-#include "client.h"
+#include <atomic>
 
-using namespace Net;
+#include <pistache/net.h>
+#include <pistache/http.h>
+#include <pistache/client.h>
+
+using namespace Pistache;
+using namespace Pistache::Http;
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {

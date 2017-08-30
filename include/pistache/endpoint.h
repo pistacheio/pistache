@@ -6,12 +6,11 @@
 
 #pragma once
 
-#include "listener.h"
-#include "net.h"
-#include "http.h"
+#include <pistache/listener.h>
+#include <pistache/net.h>
+#include <pistache/http.h>
 
-namespace Net {
-
+namespace Pistache {
 namespace Http {
 
 class Endpoint {
@@ -30,7 +29,7 @@ public:
         Options();
     };
     Endpoint();
-    Endpoint(const Net::Address& addr);
+    Endpoint(const Address& addr);
 
     template<typename... Args>
     void initArgs(Args&& ...args) {
@@ -75,7 +74,7 @@ private:
     }
 
     std::shared_ptr<Handler> handler_;
-    Net::Tcp::Listener listener;
+    Tcp::Listener listener;
 };
 
 template<typename Handler>
@@ -96,5 +95,4 @@ void listenAndServe(Address addr, const Endpoint::Options& options)
 
 
 } // namespace Http
-
-} // namespace Net
+} // namespace Pistache

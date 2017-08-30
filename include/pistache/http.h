@@ -6,24 +6,25 @@
 
 #pragma once
 
-#include <sys/timerfd.h>
 #include <type_traits>
 #include <stdexcept>
 #include <array>
 #include <sstream>
-#include "net.h"
-#include "http_headers.h"
-#include "http_defs.h"
-#include "cookie.h"
-#include "stream.h"
-#include "mime.h"
-#include "async.h"
-#include "peer.h"
-#include "tcp.h"
-#include "transport.h"
 
-namespace Net {
+#include <sys/timerfd.h>
 
+#include <pistache/net.h>
+#include <pistache/http_headers.h>
+#include <pistache/http_defs.h>
+#include <pistache/cookie.h>
+#include <pistache/stream.h>
+#include <pistache/mime.h>
+#include <pistache/async.h>
+#include <pistache/peer.h>
+#include <pistache/tcp.h>
+#include <pistache/transport.h>
+
+namespace Pistache {
 namespace Http {
 
 namespace details {
@@ -40,8 +41,8 @@ namespace details {
 };
 
 #define HTTP_PROTOTYPE(Class) \
-    PROTOTYPE_OF(Net::Tcp::Handler, Class) \
-    typedef Net::Http::details::prototype_tag tag;
+    PROTOTYPE_OF(Pistache::Tcp::Handler, Class) \
+    typedef Pistache::Http::details::prototype_tag tag;
 
 namespace Private {
     class ParserBase;
@@ -338,7 +339,7 @@ inline ResponseStream& flush(ResponseStream& stream) {
 
 template<typename T>
 ResponseStream& operator<<(ResponseStream& stream, const T& val) {
-    Net::Size<T> size;
+    Size<T> size;
 
     std::ostream os(&stream.buf_);
     os << std::hex << size(val) << crlf;
@@ -737,7 +738,7 @@ namespace Private {
 
 } // namespace Private
 
-class Handler : public Net::Tcp::Handler {
+class Handler : public Tcp::Handler {
 public:
     void onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer>& peer);
 
@@ -761,7 +762,4 @@ std::shared_ptr<H> make_handler(Args&& ...args) {
 }
 
 } // namespace Http
-
-} // namespace Net
-
-
+} // namespace Pistache

@@ -6,15 +6,14 @@
 
 #pragma once
 
-#include "description.h"
 #include <rapidjson/prettywriter.h>
-#include "http_defs.h"
-#include "mime.h"
 
-namespace Net {
+#include <pistache/description.h>
+#include <pistache/http_defs.h>
+#include <pistache/mime.h>
 
+namespace Pistache {
 namespace Rest {
-
 namespace Serializer {
 
 template<typename Writer>
@@ -212,7 +211,5 @@ std::string rapidJson(const Description& desc) {
 }
 
 } // namespace Serializer
-
 } // namespace Rest
-
-} // namespace Net
+} // namespace Pistache

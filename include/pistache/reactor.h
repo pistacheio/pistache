@@ -10,19 +10,22 @@
 
 #pragma once
 
-#include "flags.h"
-#include "os.h"
-#include "net.h"
-#include "prototype.h"
-
 #include <thread>
 #include <mutex>
+#include <atomic>
 #include <memory>
 #include <unordered_map>
+
 #include <sys/time.h>
 #include <sys/resource.h>
-#include <atomic>
 
+#include <pistache/flags.h>
+#include <pistache/os.h>
+#include <pistache/net.h>
+#include <pistache/prototype.h>
+
+
+namespace Pistache {
 namespace Aio {
 
 // A set of fds that are ready
@@ -222,3 +225,4 @@ private:
 };
 
 } // namespace Aio
+} // namespace Pistache

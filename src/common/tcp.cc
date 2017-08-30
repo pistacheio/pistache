@@ -4,11 +4,10 @@
    TCP
 */
 
-#include "tcp.h"
-#include "peer.h"
+#include <pistache/tcp.h>
+#include <pistache/peer.h>
 
-namespace Net {
-
+namespace Pistache {
 namespace Tcp {
 
 Handler::Handler()
@@ -32,5 +31,4 @@ Handler::onDisconnection(const std::shared_ptr<Tcp::Peer>& peer) {
 }
 
 } // namespace Tcp
-
-} // namespace Net
+} // namespace Pistache

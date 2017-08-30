@@ -4,13 +4,14 @@
    Example of how to use the Description mechanism
 */
 
-#include "http.h"
-#include "description.h"
-#include "endpoint.h"
-#include "serializer/rapidjson.h"
+#include <pistache/http.h>
+#include <pistache/description.h>
+#include <pistache/endpoint.h>
+
+#include <pistache/serializer/rapidjson.h>
 
 using namespace std;
-using namespace Net;
+using namespace Pistache;
 
 namespace Generic {
 
@@ -22,15 +23,15 @@ void handleReady(const Rest::Request&, Http::ResponseWriter response) {
 
 class BankerService {
 public:
-    BankerService(Net::Address addr)
-        : httpEndpoint(std::make_shared<Net::Http::Endpoint>(addr))
+    BankerService(Address addr)
+        : httpEndpoint(std::make_shared<Http::Endpoint>(addr))
         , desc("Banking API", "0.1")
     { }
 
     void init(size_t thr = 2) {
-        auto opts = Net::Http::Endpoint::options()
+        auto opts = Http::Endpoint::options()
             .threads(thr)
-            .flags(Net::Tcp::Options::InstallSignalHandler);
+            .flags(Tcp::Options::InstallSignalHandler);
         httpEndpoint->init(opts);
         createDescription();
     }
@@ -130,13 +131,13 @@ private:
         response.send(Http::Code::Ok, "The bank is closed, come back later");
     }
 
-    std::shared_ptr<Net::Http::Endpoint> httpEndpoint;
+    std::shared_ptr<Http::Endpoint> httpEndpoint;
     Rest::Description desc;
     Rest::Router router;
 };
 
 int main(int argc, char *argv[]) {
-    Net::Port port(9080);
+    Port port(9080);
 
     int thr = 2;
 
@@ -147,7 +148,7 @@ int main(int argc, char *argv[]) {
             thr = std::stol(argv[2]);
     }
 
-    Net::Address addr(Net::Ipv4::any(), port);
+    Address addr(Ipv4::any(), port);
 
     cout << "Cores = " << hardware_concurrency() << endl;
     cout << "Using " << thr << " threads" << endl;

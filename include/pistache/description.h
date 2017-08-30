@@ -12,16 +12,15 @@
 #include <type_traits>
 #include <memory>
 #include <algorithm>
-#include "http_defs.h"
-#include "mime.h"
-#include "optional.h"
-#include "router.h"
-#include "iterator_adapter.h"
 
-namespace Net {
+#include <pistache/http_defs.h>
+#include <pistache/mime.h>
+#include <pistache/optional.h>
+#include <pistache/router.h>
+#include <pistache/iterator_adapter.h>
 
+namespace Pistache {
 namespace Rest {
-
 namespace Type {
 
 // Data Types
@@ -453,5 +452,4 @@ private:
 };
 
 } // namespace Rest
-
-} // namespace Net
+} // namespace Pistache

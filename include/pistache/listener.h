@@ -6,19 +6,20 @@
 
 #pragma once
 
-#include "tcp.h"
-#include "net.h"
-#include "os.h"
-#include "flags.h"
-#include "async.h"
-#include "reactor.h"
 #include <vector>
 #include <memory>
 #include <thread>
+
 #include <sys/resource.h>
 
-namespace Net {
+#include <pistache/tcp.h>
+#include <pistache/net.h>
+#include <pistache/os.h>
+#include <pistache/flags.h>
+#include <pistache/async.h>
+#include <pistache/reactor.h>
 
+namespace Pistache {
 namespace Tcp {
 
 class Peer;
@@ -88,5 +89,4 @@ private:
 };
 
 } // namespace Tcp
-
-} // namespace Net
+} // namespace Pistache

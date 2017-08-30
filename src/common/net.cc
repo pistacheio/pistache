@@ -3,19 +3,20 @@
    
 */
 
-
-#include "net.h"
-#include "common.h"
 #include <stdexcept>
 #include <limits>
 #include <cstring>
+
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <iostream>
 
+#include <pistache/net.h>
+#include <pistache/common.h>
+
 using namespace std;
 
-namespace Net {
+namespace Pistache {
 
 Port::Port(uint16_t port)
     : port(port)
@@ -85,7 +86,7 @@ Address::fromUnix(struct sockaddr* addr) {
     struct sockaddr_in *in_addr = reinterpret_cast<struct sockaddr_in *>(addr);
     std::string host = TRY_RET(inet_ntoa(in_addr->sin_addr));
 
-    int port = in_addr->sin_port;
+    int port = ntohs(in_addr->sin_port);
 
     return Address(std::move(host), port);
 }
@@ -139,4 +140,4 @@ Error::system(const char* message) {
 
 }
 
-} // namespace Net
+} // namespace Pistache

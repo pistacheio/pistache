@@ -5,11 +5,13 @@
 */
 
 #pragma once
+
 #include <string>
-#include <sys/socket.h>
 #include <cstring>
 #include <stdexcept>
 #include <limits>
+
+#include <sys/socket.h>
 
 #ifndef _KERNEL_FASTOPEN
 #define _KERNEL_FASTOPEN
@@ -20,7 +22,7 @@
 #endif
 #endif
 
-namespace Net {
+namespace Pistache {
 
 class Port {
 public:
@@ -147,5 +149,4 @@ struct Size<char> {
     }
 };
 
-
-} // namespace Net
+} // namespace Pistache

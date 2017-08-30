@@ -5,6 +5,7 @@
 */
 
 #pragma once
+
 #include <string>
 #include <ostream>
 #include <stdexcept>
@@ -12,8 +13,7 @@
 #include <ctime>
 #include <functional>
 
-namespace Net {
-
+namespace Pistache {
 namespace Http {
 
 #define HTTP_METHODS \
@@ -198,14 +198,13 @@ private:
 };
 
 } // namespace Http
-
-} // namespace Net
+} // namespace Pistache
 
 namespace std {
 
 template<>
-struct hash<Net::Http::Method> {
-    size_t operator()(Net::Http::Method method) const {
+struct hash<Pistache::Http::Method> {
+    size_t operator()(Pistache::Http::Method method) const {
         return std::hash<int>()(static_cast<int>(method));
     }
 };

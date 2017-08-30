@@ -6,15 +6,15 @@
 
 #pragma once
 
-#include "optional.h"
-#include "http_defs.h"
 #include <ctime>
 #include <string>
 #include <map>
 #include <unordered_map>
 
-namespace Net {
+#include <pistache/optional.h>
+#include <pistache/http_defs.h>
 
+namespace Pistache {
 namespace Http {
 
 struct Cookie {
@@ -95,5 +95,4 @@ private:
 };
 
 } // namespace Net
-
-} // namespace Http
+} // namespace Pistache

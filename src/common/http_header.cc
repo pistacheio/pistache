@@ -1,24 +1,23 @@
 /* http_header.cc
    Mathieu Stefani, 19 August 2015
-   
+
    Implementation of common HTTP headers described by the RFC
 */
 
-#include "http_header.h"
-#include "common.h"
-#include "http.h"
-#include "stream.h"
 #include <stdexcept>
 #include <iterator>
 #include <cstring>
 #include <iostream>
 
+#include <pistache/http_header.h>
+#include <pistache/common.h>
+#include <pistache/http.h>
+#include <pistache/stream.h>
+
 using namespace std;
 
-namespace Net {
-
+namespace Pistache {
 namespace Http {
-
 namespace Header {
 
 const char* encodingString(Encoding encoding) {
@@ -420,6 +419,16 @@ Accept::write(std::ostream& os) const {
 }
 
 void
+AccessControlAllowOrigin::parse(const std::string& data) {
+  uri_ = data;
+}
+
+void
+AccessControlAllowOrigin::write(std::ostream& os) const {
+  os << uri_;
+}
+
+void
 EncodingHeader::parseRaw(const char* str, size_t len) {
     // TODO: case-insensitive
     //
@@ -486,7 +495,5 @@ ContentType::write(std::ostream& os) const {
 }
 
 } // namespace Header
-
 } // namespace Http
-
-} // namespace Net
+} // namespace Pistache

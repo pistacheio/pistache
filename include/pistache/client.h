@@ -5,19 +5,20 @@
 */
 
 #pragma once
-#include "async.h" 
-#include "os.h"
-#include "http.h"
-#include "reactor.h"
-#include "timer_pool.h"
-#include "view.h"
 #include <atomic>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <deque>
 
-namespace Net {
+#include <sys/types.h>
+#include <sys/socket.h>
 
+#include <pistache/async.h>
+#include <pistache/os.h>
+#include <pistache/http.h>
+#include <pistache/timer_pool.h>
+#include <pistache/reactor.h>
+#include <pistache/view.h>
+
+namespace Pistache {
 namespace Http {
 
 class ConnectionPool;
@@ -72,7 +73,7 @@ struct Connection : public std::enable_shared_from_this<Connection> {
         Connected
     };
 
-    void connect(Net::Address addr);
+    void connect(Address addr);
     void close();
     bool isIdle() const;
     bool isConnected() const;
@@ -131,7 +132,7 @@ private:
 
     std::deque<RequestEntry> inflightRequests;
 
-    Net::TimerPool timerPool_;
+    TimerPool timerPool_;
     Private::Parser<Http::Response> parser_;
 };
 
@@ -354,6 +355,4 @@ private:
 };
 
 } // namespace Http
-
-} // namespace Net
-
+} // namespace Pistache

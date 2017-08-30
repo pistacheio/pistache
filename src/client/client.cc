@@ -4,29 +4,32 @@
    Implementation of the Http client
 */
 
-#include "client.h"
-#include "stream.h"
 #include <algorithm>
+
 #include <sys/sendfile.h>
 #include <netdb.h>
 
-using namespace Polling;
+#include <pistache/client.h>
+#include <pistache/stream.h>
 
-namespace Net {
+
+namespace Pistache {
+
+using namespace Polling;
 
 namespace Http {
 
 namespace {
-    Net::Address httpAddr(const StringView& view) {
+    Address httpAddr(const StringView& view) {
         auto str = view.toString();
         auto pos = str.find(':');
         if (pos == std::string::npos) {
-            return Net::Address(std::move(str), 80);
+            return Address(std::move(str), 80);
         }
 
         auto host = str.substr(0, pos);
         auto port = std::stoi(str.substr(pos + 1));
-        return Net::Address(std::move(host), port);
+        return Address(std::move(host), port);
     }
 }
 
@@ -68,8 +71,10 @@ namespace {
     } while (0)
 
     template<typename H, typename Stream, typename... Args>
-    typename std::enable_if<Header::IsHeader<H>::value, Stream&>::type
+    typename std::enable_if<Http::Header::IsHeader<H>::value, Stream&>::type
     writeHeader(Stream& stream, Args&& ...args) {
+        using Http::crlf;
+
         H header(std::forward<Args>(args)...);
 
         stream << H::Name << ": ";
@@ -80,7 +85,9 @@ namespace {
         return stream;
     }
 
-    bool writeHeaders(const Header::Collection& headers, DynamicStreamBuf& buf) {
+    bool writeHeaders(const Http::Header::Collection& headers, DynamicStreamBuf& buf) {
+        using Http::crlf;
+
         std::ostream os(&buf);
 
         for (const auto& header: headers.list()) {
@@ -92,7 +99,9 @@ namespace {
         return true;
     }
 
-    bool writeCookies(const CookieJar& cookies, DynamicStreamBuf& buf) {
+    bool writeCookies(const Http::CookieJar& cookies, DynamicStreamBuf& buf) {
+        using Http::crlf;
+
         std::ostream os(&buf);
         for (const auto& cookie: cookies) {
             OUT(os << "Cookie: ");
@@ -105,6 +114,8 @@ namespace {
     }
 
     bool writeRequest(const Http::Request& request, DynamicStreamBuf &buf) {
+        using Http::crlf;
+
         std::ostream os(&buf);
 
         auto res = request.resource();
@@ -125,10 +136,10 @@ namespace {
         if (!writeCookies(request.cookies(), buf)) return false;
         if (!writeHeaders(request.headers(), buf)) return false;
 
-        if (!writeHeader<Header::UserAgent>(os, UA)) return false;
-        if (!writeHeader<Header::Host>(os, host.toString())) return false;
+        if (!writeHeader<Http::Header::UserAgent>(os, UA)) return false;
+        if (!writeHeader<Http::Header::Host>(os, host.toString())) return false;
         if (!body.empty()) {
-            if (!writeHeader<Header::ContentLength>(os, body.size())) return false;
+            if (!writeHeader<Http::Header::ContentLength>(os, body.size())) return false;
         }
         OUT(os << crlf);
 
@@ -255,7 +266,7 @@ Transport::asyncSendRequestImpl(
             }
             else {
                 cleanUp();
-                req.reject(Net::Error::system("Could not send request"));
+                req.reject(Error::system("Could not send request"));
             }
             break;
         }
@@ -363,7 +374,7 @@ Transport::handleTimeout(const std::shared_ptr<Connection>& connection) {
 }
 
 void
-Connection::connect(Net::Address addr)
+Connection::connect(Address addr)
 {
     struct addrinfo hints;
     struct addrinfo *addrs;
@@ -474,7 +485,7 @@ Connection::handleError(const char* error) {
         timerPool_.releaseTimer(req.timer);
     }
 
-    req.reject(Net::Error(error));
+    req.reject(Error(error));
     req.onDone();
 }
 
@@ -898,5 +909,4 @@ Client::processRequestQueue() {
 }
 
 } // namespace Http
-
-} // namespace Net
+} // namespace Pistache

@@ -6,14 +6,18 @@
 */
 
 #pragma once
-#include "common.h"
-#include "os.h"
 
 #include <atomic>
 #include <stdexcept>
+
 #include <array>
 #include <sys/eventfd.h>
 #include <unistd.h>
+
+#include <pistache/common.h>
+#include <pistache/os.h>
+
+namespace Pistache {
 
 static constexpr size_t CachelineSize = 64;
 typedef char cacheline_pad_t[CachelineSize];
@@ -414,3 +418,5 @@ private:
     cacheline_pad_t pad1;
     std::atomic<size_t> dequeueIndex;
 };
+
+} // namespace Pistache

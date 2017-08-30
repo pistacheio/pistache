@@ -6,13 +6,13 @@
 
 #pragma once
 
-#include "flags.h"
-#include "prototype.h"
 #include <memory>
 #include <stdexcept>
 
-namespace Net {
+#include <pistache/flags.h>
+#include <pistache/prototype.h>
 
+namespace Pistache {
 namespace Tcp {
 
 class Peer;
@@ -56,5 +56,4 @@ private:
 };
 
 } // namespace Tcp
-
-} // namespace Net
+} // namespace Pistache

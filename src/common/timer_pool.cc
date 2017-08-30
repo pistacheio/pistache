@@ -4,10 +4,11 @@
    Implementation of the timer pool
 */
 
-#include "timer_pool.h"
 #include <sys/timerfd.h>
 
-namespace Net {
+#include <pistache/timer_pool.h>
+
+namespace Pistache {
 
 void
 TimerPool::Entry::initialize() {
@@ -75,5 +76,4 @@ TimerPool::releaseTimer(const std::shared_ptr<Entry>& timer) {
     timer->state.store(static_cast<uint32_t>(TimerPool::Entry::State::Idle));
 }
 
-} // namespace Net
-
+} // namespace Pistache

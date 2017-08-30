@@ -4,13 +4,13 @@
    Implementation of http definitions
 */
 
-#include "http_defs.h"
-#include "common.h"
 #include <iostream>
 #include <iomanip>
 
-namespace Net {
+#include <pistache/http_defs.h>
+#include <pistache/common.h>
 
+namespace Pistache {
 namespace Http {
 
 namespace {
@@ -189,5 +189,4 @@ HttpError::HttpError(int code, std::string reason)
 
 
 } // namespace Http
-
-} // namespace Net
+} // namespace Pistache

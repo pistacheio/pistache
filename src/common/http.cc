@@ -9,20 +9,21 @@
 #include <stdexcept>
 #include <ctime>
 #include <iomanip>
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include "common.h"
-#include "http.h"
-#include "net.h"
-#include "peer.h"
-#include "transport.h"
+
+#include <pistache/common.h>
+#include <pistache/http.h>
+#include <pistache/net.h>
+#include <pistache/peer.h>
+#include <pistache/transport.h>
 
 using namespace std;
 
-namespace Net {
-
+namespace Pistache {
 namespace Http {
 
 template<typename H, typename Stream, typename... Args>
@@ -673,7 +674,7 @@ serveFile(ResponseWriter& response, const char* fileName, const Mime::MediaType&
         /* @Improvement: maybe could we check for errno here and emit a different error
             message
         */
-        throw HttpError(Net::Http::Code::Not_Found, "");
+        throw HttpError(Http::Code::Not_Found, "");
     }
 
     FdScopeGuard fdScope(fd);
@@ -798,5 +799,4 @@ Handler::getParser(const std::shared_ptr<Tcp::Peer>& peer) const {
 
 
 } // namespace Http
-
-} // namespace Net
+} // namespace Pistache

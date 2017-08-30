@@ -4,6 +4,9 @@
 */
 
 #include <iostream>
+#include <cassert>
+#include <cstring>
+
 #include <sys/socket.h>
 #include <unistd.h> 
 #include <netinet/in.h>
@@ -15,18 +18,16 @@
 #include <signal.h>
 #include <sys/timerfd.h>
 #include <sys/sendfile.h>
-#include <cassert>
-#include <cstring>
-#include "listener.h"
-#include "peer.h"
-#include "common.h"
-#include "os.h"
-#include "transport.h"
+
+#include <pistache/listener.h>
+#include <pistache/peer.h>
+#include <pistache/common.h>
+#include <pistache/os.h>
+#include <pistache/transport.h>
 
 using namespace std;
 
-namespace Net {
-
+namespace Pistache {
 namespace Tcp {
 
 namespace {
@@ -329,5 +330,4 @@ Listener::dispatchPeer(const std::shared_ptr<Peer>& peer) {
 }
 
 } // namespace Tcp
-
-} // namespace Net
+} // namespace Pistache

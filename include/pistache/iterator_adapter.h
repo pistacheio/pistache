@@ -6,6 +6,8 @@
 
 #pragma once
 
+namespace Pistache {
+
 template<typename Map>
 struct FlatMapIteratorAdapter {
     typedef typename Map::key_type Key;
@@ -42,3 +44,5 @@ FlatMapIteratorAdapter<Map>
 makeFlatMapIterator(const Map&, typename Map::const_iterator it) {
     return FlatMapIteratorAdapter<Map>(it);
 }
+
+} // namespace Pistache

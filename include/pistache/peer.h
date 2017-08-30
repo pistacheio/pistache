@@ -6,17 +6,17 @@
 
 #pragma once
 
-#include "net.h"
-#include "os.h"
-#include "async.h"
-#include "stream.h"
 #include <string>
 #include <iostream>
 #include <memory>
 #include <unordered_map>
 
-namespace Net {
+#include <pistache/net.h>
+#include <pistache/os.h>
+#include <pistache/async.h>
+#include <pistache/stream.h>
 
+namespace Pistache {
 namespace Tcp {
 
 class Transport;
@@ -68,5 +68,4 @@ private:
 std::ostream& operator<<(std::ostream& os, const Peer& peer);
 
 } // namespace Tcp
-
-} // namespace Net
+} // namespace Pistache

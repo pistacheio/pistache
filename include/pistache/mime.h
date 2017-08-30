@@ -6,16 +6,15 @@
 
 #pragma once
 
-#include "optional.h"
 #include <string>
 #include <unordered_map>
 #include <stdexcept>
 #include <cassert>
 
-namespace Net {
+#include <pistache/optional.h>
 
+namespace Pistache {
 namespace Http {
-
 namespace Mime {
 
 #define MIME_TYPES \
@@ -213,13 +212,11 @@ inline bool operator==(const MediaType& lhs, const MediaType& rhs) {
 }
 
 } // namespace Mime
-
 } // namespace Http
-
-} // namespace Net
+} // namespace Pistache
 
 #define MIME(top, sub) \
-    Net::Http::Mime::MediaType(Net::Http::Mime::Type::top, Net::Http::Mime::Subtype::sub)
+    Pistache::Http::Mime::MediaType(Pistache::Http::Mime::Type::top, Pistache::Http::Mime::Subtype::sub)
 
 #define MIME3(top, sub, suffix) \
-    Net::Http::Mime::MediaType(Net::Http::Mime::Type::top, Net::Http::Mime::Subtype::sub, Net::Http::Mime::Suffix::suffix);
+    Pistache::Http::Mime::MediaType(Pistache::Http::Mime::Type::top, Pistache::Http::Mime::Subtype::sub, Pistache::Http::Mime::Suffix::suffix)

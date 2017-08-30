@@ -14,13 +14,15 @@
 #include <tuple>
 #include <functional>
 
+namespace Pistache {
+
 template<typename T> class Optional;
 
 namespace types {
     template<typename T>
     class Some {
     public:
-        template<typename U> friend class ::Optional;
+        template<typename U> friend class Pistache::Optional;
 
         Some(const T &val) : val_(val) { }
         Some(T &&val) : val_(std::move(val)) { }
@@ -376,3 +378,5 @@ Optional<T> optionally_filter(const Optional<T> &option, Func func) {
 
     return None();
 }
+
+} // namespace Pistache

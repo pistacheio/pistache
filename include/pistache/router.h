@@ -8,12 +8,12 @@
 
 #include <string>
 #include <tuple>
-#include "http.h"
-#include "http_defs.h"
-#include "flags.h"
 
-namespace Net {
+#include <pistache/http.h>
+#include <pistache/http_defs.h>
+#include <pistache/flags.h>
 
+namespace Pistache {
 namespace Rest {
 
 class Description;
@@ -63,7 +63,7 @@ class Request;
 struct Route {
     enum class Result { Ok, Failure };
 
-    typedef std::function<Result (const Request&, Net::Http::ResponseWriter)> Handler;
+    typedef std::function<Result (const Request&, Http::ResponseWriter)> Handler;
 
     Route(std::string resource, Http::Method method, Handler handler)
         : resource_(std::move(resource))
@@ -119,7 +119,7 @@ private:
     };
 
     std::string resource_;
-    Net::Http::Method method_;
+    Http::Method method_;
     Handler handler_;
     /* @Performance: since we know that resource_ will live as long as the vector underneath,
      * we would benefit from std::experimental::string_view to store fragments.
@@ -167,7 +167,7 @@ private:
 
 namespace Private {
 
-    class RouterHandler : public Net::Http::Handler {
+    class RouterHandler : public Http::Handler {
     public:
         RouterHandler(const Rest::Router& router);
 
@@ -176,7 +176,7 @@ namespace Private {
                 Http::ResponseWriter response);
 
     private:
-        std::shared_ptr<Net::Tcp::Handler> clone() const {
+        std::shared_ptr<Tcp::Handler> clone() const {
             return std::make_shared<RouterHandler>(router);
         }
 
@@ -267,7 +267,5 @@ namespace Routes {
     }
 
 } // namespace Routing
-
 } // namespace Rest
-
-} // namespace Net
+} // namespace Pistache

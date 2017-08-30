@@ -11,6 +11,8 @@
 
 #pragma once
 
+namespace Pistache {
+
 class TypeId {
 public:
     template<typename T>
@@ -51,9 +53,11 @@ inline bool operator<(const TypeId& lhs, const TypeId& rhs) {
 
 #undef APPLY_OP
 
+} // namespace Pistache
+
 namespace std {
-    template<> struct hash<TypeId> {
-        size_t operator()(const TypeId& id) {
+    template<> struct hash<Pistache::TypeId> {
+        size_t operator()(const Pistache::TypeId& id) {
             return static_cast<size_t>(id);
         }
     };

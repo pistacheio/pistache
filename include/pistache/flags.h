@@ -5,9 +5,12 @@
 */
 
 #pragma once
+
 #include <type_traits>
 #include <climits>
 #include <iostream>
+
+namespace Pistache {
 
 // Looks like gcc 4.6 does not implement std::underlying_type
 namespace detail {
@@ -120,9 +123,11 @@ private:
     T val;
 };
 
+} // namespace Pistache
+
 #define DEFINE_BITWISE_OP(Op, T) \
     inline T operator Op (T lhs, T rhs)  { \
-        typedef detail::UnderlyingType<T>::Type UnderlyingType; \
+        typedef Pistache::detail::UnderlyingType<T>::Type UnderlyingType; \
         return static_cast<T>( \
                     static_cast<UnderlyingType>(lhs) Op static_cast<UnderlyingType>(rhs) \
                 ); \
@@ -133,8 +138,8 @@ private:
     DEFINE_BITWISE_OP(|, T)
 
 template<typename T>
-std::ostream& operator<<(std::ostream& os, Flags<T> flags) {
-    typedef typename detail::UnderlyingType<T>::Type UnderlyingType;
+std::ostream& operator<<(std::ostream& os, Pistache::Flags<T> flags) {
+    typedef typename Pistache::detail::UnderlyingType<T>::Type UnderlyingType;
 
     auto val = static_cast<UnderlyingType>(static_cast<T>(flags));
     for (ssize_t i = (sizeof(UnderlyingType) * CHAR_BIT) - 1; i >= 0; --i) {
@@ -143,3 +148,4 @@ std::ostream& operator<<(std::ostream& os, Flags<T> flags) {
 
     return os;
 }
+
