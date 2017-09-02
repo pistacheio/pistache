@@ -155,6 +155,10 @@ public:
     struct Entry {
         friend class Queue;
 
+        Entry () {
+            memset(&storage, 0, sizeof(storage));
+        }
+
         const T& data() const {
             return *reinterpret_cast<const T*>(&storage);
         }
@@ -164,8 +168,10 @@ public:
         }
 
         ~Entry() {
-            auto *d = reinterpret_cast<T *>(&storage);
-            d->~T();
+            if(nullptr != *reinterpret_cast<void**>(&storage)) {
+                auto *d = reinterpret_cast<T *>(&storage);
+                d->~T();    
+            }
         }
     private:
         typedef typename std::aligned_storage<sizeof(T), alignof(T)>::type Storage;
@@ -183,6 +189,7 @@ public:
 
     virtual ~Queue() {
         while (auto *e = pop()) delete e;
+        delete tail; // delete sentinel.
     }
 
     template<typename U>

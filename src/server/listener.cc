@@ -163,7 +163,7 @@ Listener::bind(const Address& address) {
     std::fill(port, port + MaxPortLen, 0);
     std::snprintf(port, MaxPortLen, "%d", static_cast<uint16_t>(addr_.port()));
 
-    struct addrinfo *addrs;
+    struct addrinfo *addrs = nullptr;
     TRY(::getaddrinfo(host.c_str(), port, &hints, &addrs));
 
     int fd = -1;
@@ -182,14 +182,16 @@ Listener::bind(const Address& address) {
         TRY(::listen(fd, backlog_));
         break;
     }
-
+    if(addrs) {
+        ::freeaddrinfo(addrs);
+    }
     make_non_blocking(fd);
     poller.addFd(fd, Polling::NotifyOn::Read, Polling::Tag(fd));
     listen_fd = fd;
     g_listen_fd = fd;
 
-    transport_.reset(new Transport(handler_));
-
+    transport_ = std::make_shared<Transport>(handler_);
+    
     reactor_->init(Aio::AsyncContext(workers_));
     transportKey = reactor_->addHandler(transport_);
 
