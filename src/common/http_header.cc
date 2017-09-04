@@ -304,6 +304,11 @@ ContentLength::write(std::ostream& os) const {
 }
 
 void
+Date::parse(const std::string& data) {
+    fullDate_ = FullDate::fromString(data);
+}
+
+void
 Date::parseRaw(const char* str, size_t len) {
     fullDate_ = FullDate::fromRaw(str, len);
 }
