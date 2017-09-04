@@ -10,7 +10,6 @@
 #include <ostream>
 #include <stdexcept>
 #include <chrono>
-#include <ctime>
 #include <functional>
 
 namespace Pistache {
