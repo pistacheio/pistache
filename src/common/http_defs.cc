@@ -15,7 +15,7 @@ namespace Pistache {
 namespace Http {
 
 namespace {
-    using time_point = std::chrono::system_clock::time_point;
+    using time_point = FullDate::time_point;    
     
     bool parse_RFC_1123(const std::string& s, time_point &tp)
     {
