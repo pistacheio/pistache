@@ -69,7 +69,7 @@ namespace Http {
     CODE(416, Requested_Range_Not_Satisfiable, "Requested Range Not Satisfiable") \
     CODE(417, Expectation_Failed, "Expectation Failed") \
     CODE(418, I_m_a_teapot, "I'm a teapot") \
-    CODE(421, Misdirected Request, "Misdirected Request") \
+    CODE(421, Misdirected_Request, "Misdirected Request") \
     CODE(422, Unprocessable_Entity, "Unprocessable Entity") \
     CODE(423, Locked, "Locked") \
     CODE(424, Failed_Dependency, "Failed Dependency") \
