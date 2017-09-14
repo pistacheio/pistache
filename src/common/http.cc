@@ -409,16 +409,18 @@ namespace Private {
         StreamCursor::Token chunkData(cursor);
         const size_t available = cursor.remaining();
 
-        if (available < size) {
+        if ((available + message->body_.size()) < size) {
             cursor.advance(available);
             message->body_.append(chunkData.rawText(), available);
             return Incomplete;
         }
-        cursor.advance(size);
+        cursor.advance(size - message->body_.size());
 
         if (!cursor.advance(2)) return Incomplete;
 
-        message->body_.append(chunkData.rawText(), size);
+        message->body_.append(chunkData.rawText(),
+                              size - message->body_.size());
+
         return Complete;
     }
 
@@ -434,8 +436,10 @@ namespace Private {
                     chunk.reset();
                     if (cursor.eof()) return State::Again;
                 }
+                chunk.reset();
             } catch (const std::exception& e) {
-                raise(e.what());
+                // reset chunk incase signal handled & chunk eventually reused
+                chunk.reset(); raise(e.what());
             }
 
             return State::Done;
