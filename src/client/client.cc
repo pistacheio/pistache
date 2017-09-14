@@ -331,7 +331,17 @@ Transport::handleIncoming(const std::shared_ptr<Connection>& connection) {
 
         ssize_t bytes;
 
-        bytes = recv(connection->fd, buffer + totalBytes, Const::MaxBuffer - totalBytes, 0);
+        if (totalBytes + 32 > Const::MaxBuffer)
+        { // <= 32 bytes remaining in buffer, we reset buffer usage
+            handleResponsePacket(connection, buffer, totalBytes);
+            
+            totalBytes = 0;
+            memset(buffer, 0, sizeof buffer);
+        }
+
+        bytes = recv(connection->fd, buffer + totalBytes,
+                     Const::MaxBuffer - totalBytes, 0);
+
         if (bytes == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if (totalBytes > 0) {
