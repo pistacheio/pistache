@@ -355,7 +355,7 @@ Transport::handleIncoming(const std::shared_ptr<Connection>& connection) {
 
         else {
             totalBytes += bytes;
-            if (totalBytes >= Const::MaxBuffer) {
+            if (totalBytes > Const::MaxBuffer) {
                 std::cerr << "Too long packet" << std::endl;
                 break;
             }

@@ -97,7 +97,7 @@ public:
     }
 
     bool feed(const char* data, size_t len) {
-        if (size + len >= N) {
+        if (size + len > N) {
             return false;
         }
 
