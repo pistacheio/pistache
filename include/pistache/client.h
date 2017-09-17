@@ -107,9 +107,6 @@ struct ConnectionEntry {
         #endif
 };
 
-typedef std::function<void()> OnDone;
-
-
 struct Connection : public std::enable_shared_from_this<Connection> {
 
     friend class ConnectionPool;
