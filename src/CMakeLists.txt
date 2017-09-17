@@ -26,7 +26,7 @@ set(include_install_dir "include")
 set(lib_install_dir "lib/")
 set(bin_install_dir "bin/")
 
-target_link_libraries(pistache pthread)
+target_link_libraries(pistache pthread crypto ssl)
 
 install(
   TARGETS pistache

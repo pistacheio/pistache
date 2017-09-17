@@ -11,7 +11,10 @@
 
 #include <pistache/client.h>
 #include <pistache/stream.h>
-
+#include <pistache/description.h>
+#include <algorithm>
+#include <sys/sendfile.h>
+#include <netdb.h>
 
 namespace Pistache {
 
@@ -35,14 +38,59 @@ namespace {
 
 static constexpr const char* UA = "pistache/0.1";
 
-std::pair<StringView, StringView>
+class UrlParts
+{
+private:
+    Rest::Scheme mScheme;
+    StringView mHost;
+    uint16_t mPort;
+    StringView mPage;
+
+public:    
+    UrlParts(Rest::Scheme _scheme, const StringView & _host,
+             uint16_t _port,
+             const StringView & _page) :
+        mScheme(_scheme), mHost(_host), mPort(_port), mPage(_page) { }
+
+    Rest::Scheme getScheme() const { return(mScheme); }
+    const StringView & getHost() const { return(mHost); }
+    uint16_t getHostPort() const { return(mPort); }
+    const StringView & getPage() const { return(mPage); }
+
+    std::string getHostAndPortAsStr() const
+        { std::string res(mHost.toString());
+          res.append(":" + std::to_string(mPort)); return(res); }
+
+    std::string getHostAndPortIfNotDefAsStr() const
+        { std::string res(mHost.toString());
+            if ((mPort != 80) && (mPort != 443) && (mPort != 0))
+                res.append(":" + std::to_string(mPort));
+          return(res); }
+};
+
+UrlParts
 splitUrl(const std::string& url) {
     RawStreamBuf<char> buf(const_cast<char *>(&url[0]), url.size());
     StreamCursor cursor(&buf);
 
-    match_string("http://", std::strlen("http://"), cursor);
+    Rest::Scheme scheme;
+
+    if (match_string("https://", std::strlen("https://"), cursor))
+    {
+        scheme = Rest::Scheme::Https;
+    }
+    else if (match_string("http://", std::strlen("http://"), cursor))
+    {
+        scheme = Rest::Scheme::Http;
+    }
+
+    // !!!! Add port number parsing
+
+    /*
+     * Google seems to want "www.googleapis.com" as host
     match_string("www", std::strlen("www"), cursor);
     match_literal('.', cursor);
+     */
 
     StreamCursor::Token hostToken(cursor);
     match_until({ '?', '/' }, cursor);
@@ -50,7 +98,7 @@ splitUrl(const std::string& url) {
     StringView host(hostToken.rawText(), hostToken.size());
     StringView page(cursor.offset(), buf.endptr());
 
-    return std::make_pair(std::move(host), std::move(page));
+    return(UrlParts(scheme, host, 443, page));
 }
 
 struct ExceptionPrinter {
@@ -122,8 +170,8 @@ namespace {
         auto s = splitUrl(res);
         auto body = request.body();
 
-        auto host = s.first;
-        auto path = s.second;
+        auto host_and_maybe_port = s.getHostAndPortIfNotDefAsStr();
+        auto path = s.getPage();
 
         auto pathStr = path.toString();
 
@@ -137,7 +185,7 @@ namespace {
         if (!writeHeaders(request.headers(), buf)) return false;
 
         if (!writeHeader<Http::Header::UserAgent>(os, UA)) return false;
-        if (!writeHeader<Http::Header::Host>(os, host.toString())) return false;
+        if (!writeHeader<Http::Header::Host>(os, host_and_maybe_port)) return false;
         if (!body.empty()) {
             if (!writeHeader<Http::Header::ContentLength>(os, body.size())) return false;
         }
@@ -189,9 +237,30 @@ Transport::onReady(const Aio::FdSet& fds) {
                 if (entry.isHangup())
                     conn.reject(Error::system("Could not connect"));
                 else {
+
+                    #ifdef PIST_INCLUDE_SSL
+                    if (conn.connection->isSsl())
+                    { // Complete SSL verification
+                        try {
+                            std::shared_ptr<SslConnection> ssl_conn(
+                                           conn.connection->dfd->getSslConn());
+                            if (!ssl_conn)
+                                throw std::runtime_error("Null ssl_conn");
+                        }
+                        catch(...)
+                        {
+                            conn.reject(Error::system(
+                                            "SSL failure, could not connect"));
+                            throw std::runtime_error(
+                                "SSL failure, could not connect");
+                        }
+                    }
+                    #endif
+                    
                     conn.resolve();
                     // We are connected, we can start reading data now
-                    reactor()->modifyFd(key(), conn.connection->fd, NotifyOn::Read);
+                    reactor()->modifyFd(key(), conn.connection->getFd(),
+                                        NotifyOn::Read);
                 }
             } else {
                 throw std::runtime_error("Unknown fd");
@@ -248,15 +317,32 @@ Transport::asyncSendRequestImpl(
     };
 
     auto conn = req.connection;
+    if (!conn)
+        throw(std::runtime_error("Failed to get conn"));
 
-    auto fd = conn->fd;
+    #ifdef PIST_INCLUDE_SSL
+    DualFdSPtr dfd(conn->getDfd());
+    if (!dfd)
+        throw(std::runtime_error("Failed to get dfd"));
+    #endif
 
+    auto fd = conn->getFd();
+    if (fd <= 0)
+        throw(std::runtime_error("Failed to get fd"));
+    
     ssize_t totalWritten = 0;
     for (;;) {
         ssize_t bytesWritten = 0;
         auto len = buffer.len - totalWritten;
         auto ptr = buffer.data + totalWritten;
-        bytesWritten = ::send(fd, ptr, len, 0);
+        bytesWritten =
+            #ifdef PIST_INCLUDE_SSL
+            conn->isSsl() ? dfd->getSslConn()->sslRawSend(ptr, len) :
+            // Note for use with sendWithIncreasingDelays: Don't need retries /
+            // increasing delays for SSL, handled in SSL code
+            #endif
+            ::send(fd, ptr, len, 0);
+
         if (bytesWritten < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if (status == FirstTry) {
@@ -307,17 +393,28 @@ Transport::handleConnectionQueue() {
 
         auto &data = entry->data();
         const auto& conn = data.connection;
-        int res = ::connect(conn->fd, data.addr, data.addr_len);
-        if (res == -1) {
-            if (errno == EINPROGRESS) {
-                reactor()->registerFdOneShot(key(), conn->fd, NotifyOn::Write | NotifyOn::Hangup | NotifyOn::Shutdown);
-            }
-            else {
+        if (!conn)
+            continue;
+
+        Aio::Reactor * reactr(reactor());
+        if (!reactr)
+            throw std::runtime_error("Null reactor for transport");
+
+        Aio::Reactor::Key reactor_key(key());
+
+        int conn_res = conn->doConnect(*reactr, reactor_key, data);
+        if (conn_res == 0)
+        {
+            Fd fd = conn->getFd();
+            if (fd <= 0)
                 data.reject(Error::system("Failed to connect"));
-                continue;
-            }
+            else
+                connections.insert(std::make_pair(fd, std::move(data)));
         }
-        connections.insert(std::make_pair(conn->fd, std::move(data)));
+        else
+        {
+            data.reject(Error::system("Failed to connect"));
+        }
     }
 }
 
@@ -326,12 +423,29 @@ Transport::handleIncoming(const std::shared_ptr<Connection>& connection) {
     char buffer[Const::MaxBuffer];
     memset(buffer, 0, sizeof buffer);
 
+    if (!connection)
+        throw(std::runtime_error("Null connection"));
+
+    #ifdef PIST_INCLUDE_SSL
+    DualFdSPtr dfd(connection->getDfd());
+    if (!dfd)
+        throw(std::runtime_error("Failed to get dfd"));
+    #endif
+
     ssize_t totalBytes = 0;
     for (;;) {
 
         ssize_t bytes;
 
-        bytes = recv(connection->fd, buffer + totalBytes, Const::MaxBuffer - totalBytes, 0);
+        bytes =
+            #ifdef PIST_INCLUDE_SSL
+              connection->isSsl() ?
+                 dfd->getSslConn()->sslRawRecv(
+                           buffer+ totalBytes, Const::MaxBuffer - totalBytes) :
+            #endif
+              recv(connection->getFd(), buffer + totalBytes,
+                   Const::MaxBuffer - totalBytes, 0);
+        
         if (bytes == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if (totalBytes > 0) {
@@ -348,7 +462,7 @@ Transport::handleIncoming(const std::shared_ptr<Connection>& connection) {
             } else {
                 connection->handleError("Remote closed connection");
             }
-            connections.erase(connection->fd);
+            connections.erase(connection->getFd());
             connection->close();
             break;
         }
@@ -374,9 +488,67 @@ Transport::handleTimeout(const std::shared_ptr<Connection>& connection) {
 }
 
 void
-Connection::connect(Address addr)
+Connection::connect(Aio::Reactor & _reactor, Aio::Reactor::Key & _key,
+                    UrlParts & _urlParts)
 {
-    struct addrinfo hints;
+    #ifdef PIST_INCLUDE_SSL
+    if (_urlParts.getScheme() == Rest::Scheme::Https)
+    {
+        connectSsl(_reactor, _key, _urlParts);
+        return;
+    }
+    #endif
+    
+    Pistache::Address addr(httpAddr(_urlParts.getHost()));
+    connectSocket(addr);
+}
+
+#ifdef PIST_INCLUDE_SSL
+void
+Connection::connectSsl(Aio::Reactor & _reactor, Aio::Reactor::Key & _key,
+                       UrlParts & _urlParts)
+{
+    const std::string host_cpem_file(getHostChainPemFile());
+        
+    std::shared_ptr<SslConnection> ssl_conn(std::make_shared<SslConnection>
+                                            (_urlParts.getHost(),
+                                             _urlParts.getHostPort(),
+                                             _urlParts.getPage(),
+                                             &host_cpem_file));
+    if (!ssl_conn)
+        throw std::runtime_error("Failed to connect");
+    
+    DualFdSPtr dfd_new(std::make_shared<DualFd>(ssl_conn));
+    if (!dfd_new)
+        throw std::runtime_error("Failed to connect");
+
+    setConnecting();
+    dfd = dfd_new;
+
+    transport_->asyncConnect(shared_from_this(),
+                            NULL/*sockaddr*/, 0/*addr_len*/).then([=]() {
+               this->setConnectedProcessRequestQueue(); }, ExceptionPrinter());
+
+    /*
+    // For conventional sockets, code does this out of Transport::onReady upon
+    // receiving a "connected" event
+    _reactor.registerFdOneShot(_key, getFd(),
+                      NotifyOn::Write | NotifyOn::Hangup | NotifyOn::Shutdown);
+    
+    // We are connected, we can start reading data now
+    _reactor.modifyFd(_key, getFd(), NotifyOn::Read);
+    */
+
+    if (getFd() <= 0)
+        throw std::runtime_error("Failed to connect");
+        
+}
+#endif
+
+void
+Connection::connectSocket(Pistache::Address addr)
+{
+struct addrinfo hints;
     struct addrinfo *addrs;
     memset(&hints, 0, sizeof(struct addrinfo));
     hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
@@ -403,15 +575,15 @@ Connection::connect(Address addr)
 
         make_non_blocking(sfd);
 
-        connectionState_ = Connecting;
-        fd = sfd;
+        setConnecting();
+        dfd = std::make_shared<DualFd>(sfd);
 
         transport_->asyncConnect(shared_from_this(), addr->ai_addr, addr->ai_addrlen)
             .then([=]() { 
                 socklen_t len = sizeof(saddr);
                 getsockname(sfd, (struct sockaddr *)&saddr, &len);
-                connectionState_ = Connected;
-                processRequestQueue();
+
+                this->setConnectedProcessRequestQueue();
             }, ExceptionPrinter());
         break;
 
@@ -421,10 +593,60 @@ Connection::connect(Address addr)
         throw std::runtime_error("Failed to connect");
 }
 
+#ifdef PIST_INCLUDE_SSL
+std::string Connection::mHostChainPemFile;
+const std::string & Connection::getHostChainPemFile()
+    {return(mHostChainPemFile);}
+void Connection::setHostChainPemFile(const std::string & _hostCPFl)//call once
+    {mHostChainPemFile = _hostCPFl;}
+#endif    
+    
+int
+Connection::doConnect(Aio::Reactor & _reactor, Aio::Reactor::Key & _key,
+                      ConnectionEntry & _connEntry)
+{
+    #ifdef PIST_INCLUDE_SSL
+    if ((_connEntry.connection) && ((_connEntry.connection)->isSsl()))
+    {
+        std::shared_ptr<SslConnection> ssl_conn(
+                                     _connEntry.connection->dfd->getSslConn());
+        if (!ssl_conn)
+        {
+            _connEntry.reject(Error::system("Failed to connect,NULL ssl_con"));
+            return(-1);
+        }
+        
+        _reactor.registerFdOneShot(_key, getFd(),
+                      NotifyOn::Write | NotifyOn::Hangup | NotifyOn::Shutdown);
+
+        // connected synchronously
+        _connEntry.resolve();
+
+        // We are actually already connected, we can start reading data now
+        _reactor.modifyFd(_key, getFd(), NotifyOn::Read);
+        return(0);
+    }
+    #endif
+
+    int res = ::connect(getFd(), _connEntry.addr, _connEntry.addr_len);
+    if (res == -1) {
+        if (errno == EINPROGRESS) {
+            _reactor.registerFdOneShot(_key, getFd(), NotifyOn::Write | NotifyOn::Hangup | NotifyOn::Shutdown);
+        }
+        else {
+            _connEntry.reject(Error::system("Failed to connect"));
+            return(-1);
+        }
+    }
+
+    return(0);
+    // Caller will insert successful connection into connections set on return
+}
+
 std::string
 Connection::dump() const {
     std::ostringstream oss;
-    oss << "Connection(fd = " << fd << ", src_port = ";
+    oss << "Connection(fd = " << getFd() << ", src_port = ";
     oss << ntohs(saddr.sin_port) << ")";
     return oss.str();
 }
@@ -435,14 +657,53 @@ Connection::isIdle() const {
 }
 
 bool
-Connection::isConnected() const {
+Connection::isConnected() {
+    std::lock_guard<std::mutex> grd(connectionStateMutex_);
     return connectionState_ == Connected;
+}
+
+bool Connection::isConnectedPushReqEntryIfNot(Async::Resolver & resolve,
+                                      Async::Rejection & reject,
+                                      const Http::Request& request,
+                                      std::chrono::milliseconds timeout,
+                                      const OnDone & onDone)
+{
+    std::lock_guard<std::mutex> grd(connectionStateMutex_);
+
+    if (connectionState_ == Connected)
+        return(true);
+
+    auto* entry = requestsQueue.allocEntry(RequestData(
+                                               std::move(resolve),
+                                               std::move(reject),
+                                               request,
+                                               timeout,
+                                               std::move(onDone)));
+    
+    requestsQueue.push(entry);
+    return(false);
+}
+
+void Connection::setConnectedProcessRequestQueue()
+{
+    std::lock_guard<std::mutex> grd(connectionStateMutex_);
+    connectionState_ = Connected;
+    processRequestQueue();
+}    
+
+void Connection::setConnecting()
+{
+    std::lock_guard<std::mutex> grd(connectionStateMutex_);
+    connectionState_ = Connecting;
 }
 
 void
 Connection::close() {
+    std::lock_guard<std::mutex> grd(connectionStateMutex_);
+    
     connectionState_ = NotConnected;
-    ::close(fd);
+    if (dfd)
+        dfd->close();
 }
 
 void
@@ -504,7 +765,7 @@ Async::Promise<Response>
 Connection::perform(
         const Http::Request& request,
         std::chrono::milliseconds timeout,
-        Connection::OnDone onDone) {
+        OnDone onDone) {
     return Async::Promise<Response>([=](Async::Resolver& resolve, Async::Rejection& reject) {
         if (!isConnected()) {
             auto* entry = requestsQueue.allocEntry(
@@ -563,7 +824,7 @@ Connection::performImpl(
         std::chrono::milliseconds timeout,
         Async::Resolver resolve,
         Async::Rejection reject,
-        Connection::OnDone onDone) {
+        OnDone onDone) {
 
     DynamicStreamBuf buf(128);
 
@@ -836,7 +1097,7 @@ Client::doRequest(
     auto resource = request.resource();
 
     auto s = splitUrl(resource);
-    auto conn = pool.pickConnection(s.first);
+    auto conn = pool.pickConnection(s.getHost());
 
     if (conn == nullptr) {
         return Async::Promise<Response>([=](Async::Resolver& resolve, Async::Rejection& reject) {
@@ -845,7 +1106,7 @@ Client::doRequest(
             std::unique_ptr<Connection::RequestData> data(
                     new Connection::RequestData(std::move(resolve), std::move(reject), request, timeout, nullptr));
 
-            auto& queue = requestsQueues[s.first];
+            auto& queue = requestsQueues[s.getHost()];
             if (!queue.enqueue(data.get()))
                 data->reject(std::runtime_error("Queue is full"));
             else
@@ -864,7 +1125,7 @@ Client::doRequest(
         }
 
         if (!conn->isConnected()) {
-            conn->connect(httpAddr(s.first));
+            conn->connect(*reactor_, transportKey, s);
         }
 
         return conn->perform(request, timeout, [=]() {
