@@ -165,7 +165,7 @@ struct Connection : public std::enable_shared_from_this<Connection> {
 
     void close();
     bool isIdle() const;
-    bool isConnected();
+    bool isConnected() const;
     bool hasTransport() const;
     void associateTransport(const std::shared_ptr<Transport>& transport);
 
@@ -233,7 +233,7 @@ private:
     };
 
     std::atomic<uint32_t> state_;
-    std::mutex connectionStateMutex_;
+    mutable std::mutex connectionStateMutex_;
     ConnectionState connectionState_;
     std::shared_ptr<Transport> transport_;
     Queue<RequestData> requestsQueue;

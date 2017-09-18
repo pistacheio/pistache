@@ -657,7 +657,7 @@ Connection::isIdle() const {
 }
 
 bool
-Connection::isConnected() {
+Connection::isConnected() const {
     std::lock_guard<std::mutex> grd(connectionStateMutex_);
     return connectionState_ == Connected;
 }
