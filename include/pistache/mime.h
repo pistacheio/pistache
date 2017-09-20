@@ -211,6 +211,10 @@ inline bool operator==(const MediaType& lhs, const MediaType& rhs) {
            lhs.suffix() == rhs.suffix();
 }
 
+inline bool operator!=(const MediaType& lhs, const MediaType& rhs){
+    return !operator==(lhs, rhs);
+}
+
 } // namespace Mime
 } // namespace Http
 } // namespace Pistache
