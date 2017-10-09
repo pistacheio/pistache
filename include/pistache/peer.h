@@ -1,6 +1,6 @@
 /* peer.h
    Mathieu Stefani, 12 August 2015
-   
+
   A class representing a TCP Peer
 */
 
@@ -57,11 +57,11 @@ private:
     void associateTransport(Transport* transport);
     Transport* transport() const;
 
+    Address addr;
+    Fd fd_;
     Transport* transport_;
 
-    Address addr;
     std::string hostname_;
-    Fd fd_;
     std::unordered_map<std::string, std::shared_ptr<void>> data_;
 };
 

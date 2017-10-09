@@ -1,6 +1,6 @@
 /* os.cc
    Mathieu Stefani, 13 August 2015
-   
+
 */
 
 #include <fstream>
@@ -19,7 +19,7 @@ using namespace std;
 
 namespace Pistache {
 
-int hardware_concurrency() {
+uint hardware_concurrency() {
     std::ifstream cpuinfo("/proc/cpuinfo");
     if (cpuinfo) {
         return std::count(std::istream_iterator<std::string>(cpuinfo),
@@ -34,7 +34,7 @@ int hardware_concurrency() {
 bool make_non_blocking(int sfd)
 {
     int flags = fcntl (sfd, F_GETFL, 0);
-    if (flags == -1) return false; 
+    if (flags == -1) return false;
 
     flags |= O_NONBLOCK;
     int ret = fcntl (sfd, F_SETFL, flags);

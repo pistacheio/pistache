@@ -95,7 +95,7 @@ TEST(async_test, void_promise) {
     Async::Promise<void> p1(
         [](Async::Resolver& resolve, Async::Rejection& reject) {
             resolve();
-    }); 
+    });
 
     ASSERT_TRUE(p1.isFulfilled());
 
@@ -178,7 +178,7 @@ TEST(async_test, chain_test) {
                         case Test::Bar:
                             reject(std::runtime_error("Invalid"));
                     }
-            }); 
+            });
         },
             Async::NoExcept)
         .then(
@@ -227,7 +227,7 @@ TEST(async_test, when_all) {
 
     Async::whenAll(std::begin(vec), std::end(vec)).then([&](const std::vector<int>& results) {
         resolved = true;
-        ASSERT_EQ(results.size(), 2);
+        ASSERT_EQ(results.size(), 2U);
         ASSERT_EQ(results[0], 10);
         ASSERT_EQ(results[1], 123);
     },
@@ -375,10 +375,9 @@ private:
         {
         }
 
-        int seq;
-
         Async::Resolver resolve;
         Async::Rejection reject;
+        int seq;
     };
 
     std::atomic<bool> shutdown;

@@ -10,7 +10,7 @@ TEST(headers_test, accept) {
 
     {
         const auto& media = a1.media();
-        ASSERT_EQ(media.size(), 1);
+        ASSERT_EQ(media.size(), 1U);
 
         const auto& mime = media[0];
         ASSERT_EQ(mime, MIME(Audio, Star));
@@ -22,7 +22,7 @@ TEST(headers_test, accept) {
 
     {
         const auto& media = a2.media();
-        ASSERT_EQ(media.size(), 4);
+        ASSERT_EQ(media.size(), 4U);
 
         const auto &m1 = media[0];
         ASSERT_EQ(m1, MIME(Text, Star));
@@ -42,7 +42,7 @@ TEST(headers_test, accept) {
 
     {
         const auto& media = a3.media();
-        ASSERT_EQ(media.size(), 5);
+        ASSERT_EQ(media.size(), 5U);
 
         ASSERT_EQ(media[0], MIME(Text, Star));
         ASSERT_EQ(media[0].q().getOrElse(Mime::Q(0)), Mime::Q(30));
@@ -96,7 +96,7 @@ TEST(headers_test, cache_control) {
         cc.parse(str);
 
         auto directives = cc.directives();
-        ASSERT_EQ(directives.size(), 1);
+        ASSERT_EQ(directives.size(), 1U);
         ASSERT_EQ(directives[0].directive(), expected);
     };
 
@@ -106,7 +106,7 @@ TEST(headers_test, cache_control) {
         cc.parse(str);
 
         auto directives = cc.directives();
-        ASSERT_EQ(directives.size(), 1);
+        ASSERT_EQ(directives.size(), 1U);
 
         ASSERT_EQ(directives[0].directive(), expected);
         ASSERT_EQ(directives[0].delta(), std::chrono::seconds(delta));
@@ -126,7 +126,7 @@ TEST(headers_test, cache_control) {
     Header::CacheControl cc1;
     cc1.parse("private, max-age=600");
     auto d1 = cc1.directives();
-    ASSERT_EQ(d1.size(), 2);
+    ASSERT_EQ(d1.size(), 2U);
     ASSERT_EQ(d1[0].directive(), CacheDirective::Private);
     ASSERT_EQ(d1[1].directive(), CacheDirective::MaxAge);
     ASSERT_EQ(d1[1].delta(), std::chrono::seconds(600));
@@ -134,7 +134,7 @@ TEST(headers_test, cache_control) {
     Header::CacheControl cc2;
     cc2.parse("public, s-maxage=200, proxy-revalidate");
     auto d2 = cc2.directives();
-    ASSERT_EQ(d2.size(), 3);
+    ASSERT_EQ(d2.size(), 3U);
     ASSERT_EQ(d2[0].directive(), CacheDirective::Public);
     ASSERT_EQ(d2[1].directive(), CacheDirective::SMaxAge);
     ASSERT_EQ(d2[1].delta(), std::chrono::seconds(200));
@@ -165,7 +165,7 @@ TEST(headers_test, content_length) {
     Header::ContentLength cl;
 
     cl.parse("3495");
-    ASSERT_EQ(cl.value(), 3495);
+    ASSERT_EQ(cl.value(), 3495U);
 }
 
 TEST(headers_test, connection) {

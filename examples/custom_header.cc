@@ -1,6 +1,6 @@
-/* 
+/*
    Mathieu Stefani, 15 février 2016
-   
+
    Example of custom headers registering
 */
 
@@ -15,8 +15,8 @@ public:
     NAME("X-Protocol-Version");
 
     XProtocolVersion()
-        : min(0)
-        , maj(0)
+        : maj(0)
+        , min(0)
     { }
 
     XProtocolVersion(uint32_t major, uint32_t minor)
@@ -54,8 +54,8 @@ public:
     }
 
 private:
-    uint32_t min;
     uint32_t maj;
+    uint32_t min;
 };
 
 int main() {

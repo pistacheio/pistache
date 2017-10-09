@@ -1,6 +1,6 @@
 /* router.h
    Mathieu Stefani, 05 janvier 2016
-   
+
    Simple HTTP Rest Router
 */
 
@@ -196,7 +196,7 @@ public:
 
 private:
     explicit Request(
-            const Http::Request& request, 
+            const Http::Request& request,
             std::vector<TypedParam>&& params,
             std::vector<TypedParam>&& splats);
 
@@ -228,11 +228,11 @@ namespace Routes {
         template<typename... Args>
         void static_checks() {
             static_assert(sizeof...(Args) == 2, "Function should take 2 parameters");
-            typedef details::TypeList<Args...> Arguments;
+#if 0
             // Disabled now as it
             // 1/ does not compile
             // 2/ might not be relevant
-#if 0
+            typedef details::TypeList<Args...> Arguments;
             static_assert(std::is_same<Arguments::At<0>::Type, const Rest::Request&>::value, "First argument should be a const Rest::Request&");
             static_assert(std::is_same<typename Arguments::At<0>::Type, Http::Response>::value, "Second argument should be a Http::Response");
 #endif

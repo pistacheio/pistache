@@ -1,6 +1,6 @@
 /* common.h
    Mathieu Stefani, 12 August 2015
-   
+
    A collection of macro / utilities / constants
 */
 
@@ -37,7 +37,7 @@
 #define TRY_RET(...) \
     [&]() { \
         auto ret = __VA_ARGS__; \
-        if (ret < 0) { \
+        if ((ssize_t)ret < 0) { \
             const char *str = #__VA_ARGS__; \
             std::ostringstream oss; \
             oss << str << ": " << strerror(errno); \

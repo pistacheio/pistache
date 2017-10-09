@@ -1,6 +1,6 @@
 /* stream.cc
    Mathieu Stefani, 05 September 2015
-   
+
 */
 
 #include <iostream>
@@ -71,7 +71,7 @@ DynamicStreamBuf::reserve(size_t size)
 
 bool
 StreamCursor::advance(size_t count) {
-    if (count > buf->in_avail())
+    if ((ssize_t)count > buf->in_avail())
         return false;
 
     for (size_t i = 0; i < count; ++i) {

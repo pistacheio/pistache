@@ -1,6 +1,6 @@
 /* http_defs.cc
    Mathieu Stefani, 01 September 2015
-   
+
    Implementation of http definitions
 */
 
@@ -52,9 +52,10 @@ CacheDirective::delta() const
             return std::chrono::seconds(data.maxStale);
         case MinFresh:
             return std::chrono::seconds(data.minFresh);
+        default:
+            throw std::domain_error("Invalid operation on cache directive");
+            return std::chrono::seconds();
     }
-
-    throw std::domain_error("Invalid operation on cache directive");    
 }
 
 void
@@ -73,6 +74,8 @@ CacheDirective::init(Directive directive, std::chrono::seconds delta)
             break;
         case MinFresh:
             data.minFresh = delta.count();
+            break;
+        default:
             break;
     }
 }

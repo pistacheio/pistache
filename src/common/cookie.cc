@@ -1,6 +1,6 @@
-/* 
+/*
    Mathieu Stefani, 16 janvier 2016
-   
+
    Cookie implementation
 */
 
@@ -129,7 +129,6 @@ Cookie::fromRaw(const char* str, size_t len)
 
 #define STR(str) str, sizeof(str) - 1
 
-    int c;
     do {
         skip_whitespaces(cursor);
 

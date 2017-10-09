@@ -1,6 +1,6 @@
-/* 
+/*
    Mathieu Stefani, 29 janvier 2016
-   
+
    The Http client
 */
 
@@ -34,9 +34,9 @@ struct Connection : public std::enable_shared_from_this<Connection> {
 
     Connection()
         : fd(-1)
-        , connectionState_(NotConnected)
         , inflightCount(0)
         , responsesReceived(0)
+        , connectionState_(NotConnected)
     {
         state_.store(static_cast<uint32_t>(State::Idle));
     }
@@ -51,7 +51,7 @@ struct Connection : public std::enable_shared_from_this<Connection> {
             : resolve(std::move(resolve))
             , reject(std::move(reject))
             , request(request)
-            , timeout(timeout)  
+            , timeout(timeout)
             , onDone(std::move(onDone))
         { }
         Async::Resolver resolve;
@@ -136,8 +136,8 @@ private:
     Private::Parser<Http::Response> parser_;
 };
 
-struct ConnectionPool {
-
+class ConnectionPool {
+public:
     void init(size_t maxConnsPerHost);
 
     std::shared_ptr<Connection> pickConnection(const std::string& domain);

@@ -1,6 +1,6 @@
 /* http.h
    Mathieu Stefani, 13 August 2015
-   
+
    Http Layer
 */
 
@@ -46,7 +46,7 @@ namespace details {
 
 namespace Private {
     class ParserBase;
-    template<typename T> struct Parser;
+    template<typename T> class Parser;
     class RequestLineStep;
     class ResponseLineStep;
     class HeadersStep;
@@ -140,7 +140,7 @@ public:
         drop of 5x with that lock
 
         If this turns out to be a problem, we might be able to replace the weak_ptr
-        trick to detect peer disconnection by a plain old "observer" pointer to a 
+        trick to detect peer disconnection by a plain old "observer" pointer to a
         tcp connection with a "stale" state
     */
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
@@ -178,23 +178,23 @@ public:
 
     Timeout(Timeout&& other)
         : handler(other.handler)
-        , request(std::move(other.request))
-        , peer(std::move(other.peer))
         , transport(other.transport)
+        , request(std::move(other.request))
         , armed(other.armed)
         , timerFd(other.timerFd)
+        , peer(std::move(other.peer))
     {
         other.timerFd = -1;
     }
 
     Timeout& operator=(Timeout&& other) {
         handler = other.handler;
-        request = std::move(other.request);
-        peer = std::move(other.peer);
         transport = other.transport;
+        request = std::move(other.request);
         armed = other.armed;
         timerFd = other.timerFd;
         other.timerFd = -1;
+        peer = std::move(other.peer);
         return *this;
     }
 
@@ -230,8 +230,8 @@ public:
 
 private:
     Timeout(const Timeout& other)
-        : transport(other.transport)
-        , handler(other.handler)
+        : handler(other.handler)
+        , transport(other.transport)
         , request(other.request)
         , armed(other.armed)
         , timerFd(other.timerFd)
@@ -240,8 +240,8 @@ private:
     Timeout(Tcp::Transport* transport,
             Handler* handler,
             Request request)
-        : transport(transport)
-        , handler(handler)
+        : handler(handler)
+        , transport(transport)
         , request(std::move(request))
         , armed(false)
         , timerFd(-1)
@@ -256,13 +256,11 @@ private:
     void onTimeout(uint64_t numWakeup);
 
     Handler* handler;
-    Request request;
-
-    std::weak_ptr<Tcp::Peer> peer;
-
     Tcp::Transport* transport;
+    Request request;
     bool armed;
     Fd timerFd;
+    std::weak_ptr<Tcp::Peer> peer;
 };
 
 class ResponseStream : public Message {
@@ -531,7 +529,7 @@ private:
         : Response(request.version())
         , buf_(DefaultStreamSize)
         , transport_(transport)
-        , timeout_(transport, handler, std::move(request)) 
+        , timeout_(transport, handler, std::move(request))
     { }
 
     ResponseWriter(const ResponseWriter& other)
@@ -586,7 +584,8 @@ namespace Private {
         Message *message;
     };
 
-    struct RequestLineStep : public Step {
+    class RequestLineStep : public Step {
+    public:
         RequestLineStep(Request* request)
             : Step(request)
         { }
@@ -594,7 +593,8 @@ namespace Private {
         State apply(StreamCursor& cursor);
     };
 
-    struct ResponseLineStep : public Step {
+    class ResponseLineStep : public Step {
+    public:
         ResponseLineStep(Response* response)
             : Step(response)
         { }
@@ -602,7 +602,8 @@ namespace Private {
         State apply(StreamCursor& cursor);
     };
 
-    struct HeadersStep : public Step {
+    class HeadersStep : public Step {
+    public:
         HeadersStep(Message* request)
             : Step(request)
         { }
@@ -610,7 +611,8 @@ namespace Private {
         State apply(StreamCursor& cursor);
     };
 
-    struct BodyStep : public Step {
+    class BodyStep : public Step {
+    public:
         BodyStep(Message* message)
             : Step(message)
             , chunk(message)
@@ -649,16 +651,17 @@ namespace Private {
         size_t bytesRead;
     };
 
-    struct ParserBase {
+    class ParserBase {
+    public:
         ParserBase()
-            : currentStep(0)
-            , cursor(&buffer)
+            : cursor(&buffer)
+            , currentStep(0)
         {
         }
 
         ParserBase(const char* data, size_t len)
-            : currentStep(0)
-            , cursor(&buffer)
+            : cursor(&buffer)
+            , currentStep(0)
         {
         }
 
@@ -681,12 +684,15 @@ namespace Private {
 
     };
 
-    template<typename Message> struct Parser;
+    template<typename Message> class Parser;
 
-    template<> struct Parser<Http::Request> : public ParserBase {
+    template<> class Parser<Http::Request> : public ParserBase {
+
+    public:
+
         Parser()
             : ParserBase()
-        { 
+        {
             allSteps[0].reset(new RequestLineStep(&request));
             allSteps[1].reset(new HeadersStep(&request));
             allSteps[2].reset(new BodyStep(&request));
@@ -714,7 +720,8 @@ namespace Private {
         Request request;
     };
 
-    template<> struct Parser<Http::Response> : public ParserBase {
+    template<> class Parser<Http::Response> : public ParserBase {
+    public:
         Parser()
             : ParserBase()
         {
