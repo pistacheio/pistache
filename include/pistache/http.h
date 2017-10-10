@@ -38,7 +38,7 @@ namespace details {
         static constexpr bool value =
             std::is_same<decltype(test<P>(nullptr)), prototype_tag>::value;
     };
-};
+}
 
 #define HTTP_PROTOTYPE(Class) \
     PROTOTYPE_OF(Pistache::Tcp::Handler, Class) \
@@ -515,7 +515,7 @@ public:
        return &buf_;
     }
 
-    DynamicStreamBuf *rdbuf(DynamicStreamBuf* other) {
+    DynamicStreamBuf *rdbuf(DynamicStreamBuf*) {
        throw std::domain_error("Unimplemented");
     }
 
@@ -659,7 +659,7 @@ namespace Private {
         {
         }
 
-        ParserBase(const char* data, size_t len)
+        ParserBase(const char*, size_t)
             : cursor(&buffer)
             , currentStep(0)
         {

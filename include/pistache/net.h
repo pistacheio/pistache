@@ -1,6 +1,6 @@
 /* net.h
    Mathieu Stefani, 12 August 2015
-   
+
    Network utility classes
 */
 
@@ -69,7 +69,7 @@ public:
     Address &operator=(const Address& other) = default;
     Address &operator=(Address&& other) = default;
 
-    static Address fromUnix(struct sockaddr *addr); 
+    static Address fromUnix(struct sockaddr *addr);
 
     std::string host() const;
     Port port() const;
@@ -112,7 +112,7 @@ struct Size<const char*> {
 
 template<size_t N>
 struct Size<char[N]> {
-    constexpr size_t operator()(const char (&arr)[N]) const {
+    constexpr size_t operator()(const char (&)[N]) const {
         // We omit the \0
         return N - 1;
     }

@@ -119,7 +119,7 @@ Listener::setHandler(const std::shared_ptr<Handler>& handler) {
 }
 
 void
-Listener::pinWorker(size_t worker, const CpuSet& set)
+Listener::pinWorker(size_t /*worker*/, const CpuSet& /*set*/)
 {
 #if 0
     if (ioGroup.empty()) {

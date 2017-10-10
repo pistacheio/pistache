@@ -1,6 +1,6 @@
 /* http_defs.h
    Mathieu Stefani, 01 September 2015
-   
+
    Various http definitions
 */
 
@@ -96,7 +96,7 @@ namespace Http {
     CHARSET(Unicode-11, "unicode-1-1")
 
 enum class Method {
-#define METHOD(m, _) m, 
+#define METHOD(m, _) m,
     HTTP_METHODS
 #undef METHOD
 };
@@ -142,10 +142,10 @@ private:
     Directive directive_;
     // Poor way of representing tagged unions in C++
     union {
-        struct { uint64_t maxAge; };
-        struct { uint64_t sMaxAge; };
-        struct { uint64_t maxStale; };
-        struct { uint64_t minFresh; };
+        uint64_t maxAge;
+        uint64_t sMaxAge;
+        uint64_t maxStale;
+        uint64_t minFresh;
     } data;
 };
 

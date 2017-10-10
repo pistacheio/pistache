@@ -386,7 +386,7 @@ namespace Async {
                 static_assert(sizeof...(Args) == 0,
                         "Can not attach a non-void continuation to a void-Promise");
 
-                void doResolve(const std::shared_ptr<CoreT<void>>& core) {
+                void doResolve(const std::shared_ptr<CoreT<void>>&) {
                     finishResolve(resolve_());
                 }
 
@@ -463,7 +463,7 @@ namespace Async {
                 static_assert(sizeof...(Args) == 0,
                         "Can not attach a non-void continuation to a void-Promise");
 
-                void doResolve(const std::shared_ptr<CoreT<void>>& core) {
+                void doResolve(const std::shared_ptr<CoreT<void>>&) {
                     resolve_();
                 }
 
@@ -570,7 +570,7 @@ namespace Async {
                     , reject_(reject)
                 { }
 
-                void doResolve(const std::shared_ptr<CoreT<void>>& core) {
+                void doResolve(const std::shared_ptr<CoreT<void>>&) {
                     auto promise = resolve_();
                     finishResolve(promise);
                 }
@@ -855,7 +855,7 @@ namespace Async {
         }
 
         template<typename... Args>
-        void emplaceResolve(Args&& ...args) {
+        void emplaceResolve(Args&& ...) {
         }
 
         template<typename Exc>
@@ -932,7 +932,7 @@ namespace Async {
             -> decltype(std::declval<Func>()(Deferred<T>()), void()) {
             func(Deferred<T>(std::move(resolver), std::move(rejection)));
         }
-   };
+   }
 
     template<typename T>
     class Promise : public PromiseBase

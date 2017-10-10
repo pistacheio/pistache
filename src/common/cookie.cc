@@ -64,7 +64,7 @@ namespace {
 
     template<>
     struct AttributeMatcher<bool> {
-        static void match(StreamCursor& cursor, Cookie* obj, bool Cookie::*attr) {
+        static void match(StreamCursor&, Cookie* obj, bool Cookie::*attr) {
             obj->*attr = true;
         }
     };

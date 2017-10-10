@@ -139,7 +139,7 @@ CpuSet::toPosix() const {
     }
 
     return cpu_set;
-};
+}
 
 namespace Polling {
 

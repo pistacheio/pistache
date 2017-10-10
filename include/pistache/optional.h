@@ -1,6 +1,6 @@
 /* optional.h
    Mathieu Stefani, 27 August 2015
-   
+
    An algebraic data type that can either represent Some Value or None.
    This type is the equivalent of the Haskell's Maybe type
 */
@@ -34,7 +34,7 @@ namespace types {
     class None { };
 
     namespace impl {
-        template<typename Func> struct callable_trait : 
+        template<typename Func> struct callable_trait :
             public callable_trait<decltype(&Func::operator())> { };
 
         template<typename Class, typename Ret, typename... Args>
@@ -54,7 +54,7 @@ namespace types {
         };
     }
 
-    template<typename Func, 
+    template<typename Func,
              bool IsBindExp = std::is_bind_expression<Func>::value>
     struct callable_trait;
 
@@ -87,7 +87,7 @@ inline types::None None() {
     return types::None();
 }
 
-template<typename T, 
+template<typename T,
          typename CleanT = typename std::remove_reference<T>::type>
 inline types::Some<CleanT> Some(T &&value) {
     return types::Some<CleanT>(std::forward<T>(value));
@@ -112,14 +112,14 @@ public:
         }
     }
 
-    Optional(Optional<T> &&other) 
-      noexcept(types::is_nothrow_move_constructible<T>::value) 
+    Optional(Optional<T> &&other)
+      noexcept(types::is_nothrow_move_constructible<T>::value)
     {
         *this = std::move(other);
     }
 
     template<typename U>
-    Optional(types::Some<U> some) { 
+    Optional(types::Some<U> some) {
         static_assert(std::is_same<T, U>::value || std::is_convertible<U, T>::value,
                       "Types mismatch");
         from_some_helper(std::move(some), types::is_move_constructible<U>());
@@ -165,7 +165,7 @@ public:
     }
 
 
-    Optional<T> &operator=(Optional<T> &&other) 
+    Optional<T> &operator=(Optional<T> &&other)
       noexcept(types::is_nothrow_move_constructible<T>::value)
     {
         if (other.data()) {
@@ -227,8 +227,8 @@ public:
 
 
 private:
-    T *const constData() const {
-        return const_cast<T *const>(reinterpret_cast<const T *const>(bytes));
+    const T* constData() const {
+        return const_cast<const T*>(reinterpret_cast<const T*>(bytes));
     }
 
     T *data() const {
@@ -284,7 +284,7 @@ namespace details {
 
     template<typename T, typename Func>
     void do_static_checks(std::false_type) {
-        static_assert(types::callable_trait<Func>::Arity == 1, 
+        static_assert(types::callable_trait<Func>::Arity == 1,
             "The function must take exactly 1 argument");
 
         typedef typename types::callable_trait<Func>::template Arg<0>::Type ArgType;
@@ -338,7 +338,7 @@ optionally_do(const Optional<T> &option, Func func) {
 
 template<typename T, typename Func>
 auto
-optionally_map(const Optional<T> &option, Func func) 
+optionally_map(const Optional<T> &option, Func func)
     -> Optional<typename types::callable_trait<Func>::ReturnType>
 {
     details::static_checks<T, Func>();
@@ -351,7 +351,7 @@ optionally_map(const Optional<T> &option, Func func)
 
 template<typename T, typename Func>
 auto
-optionally_fmap(const Optional<T> &option, Func func) 
+optionally_fmap(const Optional<T> &option, Func func)
     -> Optional<typename details::RemoveOptional<typename types::callable_trait<Func>::ReturnType>::Type>
 {
     details::static_checks<T, Func>();
@@ -369,7 +369,7 @@ template<typename T, typename Func>
 Optional<T> optionally_filter(const Optional<T> &option, Func func) {
     details::static_checks<T, Func>();
     typedef typename types::callable_trait<Func>::ReturnType ReturnType;
-    static_assert(std::is_same<ReturnType, bool>::value || 
+    static_assert(std::is_same<ReturnType, bool>::value ||
                   std::is_convertible<ReturnType, bool>::value,
                   "The predicate must return a boolean value");
     if (!option.isEmpty() && func(option.get())) {

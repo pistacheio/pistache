@@ -14,17 +14,17 @@ namespace Pistache {
 namespace Http {
 
 namespace {
-    bool parseRFC1123Date(std::tm& tm, const char* str, size_t len) {
+    bool parseRFC1123Date(std::tm& tm, const char* str, size_t) {
         char *p = strptime(str, "%a, %d %b %Y %H:%M:%S %Z", &tm);
         return p != NULL;
     }
 
-    bool parseRFC850Date(std::tm& tm, const char* str, size_t len) {
+    bool parseRFC850Date(std::tm& tm, const char* str, size_t) {
         char *p = strptime(str, "%A, %d-%b-%y %H:%M:%S %Z", &tm);
         return p != NULL;
     }
 
-    bool parseAscTimeDate(std::tm& tm, const char* str, size_t len) {
+    bool parseAscTimeDate(std::tm& tm, const char* str, size_t) {
         char *p = strptime(str, "%a %b  %d %H:%M:%S %Y", &tm);
         return p != NULL;
     }

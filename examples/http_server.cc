@@ -129,7 +129,7 @@ class MyHandler : public Http::Handler {
         }
         else if (req.resource() == "/static") {
             if (req.method() == Http::Method::Get) {
-                Http::serveFile(response, "README.md").then([](ssize_t bytes) {;
+                Http::serveFile(response, "README.md").then([](ssize_t bytes) {
                     std::cout << "Sent " << bytes << " bytes" << std::endl;
                 }, Async::NoExcept);
             }
@@ -139,7 +139,7 @@ class MyHandler : public Http::Handler {
 
     }
 
-    void onTimeout(const Http::Request& req, Http::ResponseWriter response) {
+    void onTimeout(const Http::Request&, Http::ResponseWriter response) {
         response
             .send(Http::Code::Request_Timeout, "Timeout")
             .then([=](ssize_t) { }, PrintException());

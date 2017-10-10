@@ -124,7 +124,7 @@ TEST(cookie_test, write_test) {
     c3.write(oss);
 
     ASSERT_EQ(oss.str(), "lang=en-US; Secure; Scope=Private");
-};
+}
 
 TEST(cookie_test, invalid_test) {
     ASSERT_THROW(Cookie::fromString("lang"), std::runtime_error);
