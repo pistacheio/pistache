@@ -36,6 +36,7 @@ namespace Mime {
     SUB_TYPE(Javascript, "javascript") \
     SUB_TYPE(Css       , "css")        \
     \
+    SUB_TYPE(OctetStream,    "octet-stream") \
     SUB_TYPE(Json          , "json")                  \
     SUB_TYPE(FormUrlEncoded, "x-www-form-urlencoded") \
     \
