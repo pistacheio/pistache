@@ -464,7 +464,7 @@ Connection::handleResponsePacket(const char* buffer, size_t bytes) {
     parser_.feed(buffer, bytes);
     if (parser_.parse() == Private::State::Done) {
         auto req = std::move(inflightRequests.front());
-        inflightRequests.pop_back();
+        inflightRequests.pop();
 
         if (req.timer) {
             req.timer->disarm();
@@ -480,6 +480,8 @@ Connection::handleResponsePacket(const char* buffer, size_t bytes) {
 void
 Connection::handleError(const char* error) {
     auto req = std::move(inflightRequests.front());
+    inflightRequests.pop();
+    
     if (req.timer) {
         req.timer->disarm();
         timerPool_.releaseTimer(req.timer);
@@ -492,7 +494,7 @@ Connection::handleError(const char* error) {
 void
 Connection::handleTimeout() {
     auto req = std::move(inflightRequests.front());
-    inflightRequests.pop_back();
+    inflightRequests.pop();
 
     timerPool_.releaseTimer(req.timer);
     req.onDone();
@@ -587,7 +589,7 @@ Connection::performImpl(
 
     transport_->asyncSendRequest(shared_from_this(), timer, buffer).then(
         [=](ssize_t bytes) mutable {
-            inflightRequests.push_back(RequestEntry(std::move(resolveMover), std::move(rejectMover), std::move(timer), std::move(onDone)));
+            inflightRequests.push(RequestEntry(std::move(resolveMover), std::move(rejectMover), std::move(timer), std::move(onDone)));
         },
         [=](std::exception_ptr e) { rejectCloneMover.val(e); });
 }
@@ -603,7 +605,6 @@ Connection::processRequestQueue() {
                 req.request,
                 req.timeout, std::move(req.resolve), std::move(req.reject), std::move(req.onDone));
     }
-
 }
 
 void
@@ -887,7 +888,6 @@ Client::processRequestQueue() {
             if (!conn)
                 break;
 
-            auto& queue = queues.second;
             Connection::RequestData *data;
             if (!queue.dequeue(data)) {
                 pool.releaseConnection(conn);

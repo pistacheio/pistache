@@ -6,7 +6,7 @@
 
 #pragma once
 #include <atomic>
-#include <deque>
+#include <queue>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -130,7 +130,7 @@ private:
     std::shared_ptr<Transport> transport_;
     Queue<RequestData> requestsQueue;
 
-    std::deque<RequestEntry> inflightRequests;
+    std::queue<RequestEntry> inflightRequests;
 
     TimerPool timerPool_;
     Private::Parser<Http::Response> parser_;
