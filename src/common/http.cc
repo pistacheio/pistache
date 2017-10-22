@@ -671,10 +671,17 @@ serveFile(ResponseWriter& response, const char* fileName, const Mime::MediaType&
 
     int fd = open(fileName, O_RDONLY);
     if (fd == -1) {
+        if(errno == ENOENT)
+            throw HttpError(Http::Code::Not_Found, "");
+        //eles if TODO 
         /* @Improvement: maybe could we check for errno here and emit a different error
             message
         */
-        throw HttpError(Http::Code::Not_Found, "");
+        else
+        {
+            std::string str_error(strerror(errno));
+            HttpError(Http::Code::Internal_Server_Error, str_error);
+        }
     }
 
     int res = ::fstat(fd, &sb);
