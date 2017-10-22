@@ -414,7 +414,6 @@ Connection::connect(Address addr)
                 processRequestQueue();
             }, ExceptionPrinter());
         break;
-
     }
 
     if (sfd < 0)
@@ -463,43 +462,52 @@ Connection::handleResponsePacket(const char* buffer, size_t bytes) {
 
     parser_.feed(buffer, bytes);
     if (parser_.parse() == Private::State::Done) {
-        auto req = std::move(inflightRequests.front());
-        inflightRequests.pop();
+        if(not inflightRequests.empty()) { //TODO is this neccesery?
+            auto req = std::move(inflightRequests.front());
+            inflightRequests.pop();
 
-        if (req.timer) {
-            req.timer->disarm();
-            timerPool_.releaseTimer(req.timer);
+            if (req.timer) {
+                req.timer->disarm();
+                timerPool_.releaseTimer(req.timer);
+            }
+
+            req.resolve(std::move(parser_.response));
+            if(req.onDone)
+                req.onDone();
         }
-
-        req.resolve(std::move(parser_.response));
-        req.onDone();
         parser_.reset();
     }
 }
 
 void
 Connection::handleError(const char* error) {
-    auto req = std::move(inflightRequests.front());
-    inflightRequests.pop();
-    
-    if (req.timer) {
-        req.timer->disarm();
-        timerPool_.releaseTimer(req.timer);
-    }
+    if(not inflightRequests.empty()) {
+        auto req = std::move(inflightRequests.front());
+        inflightRequests.pop();
+        
+        if (req.timer) {
+            req.timer->disarm();
+            timerPool_.releaseTimer(req.timer);
+        }
 
-    req.reject(Error(error));
-    req.onDone();
+        req.reject(Error(error));
+        if(req.onDone)
+            req.onDone();
+    }
 }
 
 void
 Connection::handleTimeout() {
-    auto req = std::move(inflightRequests.front());
-    inflightRequests.pop();
+    if(not inflightRequests.empty()) {  //TODO is this neccesery?
+        auto req = std::move(inflightRequests.front());
+        inflightRequests.pop();
 
-    timerPool_.releaseTimer(req.timer);
-    req.onDone();
-    /* @API: create a TimeoutException */
-    req.reject(std::runtime_error("Timeout"));
+        timerPool_.releaseTimer(req.timer);
+        if(req.onDone)
+            req.onDone();
+        /* @API: create a TimeoutException TODO */
+        req.reject(std::runtime_error("Timeout"));
+    }
 }
 
 Async::Promise<Response>
