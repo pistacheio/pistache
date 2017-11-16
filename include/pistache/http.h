@@ -209,7 +209,6 @@ public:
             [=](uint64_t numWakeup) {
                 this->armed = false;
                 this->onTimeout(numWakeup);
-                close(timerFd);
         },
         [=](std::exception_ptr exc) {
             std::rethrow_exception(exc);

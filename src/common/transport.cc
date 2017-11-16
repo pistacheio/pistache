@@ -83,6 +83,7 @@ Transport::onReady(const Aio::FdSet& fds) {
                 auto& entry = it->second;
                 handleTimer(std::move(entry));
                 timers.erase(it);
+		close(entry.fd);
             }
             else {
                 throw std::runtime_error("Unknown fd");
