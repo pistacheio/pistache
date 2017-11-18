@@ -15,7 +15,7 @@ Full documentation is located at [http://pistache.io](http://pistache.io).
 ```cpp
 #include <pistache/endpoint.h>
 
-using namespace Net;
+using namespace Pistache;
 
 struct HelloHandler : public Http::Handler {
     HTTP_PROTOTYPE(HelloHandler)
