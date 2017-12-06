@@ -97,12 +97,14 @@ namespace Uri {
         void add(std::string name, std::string value);
         Optional<std::string> get(const std::string& name) const;
         bool has(const std::string& name) const;
-
+        std::string str() const; // For Pistache::Client allow to easy genarete page url!
+        
         void clear() {
             params.clear();
         }
 
     private:
+        //first is key second is value
         std::unordered_map<std::string, std::string> params;
     };
 } // namespace Uri
