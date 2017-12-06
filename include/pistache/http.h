@@ -87,7 +87,6 @@ protected:
 };
 
 namespace Uri {
-    typedef std::string Fragment;
 
     class Query {
     public:
