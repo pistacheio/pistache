@@ -120,7 +120,7 @@ MediaType::parseRaw(const char* str, size_t len) {
     // Watch out, this pattern is repeated throughout the function
     do {
 #define TYPE(val, s)                              \
-        if (match_raw(s, sizeof s - 1, cursor)) { \
+        if (match_string(s, sizeof s - 1, cursor, CaseSensitivity::Insensitive)) { \
             top = Type::val;                      \
             break;                                \
         }
