@@ -120,7 +120,7 @@ MediaType::parseRaw(const char* str, size_t len) {
     // Watch out, this pattern is repeated throughout the function
     do {
 #define TYPE(val, s)                              \
-        if (match_raw(s, sizeof s - 1, cursor)) { \
+        if (match_string(s, sizeof s - 1, cursor, CaseSensitivity::Insensitive)) { \
             top = Type::val;                      \
             break;                                \
         }
@@ -147,7 +147,7 @@ MediaType::parseRaw(const char* str, size_t len) {
     } else {
         do {
 #define SUB_TYPE(val, s)                              \
-            if (match_raw(s, sizeof s - 1, cursor)) { \
+            if (match_string(s, sizeof s - 1, cursor, CaseSensitivity::Insensitive)) { \
                 sub = Subtype::val;                   \
                 break;                                \
             }
@@ -177,7 +177,7 @@ MediaType::parseRaw(const char* str, size_t len) {
 
         do {
 #define SUFFIX(val, s, _)                             \
-            if (match_raw(s, sizeof s - 1, cursor)) { \
+            if (match_string(s, sizeof s - 1, cursor, CaseSensitivity::Insensitive)) { \
                 suffix = Suffix::val;                 \
                 break;                                \
             }
