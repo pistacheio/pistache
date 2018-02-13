@@ -4,6 +4,7 @@ include(CheckCXXCompilerFlag)
 
 option(PISTACHE_BUILD_TESTS "build tests alongside the project" OFF)
 option(PISTACHE_BUILD_EXAMPLES "build examples alongside the project" OFF)
+option(PISTACHE_INSTALL "add pistache as install target (recommended)" ON)
 
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
 CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
