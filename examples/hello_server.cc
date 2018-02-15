@@ -5,9 +5,9 @@
 */
 
 
-#include "endpoint.h"
+#include "pistache/endpoint.h"
 
-using namespace Net;
+using namespace Pistache;
 
 class HelloHandler : public Http::Handler {
 public:
@@ -20,8 +20,8 @@ public:
 };
 
 int main() {
-    Net::Address addr(Net::Ipv4::any(), Net::Port(9080));
-    auto opts = Net::Http::Endpoint::options()
+    Pistache::Address addr(Pistache::Ipv4::any(), Pistache::Port(9080));
+    auto opts = Pistache::Http::Endpoint::options()
         .threads(1);
 
     Http::Endpoint server(addr);
