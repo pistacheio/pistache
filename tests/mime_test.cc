@@ -137,3 +137,20 @@ TEST(mime_test, invalid_parsing) {
     ASSERT_THROW(MediaType::fromString("text/html; q=0.21; charset="), HttpError);
     ASSERT_THROW(MediaType::fromString("text/html; q=0.21; charset=ISO-8859-4;  "), HttpError);
 }
+
+TEST(mime_test, should_parse_case_insensitive_issue_179)
+{
+    parse("Application/Json", [](const Mime::MediaType& mime) {
+        ASSERT_EQ(mime, MIME(Application, Json));
+        ASSERT_TRUE(mime.q().isEmpty());
+    });
+
+    parse("aPpliCAtion/Xhtml+XML", [](const MediaType &mime) {
+        ASSERT_EQ(mime, MediaType(Type::Application, Subtype::Xhtml, Suffix::Xml));
+        ASSERT_TRUE(mime.q().isEmpty());
+    });
+
+    parse("Application/Xhtml+XML; q=0.78", [](const MediaType& mime) {
+        ASSERT_EQ(mime.q().getOrElse(Q(0)), Q(78));
+    });
+}

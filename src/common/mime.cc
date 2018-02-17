@@ -119,10 +119,10 @@ MediaType::parseRaw(const char* str, size_t len) {
     //
     // Watch out, this pattern is repeated throughout the function
     do {
-#define TYPE(val, s)                              \
-        if (match_raw(s, sizeof s - 1, cursor)) { \
-            top = Type::val;                      \
-            break;                                \
+#define TYPE(val, s)                                                               \
+        if (match_string(s, sizeof s - 1, cursor, CaseSensitivity::Insensitive)) { \
+            top = Type::val;                                                       \
+            break;                                                                 \
         }
         MIME_TYPES
 #undef TYPE
@@ -146,10 +146,10 @@ MediaType::parseRaw(const char* str, size_t len) {
         sub = Subtype::Vendor;
     } else {
         do {
-#define SUB_TYPE(val, s)                              \
-            if (match_raw(s, sizeof s - 1, cursor)) { \
-                sub = Subtype::val;                   \
-                break;                                \
+#define SUB_TYPE(val, s)                                                               \
+            if (match_string(s, sizeof s - 1, cursor, CaseSensitivity::Insensitive)) { \
+                sub = Subtype::val;                                                    \
+                break;                                                                 \
             }
             MIME_SUBTYPES
 #undef SUB_TYPE
@@ -176,10 +176,10 @@ MediaType::parseRaw(const char* str, size_t len) {
         StreamCursor::Token suffixToken(cursor);
 
         do {
-#define SUFFIX(val, s, _)                             \
-            if (match_raw(s, sizeof s - 1, cursor)) { \
-                suffix = Suffix::val;                 \
-                break;                                \
+#define SUFFIX(val, s, _)                                                              \
+            if (match_string(s, sizeof s - 1, cursor, CaseSensitivity::Insensitive)) { \
+                suffix = Suffix::val;                                                  \
+                break;                                                                 \
             }
             MIME_SUFFIXES
 #undef SUFFIX
