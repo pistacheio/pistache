@@ -321,25 +321,33 @@ namespace Private {
 
     State
     BodyStep::apply(StreamCursor& cursor) {
-        if (message->body_.empty()) {
+        if (!crlfSkipped) {
             /* If this is the first time we are reading the body, skip the CRLF */
-            if (!cursor.advance(2)) return State::Again;
+            if (cursor.advance(2)) {
+                crlfSkipped = true;
+            }
+            else {
+                return State::Again;
+            }
         }
 
         auto cl = message->headers_.tryGet<Header::ContentLength>();
         auto te = message->headers_.tryGet<Header::TransferEncoding>();
 
+        State returnState(State::Done);
+
         if (cl && te)
             raise("Got mutually exclusive ContentLength and TransferEncoding header");
 
-        if (cl)
-            return parseContentLength(cursor, cl);
+        else if (cl)
+            returnState = parseContentLength(cursor, cl);
 
-        if (te)
-            return parseTransferEncoding(cursor, te);
+        else if (te)
+            returnState = parseTransferEncoding(cursor, te);
 
-        return State::Done;
+        if (returnState == State::Done) crlfSkipped = false;
 
+        return returnState;
     }
 
     State

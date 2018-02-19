@@ -615,6 +615,7 @@ namespace Private {
             : Step(message)
             , chunk(message)
             , bytesRead(0)
+            , crlfSkipped(false)
         { }
 
         State apply(StreamCursor& cursor);
@@ -647,6 +648,7 @@ namespace Private {
 
         Chunk chunk;
         size_t bytesRead;
+        bool crlfSkipped;
     };
 
     struct ParserBase {
