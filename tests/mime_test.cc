@@ -14,6 +14,7 @@ TEST(mime_test, basic_test) {
     ASSERT_EQ(m1.toString(), "text/plain");
 
     ASSERT_EQ(m1, MIME(Text, Plain));
+    ASSERT_NE(m1, MIME(Application, Json));
 
     auto m2 = MIME3(Application, Xhtml, Xml);
     ASSERT_EQ(m2.toString(), "application/xhtml+xml");
