@@ -199,6 +199,7 @@ private:
 };
 
 const char* methodString(Method method);
+const char* versionString(Version version);
 const char* codeString(Code code);
 
 std::ostream& operator<<(std::ostream& os, Version version);
