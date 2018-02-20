@@ -63,6 +63,7 @@ namespace Http {
     CODE(415, Unsupported_Media_Type, "Unsupported Media Type") \
     CODE(416, Requested_Range_Not_Satisfiable, "Requested Range Not Satisfiable") \
     CODE(417, Expectation_Failed, "Expectation Failed") \
+    CODE(429, Too_Many_Requests, "Too Many Requests") \
     CODE(500, Internal_Server_Error, "Internal Server Error") \
     CODE(501, Not_Implemented, "Not Implemented") \
     CODE(502, Bad_Gateway, "Bad Gateway") \
