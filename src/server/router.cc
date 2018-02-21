@@ -172,15 +172,14 @@ Route::match(const Http::Request& req) const
 std::tuple<bool, std::vector<TypedParam>, std::vector<TypedParam>>
 Route::match(const std::string& req) const
 {
-#define UNMATCH() std::make_tuple(false, std::vector<TypedParam>(), std::vector<TypedParam>())
+    static const auto NoMatch = std::make_tuple(false, std::vector<TypedParam>(), std::vector<TypedParam>());
 
     auto reqFragments = Fragment::fromUrl(req);
     if (reqFragments.size() > fragments_.size())
-        return UNMATCH();
+        return NoMatch;
 
     std::vector<TypedParam> params;
     std::vector<TypedParam> splats;
-
 
     for (std::vector<Fragment>::size_type i = 0; i < fragments_.size(); ++i) {
         const auto& fragment = fragments_[i];
@@ -188,12 +187,12 @@ Route::match(const std::string& req) const
             if (fragment.isOptional())
                 continue;
 
-            return UNMATCH();
+            return NoMatch;
         }
 
         const auto& reqFragment = reqFragments[i];
         if (!fragment.match(reqFragment))
-            return UNMATCH();
+            return NoMatch;
 
         if (fragment.isParameter()) {
             params.push_back(TypedParam(fragment.value(), reqFragment.value()));
@@ -202,8 +201,6 @@ Route::match(const std::string& req) const
         }
 
     }
-
-#undef UNMATCH
 
     return make_tuple(true, std::move(params), std::move(splats));
 }
