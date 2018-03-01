@@ -84,11 +84,13 @@ Address::Address(Ipv4 ip, Port port)
 Address
 Address::fromUnix(struct sockaddr* addr) {
     struct sockaddr_in *in_addr = reinterpret_cast<struct sockaddr_in *>(addr);
-    std::string host = TRY_RET(inet_ntoa(in_addr->sin_addr));
+
+    char *host = inet_ntoa(in_addr->sin_addr);
+    assert(addr);
 
     int port = ntohs(in_addr->sin_port);
 
-    return Address(std::move(host), port);
+    return Address(host, port);
 }
 
 std::string
