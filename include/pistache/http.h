@@ -1,6 +1,6 @@
 /* http.h
    Mathieu Stefani, 13 August 2015
-   
+
    Http Layer
 */
 
@@ -140,7 +140,7 @@ public:
         drop of 5x with that lock
 
         If this turns out to be a problem, we might be able to replace the weak_ptr
-        trick to detect peer disconnection by a plain old "observer" pointer to a 
+        trick to detect peer disconnection by a plain old "observer" pointer to a
         tcp connection with a "stale" state
     */
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
@@ -230,9 +230,9 @@ public:
 
 private:
     Timeout(const Timeout& other)
-        : transport(other.transport)
-        , handler(other.handler)
+        : handler(other.handler)
         , request(other.request)
+        , transport(other.transport)
         , armed(other.armed)
         , timerFd(other.timerFd)
     { }
@@ -240,9 +240,9 @@ private:
     Timeout(Tcp::Transport* transport,
             Handler* handler,
             Request request)
-        : transport(transport)
-        , handler(handler)
+        : handler(handler)
         , request(std::move(request))
+        , transport(transport)
         , armed(false)
         , timerFd(-1)
     {
@@ -531,7 +531,7 @@ private:
         : Response(request.version())
         , buf_(DefaultStreamSize)
         , transport_(transport)
-        , timeout_(transport, handler, std::move(request)) 
+        , timeout_(transport, handler, std::move(request))
     { }
 
     ResponseWriter(const ResponseWriter& other)
@@ -651,14 +651,14 @@ namespace Private {
 
     struct ParserBase {
         ParserBase()
-            : currentStep(0)
-            , cursor(&buffer)
+            : cursor(&buffer)
+            , currentStep(0)
         {
         }
 
         ParserBase(const char* data, size_t len)
-            : currentStep(0)
-            , cursor(&buffer)
+            : cursor(&buffer)
+            , currentStep(0)
         {
         }
 
@@ -686,7 +686,7 @@ namespace Private {
     template<> struct Parser<Http::Request> : public ParserBase {
         Parser()
             : ParserBase()
-        { 
+        {
             allSteps[0].reset(new RequestLineStep(&request));
             allSteps[1].reset(new HeadersStep(&request));
             allSteps[2].reset(new BodyStep(&request));
