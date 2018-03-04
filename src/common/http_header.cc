@@ -122,11 +122,6 @@ CacheControl::parseRaw(const char* str, size_t len) {
     RawStreamBuf<> buf(const_cast<char *>(str), len);
     StreamCursor cursor(&buf);
 
-    const char *begin = str;
-    auto memsize = [&](size_t s) {
-        return std::min(s, cursor.remaining());
-    };
-
     do {
 
         bool found = false;
@@ -143,7 +138,6 @@ CacheControl::parseRaw(const char* str, size_t len) {
         if (!found) {
             for (const auto& d: TimedDirectives) {
                 if (match_raw(d.str, d.size, cursor)) {
-                    int c;
                     if (!cursor.advance(1)) {
                         throw std::runtime_error("Invalid caching directive, missing delta-seconds");
                     }
@@ -211,6 +205,7 @@ CacheControl::write(std::ostream& os) const {
             case CacheDirective::Ext:
                 return "";
         }
+        return "";
     };
 
     auto hasDelta = [](CacheDirective directive) {
@@ -281,6 +276,9 @@ Connection::write(std::ostream& os) const {
         break;
     case ConnectionControl::KeepAlive:
         os << "Keep-Alive";
+        break;
+    case ConnectionControl::Ext:
+        os << "Ext";
         break;
     }
 }
