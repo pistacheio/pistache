@@ -1,6 +1,6 @@
 /* http.h
    Mathieu Stefani, 13 August 2015
-   
+
    Http Layer
 */
 
@@ -9,7 +9,9 @@
 #include <type_traits>
 #include <stdexcept>
 #include <array>
+#include <vector>
 #include <sstream>
+#include <algorithm>
 
 #include <sys/timerfd.h>
 
@@ -102,6 +104,16 @@ namespace Uri {
             params.clear();
         }
 
+        // \brief returns all parameters given in the query
+        std::vector<std::string> parameters() const
+        {
+          std::vector<std::string> keys;
+          std::transform(params.begin(), params.end(), std::back_inserter(keys),
+            [](const std::unordered_map<std::string, std::string>::value_type
+               &pair) {return pair.first;});
+          return keys;
+        }
+
     private:
         std::unordered_map<std::string, std::string> params;
     };
@@ -140,7 +152,7 @@ public:
         drop of 5x with that lock
 
         If this turns out to be a problem, we might be able to replace the weak_ptr
-        trick to detect peer disconnection by a plain old "observer" pointer to a 
+        trick to detect peer disconnection by a plain old "observer" pointer to a
         tcp connection with a "stale" state
     */
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
@@ -531,7 +543,7 @@ private:
         : Response(request.version())
         , buf_(DefaultStreamSize)
         , transport_(transport)
-        , timeout_(transport, handler, std::move(request)) 
+        , timeout_(transport, handler, std::move(request))
     { }
 
     ResponseWriter(const ResponseWriter& other)
@@ -686,7 +698,7 @@ namespace Private {
     template<> struct Parser<Http::Request> : public ParserBase {
         Parser()
             : ParserBase()
-        { 
+        {
             allSteps[0].reset(new RequestLineStep(&request));
             allSteps[1].reset(new HeadersStep(&request));
             allSteps[2].reset(new BodyStep(&request));
