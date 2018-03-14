@@ -96,7 +96,8 @@ namespace Uri {
         void add(std::string name, std::string value);
         Optional<std::string> get(const std::string& name) const;
         bool has(const std::string& name) const;
-        std::string str() const; // For Pistache::Client allow to easy genarete page url!
+        // Return empty string or "?key1=value1&key2=value2" if query exist
+        std::string as_str() const;
         
         void clear() {
             params.clear();
