@@ -323,19 +323,21 @@ Transport::handleConnectionQueue() {
 
 void
 Transport::handleIncoming(const std::shared_ptr<Connection>& connection) {
-    char buffer[Const::MaxBuffer];
-    memset(buffer, 0, sizeof buffer);
-
     ssize_t totalBytes = 0;
+    ssize_t currentBytes = 2000;
+
+    std::vector<char> buffer;
+    buffer.resize(currentBytes);
+
     for (;;) {
 
         ssize_t bytes;
 
-        bytes = recv(connection->fd, buffer + totalBytes, Const::MaxBuffer - totalBytes, 0);
+        bytes = recv(connection->fd, &buffer[totalBytes], currentBytes - totalBytes, 0);
         if (bytes == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if (totalBytes > 0) {
-                    handleResponsePacket(connection, buffer, totalBytes);
+                    handleResponsePacket(connection, &buffer[0], totalBytes);
                 }
             } else {
                 connection->handleError(strerror(errno));
@@ -344,7 +346,7 @@ Transport::handleIncoming(const std::shared_ptr<Connection>& connection) {
         }
         else if (bytes == 0) {
             if (totalBytes > 0) {
-                handleResponsePacket(connection, buffer, totalBytes);
+                handleResponsePacket(connection, &buffer[0], totalBytes);
             } else {
                 connection->handleError("Remote closed connection");
             }
@@ -355,9 +357,9 @@ Transport::handleIncoming(const std::shared_ptr<Connection>& connection) {
 
         else {
             totalBytes += bytes;
-            if (totalBytes >= Const::MaxBuffer) {
-                std::cerr << "Too long packet" << std::endl;
-                break;
+            if (totalBytes >= currentBytes) {
+                currentBytes = totalBytes  + (totalBytes * 0.4);
+                buffer.resize(currentBytes);
             }
         }
     }

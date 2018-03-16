@@ -8,6 +8,8 @@
 #include <sys/sendfile.h>
 #include <sys/timerfd.h>
 
+#include <vector>
+
 #include <pistache/transport.h>
 #include <pistache/peer.h>
 #include <pistache/tcp.h>
@@ -118,21 +120,23 @@ Transport::disarmTimer(Fd fd) {
 
 void
 Transport::handleIncoming(const std::shared_ptr<Peer>& peer) {
-    char buffer[Const::MaxBuffer];
-    memset(buffer, 0, sizeof buffer);
-
     ssize_t totalBytes = 0;
+    ssize_t currentBytes = 2000;
+
+    std::vector<char> buffer;
+    buffer.resize(currentBytes);
+
     int fd = peer->fd();
 
     for (;;) {
 
         ssize_t bytes;
 
-        bytes = recv(fd, buffer + totalBytes, Const::MaxBuffer - totalBytes, 0);
+        bytes = recv(fd, &buffer[totalBytes], currentBytes - totalBytes, 0);
         if (bytes == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if (totalBytes > 0) {
-                    handler_->onInput(buffer, totalBytes, peer);
+                    handler_->onInput(&buffer[0], totalBytes, peer);
                 }
             } else {
                 if (errno == ECONNRESET) {
@@ -151,9 +155,9 @@ Transport::handleIncoming(const std::shared_ptr<Peer>& peer) {
 
         else {
             totalBytes += bytes;
-            if (totalBytes >= Const::MaxBuffer) {
-                std::cerr << "Too long packet" << std::endl;
-                break;
+            if (totalBytes >= currentBytes) {
+                currentBytes = totalBytes  + (totalBytes * 0.4);
+                buffer.resize(currentBytes);
             }
         }
     }
