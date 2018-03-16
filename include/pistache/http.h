@@ -82,6 +82,7 @@ protected:
 
     Header::Collection headers_;
     std::string body_;
+    Address addr_;
 
     CookieJar cookies_;
 };
@@ -113,6 +114,7 @@ class Request : public Message {
 public:
     friend class Private::RequestLineStep;
     friend class Private::Parser<Http::Request>;
+    friend class Handler;
 
     friend class RequestBuilder;
     // @Todo: try to remove the need for friend-ness here
@@ -129,6 +131,7 @@ public:
     std::string resource() const;
 
     std::string body() const;
+    Address address() const;
 
     const Header::Collection& headers() const;
     const Uri::Query& query() const;
@@ -399,6 +402,10 @@ public:
         return body_;
     }
 
+    Address address() const {
+        return addr_;
+    }
+
     Version version() const {
         return version_;
     }
@@ -660,6 +667,7 @@ namespace Private {
             : currentStep(0)
             , cursor(&buffer)
         {
+            buffer.setLength(len);
         }
 
         ParserBase(const ParserBase& other) = delete;
@@ -670,7 +678,7 @@ namespace Private {
 
         State parse();
 
-        ArrayStreamBuf<Const::MaxBuffer> buffer;
+        ArrayStreamBuf<char> buffer;
         StreamCursor cursor;
 
     protected:
@@ -709,6 +717,7 @@ namespace Private {
             request.body_.clear();
             request.resource_.clear();
             request.query_.clear();
+            request.addr_.clear();
         }
 
         Request request;

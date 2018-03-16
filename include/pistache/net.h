@@ -73,6 +73,7 @@ public:
 
     std::string host() const;
     Port port() const;
+    void clear();
 
 private:
     void init(std::string addr);

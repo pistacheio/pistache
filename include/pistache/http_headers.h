@@ -103,6 +103,7 @@ public:
     bool has(const std::string& name) const;
 
     std::vector<std::shared_ptr<Header>> list() const;
+    std::vector<Raw> rawlist() const;
 
     bool remove(const std::string& name);
 

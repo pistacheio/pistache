@@ -54,7 +54,6 @@ namespace Const {
 
     static constexpr int MaxBacklog = 128;
     static constexpr int MaxEvents = 1024;
-    static constexpr int MaxBuffer = 4096;
     static constexpr int ChunkSize = 1024;
 } // namespace Const
 } // namespace Pistache
