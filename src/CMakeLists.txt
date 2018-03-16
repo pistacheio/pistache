@@ -28,35 +28,37 @@ set(bin_install_dir "bin/")
 
 target_link_libraries(pistache pthread)
 
-install(
-  TARGETS pistache
-  EXPORT ${targets_export_name}
-  ARCHIVE DESTINATION ${lib_install_dir}
-  LIBRARY DESTINATION ${lib_install_dir}
-  RUNTIME DESTINATION ${bin_install_dir}
-  INCLUDES DESTINATION ${include_install_dir})
+if (PISTACHE_INSTALL)
+    install(
+      TARGETS pistache
+      EXPORT ${targets_export_name}
+      ARCHIVE DESTINATION ${lib_install_dir}
+      LIBRARY DESTINATION ${lib_install_dir}
+      RUNTIME DESTINATION ${bin_install_dir}
+      INCLUDES DESTINATION ${include_install_dir})
 
-install(
-  DIRECTORY "${PROJECT_SOURCE_DIR}/include/pistache"
-  DESTINATION ${include_install_dir}
-  FILES_MATCHING PATTERN "*.*h")
-install(TARGETS pistache
-        EXPORT PistacheTargets
-        DESTINATION lib)
-install(EXPORT PistacheTargets
+    install(
+      DIRECTORY "${PROJECT_SOURCE_DIR}/include/pistache"
+      DESTINATION ${include_install_dir}
+      FILES_MATCHING PATTERN "*.*h")
+    install(TARGETS pistache
+            EXPORT PistacheTargets
+            DESTINATION lib)
+    install(EXPORT PistacheTargets
+            DESTINATION "lib/cmake/pistache"
+            EXPORT_LINK_INTERFACE_LIBRARIES
+            COMPONENT cmake-config
+    )
+
+    include(CMakePackageConfigHelpers)
+    configure_package_config_file(
+        "PistacheConfig.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/PistacheConfig.cmake"
+        INSTALL_DESTINATION "lib/cmake/pistache"
+    )
+    install(
+        FILES "${CMAKE_CURRENT_BINARY_DIR}/PistacheConfig.cmake"
         DESTINATION "lib/cmake/pistache"
-        EXPORT_LINK_INTERFACE_LIBRARIES
         COMPONENT cmake-config
-)
-
-include(CMakePackageConfigHelpers)
-configure_package_config_file(
-    "PistacheConfig.cmake.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/PistacheConfig.cmake"
-    INSTALL_DESTINATION "lib/cmake/pistache"
-)
-install(
-    FILES "${CMAKE_CURRENT_BINARY_DIR}/PistacheConfig.cmake"
-    DESTINATION "lib/cmake/pistache"
-    COMPONENT cmake-config
-)
+    )
+endif()

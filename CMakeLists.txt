@@ -1,64 +1,39 @@
-file (GLOB COMMON_SOURCE_FILES "common/*.cc")
-file (GLOB SERVER_SOURCE_FILES "server/*.cc")
-file (GLOB CLIENT_SOURCE_FILES "client/*.cc")
+cmake_minimum_required (VERSION 3.0.2)
+project (pistache)
+include(CheckCXXCompilerFlag)
 
-file (GLOB INCLUDE_FILES ${PROJECT_SOURCE_DIR}/include/pistache/*h)
+option(PISTACHE_BUILD_TESTS "build tests alongside the project" OFF)
+option(PISTACHE_BUILD_EXAMPLES "build examples alongside the project" OFF)
+option(PISTACHE_INSTALL "add pistache as install target (recommended)" ON)
 
-set(SOURCE_FILES
-    ${COMMON_SOURCE_FILES}
-    ${SERVER_SOURCE_FILES}
-    ${CLIENT_SOURCE_FILES}
-    ${INCLUDE_FILES}
-)
+CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
+CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
+if(COMPILER_SUPPORTS_CXX11)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+elseif(COMPILER_SUPPORTS_CXX0X)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+else()
+        message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
+endif()
 
-add_library(pistache ${SOURCE_FILES})
-set_target_properties(pistache PROPERTIES
-    OUTPUT_NAME "pistache"
-    VERSION ${GENERIC_LIB_VERSION}
-    SOVERSION ${GENERIC_LIB_SOVERSION}
-)
+include_directories (${CMAKE_CURRENT_SOURCE_DIR}/include)
+add_subdirectory (src)
 
-target_include_directories(pistache PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
-)
+include_directories (src)
 
-set(include_install_dir "include")
-set(lib_install_dir "lib/")
-set(bin_install_dir "bin/")
+if (PISTACHE_BUILD_EXAMPLES)
+    add_subdirectory (examples)
+endif()
 
-target_link_libraries(pistache pthread)
+if (PISTACHE_BUILD_TESTS)
+    find_package(GTest)
+    if (GTEST_FOUND)
+        include_directories(${GTEST_INCLUDE_DIRS})
+    else()
+        ADD_SUBDIRECTORY (googletest-release-1.7.0)
+        include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
+    endif()
 
-if (PISTACHE_INSTALL)
-    install(
-      TARGETS pistache
-      EXPORT ${targets_export_name}
-      ARCHIVE DESTINATION ${lib_install_dir}
-      LIBRARY DESTINATION ${lib_install_dir}
-      RUNTIME DESTINATION ${bin_install_dir}
-      INCLUDES DESTINATION ${include_install_dir})
-
-    install(
-      DIRECTORY "${PROJECT_SOURCE_DIR}/include/pistache"
-      DESTINATION ${include_install_dir}
-      FILES_MATCHING PATTERN "*.*h")
-    install(TARGETS pistache
-            EXPORT PistacheTargets
-            DESTINATION lib)
-    install(EXPORT PistacheTargets
-            DESTINATION "lib/cmake/pistache"
-            EXPORT_LINK_INTERFACE_LIBRARIES
-            COMPONENT cmake-config
-    )
-
-    include(CMakePackageConfigHelpers)
-    configure_package_config_file(
-        "PistacheConfig.cmake.in"
-        "${CMAKE_CURRENT_BINARY_DIR}/PistacheConfig.cmake"
-        INSTALL_DESTINATION "lib/cmake/pistache"
-    )
-    install(
-        FILES "${CMAKE_CURRENT_BINARY_DIR}/PistacheConfig.cmake"
-        DESTINATION "lib/cmake/pistache"
-        COMPONENT cmake-config
-    )
+    enable_testing()
+    add_subdirectory(tests)
 endif()
