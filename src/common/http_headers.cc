@@ -170,6 +170,17 @@ Collection::list() const {
     return ret;
 }
 
+std::vector<Raw>
+Collection::rawlist() const {
+    std::vector<Raw> ret;
+    ret.reserve(rawHeaders.size());
+    for (const auto& h: rawHeaders) {
+        ret.push_back(h.second);
+    }
+
+    return ret;
+}
+
 bool
 Collection::remove(const std::string& name) {
     auto tit = headers.find(name);

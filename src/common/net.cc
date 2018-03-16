@@ -104,6 +104,12 @@ Address::port() const {
 }
 
 void
+Address::clear()
+{
+    host_.clear();
+}
+
+void
 Address::init(std::string addr) {
     auto pos = addr.find(':');
 

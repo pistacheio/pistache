@@ -80,6 +80,25 @@ namespace {
         #undef OUT
     }
 
+    bool writeRawHeaders(const Header::Collection& headers, DynamicStreamBuf& buf) {
+        #define OUT(...) \
+            do { \
+                __VA_ARGS__; \
+                if (!os)  return false; \
+            } while (0)
+
+        std::ostream os(&buf);
+
+        for (const auto& header: headers.rawlist()) {
+            OUT(os << header.name() << ": " << header.value());
+            OUT(os << crlf);
+        }
+
+        return true;
+
+        #undef OUT
+    }
+
     bool writeCookies(const CookieJar& cookies, DynamicStreamBuf& buf) {
         #define OUT(...) \
             do { \
@@ -532,6 +551,11 @@ Request::body() const {
     return body_;
 }
 
+Address
+Request::address() const {
+    return addr_;
+}
+
 const Header::Collection&
 Request::headers() const {
     return headers_;
@@ -632,6 +656,7 @@ ResponseWriter::putOnWire(const char* data, size_t len)
 
         OUT(writeStatusLine(version_, code_, buf_));
         OUT(writeHeaders(headers_, buf_));
+        OUT(writeRawHeaders(headers_, buf_));
         OUT(writeCookies(cookies_, buf_));
 
         /* @Todo @Major:
