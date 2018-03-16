@@ -732,11 +732,9 @@ serveFile(ResponseWriter& response, const char* fileName, const Mime::MediaType&
 void
 Handler::onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer>& peer) {
     auto& parser = getParser(peer);
+    parser.request.addr_ = peer->address();
     try {
-        if (!parser.feed(buffer, len)) {
-            parser.reset();
-            throw HttpError(Code::Request_Entity_Too_Large, "Request exceeded maximum buffer size");
-        }
+        parser.feed(buffer, len);
 
         auto state = parser.parse();
         if (state == Private::State::Done) {
