@@ -104,7 +104,8 @@ public:
     }
 
     bool feed(const char* data, size_t len) {
-        if (size + len >= buffSize) {
+
+        if (size + len > buffSize) {
             setLength(size + len);
         }
 
