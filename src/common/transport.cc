@@ -155,7 +155,7 @@ Transport::handleIncoming(const std::shared_ptr<Peer>& peer) {
 
         else {
             totalBytes += bytes;
-            if (totalBytes >= currentBytes) {
+            if (totalBytes > currentBytes) {
                 currentBytes = totalBytes  + (totalBytes * 0.4);
                 buffer.resize(currentBytes);
             }
