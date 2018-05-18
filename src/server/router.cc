@@ -287,6 +287,36 @@ Router::options(std::string resource, Route::Handler handler) {
 }
 
 void
+Router::clear_get(std::string resource) {
+    clearRoutes(Http::Method::Get, std::move(resource));
+}
+
+void
+Router::clear_post(std::string resource) {
+    clearRoutes(Http::Method::Post, std::move(resource));
+}
+
+void
+Router::clear_put(std::string resource) {
+    clearRoutes(Http::Method::Put, std::move(resource));
+}
+
+void
+Router::clear_patch(std::string resource) {
+    clearRoutes(Http::Method::Patch, std::move(resource));
+}
+
+void
+Router::clear_del(std::string resource) {
+    clearRoutes(Http::Method::Delete, std::move(resource));
+}
+
+void
+Router::clear_options(std::string resource) {
+    clearRoutes(Http::Method::Options, std::move(resource));
+}
+
+void
 Router::addCustomHandler(Route::Handler handler) {
     customHandlers.push_back(std::move(handler));
 }
@@ -321,6 +351,18 @@ Router::addRoute(Http::Method method, std::string resource, Route::Handler handl
     r.push_back(Route(std::move(resource), method, std::move(handler)));
 }
 
+void Router::clearRoutes(Http::Method method, std::string resource) {
+    auto& r = routes[method];
+    for(int i = 0; i < r.size(); i++) {
+        if (resource == r[i].resource()) {
+            // move and erase, does not preserve order but has O(1) complexity
+            auto tmp = r[i];
+            r[i] = r[r.size() - 1];
+            r.pop_back();
+        }
+    }
+}
+
 
 namespace Routes {
 
@@ -346,6 +388,30 @@ void Delete(Router& router, std::string resource, Route::Handler handler) {
 
 void Options(Router& router, std::string resource, Route::Handler handler) {
     router.options(std::move(resource), std::move(handler));
+}
+
+void ClearGet(Router& router, std::string resource) {
+    router.clear_get(std::move(resource));
+}
+
+void ClearPost(Router& router, std::string resource) {
+    router.clear_post(std::move(resource));
+}
+
+void ClearPut(Router& router, std::string resource) {
+    router.clear_put(std::move(resource));
+}
+
+void ClearPatch(Router& router, std::string resource) {
+    router.clear_patch(std::move(resource));
+}
+
+void ClearDelete(Router& router, std::string resource) {
+    router.clear_del(std::move(resource));
+}
+
+void ClearOptions(Router& router, std::string resource) {
+    router.clear_options(std::move(resource));
 }
 
 } // namespace Routes

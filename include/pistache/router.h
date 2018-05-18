@@ -73,6 +73,10 @@ struct Route {
     {
     }
 
+    std::string& resource() {
+        return resource_;
+    }
+
     std::tuple<bool, std::vector<TypedParam>, std::vector<TypedParam>>
     match(const Http::Request& req) const;
 
@@ -154,12 +158,20 @@ public:
     void del(std::string resource, Route::Handler handler);
     void options(std::string resource, Route::Handler handler);
 
+    void clear_get(std::string resource);
+    void clear_post(std::string resource);
+    void clear_put(std::string resource);
+    void clear_patch(std::string resource);
+    void clear_del(std::string resource);
+    void clear_options(std::string resource);
+
     void addCustomHandler(Route::Handler handler);
 
     Status route(const Http::Request& request, Http::ResponseWriter response);
 
 private:
     void addRoute(Http::Method method, std::string resource, Route::Handler handler);
+    void clearRoutes(Http::Method method, std::string resource);
     std::unordered_map<Http::Method, std::vector<Route>> routes;
 
     std::vector<Route::Handler> customHandlers;
@@ -213,6 +225,13 @@ namespace Routes {
     void Patch(Router& router, std::string resource, Route::Handler handler);
     void Delete(Router& router, std::string resource, Route::Handler handler);
     void Options(Router& router, std::string resource, Route::Handler handler);
+
+    void ClearGet(Router& router, std::string resource);
+    void ClearPost(Router& router, std::string resource);
+    void ClearPut(Router& router, std::string resource);
+    void ClearPatch(Router& router, std::string resource);
+    void ClearDelete(Router& router, std::string resource);
+    void ClearOptions(Router& router, std::string resource);
 
     namespace details {
         template <class... Args>
