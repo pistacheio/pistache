@@ -10,5 +10,5 @@ Version: @version@
 Requires:
 Libs: -L'${libdir}/' -lpistache
 Libs.private:
-Cflags: -I'${includedir}/pistache/'
+Cflags: -I'${includedir}/'
 
