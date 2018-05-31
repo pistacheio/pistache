@@ -156,10 +156,11 @@ struct Buffer {
 };
 
 struct FileBuffer {
-    FileBuffer() { }
+    FileBuffer() = delete;
 
     FileBuffer(const char* fileName);
     FileBuffer(const std::string& fileName);
+    ~FileBuffer();
 
     std::string fileName() const { return fileName_; }
     Fd fd() const { return fd_; }

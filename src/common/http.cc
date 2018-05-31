@@ -675,6 +675,7 @@ serveFile(ResponseWriter& response, const char* fileName, const Mime::MediaType&
     }
 
     int res = ::fstat(fd, &sb);
+    close(fd); // Done with fd, close before error can be thrown
     if (res == -1) {
         throw HttpError(Code::Internal_Server_Error, "");
     }
