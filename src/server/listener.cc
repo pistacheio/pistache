@@ -40,8 +40,9 @@ namespace {
         }
     }
 
-    void handle_sigint(int) {
+    void handle_sigint(int signum) {
         closeListener();
+        exit(signum);
     }
 }
 
