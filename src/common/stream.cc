@@ -16,21 +16,15 @@
 namespace Pistache {
 
 FileBuffer::FileBuffer(const char* fileName)
-    : fileName_(fileName), fd_(-1)
+    : fileName_(fileName)
 {
     init(fileName);
 }
 
 FileBuffer::FileBuffer(const std::string& fileName)
-    : fileName_(fileName), fd_(-1)
+    : fileName_(fileName)
 {
     init(fileName.c_str());
-}
-
-FileBuffer::~FileBuffer()
-{
-    if (fd_ > -1)
-        close(fd_);
 }
 
 void
