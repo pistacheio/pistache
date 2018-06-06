@@ -1,7 +1,21 @@
 #pragma once
+
+#define CUSTOM_STRING_VIEW 1
+
 #if __cplusplus >= 201703L
-#include <string_view>
-#else
+#   if defined(__has_include)
+#       if __has_include(<string_view>)
+#           undef CUSTOM_STRING_VIEW
+#           include <string_view>
+#       elif __has_include(<experimental/string_view>)
+#           undef CUSTOM_STRING_VIEW
+#           include <experimental/string_view>
+#           define std::string_view std::experimental::string_view
+#       endif
+#   endif
+#endif
+
+#ifdef CUSTOM_STRING_VIEW
 
 #include <endian.h>
 
