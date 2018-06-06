@@ -62,7 +62,7 @@ namespace std {
                     !std::lexicographical_compare(rhs.data_, rhs.data_ + rhs.size_, data_, data_ + size_));
         }
 
-        constexpr string_view &
+        string_view &
         operator=(const string_view &view) noexcept = default;
 
         size_type find(string_view v, size_type pos = 0) const noexcept {
