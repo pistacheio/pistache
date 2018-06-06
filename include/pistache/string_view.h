@@ -10,7 +10,9 @@
 #       elif __has_include(<experimental/string_view>)
 #           undef CUSTOM_STRING_VIEW
 #           include <experimental/string_view>
-#           define std::string_view std::experimental::string_view
+			namespace std {
+				typedef experimental::string_view string_view;
+			}
 #       endif
 #   endif
 #endif
@@ -40,7 +42,7 @@ namespace std {
 
         constexpr string_view(const char *s, size_type count) : data_(s), size_(count) { }
 
-        constexpr string_view(const char *s) : data_(s), size_(strlen(s)) { }
+        string_view(const char *s) : data_(s), size_(strlen(s)) { }
 
 
         string_view
