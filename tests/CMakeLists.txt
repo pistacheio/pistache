@@ -4,7 +4,7 @@ function(pistache_test test_name)
 
     add_executable(${TEST_EXECUTABLE} ${TEST_SOURCE})
     target_link_libraries(${TEST_EXECUTABLE} gtest gtest_main pistache)
-    add_test(${test_name} ${TEST_EXECUTABLE})
+    add_test(NAME ${test_name} COMMAND ${TEST_EXECUTABLE})
 endfunction()
 
 
