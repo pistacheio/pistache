@@ -169,6 +169,7 @@ namespace Async {
             Core(State state, TypeId id)
                 : state(state)
                 , id(id)
+                , is_construct(false)
             { }
 
             State state;
@@ -188,6 +189,7 @@ namespace Async {
             std::mutex mtx;
             std::vector<std::shared_ptr<Request>> requests;
             TypeId id;
+            bool is_construct;
 
             virtual void* memory() = 0;
 
@@ -203,8 +205,12 @@ namespace Async {
                 }
 
                 void *mem = memory();
+                if (is_construct) {
+                    reinterpret_cast<T *>(mem)->~T();
+                };
                 new (mem) T(std::forward<Args>(args)...);
                 state = State::Fulfilled;
+                is_construct = true;
             }
 
         };
@@ -214,7 +220,11 @@ namespace Async {
             CoreT()
                 : Core(State::Pending, TypeId::of<T>())
             { }
-
+            ~CoreT() {
+               if(is_construct) {
+                  reinterpret_cast<T *>(&storage)->~T();
+               }
+            }
             template<class Other>
             struct Rebind {
                 typedef CoreT<Other> Type;
