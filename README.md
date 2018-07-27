@@ -38,7 +38,7 @@ Now, compile the sources:
 
 If you want the examples built, then change change the cmake above to:
 
-    cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DCPISTACHE_BUILD_EXAMPLES=true ..
+    cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DPISTACHE_BUILD_EXAMPLES=true ..
 
 After running the above, you can then cd into the build/examples directory and run make.
 
