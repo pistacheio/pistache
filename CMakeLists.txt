@@ -37,3 +37,49 @@ if (PISTACHE_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
+
+# Set version...
+
+    # Major and minor version...
+    set(VERSION_MAJOR 0)
+    set(VERSION_MINOR 0)
+
+    # Make available in a header file...
+    configure_file (
+        "include/pistache/version.h.in"
+        "include/pistache/version.h"
+        @ONLY
+    )
+
+    # Install header...
+    install (
+        FILES
+        ${CMAKE_BINARY_DIR}/include/pistache/version.h
+        DESTINATION
+        include/pistache/
+    )
+
+# Configure the pkg-config metadata...
+
+    # Initialize the metadata variables to support remote builds...
+    set(prefix         ${CMAKE_INSTALL_PREFIX})
+    set(exec_prefix    ${CMAKE_INSTALL_PREFIX}/bin)
+    set(libdir         ${CMAKE_INSTALL_PREFIX}/lib)
+    set(includedir     ${CMAKE_INSTALL_PREFIX}/include)
+    set(version        ${VERSION_MAJOR}.${VERSION_MINOR})
+
+    # Perform substitutions...
+    configure_file (
+        "libpistache.pc.in"
+        "libpistache.pc"
+        @ONLY
+    )
+
+    # Install pkg-config metadata into standard location within the prefix...
+    install (
+        FILES
+        ${CMAKE_BINARY_DIR}/libpistache.pc
+        DESTINATION
+        lib/pkgconfig/
+    )
+

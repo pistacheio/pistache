@@ -90,14 +90,14 @@ public:
     }
 
     T *post(T *newData) {
-        auto *ret = Mailbox<T>::post(newData);
+        auto *_ret = Mailbox<T>::post(newData);
 
         if (isBound()) {
             uint64_t val = 1;
             TRY(write(event_fd, &val, sizeof val));
         }
 
-        return ret;
+        return _ret;
     }
 
     T *clear() {
