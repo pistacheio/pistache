@@ -42,9 +42,9 @@ If you want the examples built, then change change the cmake above to:
 
 After running the above, you can then cd into the build/examples directory and run make.
 
-Optionally, you can also build and run the tests:
+Optionally, you can also build and run the tests (tests require the examples):
 
-    cmake -G "Unix Makefiles" -DPISTACHE_BUILD_TESTS=true ..
+    cmake -G "Unix Makefiles" -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_TESTS=true ..
     make test
 
 Be patient, async_test can take some time before completing.
