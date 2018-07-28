@@ -10,10 +10,11 @@ Full documentation is located at [http://pistache.io](http://pistache.io).
 
 # Contributing
 
-Pistache is an open-source project and will always stay open-source. However, working on an open-source project while having a full-time job is sometimes a difficult task to accomplish.
+Pistache is an open-source project and will always stay open-source.  Contributors are welcome!
 
-That's why your help is needed. If you would like to contribute to the project in any way (submitting ideas, fixing bugs, writing documentation, ...), please join the
-[cpplang Slack channel](https://cpplang.now.sh/). Drop a private message to `@octal` and I will invite you to the channel dedicated to Pistache.
+Pistache was created by Mathieu Stefani, who can be reached via [cpplang Slack channel](https://cpplang.now.sh/). Drop a private message to `@octal` and he will invite you to the channel dedicated to Pistache.
+
+For those that prefer IRC over Slack, the rag-tag crew of maintainers are on #pistache on freenode.
 
 Hope to see you there !
 
