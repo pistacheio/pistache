@@ -22,11 +22,11 @@ Hope to see you there !
 
 To download the latest available release, clone the repository over github.
 
-git clone https://github.com/oktal/pistache.git
+    git clone https://github.com/oktal/pistache.git
 
 Then, init the submodules:
 
-git submodule update --init
+    git submodule update --init
 
 Now, compile the sources:
 
