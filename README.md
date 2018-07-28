@@ -38,17 +38,18 @@ Now, compile the sources:
 
 If you want the examples built, then change change the cmake above to:
 
-    cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DPISTACHE_BUILD_EXAMPLES=true    ..
+    cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DPISTACHE_BUILD_EXAMPLES=true ..
 
 After running the above, you can then cd into the build/examples directory and run make.
 
-Optionally, you can also run the tests:
+Optionally, you can also build and run the tests:
 
+    cmake -G "Unix Makefiles" -DPISTACHE_BUILD_TESTS=true ..
     make test
 
 Be patient, async_test can take some time before completing.
 
-And that’s it, now you can start playing with your newly installed Pistache framework.
+And that's it, now you can start playing with your newly installed Pistache framework.
 
 # Example
 
