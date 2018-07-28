@@ -230,19 +230,19 @@ public:
 
 private:
     Timeout(const Timeout& other)
-        : transport(other.transport)
-        , handler(other.handler)
+        : handler(other.handler)
         , request(other.request)
+        , transport(other.transport)
         , armed(other.armed)
         , timerFd(other.timerFd)
     { }
 
-    Timeout(Tcp::Transport* transport,
-            Handler* handler,
-            Request request)
-        : transport(transport)
-        , handler(handler)
-        , request(std::move(request))
+    Timeout(Tcp::Transport* transport_,
+            Handler* handler_,
+            Request request_)
+        : handler(handler_)
+        , request(std::move(request_))
+        , transport(transport_)
         , armed(false)
         , timerFd(-1)
     {
@@ -517,7 +517,8 @@ public:
        return &buf_;
     }
 
-    DynamicStreamBuf *rdbuf(DynamicStreamBuf* other) {
+    DynamicStreamBuf *rdbuf([[maybe_unused]] DynamicStreamBuf* other) {
+       UNUSED(other)
        throw std::domain_error("Unimplemented");
     }
 
@@ -613,9 +614,9 @@ namespace Private {
     };
 
     struct BodyStep : public Step {
-        BodyStep(Message* message)
-            : Step(message)
-            , chunk(message)
+        BodyStep(Message* message_)
+            : Step(message_)
+            , chunk(message_)
             , bytesRead(0)
         { }
 
@@ -625,8 +626,8 @@ namespace Private {
         struct Chunk {
             enum Result { Complete, Incomplete, Final };
 
-            Chunk(Message* message)
-              : message(message)
+            Chunk(Message* message_)
+              : message(message_)
               , bytesRead(0)
               , size(-1)
             { }
@@ -653,15 +654,17 @@ namespace Private {
 
     struct ParserBase {
         ParserBase()
-            : currentStep(0)
-            , cursor(&buffer)
+            : cursor(&buffer)
+            , currentStep(0)
         {
         }
 
         ParserBase(const char* data, size_t len)
-            : currentStep(0)
-            , cursor(&buffer)
+            : cursor(&buffer)
+            , currentStep(0)
         {
+            UNUSED(data)
+            UNUSED(len)
         }
 
         ParserBase(const ParserBase& other) = delete;

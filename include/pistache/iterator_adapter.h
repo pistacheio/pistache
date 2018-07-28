@@ -14,8 +14,8 @@ struct FlatMapIteratorAdapter {
     typedef typename Map::mapped_type Value;
     typedef typename Map::const_iterator const_iterator;
 
-    FlatMapIteratorAdapter(const_iterator it)
-        : it(it)
+    FlatMapIteratorAdapter(const_iterator _it)
+        : it(_it)
     { }
 
     FlatMapIteratorAdapter operator++() {
