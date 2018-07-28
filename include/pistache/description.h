@@ -379,8 +379,8 @@ public:
     Description& basePath(std::string value);
 
     template<typename... Schemes>
-    Description& schemes(Schemes... schemes) {
-        Scheme s[sizeof...(Schemes)] = { schemes... };
+    Description& schemes(Schemes... _schemes) {
+        Scheme s[sizeof...(Schemes)] = { _schemes... };
         std::copy(std::begin(s), std::end(s), std::back_inserter(schemes_));
         return *this;
     }
