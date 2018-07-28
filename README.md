@@ -49,7 +49,7 @@ Optionally, you can also build and run the tests:
 
 Be patient, async_test can take some time before completing.
 
-And that’s it, now you can start playing with your newly installed Pistache framework.
+And that's it, now you can start playing with your newly installed Pistache framework.
 
 # Example
 
