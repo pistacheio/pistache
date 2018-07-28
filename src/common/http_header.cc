@@ -430,21 +430,19 @@ AccessControlAllowOrigin::write(std::ostream& os) const {
 
 void
 EncodingHeader::parseRaw(const char* str, size_t len) {
-    // TODO: case-insensitive
-    //
-    if (!strncmp(str, "gzip", len)) {
+    if (!strncasecmp(str, "gzip", len)) {
         encoding_ = Encoding::Gzip;
     }
-    else if (!strncmp(str, "deflate", len)) {
+    else if (!strncasecmp(str, "deflate", len)) {
         encoding_ = Encoding::Deflate;
     }
-    else if (!strncmp(str, "compress", len)) {
+    else if (!strncasecmp(str, "compress", len)) {
         encoding_ = Encoding::Compress;
     }
-    else if (!strncmp(str, "identity", len)) {
+    else if (!strncasecmp(str, "identity", len)) {
         encoding_ = Encoding::Identity;
     }
-    else if (!strncmp(str, "chunked", len)) {
+    else if (!strncasecmp(str, "chunked", len)) {
         encoding_ = Encoding::Chunked;
     }
     else {
