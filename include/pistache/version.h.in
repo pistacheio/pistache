@@ -1,0 +1,16 @@
+/* version.h
+   Kip Warner, 29 May 2018
+
+   Version constants
+*/
+
+#pragma once
+
+namespace Pistache {
+namespace Version {
+
+    static constexpr int Major = @VERSION_MAJOR@;
+    static constexpr int Minor = @VERSION_MINOR@;
+} // namespace Version
+} // namespace Pistache
+

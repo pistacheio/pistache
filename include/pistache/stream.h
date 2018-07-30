@@ -133,10 +133,10 @@ struct Buffer {
         , isOwned(false)
     { }
 
-    Buffer(const char * const data, size_t len, bool own = false)
-        : data(data)
-        , len(len)
-        , isOwned(own)
+    Buffer(const char * const _data, size_t _len, bool _own = false)
+        : data(_data)
+        , len(_len)
+        , isOwned(_own)
     { }
 
     Buffer detach(size_t fromIndex = 0) const {
@@ -226,8 +226,8 @@ private:
 
 class StreamCursor {
 public:
-    StreamCursor(StreamBuf<char>* buf, size_t initialPos = 0)
-        : buf(buf)
+    StreamCursor(StreamBuf<char>* _buf, size_t initialPos = 0)
+        : buf(_buf)
     {
         advance(initialPos);
     }
@@ -235,8 +235,8 @@ public:
     static constexpr int Eof = -1;
 
     struct Token {
-        Token(StreamCursor& cursor)
-            : cursor(cursor)
+        Token(StreamCursor& _cursor)
+            : cursor(_cursor)
             , position(cursor.buf->position())
             , eback(cursor.buf->begptr())
             , gptr(cursor.buf->curptr())
@@ -270,8 +270,8 @@ public:
     };
 
     struct Revert {
-        Revert(StreamCursor& cursor)
-            : cursor(cursor)
+        Revert(StreamCursor& _cursor)
+            : cursor(_cursor)
             , eback(cursor.buf->begptr())
             , gptr(cursor.buf->curptr())
             , egptr(cursor.buf->endptr())

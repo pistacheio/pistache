@@ -228,7 +228,7 @@ namespace Routes {
         template<typename... Args>
         void static_checks() {
             static_assert(sizeof...(Args) == 2, "Function should take 2 parameters");
-            typedef details::TypeList<Args...> Arguments;
+//            typedef details::TypeList<Args...> Arguments;
             // Disabled now as it
             // 1/ does not compile
             // 2/ might not be relevant
