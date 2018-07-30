@@ -1,6 +1,6 @@
 /* http.h
    Mathieu Stefani, 13 August 2015
-   
+
    Http Layer
 */
 
@@ -140,7 +140,7 @@ public:
         drop of 5x with that lock
 
         If this turns out to be a problem, we might be able to replace the weak_ptr
-        trick to detect peer disconnection by a plain old "observer" pointer to a 
+        trick to detect peer disconnection by a plain old "observer" pointer to a
         tcp connection with a "stale" state
     */
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
@@ -230,19 +230,19 @@ public:
 
 private:
     Timeout(const Timeout& other)
-        : transport(other.transport)
-        , handler(other.handler)
+        : handler(other.handler)
         , request(other.request)
+        , transport(other.transport)
         , armed(other.armed)
         , timerFd(other.timerFd)
     { }
 
-    Timeout(Tcp::Transport* transport,
-            Handler* handler,
-            Request request)
-        : transport(transport)
-        , handler(handler)
-        , request(std::move(request))
+    Timeout(Tcp::Transport* transport_,
+            Handler* handler_,
+            Request request_)
+        : handler(handler_)
+        , request(std::move(request_))
+        , transport(transport_)
         , armed(false)
         , timerFd(-1)
     {
@@ -511,16 +511,23 @@ public:
         return timeout_;
     }
 
+    std::shared_ptr<Tcp::Peer> peer() const {
+        if (peer_.expired())
+            throw std::runtime_error("Write failed: Broken pipe");
+
+        return peer_.lock();
+    }
+
     // Unsafe API
 
     DynamicStreamBuf *rdbuf() {
        return &buf_;
     }
 
-    DynamicStreamBuf *rdbuf(DynamicStreamBuf* other) {
+    DynamicStreamBuf *rdbuf([[maybe_unused]] DynamicStreamBuf* other) {
+       UNUSED(other)
        throw std::domain_error("Unimplemented");
     }
-
 
     ResponseWriter clone() const {
         return ResponseWriter(*this);
@@ -531,7 +538,7 @@ private:
         : Response(request.version())
         , buf_(DefaultStreamSize)
         , transport_(transport)
-        , timeout_(transport, handler, std::move(request)) 
+        , timeout_(transport, handler, std::move(request))
     { }
 
     ResponseWriter(const ResponseWriter& other)
@@ -541,13 +548,6 @@ private:
         , transport_(other.transport_)
         , timeout_(other.timeout_)
     { }
-
-    std::shared_ptr<Tcp::Peer> peer() const {
-        if (peer_.expired())
-            throw std::runtime_error("Write failed: Broken pipe");
-
-        return peer_.lock();
-    }
 
     template<typename Ptr>
     void associatePeer(const Ptr& peer) {
@@ -578,8 +578,8 @@ namespace Private {
         Step(Message* request)
             : message(request)
         { }
-       
-        virtual ~Step() = default;       
+
+        virtual ~Step() = default;
 
         virtual State apply(StreamCursor& cursor) = 0;
 
@@ -613,9 +613,9 @@ namespace Private {
     };
 
     struct BodyStep : public Step {
-        BodyStep(Message* message)
-            : Step(message)
-            , chunk(message)
+        BodyStep(Message* message_)
+            : Step(message_)
+            , chunk(message_)
             , bytesRead(0)
         { }
 
@@ -625,8 +625,8 @@ namespace Private {
         struct Chunk {
             enum Result { Complete, Incomplete, Final };
 
-            Chunk(Message* message)
-              : message(message)
+            Chunk(Message* message_)
+              : message(message_)
               , bytesRead(0)
               , size(-1)
             { }
@@ -653,15 +653,17 @@ namespace Private {
 
     struct ParserBase {
         ParserBase()
-            : currentStep(0)
-            , cursor(&buffer)
+            : cursor(&buffer)
+            , currentStep(0)
         {
         }
 
         ParserBase(const char* data, size_t len)
-            : currentStep(0)
-            , cursor(&buffer)
+            : cursor(&buffer)
+            , currentStep(0)
         {
+            UNUSED(data)
+            UNUSED(len)
         }
 
         ParserBase(const ParserBase& other) = delete;
@@ -688,7 +690,7 @@ namespace Private {
     template<> struct Parser<Http::Request> : public ParserBase {
         Parser()
             : ParserBase()
-        { 
+        {
             allSteps[0].reset(new RequestLineStep(&request));
             allSteps[1].reset(new HeadersStep(&request));
             allSteps[2].reset(new BodyStep(&request));

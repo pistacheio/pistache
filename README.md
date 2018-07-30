@@ -10,10 +10,11 @@ Full documentation is located at [http://pistache.io](http://pistache.io).
 
 # Contributing
 
-Pistache is an open-source project and will always stay open-source. However, working on an open-source project while having a full-time job is sometimes a difficult task to accomplish.
+Pistache is an open-source project and will always stay open-source.  Contributors are welcome!
 
-That's why your help is needed. If you would like to contribute to the project in any way (submitting ideas, fixing bugs, writing documentation, ...), please join the
-[cpplang Slack channel](https://cpplang.now.sh/). Drop a private message to `@octal` and I will invite you to the channel dedicated to Pistache.
+Pistache was created by Mathieu Stefani, who can be reached via [cpplang Slack channel](https://cpplang.now.sh/). Drop a private message to `@octal` and he will invite you to the channel dedicated to Pistache.
+
+For those that prefer IRC over Slack, the rag-tag crew of maintainers are on #pistache on freenode.
 
 Hope to see you there !
 
@@ -21,11 +22,11 @@ Hope to see you there !
 
 To download the latest available release, clone the repository over github.
 
-git clone https://github.com/oktal/pistache.git
+    git clone https://github.com/oktal/pistache.git
 
 Then, init the submodules:
 
-git submodule update --init
+    git submodule update --init
 
 Now, compile the sources:
 
@@ -38,17 +39,18 @@ Now, compile the sources:
 
 If you want the examples built, then change change the cmake above to:
 
-    cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DCPISTACHE_BUILD_EXAMPLES=true    ..
+    cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DPISTACHE_BUILD_EXAMPLES=true ..
 
 After running the above, you can then cd into the build/examples directory and run make.
 
-Optionally, you can also run the tests:
+Optionally, you can also build and run the tests (tests require the examples):
 
+    cmake -G "Unix Makefiles" -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_TESTS=true ..
     make test
 
 Be patient, async_test can take some time before completing.
 
-And that’s it, now you can start playing with your newly installed Pistache framework.
+And that's it, now you can start playing with your newly installed Pistache framework.
 
 # Example
 
