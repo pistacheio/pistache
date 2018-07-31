@@ -326,7 +326,7 @@ public:
         fullDate_(date)
     { }
 
-    void parseRaw(const char* str, size_t len);
+    void parse(const std::string &str);
     void write(std::ostream& os) const;
 
     FullDate fullDate() const { return fullDate_; }

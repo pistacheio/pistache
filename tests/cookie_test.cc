@@ -1,6 +1,7 @@
 #include "gtest/gtest.h"
 
 #include <pistache/cookie.h>
+#include <pistache/date.h>
 
 using namespace Pistache;
 using namespace Pistache::Http;
@@ -46,12 +47,11 @@ TEST(cookie_test, attributes_test) {
         ASSERT_EQ(c.value, "en-US");
         auto expires = c.expires.getOrElse(FullDate());
         auto date = expires.date();
-        ASSERT_EQ(date.tm_year, 121);
-        ASSERT_EQ(date.tm_mon, 5);
-        ASSERT_EQ(date.tm_mday, 9);
-        ASSERT_EQ(date.tm_hour, 10);
-        ASSERT_EQ(date.tm_min, 18);
-        ASSERT_EQ(date.tm_sec, 14);
+        
+        using namespace std::chrono;
+        FullDate::time_point expected_time_point = date::sys_days(date::year{2021}/6/9) 
+                                                    + hours(10) + minutes(18) + seconds(14);
+        ASSERT_EQ(date, expected_time_point);
     });
 
     parse("lang=en-US; Path=/; Domain=example.com;", [](const Cookie& c) {
@@ -102,15 +102,10 @@ TEST(cookie_test, write_test) {
     ASSERT_EQ(oss.str(), "lang=fr-FR; Path=/; Domain=example.com");
 
     Cookie c2("lang", "en-US");
-    std::tm expires;
-    std::memset(&expires, 0, sizeof expires);
-    expires.tm_isdst = 1;
-    expires.tm_mon = 2;
-    expires.tm_year = 118;
-    expires.tm_mday = 16;
-    expires.tm_hour = 17;
-    expires.tm_min = 0;
-    expires.tm_sec = 0;
+    using namespace std::chrono;
+    
+    FullDate::time_point expires = date::sys_days(date::year{118}/2/16) + hours(17);
+    
     c2.path = Some(std::string("/"));
     c2.expires = Some(FullDate(expires));
 
