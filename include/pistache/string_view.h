@@ -83,7 +83,7 @@ namespace std {
 
         size_type find(string_view v, size_type pos = 0) const noexcept {
             for(; size_ - pos >= v.size_; pos++) {
-                string_view compare = this->substr(pos, v.size_);
+                string_view compare = substr(pos, v.size_);
                 if (v == compare) {
                     return pos;
                 }
@@ -105,10 +105,10 @@ namespace std {
 
         size_type rfind(string_view v, size_type pos = npos) const noexcept {
             if (pos >= size_) {
-                pos = size_ - 1;
+                pos = size_ - v.size_;
             }
-            for(; pos + 1 >= v.size_; pos--) {
-                string_view compare = this->substr(pos, v.size_);
+            for(; pos >= 0 && pos != npos; pos--) {
+                string_view compare = substr(pos, v.size_);
                 if (v == compare) {
                     return pos;
                 }
@@ -135,6 +135,9 @@ namespace std {
 
     template<>
     struct hash<string_view> {
+    //-----------------------------------------------------------------------------
+    // MurmurHash3 was written by Austin Appleby, and is placed in the public
+    // domain. The author hereby disclaims copyright to this source code.
     private:
 #ifdef __GNUC__
 #define FORCE_INLINE __attribute__((always_inline)) inline
