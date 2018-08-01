@@ -87,7 +87,6 @@ protected:
 };
 
 namespace Uri {
-    typedef std::string Fragment;
 
     class Query {
     public:
@@ -97,12 +96,15 @@ namespace Uri {
         void add(std::string name, std::string value);
         Optional<std::string> get(const std::string& name) const;
         bool has(const std::string& name) const;
-
+        // Return empty string or "?key1=value1&key2=value2" if query exist
+        std::string as_str() const;
+        
         void clear() {
             params.clear();
         }
 
     private:
+        //first is key second is value
         std::unordered_map<std::string, std::string> params;
     };
 } // namespace Uri
