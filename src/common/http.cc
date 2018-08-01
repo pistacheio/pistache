@@ -500,6 +500,18 @@ namespace Uri {
 
         return Some(it->second);
     }
+    
+    std::string 
+    Query::as_str() const {
+        std::string query_url;
+        for(const auto &e : params) {
+            query_url += "&" + e.first + "=" + e.second;
+        }
+        if(not query_url.empty()) {
+            query_url[0] = '?'; // replace first `&` with `?`
+        } else {/* query_url is empty */}
+        return query_url;
+    }
 
     bool
     Query::has(const std::string& name) const {
