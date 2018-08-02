@@ -156,6 +156,10 @@ public:
 
     void addCustomHandler(Route::Handler handler);
 
+    void addNotFoundHandler(Route::Handler handler);
+    inline bool hasNotFoundHandler() { return notFoundHandler != nullptr; }
+    void invokeNotFoundHandler(const Http::Request &req, Http::ResponseWriter resp) const;
+
     Status route(const Http::Request& request, Http::ResponseWriter response);
 
 private:
@@ -163,6 +167,8 @@ private:
     std::unordered_map<Http::Method, std::vector<Route>> routes;
 
     std::vector<Route::Handler> customHandlers;
+
+    Route::Handler notFoundHandler;
 };
 
 namespace Private {
@@ -213,6 +219,8 @@ namespace Routes {
     void Patch(Router& router, std::string resource, Route::Handler handler);
     void Delete(Router& router, std::string resource, Route::Handler handler);
     void Options(Router& router, std::string resource, Route::Handler handler);
+
+    void NotFound(Router& router, Route::Handler handler);
 
     namespace details {
         template <class... Args>
