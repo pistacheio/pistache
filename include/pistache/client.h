@@ -17,6 +17,8 @@
 #include <pistache/timer_pool.h>
 #include <pistache/reactor.h>
 #include <pistache/view.h>
+#include <pistache/sslclient.h>
+
 
 namespace Pistache {
 namespace Http {
@@ -24,7 +26,86 @@ namespace Http {
 class ConnectionPool;
 class Transport;
 
-std::pair<StringView, StringView> splitUrl(const std::string& url);
+class UrlParts;
+
+class DualFd {
+private:
+    Fd mFd;
+    #ifdef PIST_INCLUDE_SSL
+    std::shared_ptr<SslConnection> mSslConn;
+    #endif
+
+public:
+    #ifdef PIST_INCLUDE_SSL
+    DualFd(std::shared_ptr<SslConnection> _sslConn) :
+        mFd(-1), mSslConn(_sslConn) { }
+    #endif
+    DualFd(Fd _fd) : mFd(_fd) { }
+    
+    int getFd() const {
+        #ifdef PIST_INCLUDE_SSL
+        return(mSslConn ? mSslConn->getFd() : mFd);
+        #else
+        return(mFd);
+        #endif
+    }
+    int getNonSslSocketFd() const { return(mFd); }
+    #ifdef PIST_INCLUDE_SSL
+    std::shared_ptr<SslConnection> getSslConn() { return(mSslConn); }
+    #endif
+
+    int close() 
+    {   if (mFd > 0) {int res = ::close(mFd); mFd = -1; return(res);}
+        #ifdef PIST_INCLUDE_SSL
+        if (mSslConn)
+            {int res = mSslConn->close(); mSslConn = NULL; return(res);}
+        #endif
+        errno = EBADF; return(-1);
+    }
+};
+typedef std::shared_ptr<DualFd> DualFdSPtr;
+
+#ifdef PIST_INCLUDE_SSL
+class SslConnAddr 
+{
+private:
+    const std::string mHostName;
+    unsigned int mHostPort; // zero => default
+    const std::string mHostResource;
+    
+public:
+    SslConnAddr(const std::string & _hostName,
+                unsigned int _hostPort, // zero => default
+                const std::string & _hostResource);//without host, w/o queries
+
+    const std::string & getHostName() {return(mHostName);}
+    unsigned int getHostPort() {return(mHostPort);}  // zero => default
+    const std::string & getHostResource() {return(mHostResource);}
+};
+typedef std::shared_ptr<SslConnAddr> SslConnAddrSPtr;
+#endif
+
+class Connection;
+struct ConnectionEntry {
+        ConnectionEntry(
+                Async::Resolver resolve, Async::Rejection reject,
+                std::shared_ptr<Connection> connection, const struct sockaddr* addr, socklen_t addr_len)
+            : resolve(std::move(resolve))
+            , reject(std::move(reject))
+            , connection(std::move(connection))
+            , addr(addr)
+            , addr_len(addr_len)
+        { }
+
+        Async::Resolver resolve;
+        Async::Rejection reject;
+        std::shared_ptr<Connection> connection;
+        const struct sockaddr* addr;
+        socklen_t addr_len;
+        #ifdef PIST_INCLUDE_SSL
+        SslConnAddrSPtr sslConnAddr; // If set => SSL, not conventional socket
+        #endif
+};
 
 struct Connection : public std::enable_shared_from_this<Connection> {
 
@@ -32,9 +113,8 @@ struct Connection : public std::enable_shared_from_this<Connection> {
 
     typedef std::function<void()> OnDone;
 
-    Connection()
-        : fd(-1)
-        , connectionState_(NotConnected)
+    Connection() :
+          connectionState_(NotConnected)
         , inflightCount(0)
         , responsesReceived(0)
     {
@@ -73,12 +153,24 @@ struct Connection : public std::enable_shared_from_this<Connection> {
         Connected
     };
 
-    void connect(Address addr);
+    void connect(Aio::Reactor & _reactor, Aio::Reactor::Key & _key,
+                 UrlParts & _urlParts);
+    #ifdef PIST_INCLUDE_SSL
+    void connectSsl(Aio::Reactor & _reactor, Aio::Reactor::Key & _key,
+                    UrlParts & _urlParts);
+    #endif
+    void connectSocket(Pistache::Address addr);
+    int doConnect(Aio::Reactor & _reactor, Aio::Reactor::Key & _key,
+                  ConnectionEntry & _connEntry);
+
     void close();
     bool isIdle() const;
     bool isConnected() const;
     bool hasTransport() const;
     void associateTransport(const std::shared_ptr<Transport>& transport);
+
+    static const std::string & getHostChainPemFile();
+    static void setHostChainPemFile(const std::string & _hostCPFl);//call once
 
     Async::Promise<Response> perform(
             const Http::Request& request,
@@ -92,8 +184,22 @@ struct Connection : public std::enable_shared_from_this<Connection> {
             Async::Rejection reject,
             OnDone onDone);
 
-    Fd fd;
+    bool isConnectedPushReqEntryIfNot(Async::Resolver & resolve,
+                                      Async::Rejection & reject,
+                                      const Http::Request& request,
+                                      std::chrono::milliseconds timeout,
+                                      const OnDone & onDone);
 
+    void setConnectedProcessRequestQueue();
+    void setConnecting();
+
+    DualFdSPtr dfd;
+    DualFdSPtr getDfd() const {return(dfd);}
+    Fd getFd() const {return(dfd ? dfd->getFd() : -1);}
+    #ifdef PIST_INCLUDE_SSL
+    bool isSsl() const {return(dfd ? (dfd->getSslConn() != NULL): false);}
+    #endif
+    
     void handleResponsePacket(const char* buffer, size_t totalBytes);
     void handleError(const char* error);
     void handleTimeout();
@@ -105,6 +211,7 @@ private:
     std::atomic<int> responsesReceived;
     struct sockaddr_in saddr;
 
+    static std::string mHostChainPemFile;
 
     void processRequestQueue();
 
@@ -126,6 +233,7 @@ private:
     };
 
     std::atomic<uint32_t> state_;
+    mutable std::mutex connectionStateMutex_;
     ConnectionState connectionState_;
     std::shared_ptr<Transport> transport_;
     Queue<RequestData> requestsQueue;
@@ -185,24 +293,6 @@ private:
         Retry
     };
 
-    struct ConnectionEntry {
-        ConnectionEntry(
-                Async::Resolver resolve, Async::Rejection reject,
-                std::shared_ptr<Connection> connection, const struct sockaddr* addr, socklen_t addr_len)
-            : resolve(std::move(resolve))
-            , reject(std::move(reject))
-            , connection(std::move(connection))
-            , addr(addr)
-            , addr_len(addr_len)
-        { }
-
-        Async::Resolver resolve;
-        Async::Rejection reject;
-        std::shared_ptr<Connection> connection;
-        const struct sockaddr* addr;
-        socklen_t addr_len;
-    };
-
     struct RequestEntry {
         RequestEntry(
                 Async::Resolver resolve, Async::Rejection reject,
@@ -224,7 +314,6 @@ private:
         Buffer buffer;
 
     };
-
 
     PollableQueue<RequestEntry> requestsQueue;
     PollableQueue<ConnectionEntry> connectionsQueue;
