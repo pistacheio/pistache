@@ -87,8 +87,8 @@ inline constexpr bool operator==(Tag lhs, Tag rhs) {
 }
 
 struct Event {
-    explicit Event(Tag tag) :
-        tag(tag)
+    explicit Event(Tag _tag) :
+        tag(_tag)
     { }
 
     Flags<NotifyOn> flags;

@@ -227,7 +227,7 @@ public:
 
 
 private:
-    T *const constData() const {
+    T *constData() const {
         return const_cast<T *const>(reinterpret_cast<const T *const>(bytes));
     }
 

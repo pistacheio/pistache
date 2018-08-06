@@ -36,7 +36,7 @@ namespace {
     struct AttributeMatcher<Optional<std::string>> {
         static void match(StreamCursor& cursor, Cookie* obj, Optional<std::string> Cookie::*attr) {
             auto token = matchValue(cursor);
-            obj->*attr = Some(std::string(token.rawText(), token.size()));
+            obj->*attr = Some(token.text());
         }
     };
 
@@ -73,7 +73,7 @@ namespace {
     struct AttributeMatcher<Optional<FullDate>> {
         static void match(StreamCursor& cursor, Cookie* obj, Optional<FullDate> Cookie::*attr) {
             auto token = matchValue(cursor);
-            obj->*attr = Some(FullDate::fromRaw(token.rawText(), token.size()));
+            obj->*attr = Some(FullDate::fromString(token.text()));
         }
     };
 
