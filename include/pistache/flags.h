@@ -58,7 +58,7 @@ public:
     Flags() : val(T::None) {
     }
 
-    Flags(T val) : val(val)
+    Flags(T _val) : val(_val)
     {
     }
 

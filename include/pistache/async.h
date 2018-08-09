@@ -136,8 +136,8 @@ namespace Async {
     namespace Private {
 
         struct InternalRethrow {
-            InternalRethrow(std::exception_ptr exc)
-                : exc(std::move(exc))
+            InternalRethrow(std::exception_ptr _exc)
+                : exc(std::move(_exc))
             { }
 
             std::exception_ptr exc;
@@ -166,9 +166,9 @@ namespace Async {
         };
 
         struct Core {
-            Core(State state, TypeId id)
-                : state(state)
-                , id(id)
+            Core(State _state, TypeId _id)
+                : state(_state)
+                , id(_id)
             { }
 
             State state;
@@ -839,9 +839,9 @@ namespace Async {
         Deferred(Deferred&& other) = default;
         Deferred& operator=(Deferred&& other) = default;
 
-        Deferred(Resolver resolver, Rejection reject)
-            : resolver(std::move(resolver))
-            , rejection(std::move(reject))
+        Deferred(Resolver _resolver, Rejection _reject)
+            : resolver(std::move(_resolver))
+            , rejection(std::move(_reject))
         { }
 
         template<typename U>
@@ -888,9 +888,9 @@ namespace Async {
         Deferred(Deferred&& other) = default;
         Deferred& operator=(Deferred&& other) = default;
 
-        Deferred(Resolver resolver, Rejection reject)
-            : resolver(std::move(resolver))
-            , rejection(std::move(reject))
+        Deferred(Resolver _resolver, Rejection _reject)
+            : resolver(std::move(_resolver))
+            , rejection(std::move(_reject))
         { }
 
         void resolve() {
@@ -898,8 +898,8 @@ namespace Async {
         }
 
         template<typename Exc>
-        void reject(Exc exc) {
-            rejection(std::move(exc));
+        void reject(Exc _exc) {
+            rejection(std::move(_exc));
         }
 
     private:
@@ -1138,12 +1138,12 @@ namespace Async {
         struct All {
 
             struct Data {
-                Data(const size_t total, Resolver resolver, Rejection rejection)
-                    : total(total)
+                Data(const size_t _total, Resolver _resolver, Rejection _rejection)
+                    : total(_total)
                     , resolved(0)
                     , rejected(false)
-                    , resolve(std::move(resolver))
-                    , reject(std::move(rejection))
+                    , resolve(std::move(_resolver))
+                    , reject(std::move(_rejection))
                 { }
 
                 const size_t total;
@@ -1245,8 +1245,8 @@ namespace Async {
         private:
             template<typename T, size_t Index, typename Data>
             struct WhenContinuation {
-                WhenContinuation(Data data)
-                    : data(std::move(data))
+                WhenContinuation(Data _data)
+                    : data(std::move(_data))
                 { }
 
                 void operator()(const T& val) const {
@@ -1258,8 +1258,8 @@ namespace Async {
 
             template<size_t Index, typename Data>
             struct WhenContinuation<void, Index, Data> {
-                WhenContinuation(Data data)
-                    : data(std::move(data))
+                WhenContinuation(Data _data)
+                    : data(std::move(_data))
                 { }
 
                 void operator()() const {
@@ -1341,9 +1341,9 @@ namespace Async {
                 >
         struct WhenAllRange {
 
-            WhenAllRange(Resolver resolve, Rejection reject)
-                : resolve(std::move(resolve))
-                , reject(std::move(reject))
+            WhenAllRange(Resolver _resolve, Rejection _reject)
+                : resolve(std::move(_resolve))
+                , reject(std::move(_reject))
             { }
 
             template<typename Iterator>
@@ -1373,12 +1373,12 @@ namespace Async {
 
         private:
             struct Data {
-                Data(size_t total, Resolver resolver, Rejection rejection)
-                    : total(total)
+                Data(size_t _total, Resolver _resolver, Rejection _rejection)
+                    : total(_total)
                     , resolved(0)
                     , rejected(false)
-                    , resolve(std::move(resolver))
-                    , reject(std::move(rejection))
+                    , resolve(std::move(_resolver))
+                    , reject(std::move(_rejection))
                 { }
 
                 const size_t total;
@@ -1419,9 +1419,9 @@ namespace Async {
 
                 typedef std::shared_ptr<DataT<ValueType>> D;
 
-                WhenContinuation(const D& data, size_t index)
-                    : data(data)
-                    , index(index)
+                WhenContinuation(const D& _data, size_t _index)
+                    : data(_data)
+                    , index(_index)
                 { }
 
                 void operator()(const ValueType& val) const {
@@ -1444,8 +1444,8 @@ namespace Async {
 
                 typedef std::shared_ptr<DataT<void>> D;
 
-                WhenContinuation(const D& data, size_t)
-                    : data(data)
+                WhenContinuation(const D& _data, size_t)
+                    : data(_data)
                 { }
 
                 void operator()() const {

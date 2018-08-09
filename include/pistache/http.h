@@ -87,7 +87,6 @@ protected:
 };
 
 namespace Uri {
-    typedef std::string Fragment;
 
     class Query {
     public:
@@ -97,12 +96,15 @@ namespace Uri {
         void add(std::string name, std::string value);
         Optional<std::string> get(const std::string& name) const;
         bool has(const std::string& name) const;
-
+        // Return empty string or "?key1=value1&key2=value2" if query exist
+        std::string as_str() const;
+        
         void clear() {
             params.clear();
         }
 
     private:
+        //first is key second is value
         std::unordered_map<std::string, std::string> params;
     };
 } // namespace Uri
@@ -237,12 +239,12 @@ private:
         , timerFd(other.timerFd)
     { }
 
-    Timeout(Tcp::Transport* transport,
-            Handler* handler,
-            Request request)
-        : handler(handler)
-        , request(std::move(request))
-        , transport(transport)
+    Timeout(Tcp::Transport* transport_,
+            Handler* handler_,
+            Request request_)
+        : handler(handler_)
+        , request(std::move(request_))
+        , transport(transport_)
         , armed(false)
         , timerFd(-1)
     {
@@ -511,16 +513,23 @@ public:
         return timeout_;
     }
 
+    std::shared_ptr<Tcp::Peer> peer() const {
+        if (peer_.expired())
+            throw std::runtime_error("Write failed: Broken pipe");
+
+        return peer_.lock();
+    }
+
     // Unsafe API
 
     DynamicStreamBuf *rdbuf() {
        return &buf_;
     }
 
-    DynamicStreamBuf *rdbuf(DynamicStreamBuf* other) {
+    DynamicStreamBuf *rdbuf([[maybe_unused]] DynamicStreamBuf* other) {
+       UNUSED(other)
        throw std::domain_error("Unimplemented");
     }
-
 
     ResponseWriter clone() const {
         return ResponseWriter(*this);
@@ -541,13 +550,6 @@ private:
         , transport_(other.transport_)
         , timeout_(other.timeout_)
     { }
-
-    std::shared_ptr<Tcp::Peer> peer() const {
-        if (peer_.expired())
-            throw std::runtime_error("Write failed: Broken pipe");
-
-        return peer_.lock();
-    }
 
     template<typename Ptr>
     void associatePeer(const Ptr& peer) {
@@ -578,6 +580,8 @@ namespace Private {
         Step(Message* request)
             : message(request)
         { }
+
+        virtual ~Step() = default;
 
         virtual State apply(StreamCursor& cursor) = 0;
 
@@ -611,9 +615,9 @@ namespace Private {
     };
 
     struct BodyStep : public Step {
-        BodyStep(Message* message)
-            : Step(message)
-            , chunk(message)
+        BodyStep(Message* message_)
+            : Step(message_)
+            , chunk(message_)
             , bytesRead(0)
         { }
 
@@ -623,8 +627,8 @@ namespace Private {
         struct Chunk {
             enum Result { Complete, Incomplete, Final };
 
-            Chunk(Message* message)
-              : message(message)
+            Chunk(Message* message_)
+              : message(message_)
               , bytesRead(0)
               , size(-1)
             { }
@@ -660,6 +664,8 @@ namespace Private {
             : cursor(&buffer)
             , currentStep(0)
         {
+            UNUSED(data)
+            UNUSED(len)
         }
 
         ParserBase(const ParserBase& other) = delete;
