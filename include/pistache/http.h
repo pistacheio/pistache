@@ -100,14 +100,25 @@ namespace Uri {
         bool has(const std::string& name) const;
         // Return empty string or "?key1=value1&key2=value2" if query exist
         std::string as_str() const;
-        
+
         void clear() {
             params.clear();
         }
 
+        // \brief Return iterator to the beginning of the parameters map
+        std::unordered_map<std::string, std::string>::const_iterator
+          parameters_begin() const {
+          return params.begin();
+        }
+
+        // \brief Return iterator to the end of the parameters map
+        std::unordered_map<std::string, std::string>::const_iterator
+          parameters_end() const {
+          return params.begin();
+        }
+
         // \brief returns all parameters given in the query
-        std::vector<std::string> parameters() const
-        {
+        std::vector<std::string> parameters() const {
           std::vector<std::string> keys;
           std::transform(params.begin(), params.end(), std::back_inserter(keys),
             [](const std::unordered_map<std::string, std::string>::value_type
