@@ -222,7 +222,15 @@ RouterHandler::onRequest(
 
     /* @Feature: add support for a custom NotFound handler */
     if (result == Router::Status::NotFound)
-        response.send(Http::Code::Not_Found, "Could not find a matching route");
+    {
+        if (router.hasNotFoundHandler())
+        {
+            auto resp2 = response.clone();
+            router.invokeNotFoundHandler(req, std::move(resp2));
+        }
+        else
+            response.send(Http::Code::Not_Found, "Could not find a matching route");
+    }
 }
 
 } // namespace Private
@@ -291,6 +299,17 @@ Router::addCustomHandler(Route::Handler handler) {
     customHandlers.push_back(std::move(handler));
 }
 
+void
+Router::addNotFoundHandler(Route::Handler handler) {
+    notFoundHandler = std::move(handler);
+}
+
+void
+Router::invokeNotFoundHandler(const Http::Request &req, Http::ResponseWriter resp) const
+{
+    notFoundHandler(Rest::Request(std::move(req), std::vector<TypedParam>(), std::vector<TypedParam>()), std::move(resp));
+}
+
 Router::Status
 Router::route(const Http::Request& req, Http::ResponseWriter response) {
     auto& r = routes[req.method()];
@@ -346,6 +365,10 @@ void Delete(Router& router, std::string resource, Route::Handler handler) {
 
 void Options(Router& router, std::string resource, Route::Handler handler) {
     router.options(std::move(resource), std::move(handler));
+}
+
+void NotFound(Router& router, Route::Handler handler) {
+    router.addNotFoundHandler(std::move(handler));
 }
 
 } // namespace Routes

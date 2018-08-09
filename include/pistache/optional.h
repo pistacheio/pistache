@@ -227,7 +227,7 @@ public:
 
 
 private:
-    T *const constData() const {
+    T *constData() const {
         return const_cast<T *const>(reinterpret_cast<const T *const>(bytes));
     }
 
@@ -262,14 +262,14 @@ private:
     };
 };
 
-#define CheckSize(Type) \
+#define PistacheCheckSize(Type) \
     static_assert(sizeof(Optional<Type>) == sizeof(Type), "Size differs")
 
-CheckSize(uint8_t);
-CheckSize(uint16_t);
-CheckSize(int);
-CheckSize(void *);
-CheckSize(std::string);
+PistacheCheckSize(uint8_t);
+PistacheCheckSize(uint16_t);
+PistacheCheckSize(int);
+PistacheCheckSize(void *);
+PistacheCheckSize(std::string);
 
 namespace details {
     template<typename T>
