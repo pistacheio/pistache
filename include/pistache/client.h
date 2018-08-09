@@ -34,9 +34,9 @@ struct Connection : public std::enable_shared_from_this<Connection> {
 
     Connection()
         : fd(-1)
-        , connectionState_(NotConnected)
         , inflightCount(0)
         , responsesReceived(0)
+        , connectionState_(NotConnected)
     {
         state_.store(static_cast<uint32_t>(State::Idle));
     }
