@@ -1,4 +1,4 @@
-/*
+/* 
    Mathieu Stefani, 29 janvier 2016
    
    Implementation of the Http client
@@ -381,8 +381,8 @@ Connection::connect(Address addr)
     memset(&hints, 0, sizeof(struct addrinfo));
     hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
     hints.ai_socktype = SOCK_STREAM; /* Stream socket */
-    hints.ai_flags = 0; 
-    hints.ai_protocol = 0;
+    hints.ai_flags = 0;
+    hints.ai_protocol = 0;  
 
     auto host = addr.host();
 
