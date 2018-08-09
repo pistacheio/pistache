@@ -253,9 +253,9 @@ namespace Async {
         template<typename T>
         struct Continuable : public Request {
             Continuable(const std::shared_ptr<Core>& chain)
-                : chain_(chain)
-                , resolveCount_(0)
+                : resolveCount_(0)
                 , rejectCount_(0)
+                , chain_(chain)
             { }
 
             void resolve(const std::shared_ptr<Core>& core) {

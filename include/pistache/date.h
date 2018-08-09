@@ -4233,7 +4233,7 @@ struct fields
     weekday               wd{7u};
     time_of_day<Duration> tod{};
 
-    fields() {};  // = default;   // note: generates compiler error
+    fields() {}  // = default;  // Note: doesn't compile with default
 
     fields(year_month_day ymd_) : ymd(ymd_) {}
     fields(weekday wd_) : wd(wd_) {}
