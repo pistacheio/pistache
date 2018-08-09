@@ -52,6 +52,7 @@
 #include <string>
 #include <utility>
 #include <type_traits>
+#include <memory>
 
 #ifdef __GNUC__
 # pragma GCC diagnostic push
@@ -4232,7 +4233,7 @@ struct fields
     weekday               wd{7u};
     time_of_day<Duration> tod{};
 
-    fields() = default;
+    fields() {}  // = default;  // Note: doesn't compile with default
 
     fields(year_month_day ymd_) : ymd(ymd_) {}
     fields(weekday wd_) : wd(wd_) {}
@@ -4370,7 +4371,7 @@ scan_keyword(std::basic_istream<CharT, Traits>& is, FwdIter kb, FwdIter ke)
     const unsigned char does_match = '\2';
     unsigned char statbuf[100];
     unsigned char* status = statbuf;
-    unique_ptr<unsigned char, void(*)(void*)> stat_hold(0, free);
+    std::unique_ptr<unsigned char, void(*)(void*)> stat_hold(0, free);
     if (nkw > sizeof(statbuf))
     {
         status = (unsigned char*)malloc(nkw);
@@ -4576,10 +4577,10 @@ to_stream(std::basic_ostream<CharT, Traits>& os, const CharT* fmt,
                         auto d = static_cast<int>(static_cast<unsigned>(fds.ymd.day()));
                         if (d < 10)
                             os << ' ';
-                        os << d << ' ' 
+                        os << d << ' '
                            << make_time(duration_cast<seconds>(fds.tod.to_duration()))
                            << ' ' << fds.ymd.year();
-                        
+
                     }
                     else  // *fmt == 'x'
                     {
