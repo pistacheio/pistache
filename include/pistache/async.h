@@ -721,8 +721,8 @@ namespace Async {
         Resolver(const Resolver& other) = delete;
         Resolver& operator=(const Resolver& other) = delete;
 
-        Resolver(Resolver&& other) = default; 
-        Resolver& operator=(Resolver&& other) = default;
+        Resolver(Resolver&& other) = default;
+        Resolver& operator=(Resolver&& other) = default; 
 
         template<typename Arg>
         bool operator()(Arg&& arg) const {
