@@ -1,6 +1,6 @@
-/*
+/* 
    Mathieu Stefani, 29 janvier 2016
-
+   
    The Http client
 */
 
@@ -51,7 +51,7 @@ struct Connection : public std::enable_shared_from_this<Connection> {
             : resolve(std::move(resolve))
             , reject(std::move(reject))
             , request(request)
-            , timeout(timeout)
+            , timeout(timeout)  
             , onDone(std::move(onDone))
         { }
         Async::Resolver resolve;

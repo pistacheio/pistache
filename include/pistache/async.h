@@ -1,6 +1,6 @@
 /* async.h
    Mathieu Stefani, 05 novembre 2015
-
+   
   This header brings a Promise<T> class inspired by the Promises/A+
   specification for asynchronous operations
 */
@@ -721,7 +721,7 @@ namespace Async {
         Resolver(const Resolver& other) = delete;
         Resolver& operator=(const Resolver& other) = delete;
 
-        Resolver(Resolver&& other) = default;
+        Resolver(Resolver&& other) = default; 
         Resolver& operator=(Resolver&& other) = default;
 
         template<typename Arg>
@@ -947,7 +947,7 @@ namespace Async {
             : core_(std::make_shared<Core>())
             , resolver_(core_)
             , rejection_(core_)
-        {
+        { 
             details::callAsync<T>(func, resolver_, rejection_);
         }
 
