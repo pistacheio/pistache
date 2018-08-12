@@ -12,6 +12,7 @@
 #include <vector>
 #include <sstream>
 #include <algorithm>
+#include <memory>
 
 #include <sys/timerfd.h>
 
@@ -699,7 +700,7 @@ namespace Private {
 
         State parse();
 
-        ArrayStreamBuf<Const::MaxBuffer> buffer;
+        ArrayStreamBuf<char> buffer;
         StreamCursor cursor;
 
     protected:

@@ -76,54 +76,38 @@ public:
 
 };
 
-template<size_t N, typename CharT = char>
+// Make the buffer dynamic
+template<typename CharT = char>
 class ArrayStreamBuf : public StreamBuf<CharT> {
 public:
     typedef StreamBuf<CharT> Base;
 
     ArrayStreamBuf()
-      : size(0)
     {
-        memset(bytes, 0, N);
-        Base::setg(bytes, bytes, bytes + N);
+        bytes.clear();
+        Base::setg(bytes.data(), bytes.data(), bytes.data() + bytes.size());
     }
 
     template<size_t M>
     ArrayStreamBuf(char (&arr)[M]) {
-        static_assert(M <= N, "Source array exceeds maximum capacity");
-        memcpy(bytes, arr, M);
-        size = M;
-        Base::setg(bytes, bytes, bytes + M);
+        bytes.clear();
+        std::copy(arr, arr + M, std::back_inserter(bytes));
+        Base::setg(bytes.data(), bytes.data(), bytes.data() + bytes.size());
     }
 
     bool feed(const char* data, size_t len) {
-        if (size + len > N) {
-            return false;
-        }
-
-        memcpy(bytes + size, data, len);
-        CharT *cur = nullptr;
-        if (this->gptr()) {
-            cur = this->gptr();
-        } else {
-            cur = bytes + size;
-        }
-
-        Base::setg(bytes, cur, bytes + size + len);
-
-        size += len;
+        std::copy(data, data + len, std::back_inserter(bytes));
+        Base::setg(bytes.data(), bytes.data(), bytes.data() + bytes.size());
         return true;
     }
 
     void reset() {
-        memset(bytes, 0, N);
-        size = 0;
-        Base::setg(bytes, bytes, bytes);
+        bytes.clear();
+        Base::setg(bytes.data(), bytes.data(), bytes.data());
     }
 
 private:
-    char bytes[N];
-    size_t size;
+    std::vector<CharT> bytes;
 };
 
 struct Buffer {
