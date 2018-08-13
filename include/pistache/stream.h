@@ -77,7 +77,7 @@ public:
 };
 
 // Make the buffer dynamic
-template<typename CharT = char>
+template<size_t MAX_SIZE, typename CharT = char>
 class ArrayStreamBuf : public StreamBuf<CharT> {
 public:
     typedef StreamBuf<CharT> Base;
@@ -96,14 +96,18 @@ public:
     }
 
     bool feed(const char* data, size_t len) {
+        if (bytes.size() + len > MAX_SIZE) { return false; }
         std::copy(data, data + len, std::back_inserter(bytes));
-        Base::setg(bytes.data(), bytes.data(), bytes.data() + bytes.size());
+        Base::setg(bytes.data()
+                  , bytes.data() + bytes.size() - len
+                  , bytes.data() + bytes.size());
         return true;
     }
 
     void reset() {
-        bytes.clear();
-        Base::setg(bytes.data(), bytes.data(), bytes.data());
+        std::vector<CharT> nbytes;
+        bytes.swap(nbytes);
+        Base::setg(bytes.data(), bytes.data(), bytes.data() + bytes.size());
     }
 
 private:

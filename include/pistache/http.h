@@ -700,7 +700,7 @@ namespace Private {
 
         State parse();
 
-        ArrayStreamBuf<char> buffer;
+        ArrayStreamBuf<Const::MaxPayload, char> buffer;
         StreamCursor cursor;
 
     protected:
