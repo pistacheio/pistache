@@ -552,6 +552,7 @@ struct MoveOnCopy {
 
     MoveOnCopy& operator=(MoveOnCopy& other) {
         val = std::move(other.val);
+        return *this;
     }
 
     MoveOnCopy(MoveOnCopy&& other) = default;
