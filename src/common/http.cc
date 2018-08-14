@@ -372,8 +372,15 @@ namespace Private {
                 message->body_.append(token.rawText(), token.size());
 
                 bytesRead += available;
-
                 return false;
+            }
+            else if (available > size){
+                //header text was read into the buffer. skip it
+                cursor.advance(available - size);
+                StreamCursor::Token newToken(cursor);
+                cursor.advance(size);
+                message->body_.append(newToken.rawText(), newToken.size());
+                return true;
             }
 
             cursor.advance(size);
