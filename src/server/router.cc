@@ -286,6 +286,32 @@ Pistache::Rest::FragmentTreeNode::invokeRouteHandler(const Http::Request& req, H
         return invokeRouteHandler(path, req, std::move(response), params, splats);
     } catch (std::runtime_error&) {
         return Route::Status::NotFound;
+
+namespace Private {
+
+RouterHandler::RouterHandler(const Rest::Router& router)
+    : router(router)
+{
+}
+
+void
+RouterHandler::onRequest(
+        const Http::Request& req,
+        Http::ResponseWriter response)
+{
+    auto resp = response.clone();
+    auto result = router.route(req, std::move(resp));
+
+    /* @Feature: add support for a custom NotFound handler */
+    if (result == Router::Status::NotFound)
+    {
+        if (router.hasNotFoundHandler())
+        {
+            auto resp2 = response.clone();
+            router.invokeNotFoundHandler(req, std::move(resp2));
+        }
+        else
+            response.send(Http::Code::Not_Found, "Could not find a matching route");
     }
 }
 
@@ -359,7 +385,18 @@ Router::addCustomHandler(Route::Handler handler) {
     customHandlers.push_back(std::move(handler));
 }
 
-Route::Status
+void
+Router::addNotFoundHandler(Route::Handler handler) {
+    notFoundHandler = std::move(handler);
+}
+
+void
+Router::invokeNotFoundHandler(const Http::Request &req, Http::ResponseWriter resp) const
+{
+    notFoundHandler(Rest::Request(std::move(req), std::vector<TypedParam>(), std::vector<TypedParam>()), std::move(resp));
+}
+
+Router::Status
 Router::route(const Http::Request& req, Http::ResponseWriter response) {
     auto& r = routes[req.method()];
     try {
@@ -410,8 +447,12 @@ void Options(Router& router, std::string resource, Route::Handler handler) {
     router.options(std::move(resource), std::move(handler));
 }
 
+
 void Remove(Router& router, Http::Method method, std::string resource) {
     router.removeRoute(method, resource);
+
+void NotFound(Router& router, Route::Handler handler) {
+    router.addNotFoundHandler(std::move(handler));
 }
 
 } // namespace Routes

@@ -9,7 +9,9 @@
 #include <type_traits>
 #include <stdexcept>
 #include <array>
+#include <vector>
 #include <sstream>
+#include <algorithm>
 
 #include <sys/timerfd.h>
 
@@ -101,6 +103,27 @@ namespace Uri {
         
         void clear() {
             params.clear();
+        }
+
+        // \brief Return iterator to the beginning of the parameters map
+        std::unordered_map<std::string, std::string>::const_iterator
+          parameters_begin() const {
+            return params.begin();
+        }
+
+        // \brief Return iterator to the end of the parameters map
+        std::unordered_map<std::string, std::string>::const_iterator
+          parameters_end() const {
+            return params.begin();
+        }
+
+        // \brief returns all parameters given in the query
+        std::vector<std::string> parameters() const {
+          std::vector<std::string> keys;
+          std::transform(params.begin(), params.end(), std::back_inserter(keys),
+            [](const std::unordered_map<std::string, std::string>::value_type
+               &pair) {return pair.first;});
+          return keys;
         }
 
     private:

@@ -18,14 +18,14 @@ namespace Tcp {
 using namespace std;
 
 Peer::Peer()
-    : fd_(-1)
-    , transport_(nullptr)
+    : transport_(nullptr)
+    , fd_(-1)
 { }
 
 Peer::Peer(const Address& addr)
-    : addr(addr)
+    : transport_(nullptr)
+    , addr(addr)
     , fd_(-1)
-    , transport_(nullptr)
 { }
 
 Address

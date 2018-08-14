@@ -146,14 +146,21 @@ public:
     void removeRoute(Http::Method method, std::string resource);
 
     void addCustomHandler(Route::Handler handler);
+    void addNotFoundHandler(Route::Handler handler);
+    inline bool hasNotFoundHandler() { return notFoundHandler != nullptr; }
+    void invokeNotFoundHandler(const Http::Request &req, Http::ResponseWriter resp) const;
 
-    Route::Status route(const Http::Request& request, Http::ResponseWriter response);
+    Route::Status route(const Http::Request& request, Http::ResponseWriter response);    
+
+    Status route(const Http::Request& request, Http::ResponseWriter response);
 
 private:
     void addRoute(Http::Method method, std::string resource, Route::Handler handler);
     std::unordered_map<Http::Method, FragmentTreeNode> routes;
 
     std::vector<Route::Handler> customHandlers;
+
+    Route::Handler notFoundHandler;
 };
 
 namespace Private {
@@ -206,6 +213,8 @@ namespace Routes {
     void Delete(Router& router, std::string resource, Route::Handler handler);
     void Options(Router& router, std::string resource, Route::Handler handler);
     void Remove(Router& router, Http::Method method, std::string resource);
+
+    void NotFound(Router& router, Route::Handler handler);
 
     namespace details {
         template <class... Args>
