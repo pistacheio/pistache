@@ -88,16 +88,16 @@ private:
         enum Type { Raw, File };
 
         explicit BufferHolder(const Buffer& buffer, off_t offset = 0)
-            : type(Raw)
-            , u(buffer)
+            : u(buffer)
+            , type(Raw)
         {
             offset_ = offset;
             size_ = buffer.len;
         }
 
         explicit BufferHolder(const FileBuffer& buffer, off_t offset = 0)
-            : type(File)
-            , u(buffer.fd())
+            : u(buffer.fd())
+            , type(File)
         {
             offset_ = offset;
             size_ = buffer.size();
@@ -147,7 +147,7 @@ private:
             Fd fd;
 
             U(Buffer buffer) : raw(buffer) { }
-            U(Fd fd) : fd(fd) { }
+            U(Fd fd_) : fd(fd_) { }
         } u;
         size_t size_= 0;
         off_t offset_ = 0;
@@ -155,11 +155,11 @@ private:
     };
 
     struct WriteEntry {
-        WriteEntry(Async::Deferred<ssize_t> deferred,
-                    BufferHolder buffer, int flags = 0)
-            : deferred(std::move(deferred))
-            , buffer(std::move(buffer))
-            , flags(flags)
+        WriteEntry(Async::Deferred<ssize_t> deferred_,
+                    BufferHolder buffer_, int flags_ = 0)
+            : deferred(std::move(deferred_))
+            , buffer(std::move(buffer_))
+            , flags(flags_)
             , peerFd(-1)
         { }
 
@@ -170,11 +170,11 @@ private:
     };
 
     struct TimerEntry {
-        TimerEntry(Fd fd, std::chrono::milliseconds value,
-                Async::Deferred<uint64_t> deferred)
-          : fd(fd)
-          , value(value)
-          , deferred(std::move(deferred))
+        TimerEntry(Fd fd_, std::chrono::milliseconds value_,
+                Async::Deferred<uint64_t> deferred_)
+          : fd(fd_)
+          , value(value_)
+          , deferred(std::move(deferred_))
         {
             active.store(true, std::memory_order_relaxed);
         }
@@ -201,8 +201,8 @@ private:
     };
 
     struct PeerEntry {
-        PeerEntry(std::shared_ptr<Peer> peer)
-            : peer(std::move(peer))
+        PeerEntry(std::shared_ptr<Peer> peer_)
+            : peer(std::move(peer_))
         { }
 
         std::shared_ptr<Peer> peer;
