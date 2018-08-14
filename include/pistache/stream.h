@@ -97,9 +97,15 @@ public:
 
     bool feed(const char* data, size_t len) {
         if (bytes.size() + len > MAX_SIZE) { return false; }
+        // get current offset
+        size_t readOffset = static_cast<size_t>(this->gptr() - this->eback());
         std::copy(data, data + len, std::back_inserter(bytes));
+        if (readOffset == 0) {
+            readOffset = bytes.size() - len;
+        }
+
         Base::setg(bytes.data()
-                  , bytes.data() + bytes.size() - len
+                  , bytes.data() + readOffset
                   , bytes.data() + bytes.size());
         return true;
     }
