@@ -212,32 +212,32 @@ CookieJar::add(const Cookie& cookie) {
 
 void
 CookieJar::addFromRaw(const char *str, size_t len) {
-	RawStreamBuf<> buf(const_cast<char *>(str), len);
-	StreamCursor cursor(&buf);
+    RawStreamBuf<> buf(const_cast<char *>(str), len);
+    StreamCursor cursor(&buf);
 
-	while (!cursor.eof()) {
-		StreamCursor::Token nameToken(cursor);
-		
-		if (!match_until('=', cursor))
-			throw std::runtime_error("Invalid cookie, missing value");
-		
-		auto name = nameToken.text();
-		
-		if (!cursor.advance(1))
-			throw std::runtime_error("Invalid cookie, missing value");
-		
-		StreamCursor::Token valueToken(cursor);
-		
-		match_until(';', cursor);
-		auto value = valueToken.text();
-		
-		Cookie cookie(std::move(name), std::move(value));
-		add(cookie);
-		
-		cursor.advance(1);
-		skip_whitespaces(cursor);
-	}
-}	
+    while (!cursor.eof()) {
+        StreamCursor::Token nameToken(cursor);
+
+        if (!match_until('=', cursor))
+            throw std::runtime_error("Invalid cookie, missing value");
+
+        auto name = nameToken.text();
+
+        if (!cursor.advance(1))
+            throw std::runtime_error("Invalid cookie, missing value");
+
+        StreamCursor::Token valueToken(cursor);
+
+        match_until(';', cursor);
+        auto value = valueToken.text();
+
+        Cookie cookie(std::move(name), std::move(value));
+        add(cookie);
+
+        cursor.advance(1);
+        skip_whitespaces(cursor);
+    }
+}       
 
 Cookie
 CookieJar::get(const std::string& name) const {

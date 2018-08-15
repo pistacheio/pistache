@@ -137,14 +137,14 @@ void addCookies(const char* str, std::function<void (const CookieJar&)> testFunc
 
 TEST(cookie_test, cookiejar_test) {
     addCookies("key1=value1", [](const CookieJar& jar) {
-	ASSERT_EQ(jar.get("key1").value, "value1");
+        ASSERT_EQ(jar.get("key1").value, "value1");
     });
-    
+
     addCookies("key2=value2; key3=value3", [](const CookieJar& jar) {
-	ASSERT_EQ(jar.get("key2").value, "value2");
-	ASSERT_EQ(jar.get("key3").value, "value3");
+        ASSERT_EQ(jar.get("key2").value, "value2");
+        ASSERT_EQ(jar.get("key3").value, "value3");
     });
-    
+
     CookieJar jar;
     ASSERT_THROW(jar.addFromRaw("key4", strlen("key4")), std::runtime_error);
 }
