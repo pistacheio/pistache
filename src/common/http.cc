@@ -294,9 +294,7 @@ namespace Private {
             }
 
             if (name == "Cookie") {
-                message->cookies_.add(
-                        Cookie::fromRaw(cursor.offset(start), cursor.diff(start))
-                );
+		message->cookies_.addFromRaw(cursor.offset(start), cursor.diff(start));
             }
 
             else if (Header::Registry::isRegistered(name)) {

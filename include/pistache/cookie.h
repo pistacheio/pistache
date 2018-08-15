@@ -78,6 +78,7 @@ public:
     CookieJar();
 
     void add(const Cookie& cookie);
+    void addFromRaw(const char *str, size_t len);
     Cookie get(const std::string& name) const;
 
     bool has(const std::string& name) const;
