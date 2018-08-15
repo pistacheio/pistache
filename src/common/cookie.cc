@@ -234,7 +234,8 @@ CookieJar::addFromRaw(const char *str, size_t len) {
 		Cookie cookie(std::move(name), std::move(value));
 		add(cookie);
 		
-		cursor.advance(2);
+		cursor.advance(1);
+		skip_whitespaces(cursor);
 	}
 }	
 
