@@ -140,11 +140,14 @@ TEST(cookie_test, cookiejar_test) {
         ASSERT_EQ(jar.get("key1").value, "value1");
     });
 
-    addCookies("key2=value2; key3=value3", [](const CookieJar& jar) {
+    addCookies("key2=value2; key3=value3; key4=; key5=foo=bar", [](const CookieJar& jar) {
         ASSERT_EQ(jar.get("key2").value, "value2");
         ASSERT_EQ(jar.get("key3").value, "value3");
+        ASSERT_EQ(jar.get("key4").value, "");
+        ASSERT_EQ(jar.get("key5").value, "foo=bar");
     });
-
+    
     CookieJar jar;
     ASSERT_THROW(jar.addFromRaw("key4", strlen("key4")), std::runtime_error);
+    ASSERT_THROW(jar.addFromRaw("key4=value4=value4", strlen("key4")), std::runtime_error);
 }
