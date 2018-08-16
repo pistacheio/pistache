@@ -68,9 +68,7 @@ struct Route {
 
     enum class Status { Match, NotFound };
 
-    enum class Result {
-        Ok, Failure
-    };
+    enum class Result { Ok, Failure };
 
     typedef std::function<Result(const Request, Http::ResponseWriter)> Handler;
 
@@ -83,8 +81,6 @@ struct Route {
 
     Handler handler_;
 };
-
-
 
 namespace Private {
     class RouterHandler;
@@ -112,20 +108,29 @@ private:
 
     static FragmentType getFragmentType(const std::string_view &fragment);
 
-    Route::Status invokeRouteHandler(const std::string_view &path,
-                                     const Http::Request& req, Http::ResponseWriter response,
-                                     std::vector<TypedParam> &params,
-                                     std::vector<TypedParam> &splats) const;
+    std::tuple<std::shared_ptr<Route>, std::vector<TypedParam>, std::vector<TypedParam>>
+    findRoute(const std::string_view &path,
+              std::vector<TypedParam> &params,
+              std::vector<TypedParam> &splats) const;
 
 public:
     FragmentTreeNode();
     explicit FragmentTreeNode(const std::shared_ptr<char> &resourceReference);
 
-    void addRoute(const std::string_view &path, Route::Handler &handler, std::shared_ptr<char> &resourceReference);
+    void addRoute(const std::string_view &path, const Route::Handler &handler,
+            const std::shared_ptr<char> &resourceReference);
 
     bool removeRoute(const std::string_view &path);
 
-    Route::Status invokeRouteHandler(const Http::Request& req, Http::ResponseWriter response) const;
+    /**
+     * Finds the correct route for the given path.
+     * \param[in] path Requested resource path (usually derived from request)
+     * \throws std::runtime_error An empty path was given
+     * \return Found route with its resolved parameters and splats (if no route is found, first element of the tuple
+     * is a null pointer).
+     */
+    std::tuple<std::shared_ptr<Route>, std::vector<TypedParam>, std::vector<TypedParam>>
+    findRoute(const std::string_view &path) const;
 };
 
 class Router {
@@ -150,9 +155,7 @@ public:
     inline bool hasNotFoundHandler() { return notFoundHandler != nullptr; }
     void invokeNotFoundHandler(const Http::Request &req, Http::ResponseWriter resp) const;
 
-    Route::Status route(const Http::Request& request, Http::ResponseWriter response);    
-
-    Status route(const Http::Request& request, Http::ResponseWriter response);
+    Route::Status route(const Http::Request& request, Http::ResponseWriter response);
 
 private:
     void addRoute(Http::Method method, std::string resource, Route::Handler handler);

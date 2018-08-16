@@ -58,28 +58,6 @@ Request::splat() const {
     return splats_;
 }
 
-namespace Private {
-
-RouterHandler::RouterHandler(const Rest::Router& router)
-    : router(router)
-{
-}
-
-void
-RouterHandler::onRequest(
-        const Http::Request& req,
-        Http::ResponseWriter response)
-{
-    auto resp = response.clone();
-    auto result = router.route(req, std::move(resp));
-
-    /* @Feature: add support for a custom NotFound handler */
-    if (result == Route::Status::NotFound)
-        response.send(Http::Code::Not_Found, "Could not find a matching route");
-}
-
-} // namespace Private
-
 FragmentTreeNode::FragmentTreeNode(): resourceRef_(), fixed_(), param_(), optional_(), splat_(), route_() {
     std::shared_ptr<char> ptr(new char[1], std::default_delete<char[]>());
     ptr.get()[0] = '/';
@@ -91,23 +69,15 @@ FragmentTreeNode::FragmentTreeNode(const std::shared_ptr<char> &resourceReferenc
 
 FragmentTreeNode::FragmentType
 FragmentTreeNode::getFragmentType(const std::string_view &fragment) {
-    // Let's search for any '?'
-    auto pos = fragment.find('?');
-    if (pos != std::string_view::npos) {
-        if (fragment[0] != ':') {
-            throw std::runtime_error("Only optional parameters are currently supported");
-        }
-        if (pos != fragment.length() - 1) {
-            throw std::runtime_error("? should be at the end of the string");
-        }
-        return FragmentType::Optional;
-    }
 
-    pos = fragment.find('*');
-    if (pos != std::string_view::npos && pos != 0) {
-        throw std::runtime_error("Invalid splat parameter");
-    }
+    auto optpos = fragment.find('?');
     if (fragment[0] == ':') {
+        if (optpos != std::string_view::npos) {
+            if (optpos != fragment.length() - 1) {
+                throw std::runtime_error("? should be at the end of the string");
+            }
+            return FragmentType::Optional;
+        }
         return FragmentType::Param;
     } else if (fragment[0] == '*') {
         if (fragment.length() > 1) {
@@ -115,13 +85,19 @@ FragmentTreeNode::getFragmentType(const std::string_view &fragment) {
         }
         return FragmentType::Splat;
     }
+
+    if (optpos != std::string_view::npos) {
+        throw std::runtime_error("Only optional parameters are currently supported");
+    }
+
     return FragmentType::Fixed;
+
 }
 
 void
 FragmentTreeNode::addRoute(const std::string_view &path,
-                           Route::Handler &handler,
-                           std::shared_ptr<char> &resourceReference) {
+                           const Route::Handler &handler,
+                           const std::shared_ptr<char> &resourceReference) {
     if (path.length() == 0) {
         throw std::runtime_error("Invalid zero-length URL.");
     }
@@ -218,9 +194,9 @@ bool Pistache::Rest::FragmentTreeNode::removeRoute(const std::string_view &path)
            optional_.empty() && splat_ == nullptr && route_ == nullptr;
 }
 
-Route::Status Pistache::Rest::FragmentTreeNode::invokeRouteHandler(
-        const std::string_view &path, const Http::Request &req,
-        Http::ResponseWriter response,
+std::tuple<std::shared_ptr<Route>, std::vector<TypedParam>, std::vector<TypedParam>>
+Pistache::Rest::FragmentTreeNode::findRoute(
+        const std::string_view &path,
         std::vector<TypedParam> &params,
         std::vector<TypedParam> &splats) const {
     if (path.length() == 0) {
@@ -232,60 +208,71 @@ Route::Status Pistache::Rest::FragmentTreeNode::invokeRouteHandler(
     } else {
         currPath = path;
     }
-    if (currPath.find('/') == std::string_view::npos) { // current leaf requested
-        route_->invokeHandler(Request(req, std::move(params), std::move(splats)), std::move(response));
-        return Route::Status::Match;
+    if (currPath.find('/') == std::string_view::npos) { // current leaf requested, or empty final optional
+        // in case of more than one optional at this point, as it is an ambuiguity,
+        // it is resolved by using the first optional
+        if (!optional_.empty()) {
+            auto optional = optional_.begin();
+            params.emplace_back(optional->first, std::string_view());
+            return optional->second->findRoute(currPath, params, splats);
+        } else return std::make_tuple(route_, std::move(params), std::move(splats));
     } else { // recursion to correct descendant
         const auto pos = currPath.find('/', 1);
         const auto next = (pos == std::string_view::npos) ? currPath.substr(1) : currPath.substr(pos); // complete lower path
         auto mid = (pos == std::string_view::npos) ? currPath.substr(1) : currPath.substr(1, currPath.find('/', pos) - 1); // middle resource name
 
         if (fixed_.count(mid) != 0) {
-            try {
-                return fixed_.at(mid)->invokeRouteHandler(next, req, std::move(response), params, splats);
-            } catch (std::runtime_error &) {
-
-            }
+            auto result = fixed_.at(mid)->findRoute(next, params, splats);
+            auto route = std::get<0>(result);
+            if (route != nullptr) return result;
         }
 
         for (const auto &param: param_) {
-            try {
-                params.push_back(TypedParam(param.first, mid));
-                return param.second->invokeRouteHandler(next, req, std::move(response), params, splats);
-            } catch (std::runtime_error &) {
-                params.pop_back();
-            }
+            params.emplace_back(param.first, mid);
+            auto result = param.second->findRoute(next, params, splats);
 
+            auto route = std::get<0>(result);
+            if (route != nullptr) return result;
+            else params.pop_back();
         }
 
         for (const auto &optional: optional_) {
-            try {
-                return optional.second->invokeRouteHandler(next, req, std::move(response), params, splats);
+            params.emplace_back(optional.first, mid);
+            auto result = optional.second->findRoute(next, params, splats);
+
+            auto route = std::get<0>(result);
+            if (route != nullptr) return result;
+            else {
+                params.pop_back();
+
+                // try empty optional
+                params.emplace_back(optional.first, std::string_view());
+                result = optional.second->findRoute(currPath, params, splats);
+
+                route = std::get<0>(result);
+                if (route != nullptr) return result;
+                else params.pop_back();
             }
-            catch (std::runtime_error &) {}
         }
 
-        try {
-            if (splat_!= nullptr) {
-                splats.push_back(TypedParam(mid, mid));
-                return splat_->invokeRouteHandler(next, req, std::move(response), params, splats);
-            }
-        } catch (std::runtime_error &) {
-            splats.pop_back();
+        if (splat_ != nullptr) {
+            splats.emplace_back(mid, mid);
+            auto result = splat_->findRoute(next, params, splats);
+
+            auto route = std::get<0>(result);
+            if (route != nullptr) return result;
+            else splats.pop_back();
         }
-        throw std::runtime_error("Cannot find route on given leaf.");
+        return std::make_tuple(nullptr, std::vector<TypedParam>(), std::vector<TypedParam>());
     }
 }
 
-Route::Status
-Pistache::Rest::FragmentTreeNode::invokeRouteHandler(const Http::Request& req, Http::ResponseWriter response) const {
+std::tuple<std::shared_ptr<Route>, std::vector<TypedParam>, std::vector<TypedParam>>
+Pistache::Rest::FragmentTreeNode::findRoute(const std::string_view &path) const {
     std::vector<TypedParam> params;
     std::vector<TypedParam> splats;
-    std::string_view path = {req.resource().data(), req.resource().length()};
-    try {
-        return invokeRouteHandler(path, req, std::move(response), params, splats);
-    } catch (std::runtime_error&) {
-        return Route::Status::NotFound;
+    return findRoute(path, params, splats);
+}
 
 namespace Private {
 
@@ -303,7 +290,7 @@ RouterHandler::onRequest(
     auto result = router.route(req, std::move(resp));
 
     /* @Feature: add support for a custom NotFound handler */
-    if (result == Router::Status::NotFound)
+    if (result == Route::Status::NotFound)
     {
         if (router.hasNotFoundHandler())
         {
@@ -314,6 +301,7 @@ RouterHandler::onRequest(
             response.send(Http::Code::Not_Found, "Could not find a matching route");
     }
 }
+} // namespace Private
 
 Router
 Router::fromDescription(const Rest::Description& desc) {
@@ -396,20 +384,28 @@ Router::invokeNotFoundHandler(const Http::Request &req, Http::ResponseWriter res
     notFoundHandler(Rest::Request(std::move(req), std::vector<TypedParam>(), std::vector<TypedParam>()), std::move(resp));
 }
 
-Router::Status
+Route::Status
 Router::route(const Http::Request& req, Http::ResponseWriter response) {
     auto& r = routes[req.method()];
-    try {
-        return r.invokeRouteHandler(req, std::move(response));
-    } catch (std::runtime_error&) {
-        for (const auto &handler: customHandlers) {
-            auto resp = response.clone();
-            auto result = handler(Request(req, std::vector<TypedParam>(), std::vector<TypedParam>()), std::move(resp));
-            if (result == Route::Result::Ok) return Route::Status::Match;
-        }
 
-        return Route::Status::NotFound;
+    std::string_view path {req.resource().data(), req.resource().size()};
+    auto result = r.findRoute(path);
+
+    auto route = std::get<0>(result);
+    if (route != nullptr) {
+        auto params = std::get<1>(result);
+        auto splats = std::get<2>(result);
+        route->invokeHandler(Request(req, std::move(params), std::move(splats)), std::move(response));
+        return Route::Status::Match;
     }
+    for (const auto& handler: customHandlers) {
+        auto resp = response.clone();
+        auto handler1 = handler(Request(req, std::vector<TypedParam>(), std::vector<TypedParam>()), std::move(resp));
+        if (handler1 == Route::Result::Ok) return Route::Status::Match;
+    }
+
+    if (hasNotFoundHandler()) invokeNotFoundHandler(req, std::move(response));
+    return Route::Status::NotFound;
 }
 
 void
@@ -447,9 +443,9 @@ void Options(Router& router, std::string resource, Route::Handler handler) {
     router.options(std::move(resource), std::move(handler));
 }
 
-
 void Remove(Router& router, Http::Method method, std::string resource) {
-    router.removeRoute(method, resource);
+    router.removeRoute(method, std::move(resource));
+}
 
 void NotFound(Router& router, Route::Handler handler) {
     router.addNotFoundHandler(std::move(handler));

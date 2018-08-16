@@ -46,7 +46,7 @@ namespace std {
 
 
         string_view
-        substr(size_type pos = 0, size_type count = npos) const {
+        substr(size_type pos, size_type count = npos) const {
             if (pos > size_) {
                 throw std::out_of_range("Out of range.");
             }

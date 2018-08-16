@@ -5,7 +5,7 @@ TEST(string_view_test, substr_test) {
     std::string_view orig ("test");
     std::string_view targ ("est");
 
-    sub = orig.substr(1);
+    std::string_view sub = orig.substr(1);
     ASSERT_EQ(sub, targ);
 
     sub = orig.substr(1, 10);
