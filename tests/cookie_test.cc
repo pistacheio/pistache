@@ -149,5 +149,4 @@ TEST(cookie_test, cookiejar_test) {
     
     CookieJar jar;
     ASSERT_THROW(jar.addFromRaw("key4", strlen("key4")), std::runtime_error);
-    ASSERT_THROW(jar.addFromRaw("key4=value4=value4", strlen("key4")), std::runtime_error);
 }
