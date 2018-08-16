@@ -129,3 +129,24 @@ TEST(cookie_test, invalid_test) {
     ASSERT_THROW(Cookie::fromString("lang=en-US; Max-Age=12ab"), std::invalid_argument);
 }
 
+void addCookies(const char* str, std::function<void (const CookieJar&)> testFunc) {
+    CookieJar jar;
+    jar.addFromRaw(str, strlen(str));
+    testFunc(jar);
+}
+
+TEST(cookie_test, cookiejar_test) {
+    addCookies("key1=value1", [](const CookieJar& jar) {
+        ASSERT_EQ(jar.get("key1").value, "value1");
+    });
+
+    addCookies("key2=value2; key3=value3; key4=; key5=foo=bar", [](const CookieJar& jar) {
+        ASSERT_EQ(jar.get("key2").value, "value2");
+        ASSERT_EQ(jar.get("key3").value, "value3");
+        ASSERT_EQ(jar.get("key4").value, "");
+        ASSERT_EQ(jar.get("key5").value, "foo=bar");
+    });
+    
+    CookieJar jar;
+    ASSERT_THROW(jar.addFromRaw("key4", strlen("key4")), std::runtime_error);
+}
