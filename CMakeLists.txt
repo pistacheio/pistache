@@ -1,5 +1,6 @@
-cmake_minimum_required (VERSION 3.0.2)
+cmake_minimum_required (VERSION 3.10)
 project (pistache)
+enable_testing()
 include(CheckCXXCompilerFlag)
 
 option(PISTACHE_BUILD_TESTS "build tests alongside the project" OFF)
