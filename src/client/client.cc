@@ -892,10 +892,8 @@ Client::processRequestQueue() {
     Guard guard(queuesLock);
 
     for (auto& queues: requestsQueues) {
-        const auto& domain = queues.first;
-        auto& queue = queues.second;
-
         for (;;) {
+            const auto& domain = queues.first;
             auto conn = pool.pickConnection(domain);
             if (!conn)
                 break;
