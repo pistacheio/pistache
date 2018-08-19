@@ -342,7 +342,7 @@ private:
    typedef std::lock_guard<Lock> Guard;
 
    Lock queuesLock;
-   std::unordered_map<std::string, MPMCQueue<Connection::RequestData *, 2048>> requestsQueues;
+   std::unordered_map<std::string, MPMCQueue<std::shared_ptr<Connection::RequestData>, 2048>> requestsQueues;
 
    RequestBuilder prepareRequest(std::string resource, Http::Method method);
 

@@ -769,15 +769,6 @@ Client::Client()
 }
 
 Client::~Client() {
-    for (auto& queues: requestsQueues) {
-        auto& q = queues.second;
-        for (;;) {
-            Connection::RequestData* d;
-            if (!q.dequeue(d)) break;
-
-            delete d;
-        }
-    }
 }
 
 Client::Options
@@ -855,14 +846,10 @@ Client::doRequest(
         return Async::Promise<Response>([=](Async::Resolver& resolve, Async::Rejection& reject) {
             Guard guard(queuesLock);
 
-            std::unique_ptr<Connection::RequestData> data(
-                    new Connection::RequestData(std::move(resolve), std::move(reject), request, timeout, nullptr));
-
+            auto data = std::make_shared<Connection::RequestData>(std::move(resolve), std::move(reject), request, timeout, nullptr);
             auto& queue = requestsQueues[s.first];
-            if (!queue.enqueue(data.get()))
+            if (!queue.enqueue(data))
                 data->reject(std::runtime_error("Queue is full"));
-            else
-                data.release();
         });
     }
     else {
@@ -899,7 +886,7 @@ Client::processRequestQueue() {
                 break;
 
             auto& queue = queues.second;
-            Connection::RequestData *data;
+            std::shared_ptr<Connection::RequestData> data;
             if (!queue.dequeue(data)) {
                 pool.releaseConnection(conn);
                 break;
@@ -913,8 +900,6 @@ Client::processRequestQueue() {
                         pool.releaseConnection(conn);
                         processRequestQueue();
                     });
-
-            delete data;
         }
     }
 }
