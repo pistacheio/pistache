@@ -1,5 +1,8 @@
 cmake_minimum_required (VERSION 3.0.2)
 project (pistache)
+
+SET (CMAKE_CXX_COMPILER "/usr/bin/clang++")
+
 include(CheckCXXCompilerFlag)
 
 option(PISTACHE_BUILD_TESTS "build tests alongside the project" OFF)
@@ -10,7 +13,11 @@ CHECK_CXX_COMPILER_FLAG("-std=c++17" COMPILER_SUPPORTS_CXX17)
 CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
 CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
-if(COMPILER_SUPPORTS_CXX17)
+
+# Clang exports C++17 in std::experimental namespace (tested on Clang 5 and 6).
+# This gives an error on date.h external library.
+# Following workaround forces Clang to compile at best with C++14
+if(COMPILER_SUPPORTS_CXX17 AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 elseif(COMPILER_SUPPORTS_CXX14)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
