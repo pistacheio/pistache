@@ -1,8 +1,6 @@
 cmake_minimum_required (VERSION 3.0.2)
 project (pistache)
 
-SET (CMAKE_CXX_COMPILER "/usr/bin/clang++")
-
 include(CheckCXXCompilerFlag)
 
 option(PISTACHE_BUILD_TESTS "build tests alongside the project" OFF)
