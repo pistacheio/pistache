@@ -710,8 +710,8 @@ RequestBuilder::method(Method method)
 }
 
 RequestBuilder&
-RequestBuilder::resource(std::string val) {
-    request_.resource_ = std::move(val);
+RequestBuilder::resource(const std::string& val) {
+    request_.resource_ = val;
     return *this;
 }
 
@@ -791,41 +791,41 @@ Client::shutdown() {
 }
 
 RequestBuilder
-Client::get(std::string resource)
+Client::get(const std::string& resource)
 {
-    return prepareRequest(std::move(resource), Http::Method::Get);
+    return prepareRequest(resource, Http::Method::Get);
 }
 
 RequestBuilder
-Client::post(std::string resource)
+Client::post(const std::string& resource)
 {
-    return prepareRequest(std::move(resource), Http::Method::Post);
+    return prepareRequest(resource, Http::Method::Post);
 }
 
 RequestBuilder
-Client::put(std::string resource)
+Client::put(const std::string& resource)
 {
-    return prepareRequest(std::move(resource), Http::Method::Put);
+    return prepareRequest(resource, Http::Method::Put);
 }
 
 RequestBuilder
-Client::patch(std::string resource)
+Client::patch(const std::string& resource)
 {
-    return prepareRequest(std::move(resource), Http::Method::Patch);
+    return prepareRequest(resource, Http::Method::Patch);
 }
 
 RequestBuilder
-Client::del(std::string resource)
+Client::del(const std::string& resource)
 {
-    return prepareRequest(std::move(resource), Http::Method::Delete);
+    return prepareRequest(resource, Http::Method::Delete);
 }
 
 RequestBuilder
-Client::prepareRequest(std::string resource, Http::Method method)
+Client::prepareRequest(const std::string& resource, Http::Method method)
 {
     RequestBuilder builder(this);
     builder
-        .resource(std::move(resource))
+        .resource(resource)
         .method(method);
 
     return builder;
