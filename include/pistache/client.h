@@ -271,7 +271,7 @@ public:
     }
 
     RequestBuilder& cookie(const Cookie& cookie);
-    RequestBuilder& body(std::string val);
+    RequestBuilder& body(const std::string& val);
 
     RequestBuilder& timeout(std::chrono::milliseconds value);
 
