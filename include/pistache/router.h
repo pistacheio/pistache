@@ -190,8 +190,8 @@ public:
     friend class FragmentTreeNode;
     friend class Router;
 
-    bool hasParam(std::string name) const;
-    TypedParam param(std::string name) const;
+    bool hasParam(const std::string& name) const;
+    TypedParam param(const std::string& name) const;
 
     TypedParam splatAt(size_t index) const;
     std::vector<TypedParam> splat() const;

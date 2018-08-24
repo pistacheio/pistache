@@ -734,7 +734,13 @@ RequestBuilder::cookie(const Cookie& cookie) {
 }
 
 RequestBuilder&
-RequestBuilder::body(std::string val) {
+RequestBuilder::body(const std::string& val) {
+    request_.body_ = val;
+    return *this;
+}
+
+RequestBuilder&
+RequestBuilder::body(std::string&& val) {
     request_.body_ = std::move(val);
     return *this;
 }
