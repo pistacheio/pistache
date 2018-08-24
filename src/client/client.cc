@@ -739,6 +739,12 @@ RequestBuilder::body(const std::string& val) {
     return *this;
 }
 
+RequestBuilder&
+RequestBuilder::body(std::string&& val) {
+    request_.body_ = std::move(val);
+    return *this;
+}
+
 Async::Promise<Response>
 RequestBuilder::send() {
     return client_->doRequest(std::move(request_), timeout_);
