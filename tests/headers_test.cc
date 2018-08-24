@@ -197,30 +197,43 @@ TEST(headers_test, connection) {
 }
 
 
-TEST(headers_test, date_test) {
-    
+TEST(headers_test, date_test_rfc_1123) {
+
     using namespace std::chrono;
     FullDate::time_point expected_time_point = date::sys_days(date::year{1994}/11/6)
                                                 + hours(8) + minutes(49) + seconds(37);
-                                                
-    /* RFC-1123 */                                    
+
+    /* RFC-1123 */
     Header::Date d1;
     d1.parse("Sun, 06 Nov 1994 08:49:37 GMT");
     auto dd1 = d1.fullDate().date();
     ASSERT_EQ(expected_time_point, dd1);
-    
+}
+
+TEST(headers_test, date_test_rfc_850) {
+
+    using namespace std::chrono;
+    FullDate::time_point expected_time_point = date::sys_days(date::year{1994}/11/6)
+                                                + hours(8) + minutes(49) + seconds(37);
+
     /* RFC-850 */
     Header::Date d2;
     d2.parse("Sunday, 06-Nov-94 08:49:37 GMT");
     auto dd2 = d2.fullDate().date();
     ASSERT_EQ(dd2, expected_time_point);
+}
+
+TEST(headers_test, date_test_asctime) {
+
+    using namespace std::chrono;
+    FullDate::time_point expected_time_point = date::sys_days(date::year{1994}/11/6)
+                                                + hours(8) + minutes(49) + seconds(37);
 
     /* ANSI C's asctime format */
     Header::Date d3;
     d3.parse("Sun Nov  6 08:49:37 1994");
     auto dd3 = d3.fullDate().date();
     ASSERT_EQ(dd3, expected_time_point);
-
 }
 
 TEST(headers_test, host) {

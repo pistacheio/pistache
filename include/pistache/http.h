@@ -203,8 +203,8 @@ public:
 
     Timeout(Timeout&& other)
         : handler(other.handler)
-        , transport(other.transport)
         , request(std::move(other.request))
+        , transport(other.transport)
         , armed(other.armed)
         , timerFd(other.timerFd)
         , peer(std::move(other.peer))
@@ -281,8 +281,8 @@ private:
     void onTimeout(uint64_t numWakeup);
 
     Handler* handler;
-    Tcp::Transport* transport;
     Request request;
+    Tcp::Transport* transport;
     bool armed;
     Fd timerFd;
     std::weak_ptr<Tcp::Peer> peer;
@@ -547,7 +547,7 @@ public:
        return &buf_;
     }
 
-    DynamicStreamBuf *rdbuf([[maybe_unused]] DynamicStreamBuf* other) {
+    DynamicStreamBuf *rdbuf(DynamicStreamBuf* other) {
        UNUSED(other)
        throw std::domain_error("Unimplemented");
     }
@@ -638,7 +638,8 @@ namespace Private {
         State apply(StreamCursor& cursor);
     };
 
-    struct BodyStep : public Step {
+    class BodyStep : public Step {
+    public:
         BodyStep(Message* message_)
             : Step(message_)
             , chunk(message_)
@@ -698,6 +699,8 @@ namespace Private {
 
         bool feed(const char* data, size_t len);
         virtual void reset();
+
+        virtual ~ParserBase() { }
 
         State parse();
 
@@ -783,6 +786,8 @@ public:
     virtual void onRequest(const Request& request, ResponseWriter response) = 0;
 
     virtual void onTimeout(const Request& request, ResponseWriter response);
+
+    virtual ~Handler() { }
 
 private:
     Private::Parser<Http::Request>& getParser(const std::shared_ptr<Tcp::Peer>& peer) const;

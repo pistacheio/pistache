@@ -218,6 +218,8 @@ public:
         return key_;
     };
 
+    virtual ~Handler() { }
+
 private:
     Reactor* reactor_;
     Context context_;

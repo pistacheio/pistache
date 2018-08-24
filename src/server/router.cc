@@ -1,6 +1,6 @@
 /* router.cc
    Mathieu Stefani, 05 janvier 2016
-   
+
    Rest routing implementation
 */
 
@@ -118,7 +118,7 @@ FragmentTreeNode::addRoute(const std::string_view &path,
         const auto next = (pos == std::string_view::npos) ? currPath.substr(1) : currPath.substr(pos); // complete lower path
         auto mid = (pos == std::string_view::npos) ? currPath.substr(1) : currPath.substr(1, currPath.find('/', pos) - 1); // middle resource name
 
-        std::unordered_map<std::string_view, std::shared_ptr<FragmentTreeNode>> *collection;
+        std::unordered_map<std::string_view, std::shared_ptr<FragmentTreeNode>> *collection = nullptr;
         const auto fragmentType = getFragmentType(mid);
         switch (fragmentType) {
             case FragmentType::Fixed:
@@ -163,7 +163,7 @@ bool Pistache::Rest::FragmentTreeNode::removeRoute(const std::string_view &path)
         const auto pos = currPath.find('/', 1);
         const auto next = (pos == std::string_view::npos) ? currPath.substr(1) : currPath.substr(pos); // complete lower path
         auto mid = (pos == std::string_view::npos) ? currPath.substr(1) : currPath.substr(1, currPath.find('/', pos) - 1); // middle resource name
-        std::unordered_map<std::string_view, std::shared_ptr<FragmentTreeNode>> *collection;
+        std::unordered_map<std::string_view, std::shared_ptr<FragmentTreeNode>> *collection = nullptr;
 
         auto fragmentType = getFragmentType(mid);
         switch (fragmentType) {

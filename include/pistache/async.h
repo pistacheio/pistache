@@ -46,6 +46,7 @@ namespace Async {
     class BadAnyCast : public std::bad_cast {
     public:
         virtual const char* what() const noexcept { return "Bad any cast"; }
+        virtual ~BadAnyCast() { }
     };
 
     enum class State {
@@ -163,6 +164,7 @@ namespace Async {
         public:
             virtual void resolve(const std::shared_ptr<Core>& core) = 0;
             virtual void reject(const std::shared_ptr<Core>& core) = 0;
+            virtual ~Request() {}
         };
 
         struct Core {
@@ -207,6 +209,7 @@ namespace Async {
                 state = State::Fulfilled;
             }
 
+            virtual ~Core() { }
         };
 
         template<typename T>
@@ -290,9 +293,11 @@ namespace Async {
             virtual void doResolve(const std::shared_ptr<CoreT<T>>& core) = 0;
             virtual void doReject(const std::shared_ptr<CoreT<T>>& core) = 0;
 
-            std::shared_ptr<Core> chain_;
+            virtual ~Continuable() { }
+
             size_t resolveCount_;
             size_t rejectCount_;
+            std::shared_ptr<Core> chain_;
         };
 
         namespace impl {
@@ -957,9 +962,7 @@ namespace Async {
         Promise(Promise<T>&& other) = default;
         Promise& operator=(Promise<T>&& other) = default;
 
-        ~Promise()
-        {
-        }
+        virtual ~Promise() { }
 
         template<typename U>
         static

@@ -19,18 +19,18 @@ TEST(string_view_test, find_test) {
     std::string_view orig ("test");
     std::string_view find ("est");
 
-    ASSERT_EQ(orig.find(find), 1);
-    ASSERT_EQ(orig.find(find, 1), 1);
+    ASSERT_EQ(orig.find(find), 1U);
+    ASSERT_EQ(orig.find(find, 1), 1U);
     ASSERT_EQ(orig.find(find, 2), std::size_t(-1));
 
-    ASSERT_EQ(orig.find('e'), 1);
-    ASSERT_EQ(orig.find('e', 1), 1);
+    ASSERT_EQ(orig.find('e'), 1U);
+    ASSERT_EQ(orig.find('e', 1), 1U);
     ASSERT_EQ(orig.find('e', 2), std::size_t(-1));
     ASSERT_EQ(orig.find('1'), std::size_t(-1));
 
-    ASSERT_EQ(orig.find("est"), 1);
-    ASSERT_EQ(orig.find("est", 1), 1);
-    ASSERT_EQ(orig.find("est", 1, 2), 1);
+    ASSERT_EQ(orig.find("est"), 1U);
+    ASSERT_EQ(orig.find("est", 1), 1U);
+    ASSERT_EQ(orig.find("est", 1, 2), 1U);
     ASSERT_EQ(orig.find("set"), std::size_t(-1));
     ASSERT_EQ(orig.find("est", 2), std::size_t(-1));
     ASSERT_EQ(orig.find("est", 2, 2), std::size_t(-1));
@@ -40,16 +40,16 @@ TEST(string_view_test, rfind_test) {
     std::string_view orig ("test");
     std::string_view find ("est");
 
-    ASSERT_EQ(orig.rfind(find), 1);
-    ASSERT_EQ(orig.rfind(find, 1), 1);
+    ASSERT_EQ(orig.rfind(find), 1U);
+    ASSERT_EQ(orig.rfind(find, 1), 1U);
 
-    ASSERT_EQ(orig.rfind('e'), 1);
-    ASSERT_EQ(orig.rfind('e', 1), 1);
+    ASSERT_EQ(orig.rfind('e'), 1U);
+    ASSERT_EQ(orig.rfind('e', 1), 1U);
     ASSERT_EQ(orig.rfind('q'), std::size_t(-1));
 
-    ASSERT_EQ(orig.rfind("est"), 1);
-    ASSERT_EQ(orig.rfind("est", 1), 1);
-    ASSERT_EQ(orig.rfind("est", 1, 2), 1);
+    ASSERT_EQ(orig.rfind("est"), 1U);
+    ASSERT_EQ(orig.rfind("est", 1), 1U);
+    ASSERT_EQ(orig.rfind("est", 1, 2), 1U);
     ASSERT_EQ(orig.rfind("set"), std::size_t(-1));
 }
 

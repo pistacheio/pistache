@@ -57,9 +57,9 @@ private:
     void associateTransport(Transport* transport);
     Transport* transport() const;
 
+    Transport* transport_;
     Address addr;
     Fd fd_;
-    Transport* transport_;
 
     std::string hostname_;
     std::unordered_map<std::string, std::shared_ptr<void>> data_;
