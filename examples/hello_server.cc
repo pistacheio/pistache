@@ -4,17 +4,17 @@
    Example of an hello world server
 */
 
-#include <pistache/endpoint.h>
 
-class HelloHandler : public Pistache::Http::Handler {
+#include "pistache/endpoint.h"
+
+using namespace Pistache;
+
+class HelloHandler : public Http::Handler {
 public:
 
     HTTP_PROTOTYPE(HelloHandler)
 
-    void onRequest(
-        const Pistache::Http::Request& request,
-        Pistache::Http::ResponseWriter response)
-    {
+    void onRequest(const Http::Request& request, Http::ResponseWriter response) {
         (void) request;
         response.send(Pistache::Http::Code::Ok, "Hello World\n");
     }

@@ -13,6 +13,8 @@
 
 #include <sys/socket.h>
 
+#include <pistache/common.h>
+
 #ifndef _KERNEL_FASTOPEN
 #define _KERNEL_FASTOPEN
 
@@ -112,7 +114,8 @@ struct Size<const char*> {
 
 template<size_t N>
 struct Size<char[N]> {
-    constexpr size_t operator()(const char (&)[N]) const {
+    constexpr size_t operator()(const char (&arr)[N]) const {
+        UNUSED(arr)
         // We omit the \0
         return N - 1;
     }

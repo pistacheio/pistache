@@ -119,8 +119,10 @@ Listener::setHandler(const std::shared_ptr<Handler>& handler) {
 }
 
 void
-Listener::pinWorker(size_t /*worker*/, const CpuSet& /*set*/)
+Listener::pinWorker(size_t worker, const CpuSet& set)
 {
+    UNUSED(worker)
+    UNUSED(set)
 #if 0
     if (ioGroup.empty()) {
         throw std::domain_error("Invalid operation, did you call init() before ?");

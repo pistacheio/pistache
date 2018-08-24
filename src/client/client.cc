@@ -599,7 +599,8 @@ Connection::performImpl(
 
 
     transport_->asyncSendRequest(shared_from_this(), timer, buffer).then(
-        [=](ssize_t) mutable {
+        [=](ssize_t bytes) mutable {
+            UNUSED(bytes)
             inflightRequests.push_back(RequestEntry(std::move(resolveMover), std::move(rejectMover), std::move(timer), std::move(onDone)));
         },
         [=](std::exception_ptr e) { rejectCloneMover.val(e); });
@@ -694,12 +695,14 @@ ConnectionPool::idleConnections(const std::string& domain) const {
 }
 
 size_t
-ConnectionPool::availableConnections(const std::string&) const {
+ConnectionPool::availableConnections(const std::string& domain) const {
+    UNUSED(domain)
     return 0;
 }
 
 void
-ConnectionPool::closeIdleConnections(const std::string&) {
+ConnectionPool::closeIdleConnections(const std::string& domain) {
+    UNUSED(domain)
 }
 
 RequestBuilder&

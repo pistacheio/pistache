@@ -17,6 +17,7 @@
 
 #include <pistache/optional.h>
 #include <pistache/typeid.h>
+#include <pistache/common.h>
 
 namespace Pistache {
 namespace Async {
@@ -391,7 +392,8 @@ namespace Async {
                 static_assert(sizeof...(Args) == 0,
                         "Can not attach a non-void continuation to a void-Promise");
 
-                void doResolve(const std::shared_ptr<CoreT<void>>&) {
+                void doResolve(const std::shared_ptr<CoreT<void>>& core) {
+                    UNUSED(core)
                     finishResolve(resolve_());
                 }
 
@@ -468,7 +470,8 @@ namespace Async {
                 static_assert(sizeof...(Args) == 0,
                         "Can not attach a non-void continuation to a void-Promise");
 
-                void doResolve(const std::shared_ptr<CoreT<void>>&) {
+                void doResolve(const std::shared_ptr<CoreT<void>>& core) {
+                    UNUSED(core)
                     resolve_();
                 }
 
@@ -575,7 +578,8 @@ namespace Async {
                     , reject_(reject)
                 { }
 
-                void doResolve(const std::shared_ptr<CoreT<void>>&) {
+                void doResolve(const std::shared_ptr<CoreT<void>>& core) {
+                    UNUSED(core)
                     auto promise = resolve_();
                     finishResolve(promise);
                 }
@@ -962,7 +966,10 @@ namespace Async {
         Promise(Promise<T>&& other) = default;
         Promise& operator=(Promise<T>&& other) = default;
 
-        virtual ~Promise() { }
+        virtual ~Promise()
+        {
+
+        }
 
         template<typename U>
         static

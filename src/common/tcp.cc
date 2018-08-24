@@ -23,11 +23,13 @@ Handler::associateTransport(Transport* transport) {
 }
 
 void
-Handler::onConnection(const std::shared_ptr<Tcp::Peer>&) {
+Handler::onConnection(const std::shared_ptr<Tcp::Peer>& peer) {
+    UNUSED(peer)
 }
 
 void
-Handler::onDisconnection(const std::shared_ptr<Tcp::Peer>&) {
+Handler::onDisconnection(const std::shared_ptr<Tcp::Peer>& peer) {
+    UNUSED(peer)
 }
 
 } // namespace Tcp

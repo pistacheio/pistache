@@ -50,7 +50,9 @@ Header::parseRaw(const char *str, size_t len) {
 }
 
 void
-Allow::parseRaw(const char*, size_t) {
+Allow::parseRaw(const char* str, size_t len) {
+    UNUSED(str)
+    UNUSED(len)
 }
 
 void
@@ -309,7 +311,8 @@ Date::parse(const std::string &str) {
 }
 
 void
-Date::write(std::ostream&) const {
+Date::write(std::ostream& os) const {
+    UNUSED(os)
 }
 
 void
@@ -415,7 +418,8 @@ Accept::parseRaw(const char *str, size_t len) {
 }
 
 void
-Accept::write(std::ostream&) const {
+Accept::write(std::ostream& os) const {
+    UNUSED(os)
 }
 
 void
@@ -470,8 +474,9 @@ Server::Server(const char* token)
 }
 
 void
-Server::parse(const std::string&)
+Server::parse(const std::string& data)
 {
+    UNUSED(data)
 }
 
 void

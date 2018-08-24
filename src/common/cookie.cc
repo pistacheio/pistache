@@ -64,7 +64,8 @@ namespace {
 
     template<>
     struct AttributeMatcher<bool> {
-        static void match(StreamCursor&, Cookie* obj, bool Cookie::*attr) {
+        static void match(StreamCursor& cursor, Cookie* obj, bool Cookie::*attr) {
+            UNUSED(cursor)
             obj->*attr = true;
         }
     };
@@ -236,7 +237,7 @@ CookieJar::addFromRaw(const char *str, size_t len) {
         cursor.advance(1);
         skip_whitespaces(cursor);
     }
-}       
+}
 
 Cookie
 CookieJar::get(const std::string& name) const {
