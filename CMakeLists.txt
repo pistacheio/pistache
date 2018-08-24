@@ -62,6 +62,7 @@ endif()
         @ONLY
     )
 
+if(PISTACHE_INSTALL)
     # Install header...
     install (
         FILES
@@ -69,6 +70,7 @@ endif()
         DESTINATION
         include/pistache/
     )
+endif()
 
 # Configure the pkg-config metadata...
 
@@ -86,6 +88,7 @@ endif()
         @ONLY
     )
 
+if(PISTACHE_INSTALL)
     # Install pkg-config metadata into standard location within the prefix...
     install (
         FILES
@@ -93,3 +96,4 @@ endif()
         DESTINATION
         lib/pkgconfig/
     )
+endif()
