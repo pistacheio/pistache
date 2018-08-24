@@ -44,8 +44,8 @@ public:
     typedef std::unordered_map<std::string, Cookie> Storage;
 
     struct iterator : std::iterator<std::bidirectional_iterator_tag, Cookie> {
-        iterator(const Storage::const_iterator& iterator)
-            : it_(iterator)
+        iterator(const Storage::const_iterator& _iterator)
+            : it_(_iterator)
         { }
 
         Cookie operator*() const {
@@ -78,6 +78,7 @@ public:
     CookieJar();
 
     void add(const Cookie& cookie);
+    void addFromRaw(const char *str, size_t len);
     Cookie get(const std::string& name) const;
 
     bool has(const std::string& name) const;

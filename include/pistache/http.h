@@ -9,7 +9,9 @@
 #include <type_traits>
 #include <stdexcept>
 #include <array>
+#include <vector>
 #include <sstream>
+#include <algorithm>
 
 #include <sys/timerfd.h>
 
@@ -87,7 +89,6 @@ protected:
 };
 
 namespace Uri {
-    typedef std::string Fragment;
 
     class Query {
     public:
@@ -97,12 +98,36 @@ namespace Uri {
         void add(std::string name, std::string value);
         Optional<std::string> get(const std::string& name) const;
         bool has(const std::string& name) const;
+        // Return empty string or "?key1=value1&key2=value2" if query exist
+        std::string as_str() const;
 
         void clear() {
             params.clear();
         }
 
+        // \brief Return iterator to the beginning of the parameters map
+        std::unordered_map<std::string, std::string>::const_iterator
+          parameters_begin() const {
+            return params.begin();
+        }
+
+        // \brief Return iterator to the end of the parameters map
+        std::unordered_map<std::string, std::string>::const_iterator
+          parameters_end() const {
+            return params.begin();
+        }
+
+        // \brief returns all parameters given in the query
+        std::vector<std::string> parameters() const {
+          std::vector<std::string> keys;
+          std::transform(params.begin(), params.end(), std::back_inserter(keys),
+            [](const std::unordered_map<std::string, std::string>::value_type
+               &pair) {return pair.first;});
+          return keys;
+        }
+
     private:
+        //first is key second is value
         std::unordered_map<std::string, std::string> params;
     };
 } // namespace Uri
@@ -231,18 +256,18 @@ public:
 private:
     Timeout(const Timeout& other)
         : handler(other.handler)
-        , transport(other.transport)
         , request(other.request)
+        , transport(other.transport)
         , armed(other.armed)
         , timerFd(other.timerFd)
     { }
 
-    Timeout(Tcp::Transport* transport,
-            Handler* handler,
-            Request request)
-        : handler(handler)
-        , transport(transport)
-        , request(std::move(request))
+    Timeout(Tcp::Transport* transport_,
+            Handler* handler_,
+            Request request_)
+        : handler(handler_)
+        , request(std::move(request_))
+        , transport(transport_)
         , armed(false)
         , timerFd(-1)
     {
@@ -509,16 +534,23 @@ public:
         return timeout_;
     }
 
+    std::shared_ptr<Tcp::Peer> peer() const {
+        if (peer_.expired())
+            throw std::runtime_error("Write failed: Broken pipe");
+
+        return peer_.lock();
+    }
+
     // Unsafe API
 
     DynamicStreamBuf *rdbuf() {
        return &buf_;
     }
 
-    DynamicStreamBuf *rdbuf(DynamicStreamBuf*) {
+    DynamicStreamBuf *rdbuf([[maybe_unused]] DynamicStreamBuf* other) {
+       UNUSED(other)
        throw std::domain_error("Unimplemented");
     }
-
 
     ResponseWriter clone() const {
         return ResponseWriter(*this);
@@ -539,13 +571,6 @@ private:
         , transport_(other.transport_)
         , timeout_(other.timeout_)
     { }
-
-    std::shared_ptr<Tcp::Peer> peer() const {
-        if (peer_.expired())
-            throw std::runtime_error("Write failed: Broken pipe");
-
-        return peer_.lock();
-    }
 
     template<typename Ptr>
     void associatePeer(const Ptr& peer) {
@@ -576,6 +601,8 @@ namespace Private {
         Step(Message* request)
             : message(request)
         { }
+
+        virtual ~Step() = default;
 
         virtual State apply(StreamCursor& cursor) = 0;
 
@@ -611,11 +638,10 @@ namespace Private {
         State apply(StreamCursor& cursor);
     };
 
-    class BodyStep : public Step {
-    public:
-        BodyStep(Message* message)
-            : Step(message)
-            , chunk(message)
+    struct BodyStep : public Step {
+        BodyStep(Message* message_)
+            : Step(message_)
+            , chunk(message_)
             , bytesRead(0)
         { }
 
@@ -625,8 +651,8 @@ namespace Private {
         struct Chunk {
             enum Result { Complete, Incomplete, Final };
 
-            Chunk(Message* message)
-              : message(message)
+            Chunk(Message* message_)
+              : message(message_)
               , bytesRead(0)
               , size(-1)
             { }
@@ -659,10 +685,12 @@ namespace Private {
         {
         }
 
-        ParserBase(const char*, size_t)
+        ParserBase(const char* data, size_t len)
             : cursor(&buffer)
             , currentStep(0)
         {
+            UNUSED(data)
+            UNUSED(len)
         }
 
         ParserBase(const ParserBase& other) = delete;

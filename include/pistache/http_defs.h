@@ -10,7 +10,6 @@
 #include <ostream>
 #include <stdexcept>
 #include <chrono>
-#include <ctime>
 #include <functional>
 
 namespace Pistache {
@@ -176,7 +175,8 @@ private:
 // 3.3.1 Full Date
 class FullDate {
 public:
-    FullDate();
+    using time_point = std::chrono::system_clock::time_point;
+    FullDate() { }
 
     enum class Type {
         RFC1123,
@@ -184,18 +184,17 @@ public:
         AscTime
     };
 
-    FullDate(std::tm date)
+    FullDate(time_point date)
         : date_(date)
     { }
 
-    std::tm date() const { return date_; }
+    time_point date() const { return date_; }
     void write(std::ostream& os, Type type = Type::RFC1123) const;
 
-    static FullDate fromRaw(const char* str, size_t len);
     static FullDate fromString(const std::string& str);
 
 private:
-    std::tm date_;
+    time_point date_;
 };
 
 const char* methodString(Method method);

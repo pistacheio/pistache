@@ -228,6 +228,13 @@ Transport::asyncWriteImpl(
             totalWritten += bytesWritten;
             if (totalWritten >= buffer.size()) {
                 cleanUp();
+
+                if (buffer.isFile()) {
+                    // done with the file buffer, nothing else knows whether to
+                    // close it with the way the code is written.
+                    ::close(buffer.fd());
+                }
+
                 deferred.resolve(totalWritten);
                 break;
             }

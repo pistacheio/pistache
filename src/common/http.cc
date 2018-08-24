@@ -294,9 +294,7 @@ namespace Private {
             }
 
             if (name == "Cookie") {
-                message->cookies_.add(
-                        Cookie::fromRaw(cursor.offset(start), cursor.diff(start))
-                );
+                message->cookies_.addFromRaw(cursor.offset(start), cursor.diff(start));
             }
 
             else if (Header::Registry::isRegistered(name)) {
@@ -500,6 +498,18 @@ namespace Uri {
 
         return Some(it->second);
     }
+    
+    std::string 
+    Query::as_str() const {
+        std::string query_url;
+        for(const auto &e : params) {
+            query_url += "&" + e.first + "=" + e.second;
+        }
+        if(not query_url.empty()) {
+            query_url[0] = '?'; // replace first `&` with `?`
+        } else {/* query_url is empty */}
+        return query_url;
+    }
 
     bool
     Query::has(const std::string& name) const {
@@ -668,13 +678,21 @@ serveFile(ResponseWriter& response, const char* fileName, const Mime::MediaType&
 
     int fd = open(fileName, O_RDONLY);
     if (fd == -1) {
+        std::string str_error(strerror(errno));
+        if(errno == ENOENT) {
+            throw HttpError(Http::Code::Not_Found, std::move(str_error));
+        }
+        //eles if TODO 
         /* @Improvement: maybe could we check for errno here and emit a different error
             message
         */
-        throw HttpError(Http::Code::Not_Found, "");
+        else {
+            throw HttpError(Http::Code::Internal_Server_Error, std::move(str_error));
+        }
     }
 
     int res = ::fstat(fd, &sb);
+    close(fd); // Done with fd, close before error can be thrown
     if (res == -1) {
         throw HttpError(Code::Internal_Server_Error, "");
     }

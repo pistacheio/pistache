@@ -9,7 +9,7 @@ set(SOURCE_FILES
     ${SERVER_SOURCE_FILES}
     ${CLIENT_SOURCE_FILES}
     ${INCLUDE_FILES}
-)
+        ../include/pistache/string_view.h)
 
 add_library(pistache ${SOURCE_FILES})
 set_target_properties(pistache PROPERTIES
@@ -17,6 +17,7 @@ set_target_properties(pistache PROPERTIES
     VERSION ${GENERIC_LIB_VERSION}
     SOVERSION ${GENERIC_LIB_SOVERSION}
 )
+add_definitions(-DONLY_C_LOCALE=1)
 
 target_include_directories(pistache PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
