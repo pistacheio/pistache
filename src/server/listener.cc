@@ -222,7 +222,7 @@ Listener::run() {
                 else {
                     if (event.flags.hasFlag(Polling::NotifyOn::Read)) {
                         auto fd = event.tag.value();
-                        if ((ssize_t)fd == listen_fd)
+                        if (static_cast<ssize_t>(fd) == listen_fd)
                             handleNewConnection();
                     }
                 }

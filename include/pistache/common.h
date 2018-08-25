@@ -37,7 +37,7 @@
 #define TRY_RET(...) \
     [&]() { \
         auto ret = __VA_ARGS__; \
-        if ((ssize_t)ret < 0) { \
+        if (ret < 0) { \
             const char *str = #__VA_ARGS__; \
             std::ostringstream oss; \
             oss << str << ": " << strerror(errno); \

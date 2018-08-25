@@ -64,7 +64,6 @@ CacheDirective::delta() const
             return std::chrono::seconds(data.minFresh);
         default:
             throw std::domain_error("Invalid operation on cache directive");
-            return std::chrono::seconds();
     }
 }
 
