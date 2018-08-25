@@ -316,6 +316,14 @@ public:
     friend
     ResponseStream& operator<<(ResponseStream& stream, const T& val);
 
+    std::streamsize write(char * data, std::streamsize sz) {
+        std::ostream os(&buf_);
+        os << std::hex << sz << crlf;
+        os.write(data, sz);
+        os << crlf;
+        return sz;
+    }
+
     const Header::Collection& headers() const {
         return headers_;
     }
