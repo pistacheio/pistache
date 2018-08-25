@@ -747,7 +747,7 @@ RequestBuilder::body(std::string&& val) {
 
 Async::Promise<Response>
 RequestBuilder::send() {
-    return client_->doRequest(std::move(request_), timeout_);
+    return client_->doRequest(request_, timeout_);
 }
 
 Client::Options&
