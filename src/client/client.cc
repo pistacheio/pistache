@@ -552,6 +552,7 @@ struct MoveOnCopy {
 
     MoveOnCopy& operator=(MoveOnCopy& other) {
         val = std::move(other.val);
+        return *this;
     }
 
     MoveOnCopy(MoveOnCopy&& other) = default;
@@ -709,8 +710,8 @@ RequestBuilder::method(Method method)
 }
 
 RequestBuilder&
-RequestBuilder::resource(std::string val) {
-    request_.resource_ = std::move(val);
+RequestBuilder::resource(const std::string& val) {
+    request_.resource_ = val;
     return *this;
 }
 
@@ -733,7 +734,13 @@ RequestBuilder::cookie(const Cookie& cookie) {
 }
 
 RequestBuilder&
-RequestBuilder::body(std::string val) {
+RequestBuilder::body(const std::string& val) {
+    request_.body_ = val;
+    return *this;
+}
+
+RequestBuilder&
+RequestBuilder::body(std::string&& val) {
     request_.body_ = std::move(val);
     return *this;
 }
@@ -768,15 +775,6 @@ Client::Client()
 }
 
 Client::~Client() {
-    for (auto& queues: requestsQueues) {
-        auto& q = queues.second;
-        for (;;) {
-            Connection::RequestData* d;
-            if (!q.dequeue(d)) break;
-
-            delete d;
-        }
-    }
 }
 
 Client::Options
@@ -799,41 +797,41 @@ Client::shutdown() {
 }
 
 RequestBuilder
-Client::get(std::string resource)
+Client::get(const std::string& resource)
 {
-    return prepareRequest(std::move(resource), Http::Method::Get);
+    return prepareRequest(resource, Http::Method::Get);
 }
 
 RequestBuilder
-Client::post(std::string resource)
+Client::post(const std::string& resource)
 {
-    return prepareRequest(std::move(resource), Http::Method::Post);
+    return prepareRequest(resource, Http::Method::Post);
 }
 
 RequestBuilder
-Client::put(std::string resource)
+Client::put(const std::string& resource)
 {
-    return prepareRequest(std::move(resource), Http::Method::Put);
+    return prepareRequest(resource, Http::Method::Put);
 }
 
 RequestBuilder
-Client::patch(std::string resource)
+Client::patch(const std::string& resource)
 {
-    return prepareRequest(std::move(resource), Http::Method::Patch);
+    return prepareRequest(resource, Http::Method::Patch);
 }
 
 RequestBuilder
-Client::del(std::string resource)
+Client::del(const std::string& resource)
 {
-    return prepareRequest(std::move(resource), Http::Method::Delete);
+    return prepareRequest(resource, Http::Method::Delete);
 }
 
 RequestBuilder
-Client::prepareRequest(std::string resource, Http::Method method)
+Client::prepareRequest(const std::string& resource, Http::Method method)
 {
     RequestBuilder builder(this);
     builder
-        .resource(std::move(resource))
+        .resource(resource)
         .method(method);
 
     return builder;
@@ -854,14 +852,10 @@ Client::doRequest(
         return Async::Promise<Response>([=](Async::Resolver& resolve, Async::Rejection& reject) {
             Guard guard(queuesLock);
 
-            std::unique_ptr<Connection::RequestData> data(
-                    new Connection::RequestData(std::move(resolve), std::move(reject), request, timeout, nullptr));
-
+            auto data = std::make_shared<Connection::RequestData>(std::move(resolve), std::move(reject), request, timeout, nullptr);
             auto& queue = requestsQueues[s.first];
-            if (!queue.enqueue(data.get()))
+            if (!queue.enqueue(data))
                 data->reject(std::runtime_error("Queue is full"));
-            else
-                data.release();
         });
     }
     else {
@@ -891,16 +885,14 @@ Client::processRequestQueue() {
     Guard guard(queuesLock);
 
     for (auto& queues: requestsQueues) {
-        const auto& domain = queues.first;
-        auto& queue = queues.second;
-
         for (;;) {
+            const auto& domain = queues.first;
             auto conn = pool.pickConnection(domain);
             if (!conn)
                 break;
 
             auto& queue = queues.second;
-            Connection::RequestData *data;
+            std::shared_ptr<Connection::RequestData> data;
             if (!queue.dequeue(data)) {
                 pool.releaseConnection(conn);
                 break;
@@ -914,8 +906,6 @@ Client::processRequestQueue() {
                         pool.releaseConnection(conn);
                         processRequestQueue();
                     });
-
-            delete data;
         }
     }
 }

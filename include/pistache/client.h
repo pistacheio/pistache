@@ -257,7 +257,7 @@ public:
     friend class Client;
 
     RequestBuilder& method(Method method);
-    RequestBuilder& resource(std::string val);
+    RequestBuilder& resource(const std::string& val);
     RequestBuilder& params(const Uri::Query& query);
     RequestBuilder& header(const std::shared_ptr<Header::Header>& header);
 
@@ -271,7 +271,8 @@ public:
     }
 
     RequestBuilder& cookie(const Cookie& cookie);
-    RequestBuilder& body(std::string val);
+    RequestBuilder& body(const std::string& val);
+    RequestBuilder& body(std::string&& val);
 
     RequestBuilder& timeout(std::chrono::milliseconds value);
 
@@ -321,11 +322,11 @@ public:
    static Options options();
    void init(const Options& options);
 
-   RequestBuilder get(std::string resource);
-   RequestBuilder post(std::string resource);
-   RequestBuilder put(std::string resource);
-   RequestBuilder patch(std::string resource);
-   RequestBuilder del(std::string resource);
+   RequestBuilder get(const std::string& resource);
+   RequestBuilder post(const std::string& resource);
+   RequestBuilder put(const std::string& resource);
+   RequestBuilder patch(const std::string& resource);
+   RequestBuilder del(const std::string& resource);
 
    void shutdown();
 
@@ -342,9 +343,9 @@ private:
    typedef std::lock_guard<Lock> Guard;
 
    Lock queuesLock;
-   std::unordered_map<std::string, MPMCQueue<Connection::RequestData *, 2048>> requestsQueues;
+   std::unordered_map<std::string, MPMCQueue<std::shared_ptr<Connection::RequestData>, 2048>> requestsQueues;
 
-   RequestBuilder prepareRequest(std::string resource, Http::Method method);
+   RequestBuilder prepareRequest(const std::string& resource, Http::Method method);
 
    Async::Promise<Response> doRequest(
            Http::Request req,
