@@ -100,7 +100,7 @@ namespace Uri {
         bool has(const std::string& name) const;
         // Return empty string or "?key1=value1&key2=value2" if query exist
         std::string as_str() const;
-        
+
         void clear() {
             params.clear();
         }
@@ -321,6 +321,7 @@ public:
         os << std::hex << sz << crlf;
         os.write(data, sz);
         os << crlf;
+        flush();
         return sz;
     }
 
@@ -377,6 +378,7 @@ ResponseStream& operator<<(ResponseStream& stream, const T& val) {
     std::ostream os(&stream.buf_);
     os << std::hex << size(val) << crlf;
     os << val << crlf;
+    stream.flush();
 
     return stream;
 }
