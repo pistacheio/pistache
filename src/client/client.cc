@@ -745,6 +745,12 @@ RequestBuilder::body(std::string&& val) {
     return *this;
 }
 
+RequestBuilder&
+RequestBuilder::timeout(std::chrono::milliseconds timeout) {
+    timeout_ = timeout;
+    return *this;
+}
+
 Async::Promise<Response>
 RequestBuilder::send() {
     return client_->doRequest(request_, timeout_);
