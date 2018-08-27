@@ -35,6 +35,9 @@ public:
     bool isReserved() const;
     bool isUsed() const;
 
+    static constexpr uint16_t min() {
+        return std::numeric_limits<uint16_t>::min();
+    }
     static constexpr uint16_t max() {
         return std::numeric_limits<uint16_t>::max();
     }
@@ -77,7 +80,7 @@ public:
     Port port() const;
 
 private:
-    void init(std::string addr);
+    void init(const std::string& addr);
     std::string host_;
     Port port_;
 };

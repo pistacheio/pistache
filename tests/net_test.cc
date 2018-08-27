@@ -48,4 +48,6 @@ TEST(net_test, invalid_address)
 {
     ASSERT_THROW(Address("127.0.0.1"), std::invalid_argument);
     ASSERT_THROW(Address("127.0.0.1:9999999"), std::invalid_argument);
+    ASSERT_THROW(Address("127.0.0.1:"), std::invalid_argument);
+    ASSERT_THROW(Address("127.0.0.1:-10"), std::invalid_argument);
 }
