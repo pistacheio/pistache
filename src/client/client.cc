@@ -737,14 +737,26 @@ RequestBuilder::cookie(const Cookie& cookie) {
 }
 
 RequestBuilder&
-RequestBuilder::body(std::string val) {
+RequestBuilder::body(const std::string& val) {
+    request_.body_ = val;
+    return *this;
+}
+
+RequestBuilder&
+RequestBuilder::body(std::string&& val) {
     request_.body_ = std::move(val);
+    return *this;
+}
+
+RequestBuilder&
+RequestBuilder::timeout(std::chrono::milliseconds timeout) {
+    timeout_ = timeout;
     return *this;
 }
 
 Async::Promise<Response>
 RequestBuilder::send() {
-    return client_->doRequest(std::move(request_), timeout_);
+    return client_->doRequest(request_, timeout_);
 }
 
 Client::Options&

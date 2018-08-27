@@ -121,6 +121,16 @@ class MyHandler : public Http::Handler {
                 response.send(Http::Code::Method_Not_Allowed);
             }
         }
+        else if (req.resource() == "/stream_binary") {
+            auto stream = response.stream(Http::Code::Ok);
+            char binary_data[] = "some \0\r\n data\n";
+            size_t chunk_size = 14;
+            for (size_t i = 0; i < 10; ++i) {
+                stream.write(binary_data, chunk_size);
+                stream.flush();
+            }
+            stream.ends();
+        }
         else if (req.resource() == "/exception") {
             throw std::runtime_error("Exception thrown in the handler");
         }
