@@ -15,24 +15,20 @@ public:
     HTTP_PROTOTYPE(HelloHandler)
 
     void onRequest(const Http::Request& request, Http::ResponseWriter response) {
-        (void) request;
+        UNUSED(request);
         response.send(Pistache::Http::Code::Ok, "Hello World\n");
     }
 };
 
 int main() {
     Pistache::Address addr(Pistache::Ipv4::any(), Pistache::Port(9080));
-    auto opts = Pistache::Http::Endpoint::options().threads(1);
+    auto opts = Pistache::Http::Endpoint::options()
+        .threads(1);
 
-    Pistache::Http::Endpoint server(addr);
+    Http::Endpoint server(addr);
     server.init(opts);
-    server.setHandler(Pistache::Http::make_handler<HelloHandler>());
+    server.setHandler(Http::make_handler<HelloHandler>());
+    server.serve();
 
-    std::cout << "Starting server. Test with the following command: "
-              << "\"curl http://127.0.0.1:" << addr.port() << "\"\n";
-
-    std::cout << "Press Enter to Exit" << '\n';
-    server.serveThreaded();
-    std::cin.get();
     server.shutdown();
 }

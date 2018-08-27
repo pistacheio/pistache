@@ -6,6 +6,15 @@
 
 #include <pistache/net.h>
 #include <pistache/http_headers.h>
+#include <sys/types.h>
+
+// Quiet a warning about "minor" and "major" being doubly defined.
+#ifdef major
+    #undef major
+#endif
+#ifdef minor
+    #undef minor
+#endif
 
 using namespace Pistache;
 using namespace Pistache::Http;

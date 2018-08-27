@@ -13,6 +13,7 @@ struct HelloHandler : public Http::Handler {
 
     void onRequest(const Http::Request& request, Http::ResponseWriter writer)
     {
+        UNUSED(request)
         writer.send(Http::Code::Ok, "Hello, World!");
     }
 };
@@ -51,6 +52,6 @@ TEST(request_builder, multiple_send_test) {
 
     server.shutdown();
     client.shutdown();
-    
+
     ASSERT_TRUE(response_counter == RESPONSE_SIZE);
 }

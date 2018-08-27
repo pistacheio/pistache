@@ -114,8 +114,8 @@ struct Size<const char*> {
 
 template<size_t N>
 struct Size<char[N]> {
-    constexpr size_t operator()(const char (&arr)[N]) const {
-        UNUSED(arr)
+    constexpr size_t operator()(const char (&)[N]) const {
+
         // We omit the \0
         return N - 1;
     }

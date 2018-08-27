@@ -150,7 +150,7 @@ class MyHandler : public Http::Handler {
     }
 
     void onTimeout(const Http::Request& req, Http::ResponseWriter response) {
-        (void) req;
+        UNUSED(req);
         response
             .send(Http::Code::Request_Timeout, "Timeout")
             .then([=](ssize_t) { }, PrintException());
