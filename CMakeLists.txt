@@ -2,6 +2,8 @@ cmake_minimum_required (VERSION 3.0.2)
 project (pistache)
 include(CheckCXXCompilerFlag)
 
+set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -pedantic -Wextra -Wno-missing-field-initializers")
+
 option(PISTACHE_BUILD_TESTS "build tests alongside the project" OFF)
 option(PISTACHE_BUILD_EXAMPLES "build examples alongside the project" OFF)
 option(PISTACHE_INSTALL "add pistache as install target (recommended)" ON)

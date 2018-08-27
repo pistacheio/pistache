@@ -1,11 +1,12 @@
 /* os.cc
    Mathieu Stefani, 13 August 2015
-   
+
 */
 
 #include <fstream>
 #include <iterator>
 #include <algorithm>
+#include <thread>
 
 #include <unistd.h>
 #include <fcntl.h>
@@ -19,22 +20,15 @@ using namespace std;
 
 namespace Pistache {
 
-int hardware_concurrency() {
-    std::ifstream cpuinfo("/proc/cpuinfo");
-    if (cpuinfo) {
-        return std::count(std::istream_iterator<std::string>(cpuinfo),
-                          std::istream_iterator<std::string>(),
-                          std::string("processor"));
-    }
-
-    return sysconf(_SC_NPROCESSORS_ONLN);
+uint hardware_concurrency() {
+    return std::thread::hardware_concurrency();
 }
 
 
 bool make_non_blocking(int sfd)
 {
     int flags = fcntl (sfd, F_GETFL, 0);
-    if (flags == -1) return false; 
+    if (flags == -1) return false;
 
     flags |= O_NONBLOCK;
     int ret = fcntl (sfd, F_SETFL, flags);
@@ -139,7 +133,7 @@ CpuSet::toPosix() const {
     }
 
     return cpu_set;
-};
+}
 
 namespace Polling {
 

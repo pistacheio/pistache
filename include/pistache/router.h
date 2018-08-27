@@ -1,6 +1,6 @@
 /* router.h
    Mathieu Stefani, 05 janvier 2016
-   
+
    Simple HTTP Rest Router
 */
 
@@ -67,10 +67,10 @@ struct Route {
 
     Route(std::string resource, Http::Method method, Handler handler)
         : resource_(std::move(resource))
-        , method_(method)
         , handler_(std::move(handler))
         , fragments_(Fragment::fromUrl(resource_))
     {
+        UNUSED(method)
     }
 
     std::tuple<bool, std::vector<TypedParam>, std::vector<TypedParam>>
@@ -119,7 +119,6 @@ private:
     };
 
     std::string resource_;
-    Http::Method method_;
     Handler handler_;
     /* @Performance: since we know that resource_ will live as long as the vector underneath,
      * we would benefit from std::experimental::string_view to store fragments.
@@ -202,7 +201,7 @@ public:
 
 private:
     explicit Request(
-            const Http::Request& request, 
+            const Http::Request& request,
             std::vector<TypedParam>&& params,
             std::vector<TypedParam>&& splats);
 

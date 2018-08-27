@@ -1,6 +1,6 @@
 /* router.cc
    Mathieu Stefani, 05 janvier 2016
-   
+
    Rest routing implementation
 */
 

@@ -1,6 +1,6 @@
 /* http_server.cc
    Mathieu Stefani, 07 février 2016
-   
+
    Example of an http server
 */
 
@@ -139,7 +139,7 @@ class MyHandler : public Http::Handler {
         }
         else if (req.resource() == "/static") {
             if (req.method() == Http::Method::Get) {
-                Http::serveFile(response, "README.md").then([](ssize_t bytes) {;
+                Http::serveFile(response, "README.md").then([](ssize_t bytes) {
                     std::cout << "Sent " << bytes << " bytes" << std::endl;
                 }, Async::NoExcept);
             }
@@ -150,6 +150,7 @@ class MyHandler : public Http::Handler {
     }
 
     void onTimeout(const Http::Request& req, Http::ResponseWriter response) {
+        UNUSED(req);
         response
             .send(Http::Code::Request_Timeout, "Timeout")
             .then([=](ssize_t) { }, PrintException());
@@ -170,7 +171,6 @@ int main(int argc, char *argv[]) {
     }
 
     Address addr(Ipv4::any(), port);
-    static constexpr size_t Workers = 4;
 
     cout << "Cores = " << hardware_concurrency() << endl;
     cout << "Using " << thr << " threads" << endl;

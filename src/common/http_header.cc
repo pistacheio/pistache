@@ -51,6 +51,8 @@ Header::parseRaw(const char *str, size_t len) {
 
 void
 Allow::parseRaw(const char* str, size_t len) {
+    UNUSED(str)
+    UNUSED(len)
 }
 
 void
@@ -176,7 +178,7 @@ void
 CacheControl::write(std::ostream& os) const {
     using Http::CacheDirective;
 
-    auto directiveString = [](CacheDirective directive) -> const char* const {
+    auto directiveString = [](CacheDirective directive) -> const char* {
         switch (directive.directive()) {
             case CacheDirective::NoCache:
                 return "no-cache";
@@ -203,6 +205,8 @@ CacheControl::write(std::ostream& os) const {
             case CacheDirective::SMaxAge:
                 return "s-maxage";
             case CacheDirective::Ext:
+                return "";
+            default:
                 return "";
         }
         return "";
@@ -308,6 +312,7 @@ Date::parse(const std::string &str) {
 
 void
 Date::write(std::ostream& os) const {
+    UNUSED(os)
 }
 
 void
@@ -414,6 +419,7 @@ Accept::parseRaw(const char *str, size_t len) {
 
 void
 Accept::write(std::ostream& os) const {
+    UNUSED(os)
 }
 
 void
@@ -470,6 +476,7 @@ Server::Server(const char* token)
 void
 Server::parse(const std::string& data)
 {
+    UNUSED(data)
 }
 
 void

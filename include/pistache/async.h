@@ -1,6 +1,6 @@
 /* async.h
    Mathieu Stefani, 05 novembre 2015
-   
+
   This header brings a Promise<T> class inspired by the Promises/A+
   specification for asynchronous operations
 */
@@ -17,6 +17,7 @@
 
 #include <pistache/optional.h>
 #include <pistache/typeid.h>
+#include <pistache/common.h>
 
 namespace Pistache {
 namespace Async {
@@ -46,6 +47,7 @@ namespace Async {
     class BadAnyCast : public std::bad_cast {
     public:
         virtual const char* what() const noexcept { return "Bad any cast"; }
+        virtual ~BadAnyCast() { }
     };
 
     enum class State {
@@ -163,6 +165,7 @@ namespace Async {
         public:
             virtual void resolve(const std::shared_ptr<Core>& core) = 0;
             virtual void reject(const std::shared_ptr<Core>& core) = 0;
+            virtual ~Request() {}
         };
 
         struct Core {
@@ -207,6 +210,7 @@ namespace Async {
                 state = State::Fulfilled;
             }
 
+            virtual ~Core() { }
         };
 
         template<typename T>
@@ -289,6 +293,8 @@ namespace Async {
 
             virtual void doResolve(const std::shared_ptr<CoreT<T>>& core) = 0;
             virtual void doReject(const std::shared_ptr<CoreT<T>>& core) = 0;
+
+            virtual ~Continuable() { }
 
             size_t resolveCount_;
             size_t rejectCount_;
@@ -387,6 +393,7 @@ namespace Async {
                         "Can not attach a non-void continuation to a void-Promise");
 
                 void doResolve(const std::shared_ptr<CoreT<void>>& core) {
+                    UNUSED(core)
                     finishResolve(resolve_());
                 }
 
@@ -464,6 +471,7 @@ namespace Async {
                         "Can not attach a non-void continuation to a void-Promise");
 
                 void doResolve(const std::shared_ptr<CoreT<void>>& core) {
+                    UNUSED(core)
                     resolve_();
                 }
 
@@ -571,6 +579,7 @@ namespace Async {
                 { }
 
                 void doResolve(const std::shared_ptr<CoreT<void>>& core) {
+                    UNUSED(core)
                     auto promise = resolve_();
                     finishResolve(promise);
                 }
@@ -722,7 +731,7 @@ namespace Async {
         Resolver& operator=(const Resolver& other) = delete;
 
         Resolver(Resolver&& other) = default;
-        Resolver& operator=(Resolver&& other) = default; 
+        Resolver& operator=(Resolver&& other) = default;
 
         template<typename Arg>
         bool operator()(Arg&& arg) const {
@@ -855,7 +864,7 @@ namespace Async {
         }
 
         template<typename... Args>
-        void emplaceResolve(Args&& ...args) {
+        void emplaceResolve(Args&& ...) {
         }
 
         template<typename Exc>
@@ -932,7 +941,7 @@ namespace Async {
             -> decltype(std::declval<Func>()(Deferred<T>()), void()) {
             func(Deferred<T>(std::move(resolver), std::move(rejection)));
         }
-   };
+   }
 
     template<typename T>
     class Promise : public PromiseBase
@@ -947,7 +956,7 @@ namespace Async {
             : core_(std::make_shared<Core>())
             , resolver_(core_)
             , rejection_(core_)
-        { 
+        {
             details::callAsync<T>(func, resolver_, rejection_);
         }
 
@@ -957,8 +966,9 @@ namespace Async {
         Promise(Promise<T>&& other) = default;
         Promise& operator=(Promise<T>&& other) = default;
 
-        ~Promise()
+        virtual ~Promise()
         {
+
         }
 
         template<typename U>
