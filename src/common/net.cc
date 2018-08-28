@@ -119,7 +119,7 @@ Address::init(const std::string& addr) {
     long port = strtol(portPart.c_str(), &end, 10);
     if (*end != 0 || port < Port::min() || port > Port::max())
         throw std::invalid_argument("Invalid port");
-    port_ = port;
+    port_ = static_cast<uint16_t>(port);
 }
 
 Error::Error(const char* message)
