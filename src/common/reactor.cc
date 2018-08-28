@@ -5,6 +5,7 @@
 */
 
 #include <pistache/reactor.h>
+#include <array>
 
 namespace Pistache {
 namespace Aio {
