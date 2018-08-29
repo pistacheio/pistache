@@ -278,3 +278,11 @@ TEST(headers_test, access_control_allow_origin_test)
     allowOrigin.parse("http://foo.bar");
     ASSERT_EQ(allowOrigin.uri(), "http://foo.bar");
 }
+
+TEST(headers_test, access_control_allow_headers_test)
+{
+    Header::AccessControlAllowHeaders allowHeaders;
+
+    allowHeaders.parse("Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+    ASSERT_EQ(allowHeaders.val(), "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+}

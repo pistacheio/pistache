@@ -433,6 +433,16 @@ AccessControlAllowOrigin::write(std::ostream& os) const {
 }
 
 void
+AccessControlAllowHeaders::parse(const std::string& data) {
+  val_ = data;
+}
+
+void
+AccessControlAllowHeaders::write(std::ostream& os) const {
+  os << val_;
+}
+
+void
 EncodingHeader::parseRaw(const char* str, size_t len) {
     if (!strncasecmp(str, "gzip", len)) {
         encoding_ = Encoding::Gzip;
