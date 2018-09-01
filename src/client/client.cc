@@ -1,6 +1,6 @@
-/*
+/* 
    Mathieu Stefani, 29 janvier 2016
-
+   
    Implementation of the Http client
 */
 
@@ -254,7 +254,7 @@ Transport::asyncSendRequestImpl(
     ssize_t totalWritten = 0;
     for (;;) {
         ssize_t bytesWritten = 0;
-        ssize_t len = buffer.len - totalWritten;
+        auto len = buffer.len - totalWritten;
         auto ptr = buffer.data + totalWritten;
         bytesWritten = ::send(fd, ptr, len, 0);
         if (bytesWritten < 0) {
@@ -382,7 +382,7 @@ Connection::connect(Address addr)
     hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
     hints.ai_socktype = SOCK_STREAM; /* Stream socket */
     hints.ai_flags = 0;
-    hints.ai_protocol = 0;
+    hints.ai_protocol = 0;  
 
     auto host = addr.host();
 
@@ -407,7 +407,7 @@ Connection::connect(Address addr)
         fd = sfd;
 
         transport_->asyncConnect(shared_from_this(), addr->ai_addr, addr->ai_addrlen)
-            .then([=]() {
+            .then([=]() { 
                 socklen_t len = sizeof(saddr);
                 getsockname(sfd, (struct sockaddr *)&saddr, &len);
                 connectionState_ = Connected;
@@ -476,7 +476,7 @@ Connection::handleResponsePacket(const char* buffer, size_t bytes) {
             if (req.onDone)
                 req.onDone();
         }
-
+        
         parser_.reset();
     }
 }
@@ -552,7 +552,6 @@ struct MoveOnCopy {
 
     MoveOnCopy& operator=(MoveOnCopy& other) {
         val = std::move(other.val);
-        return *this;
     }
 
     MoveOnCopy(MoveOnCopy&& other) = default;
@@ -600,7 +599,6 @@ Connection::performImpl(
 
     transport_->asyncSendRequest(shared_from_this(), timer, buffer).then(
         [=](ssize_t bytes) mutable {
-            UNUSED(bytes)
             inflightRequests.push_back(RequestEntry(std::move(resolveMover), std::move(rejectMover), std::move(timer), std::move(onDone)));
         },
         [=](std::exception_ptr e) { rejectCloneMover.val(e); });
@@ -696,13 +694,11 @@ ConnectionPool::idleConnections(const std::string& domain) const {
 
 size_t
 ConnectionPool::availableConnections(const std::string& domain) const {
-    UNUSED(domain)
     return 0;
 }
 
 void
 ConnectionPool::closeIdleConnections(const std::string& domain) {
-    UNUSED(domain)
 }
 
 RequestBuilder&
@@ -713,8 +709,8 @@ RequestBuilder::method(Method method)
 }
 
 RequestBuilder&
-RequestBuilder::resource(const std::string& val) {
-    request_.resource_ = val;
+RequestBuilder::resource(std::string val) {
+    request_.resource_ = std::move(val);
     return *this;
 }
 
@@ -737,26 +733,14 @@ RequestBuilder::cookie(const Cookie& cookie) {
 }
 
 RequestBuilder&
-RequestBuilder::body(const std::string& val) {
-    request_.body_ = val;
-    return *this;
-}
-
-RequestBuilder&
-RequestBuilder::body(std::string&& val) {
+RequestBuilder::body(std::string val) {
     request_.body_ = std::move(val);
-    return *this;
-}
-
-RequestBuilder&
-RequestBuilder::timeout(std::chrono::milliseconds timeout) {
-    timeout_ = timeout;
     return *this;
 }
 
 Async::Promise<Response>
 RequestBuilder::send() {
-    return client_->doRequest(request_, timeout_);
+    return client_->doRequest(std::move(request_), timeout_);
 }
 
 Client::Options&
@@ -784,6 +768,15 @@ Client::Client()
 }
 
 Client::~Client() {
+    for (auto& queues: requestsQueues) {
+        auto& q = queues.second;
+        for (;;) {
+            Connection::RequestData* d;
+            if (!q.dequeue(d)) break;
+
+            delete d;
+        }
+    }
 }
 
 Client::Options
@@ -806,41 +799,41 @@ Client::shutdown() {
 }
 
 RequestBuilder
-Client::get(const std::string& resource)
+Client::get(std::string resource)
 {
-    return prepareRequest(resource, Http::Method::Get);
+    return prepareRequest(std::move(resource), Http::Method::Get);
 }
 
 RequestBuilder
-Client::post(const std::string& resource)
+Client::post(std::string resource)
 {
-    return prepareRequest(resource, Http::Method::Post);
+    return prepareRequest(std::move(resource), Http::Method::Post);
 }
 
 RequestBuilder
-Client::put(const std::string& resource)
+Client::put(std::string resource)
 {
-    return prepareRequest(resource, Http::Method::Put);
+    return prepareRequest(std::move(resource), Http::Method::Put);
 }
 
 RequestBuilder
-Client::patch(const std::string& resource)
+Client::patch(std::string resource)
 {
-    return prepareRequest(resource, Http::Method::Patch);
+    return prepareRequest(std::move(resource), Http::Method::Patch);
 }
 
 RequestBuilder
-Client::del(const std::string& resource)
+Client::del(std::string resource)
 {
-    return prepareRequest(resource, Http::Method::Delete);
+    return prepareRequest(std::move(resource), Http::Method::Delete);
 }
 
 RequestBuilder
-Client::prepareRequest(const std::string& resource, Http::Method method)
+Client::prepareRequest(std::string resource, Http::Method method)
 {
     RequestBuilder builder(this);
     builder
-        .resource(resource)
+        .resource(std::move(resource))
         .method(method);
 
     return builder;
@@ -861,10 +854,14 @@ Client::doRequest(
         return Async::Promise<Response>([=](Async::Resolver& resolve, Async::Rejection& reject) {
             Guard guard(queuesLock);
 
-            auto data = std::make_shared<Connection::RequestData>(std::move(resolve), std::move(reject), request, timeout, nullptr);
+            std::unique_ptr<Connection::RequestData> data(
+                    new Connection::RequestData(std::move(resolve), std::move(reject), request, timeout, nullptr));
+
             auto& queue = requestsQueues[s.first];
-            if (!queue.enqueue(data))
+            if (!queue.enqueue(data.get()))
                 data->reject(std::runtime_error("Queue is full"));
+            else
+                data.release();
         });
     }
     else {
@@ -894,14 +891,16 @@ Client::processRequestQueue() {
     Guard guard(queuesLock);
 
     for (auto& queues: requestsQueues) {
+        const auto& domain = queues.first;
+        auto& queue = queues.second;
+
         for (;;) {
-            const auto& domain = queues.first;
             auto conn = pool.pickConnection(domain);
             if (!conn)
                 break;
 
             auto& queue = queues.second;
-            std::shared_ptr<Connection::RequestData> data;
+            Connection::RequestData *data;
             if (!queue.dequeue(data)) {
                 pool.releaseConnection(conn);
                 break;
@@ -915,6 +914,8 @@ Client::processRequestQueue() {
                         pool.releaseConnection(conn);
                         processRequestQueue();
                     });
+
+            delete data;
         }
     }
 }

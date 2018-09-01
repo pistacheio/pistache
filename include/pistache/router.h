@@ -1,6 +1,6 @@
 /* router.h
    Mathieu Stefani, 05 janvier 2016
-
+   
    Simple HTTP Rest Router
 */
 
@@ -8,10 +8,14 @@
 
 #include <string>
 #include <tuple>
+#include <unordered_map>
+#include <memory>
 
 #include <pistache/http.h>
 #include <pistache/http_defs.h>
 #include <pistache/flags.h>
+
+#include "pistache/string_view.h"
 
 namespace Pistache {
 namespace Rest {
@@ -20,8 +24,8 @@ class Description;
 
 namespace details {
     template<typename T> struct LexicalCast {
-        static T cast(const std::string& value) {
-            std::istringstream iss(value);
+        static T cast(const std::string_view& value) {
+            std::istringstream iss(std::string(value.data(), value.length()));
             T out;
             if (!(iss >> out))
                 throw std::runtime_error("Bad lexical cast");
@@ -30,8 +34,8 @@ namespace details {
     };
 
     template<>
-    struct LexicalCast<std::string> {
-        static std::string cast(const std::string& value) {
+    struct LexicalCast<std::string_view> {
+        static std::string_view cast(const std::string_view& value) {
             return value;
         }
     };
@@ -39,11 +43,9 @@ namespace details {
 
 class TypedParam {
 public:
-
-    TypedParam(const std::string& name, const std::string& value)
-        : name_(name)
-        , value_(value)
-
+    TypedParam(const std::string_view& name, const std::string_view& value)
+        : name_(name.data(), name.length())
+        , value_(value.data(), data.length())
     { }
 
     template<typename T>
@@ -67,84 +69,76 @@ private:
 class Request;
 
 struct Route {
+
+    enum class Status { Match, NotFound };
+
     enum class Result { Ok, Failure };
 
-    typedef std::function<Result (const Request&, Http::ResponseWriter)> Handler;
+    typedef std::function<Result(const Request, Http::ResponseWriter)> Handler;
 
-    Route(std::string resource, Http::Method method, Handler handler)
-        : resource_(std::move(resource))
-        , handler_(std::move(handler))
-        , fragments_(Fragment::fromUrl(resource_))
-    {
-        UNUSED(method)
-    }
-
-    std::tuple<bool, std::vector<TypedParam>, std::vector<TypedParam>>
-    match(const Http::Request& req) const;
-
-    std::tuple<bool, std::vector<TypedParam>, std::vector<TypedParam>>
-    match(const std::string& req) const;
+    explicit Route(Route::Handler handler) : handler_(std::move(handler)) { }
 
     template<typename... Args>
-    void invokeHandler(Args&& ...args) const {
+    void invokeHandler(Args &&...args) const {
         handler_(std::forward<Args>(args)...);
     }
 
-private:
-    struct Fragment {
-        explicit Fragment(std::string value);
-
-        bool match(const std::string& raw) const;
-        bool match(const Fragment& other) const;
-
-        bool isParameter() const;
-        bool isSplat() const;
-        bool isOptional() const;
-
-        std::string value() const {
-            return value_;
-        }
-
-        static std::vector<Fragment> fromUrl(const std::string& url);
-
-    private:
-        enum class Flag {
-            None      = 0x0,
-            Fixed     = 0x1,
-            Parameter = Fixed << 1,
-            Optional  = Parameter << 1,
-            Splat     = Optional << 1
-        };
-
-        void init(std::string value);
-
-        void checkInvariant() const;
-
-        Flags<Flag> flags;
-        std::string value_;
-    };
-
-    std::string resource_;
     Handler handler_;
-    /* @Performance: since we know that resource_ will live as long as the vector underneath,
-     * we would benefit from std::experimental::string_view to store fragments.
-     *
-     * We could use string_view instead of allocating strings everytime. However, string_view is
-     * only available in c++17, so I might have to come with my own lightweight implementation of
-     * it
-     */
-    std::vector<Fragment> fragments_;
 };
 
 namespace Private {
     class RouterHandler;
 }
 
+class FragmentTreeNode {
+private:
+    enum class FragmentType {
+        Fixed, Param, Optional, Splat
+    };
+
+    /**
+     * Resource path are allocated on stack. To make them survive it is required to allocate them on heap.
+     * Since the main idea between string_view is to have constant substring and thus a reduced number of
+     * char* allocated on heap, this shared_ptr is used to know if a string_view can be destroyed (after a
+     * route removal).
+     */
+    std::shared_ptr<char> resourceRef_;
+
+    std::unordered_map<std::string_view, std::shared_ptr<FragmentTreeNode>> fixed_;
+    std::unordered_map<std::string_view, std::shared_ptr<FragmentTreeNode>> param_;
+    std::unordered_map<std::string_view, std::shared_ptr<FragmentTreeNode>> optional_;
+    std::shared_ptr<FragmentTreeNode> splat_;
+    std::shared_ptr<Route> route_;
+
+    static FragmentType getFragmentType(const std::string_view &fragment);
+
+    std::tuple<std::shared_ptr<Route>, std::vector<TypedParam>, std::vector<TypedParam>>
+    findRoute(const std::string_view &path,
+              std::vector<TypedParam> &params,
+              std::vector<TypedParam> &splats) const;
+
+public:
+    FragmentTreeNode();
+    explicit FragmentTreeNode(const std::shared_ptr<char> &resourceReference);
+
+    void addRoute(const std::string_view &path, const Route::Handler &handler,
+            const std::shared_ptr<char> &resourceReference);
+
+    bool removeRoute(const std::string_view &path);
+
+    /**
+     * Finds the correct route for the given path.
+     * \param[in] path Requested resource path (usually derived from request)
+     * \throws std::runtime_error An empty path was given
+     * \return Found route with its resolved parameters and splats (if no route is found, first element of the tuple
+     * is a null pointer).
+     */
+    std::tuple<std::shared_ptr<Route>, std::vector<TypedParam>, std::vector<TypedParam>>
+    findRoute(const std::string_view &path) const;
+};
+
 class Router {
 public:
-
-    enum class Status { Match, NotFound };
-
     static Router fromDescription(const Rest::Description& desc);
 
     std::shared_ptr<Private::RouterHandler>
@@ -158,18 +152,18 @@ public:
     void patch(std::string resource, Route::Handler handler);
     void del(std::string resource, Route::Handler handler);
     void options(std::string resource, Route::Handler handler);
+    void removeRoute(Http::Method method, std::string resource);
 
     void addCustomHandler(Route::Handler handler);
-
     void addNotFoundHandler(Route::Handler handler);
     inline bool hasNotFoundHandler() { return notFoundHandler != nullptr; }
     void invokeNotFoundHandler(const Http::Request &req, Http::ResponseWriter resp) const;
 
-    Status route(const Http::Request& request, Http::ResponseWriter response);
+    Route::Status route(const Http::Request& request, Http::ResponseWriter response);
 
 private:
     void addRoute(Http::Method method, std::string resource, Route::Handler handler);
-    std::unordered_map<Http::Method, std::vector<Route>> routes;
+    std::unordered_map<Http::Method, FragmentTreeNode> routes;
 
     std::vector<Route::Handler> customHandlers;
 
@@ -197,10 +191,11 @@ namespace Private {
 
 class Request : public Http::Request {
 public:
+    friend class FragmentTreeNode;
     friend class Router;
 
-    bool hasParam(const std::string& name) const;
-    TypedParam param(const std::string& name) const;
+    bool hasParam(std::string name) const;
+    TypedParam param(std::string name) const;
 
     TypedParam splatAt(size_t index) const;
     std::vector<TypedParam> splat() const;
@@ -224,6 +219,7 @@ namespace Routes {
     void Patch(Router& router, std::string resource, Route::Handler handler);
     void Delete(Router& router, std::string resource, Route::Handler handler);
     void Options(Router& router, std::string resource, Route::Handler handler);
+    void Remove(Router& router, Http::Method method, std::string resource);
 
     void NotFound(Router& router, Route::Handler handler);
 
