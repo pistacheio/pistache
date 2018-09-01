@@ -384,16 +384,9 @@ Connection::connect(Address addr)
     hints.ai_flags = 0;
     hints.ai_protocol = 0;
 
-    auto host = addr.host();
-
-    /* We rely on the fact that a string literal is an lvalue const char[N] */
-    static constexpr size_t MaxPortLen = sizeof("65535");
-
-    char port[MaxPortLen];
-    std::fill(port, port + MaxPortLen, 0);
-    std::snprintf(port, MaxPortLen, "%d", static_cast<uint16_t>(addr.port()));
-
-    TRY(::getaddrinfo(host.c_str(), port, &hints, &addrs));
+    const auto& host = addr.host();
+    const auto& port = addr.port().toString();
+    TRY(::getaddrinfo(host.c_str(), port.c_str(), &hints, &addrs));
 
     int sfd = -1;
 
