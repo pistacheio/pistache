@@ -6,23 +6,23 @@ using namespace Pistache;
 template<typename T>
 std::vector<T> make_vec(std::initializer_list<T> list) {
    return std::vector<T>(list);
-} 
+}
 
 TEST(view_test, test_vector)  {
     auto vec1 = make_vec({1, 2, 3, 4});
     auto v1 = make_view(vec1);
-    ASSERT_EQ(v1.size(), 4);
+    ASSERT_EQ(v1.size(), 4U);
     ASSERT_EQ(v1[0], 1);
     ASSERT_EQ(v1[3], 4);
 
     auto v2(v1);
-    ASSERT_EQ(v2.size(), 4);
+    ASSERT_EQ(v2.size(), 4U);
     ASSERT_EQ(v2[0], 1);
     ASSERT_EQ(v2[3], 4);
 
     auto vec2 = make_vec({2, 4, 6, 8, 10});
     auto v3 = make_view(vec2, 4);
-    ASSERT_EQ(v3.size(), 4);
+    ASSERT_EQ(v3.size(), 4U);
     ASSERT_EQ(v3[0], 2);
     ASSERT_EQ(v3[3], 8);
     ASSERT_THROW(v3.at(4), std::invalid_argument);
@@ -43,22 +43,22 @@ TEST(view_test, test_vector)  {
 }
 
 TEST(view_test, test_array) {
-    std::array<int, 4> arr1 { 4, 5, 6, 7 };
+    std::array<int, 4> arr1 {{ 4, 5, 6, 7 }};
     auto v1 = make_view(arr1);
 
-    ASSERT_EQ(v1.size(), 4);
+    ASSERT_EQ(v1.size(), 4U);
     ASSERT_EQ(v1[0], 4);
     ASSERT_EQ(v1[3], 7);
 
     auto v2 = make_view(arr1, 2);
-    ASSERT_EQ(v2.size(), 2);
+    ASSERT_EQ(v2.size(), 2U);
     ASSERT_EQ(v2[1], 5);
     ASSERT_THROW(v2.at(3), std::invalid_argument);
 
-    std::array<int, 4> arr2 { 6, 8, 1, 2 };
+    std::array<int, 4> arr2 {{ 6, 8, 1, 2 }};
     ASSERT_NE(make_view(arr2), v1);
 
-    std::array<int, 4> arr3 { 4, 5, 6, 7 };
+    std::array<int, 4> arr3 {{ 4, 5, 6, 7 }};
     ASSERT_EQ(v1, make_view(arr3));
 }
 
@@ -66,7 +66,7 @@ TEST(view_test, string_test) {
     std::string s1("Hello");
     auto v1 = make_view(s1);
 
-    ASSERT_EQ(v1.size(), 5);
+    ASSERT_EQ(v1.size(), 5U);
     ASSERT_EQ(v1[0], 'H');
     ASSERT_EQ(v1[4], 'o');
     ASSERT_EQ(v1, "Hello");

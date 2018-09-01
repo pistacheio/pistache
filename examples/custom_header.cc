@@ -1,11 +1,20 @@
-/* 
+/*
    Mathieu Stefani, 15 février 2016
-   
+
    Example of custom headers registering
 */
 
 #include <pistache/net.h>
 #include <pistache/http_headers.h>
+#include <sys/types.h>
+
+// Quiet a warning about "minor" and "major" being doubly defined.
+#ifdef major
+    #undef major
+#endif
+#ifdef minor
+    #undef minor
+#endif
 
 using namespace Pistache;
 using namespace Pistache::Http;
@@ -15,8 +24,8 @@ public:
     NAME("X-Protocol-Version");
 
     XProtocolVersion()
-        : min(0)
-        , maj(0)
+        : maj(0)
+        , min(0)
     { }
 
     XProtocolVersion(uint32_t major, uint32_t minor)
@@ -54,8 +63,8 @@ public:
     }
 
 private:
-    uint32_t min;
     uint32_t maj;
+    uint32_t min;
 };
 
 int main() {

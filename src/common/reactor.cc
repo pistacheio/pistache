@@ -1,16 +1,17 @@
-/* 
+/*
    Mathieu Stefani, 15 juin 2016
-   
+
    Implementation of the Reactor
 */
 
 #include <pistache/reactor.h>
+#include <array>
 
 namespace Pistache {
 namespace Aio {
 
-struct Reactor::Impl {
-
+class Reactor::Impl {
+public:
     Impl(Reactor* reactor)
         : reactor_(reactor)
     { }
@@ -55,8 +56,8 @@ struct Reactor::Impl {
 /* Synchronous implementation of the reactor that polls in the context
  * of the same thread
  */
-struct SyncImpl : public Reactor::Impl {
-
+class SyncImpl : public Reactor::Impl {
+public:
     SyncImpl(Reactor* reactor)
         : Reactor::Impl(reactor)
         , handlers_()
@@ -269,7 +270,7 @@ private:
             // to shift the value to retrieve the fd if there is only one handler as
             // all the bits will already be set to 0.
             auto encodedValue = (index << HandlerShift) | value;
-            return Polling::Tag(value);
+            return Polling::Tag(encodedValue);
         }
 
         static std::pair<size_t, uint64_t> decodeTag(const Polling::Tag& tag) {
@@ -325,7 +326,8 @@ private:
  * 32 bits to retrieve the index of the handler.
  */
 
-struct AsyncImpl : public Reactor::Impl {
+class AsyncImpl : public Reactor::Impl {
+public:
 
     static constexpr uint32_t KeyMarker = 0xBADB0B;
 

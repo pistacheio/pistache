@@ -1,6 +1,6 @@
 /* listener.cc
    Mathieu Stefani, 12 August 2015
-   
+
 */
 
 #include <iostream>
@@ -8,7 +8,7 @@
 #include <cstring>
 
 #include <sys/socket.h>
-#include <unistd.h> 
+#include <unistd.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
@@ -121,6 +121,8 @@ Listener::setHandler(const std::shared_ptr<Handler>& handler) {
 void
 Listener::pinWorker(size_t worker, const CpuSet& set)
 {
+    UNUSED(worker)
+    UNUSED(set)
 #if 0
     if (ioGroup.empty()) {
         throw std::domain_error("Invalid operation, did you call init() before ?");
@@ -147,24 +149,14 @@ Listener::bind(const Address& address) {
 
     struct addrinfo hints;
     hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM; 
+    hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
     hints.ai_protocol = 0;
 
-    auto host = addr_.host();
-    if (host == "*") {
-        host = "0.0.0.0";
-    }
-
-    /* We rely on the fact that a string literal is an lvalue const char[N] */
-    static constexpr size_t MaxPortLen = sizeof("65535");
-
-    char port[MaxPortLen];
-    std::fill(port, port + MaxPortLen, 0);
-    std::snprintf(port, MaxPortLen, "%d", static_cast<uint16_t>(addr_.port()));
-
+    const auto& host = addr_.host();
+    const auto& port = addr_.port().toString();
     struct addrinfo *addrs;
-    TRY(::getaddrinfo(host.c_str(), port, &hints, &addrs));
+    TRY(::getaddrinfo(host.c_str(), port.c_str(), &hints, &addrs));
 
     int fd = -1;
 
@@ -220,7 +212,7 @@ Listener::run() {
                 else {
                     if (event.flags.hasFlag(Polling::NotifyOn::Read)) {
                         auto fd = event.tag.value();
-                        if (fd == listen_fd)
+                        if (static_cast<ssize_t>(fd) == listen_fd)
                             handleNewConnection();
                     }
                 }

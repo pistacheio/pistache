@@ -33,6 +33,11 @@ Port::isUsed() const {
     return false;
 }
 
+std::string
+Port::toString() const {
+    return std::to_string(port);
+}
+
 Ipv4::Ipv4(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
     : a(a)
     , b(b)
@@ -104,22 +109,25 @@ Address::port() const {
 }
 
 void
-Address::init(std::string addr) {
-    auto pos = addr.find(':');
+Address::init(const std::string& addr) {
+    const auto pos = addr.find(':');
 
     if (pos == std::string::npos)
         throw std::invalid_argument("Invalid address");
 
-    std::string host = addr.substr(0, pos);
+    host_ = addr.substr(0, pos);
+    if (host_ == "*") {
+        host_ = "0.0.0.0";
+    }
+
     char *end;
-
     const std::string portPart = addr.substr(pos + 1);
-    long port = strtol(portPart.c_str(), &end, 10);
-    if (*end != 0 || port > Port::max())
+    if (portPart.empty())
         throw std::invalid_argument("Invalid port");
-
-    host_ = std::move(host);
-    port_ = port;
+    long port = strtol(portPart.c_str(), &end, 10);
+    if (*end != 0 || port < Port::min() || port > Port::max())
+        throw std::invalid_argument("Invalid port");
+    port_ = static_cast<uint16_t>(port);
 }
 
 Error::Error(const char* message)
