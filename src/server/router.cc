@@ -34,7 +34,7 @@ Request::hasParam(std::string name) const {
 TypedParam
 Request::param(std::string name) const {
     auto it = std::find_if(params_.begin(), params_.end(), [&](const TypedParam& param) {
-            return param.name() == std::string_view(name.data(), name.length());
+            return param.name() == name;
     });
 
     if (it == std::end(params_)) {
