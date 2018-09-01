@@ -58,7 +58,6 @@ Some other CMAKE defines:
 |---------------------------|-------------|-------------------------------------------------------------|
 | PISTACHE_BUILD_EXAMPLES   | False       | Build all of the example apps                               |
 | PISTACHE_BUILD_TESTS      | False       | Build all of the unit tests                                 |
-| PISTACHE_MAX_PAYLOAD      | 4096        | Maximum size of requests, in bytes (including HTTP headers) |
 
 # Example
 

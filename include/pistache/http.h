@@ -690,13 +690,15 @@ namespace Private {
     class ParserBase {
     public:
         ParserBase()
-            : cursor(&buffer)
+            : buffer(Const::DefaultMaxPayload)
+            , cursor(&buffer)
             , currentStep(0)
         {
         }
 
         ParserBase(const char* data, size_t len)
-            : cursor(&buffer)
+            : buffer(len > Const::DefaultMaxPayload ? len : Const::DefaultMaxPayload)
+            , cursor(&buffer)
             , currentStep(0)
         {
             UNUSED(data)
@@ -709,11 +711,13 @@ namespace Private {
         bool feed(const char* data, size_t len);
         virtual void reset();
 
+        void setMaxSize(size_t sz) { buffer.setMaxSize(sz); }
+
         virtual ~ParserBase() { }
 
         State parse();
 
-        ArrayStreamBuf<Const::MaxPayload, char> buffer;
+        ArrayStreamBuf<char> buffer;
         StreamCursor cursor;
 
     protected:
@@ -787,9 +791,11 @@ namespace Private {
 
 class Handler : public Tcp::Handler {
 public:
-    void Handler() : max_payload_(Const::MaxPayload) {}
-    void Handler(size_t max_payload) {
-    }
+    Handler() : max_payload_(Const::DefaultMaxPayload) {}
+    Handler(size_t max_payload) : max_payload_(max_payload) { }
+
+    size_t getMaxPayload() { return max_payload_; }
+    void setMaxPayload(size_t sz) { max_payload_ = sz; }
 
     void onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer>& peer);
 
@@ -804,6 +810,8 @@ public:
 
 private:
     Private::Parser<Http::Request>& getParser(const std::shared_ptr<Tcp::Peer>& peer) const;
+protected:
+    size_t max_payload_;
 };
 
 template<typename H, typename... Args>

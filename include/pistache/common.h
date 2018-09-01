@@ -52,10 +52,6 @@
 // Until we require C++17 compiler with [[maybe_unused]]
 #define UNUSED(x) (void)(x);
 
-#ifndef MAX_PAYLOAD
-#define MAX_PAYLOAD 4096
-#endif
-
 // Allow compile-time overload
 namespace Pistache {
 namespace Const {
@@ -65,7 +61,7 @@ namespace Const {
     static constexpr size_t MaxBuffer  = 4096;
 
     // Defined from CMakeLists.txt in project root
-    static constexpr size_t MaxPayload = MAX_PAYLOAD;
+    static constexpr size_t DefaultMaxPayload = 4096;
     static constexpr size_t ChunkSize  = 1024;
 } // namespace Const
 } // namespace Pistache

@@ -77,12 +77,13 @@ public:
 };
 
 // Make the buffer dynamic
-template<size_t MAX_SIZE, typename CharT = char>
+template<typename CharT = char>
 class ArrayStreamBuf : public StreamBuf<CharT> {
 public:
     typedef StreamBuf<CharT> Base;
 
-    ArrayStreamBuf()
+    ArrayStreamBuf(size_t max_size)
+        : max_size_(max_size)
     {
         bytes.clear();
         Base::setg(bytes.data(), bytes.data(), bytes.data() + bytes.size());
@@ -95,8 +96,10 @@ public:
         Base::setg(bytes.data(), bytes.data(), bytes.data() + bytes.size());
     }
 
+    void setMaxSize(size_t sz) { max_size_ = sz; }
+
     bool feed(const char* data, size_t len) {
-        if (bytes.size() + len > MAX_SIZE) { return false; }
+        if (bytes.size() + len > max_size_) { return false; }
         // persist current offset
         size_t readOffset = static_cast<size_t>(this->gptr() - this->eback());
         std::copy(data, data + len, std::back_inserter(bytes));
@@ -114,6 +117,7 @@ public:
 
 private:
     std::vector<CharT> bytes;
+    size_t max_size_;
 };
 
 struct Buffer {
