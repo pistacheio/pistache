@@ -153,20 +153,10 @@ Listener::bind(const Address& address) {
     hints.ai_flags = AI_PASSIVE;
     hints.ai_protocol = 0;
 
-    auto host = addr_.host();
-    if (host == "*") {
-        host = "0.0.0.0";
-    }
-
-    /* We rely on the fact that a string literal is an lvalue const char[N] */
-    static constexpr size_t MaxPortLen = sizeof("65535");
-
-    char port[MaxPortLen];
-    std::fill(port, port + MaxPortLen, 0);
-    std::snprintf(port, MaxPortLen, "%d", static_cast<uint16_t>(addr_.port()));
-
+    const auto& host = addr_.host();
+    const auto& port = addr_.port().toString();
     struct addrinfo *addrs;
-    TRY(::getaddrinfo(host.c_str(), port, &hints, &addrs));
+    TRY(::getaddrinfo(host.c_str(), port.c_str(), &hints, &addrs));
 
     int fd = -1;
 

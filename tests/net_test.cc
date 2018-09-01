@@ -17,11 +17,13 @@ TEST(net_test, port_creation)
     ASSERT_FALSE(port1.isReserved());
     uint16_t value1 = port1;
     ASSERT_EQ(value1, 3000);
+    ASSERT_EQ(port1.toString(), "3000");
 
     Port port2(80);
     ASSERT_TRUE(port2.isReserved());
     uint16_t value2 = port2;
     ASSERT_EQ(value2, 80);
+    ASSERT_EQ(port2.toString(), "80");
 }
 
 TEST(net_test, address_creation)
@@ -40,6 +42,10 @@ TEST(net_test, address_creation)
     ASSERT_EQ(address3.port(), 8080);    
 
     Address address4(Ipv4::any(), Port(8080));
+    ASSERT_EQ(address4.host(), "0.0.0.0");
+    ASSERT_EQ(address4.port(), 8080);
+
+    Address address5("*:8080");
     ASSERT_EQ(address4.host(), "0.0.0.0");
     ASSERT_EQ(address4.port(), 8080);
 }

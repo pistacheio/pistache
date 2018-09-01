@@ -33,6 +33,11 @@ Port::isUsed() const {
     return false;
 }
 
+std::string
+Port::toString() const {
+    return std::to_string(port);
+}
+
 Ipv4::Ipv4(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
     : a(a)
     , b(b)
@@ -111,6 +116,9 @@ Address::init(const std::string& addr) {
         throw std::invalid_argument("Invalid address");
 
     host_ = addr.substr(0, pos);
+    if (host_ == "*") {
+        host_ = "0.0.0.0";
+    }
 
     char *end;
     const std::string portPart = addr.substr(pos + 1);
