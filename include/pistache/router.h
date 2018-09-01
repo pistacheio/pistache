@@ -53,8 +53,12 @@ public:
         return details::LexicalCast<T>::cast(value_);
     }
 
-    std::string_view name() const {
-        return name_;
+    std::string name() const {
+        return std::string(name_.data(), name_.length());
+    }
+    
+    std::string value() const {
+        return std::string(value_.data(), value_.length());
     }
 
 private:
