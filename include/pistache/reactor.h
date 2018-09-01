@@ -1,6 +1,6 @@
-/* 
+/*
    Mathieu Stefani, 15 juin 2016
-   
+
    A lightweight implementation of the Reactor design-pattern.
 
    The main goal of this component is to provide an solid abstraction
@@ -151,7 +151,7 @@ public:
             Polling::Mode mode = Polling::Mode::Level);
 
     void modifyFd(
-            const Key& key, Fd fd, Polling::NotifyOn interest, Polling::Tag tag, 
+            const Key& key, Fd fd, Polling::NotifyOn interest, Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level);
 
     void runOnce();
@@ -217,6 +217,8 @@ public:
     Reactor::Key key() const {
         return key_;
     };
+
+    virtual ~Handler() { }
 
 private:
     Reactor* reactor_;
