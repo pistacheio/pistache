@@ -24,8 +24,8 @@ class Description;
 
 namespace details {
     template<typename T> struct LexicalCast {
-        static T cast(const std::string_view& value) {
-            std::istringstream iss(std::string(value.data(), value.length()));
+        static T cast(const std::string& value) {
+            std::istringstream iss(value);
             T out;
             if (!(iss >> out))
                 throw std::runtime_error("Bad lexical cast");
@@ -34,8 +34,8 @@ namespace details {
     };
 
     template<>
-    struct LexicalCast<std::string_view> {
-        static std::string_view cast(const std::string_view& value) {
+    struct LexicalCast<std::string> {
+        static std::string cast(const std::string& value) {
             return value;
         }
     };
