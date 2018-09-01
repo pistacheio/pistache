@@ -45,7 +45,7 @@ class TypedParam {
 public:
     TypedParam(const std::string_view& name, const std::string_view& value)
         : name_(name.data(), name.length())
-        , value_(value.data(), data.length())
+        , value_(value.data(), value.length())
     { }
 
     template<typename T>
