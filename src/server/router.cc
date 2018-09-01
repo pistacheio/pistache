@@ -213,7 +213,7 @@ Pistache::Rest::FragmentTreeNode::findRoute(
         // it is resolved by using the first optional
         if (!optional_.empty()) {
             auto optional = optional_.begin();
-            params.emplace_back(optional->first, std::string_view());
+            params.emplace_back(optional->first, optional->first);
             return optional->second->findRoute(currPath, params, splats);
         } else return std::make_tuple(route_, std::move(params), std::move(splats));
     } else { // recursion to correct descendant

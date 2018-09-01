@@ -44,8 +44,8 @@ namespace details {
 class TypedParam {
 public:
     TypedParam(const std::string_view& name, const std::string_view& value)
-        : name_(name)
-        , value_(value)
+        : name_(name.data(), name.length())
+        , value_(value.data(), data.length())
     { }
 
     template<typename T>
@@ -54,16 +54,16 @@ public:
     }
 
     std::string name() const {
-        return std::string(name_.data(), name_.length());
+        return name_;
     }
     
     std::string value() const {
-        return std::string(value_.data(), value_.length());
+        return value_;
     }
 
 private:
-    std::string_view name_;
-    std::string_view value_;
+    std::string name_;
+    std::string value_;
 };
 
 class Request;
