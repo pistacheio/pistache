@@ -26,7 +26,6 @@ namespace {
 
 RegisterHeader(Accept);
 RegisterHeader(AccessControlAllowOrigin);
-RegisterHeader(AccessControlAllowHeaders);
 RegisterHeader(Allow);
 RegisterHeader(CacheControl);
 RegisterHeader(Connection);

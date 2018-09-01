@@ -1,6 +1,6 @@
 /* net.h
    Mathieu Stefani, 12 August 2015
-
+   
    Network utility classes
 */
 
@@ -12,8 +12,6 @@
 #include <limits>
 
 #include <sys/socket.h>
-
-#include <pistache/common.h>
 
 #ifndef _KERNEL_FASTOPEN
 #define _KERNEL_FASTOPEN
@@ -35,9 +33,6 @@ public:
     bool isReserved() const;
     bool isUsed() const;
 
-    static constexpr uint16_t min() {
-        return std::numeric_limits<uint16_t>::min();
-    }
     static constexpr uint16_t max() {
         return std::numeric_limits<uint16_t>::max();
     }
@@ -74,13 +69,13 @@ public:
     Address &operator=(const Address& other) = default;
     Address &operator=(Address&& other) = default;
 
-    static Address fromUnix(struct sockaddr *addr);
+    static Address fromUnix(struct sockaddr *addr); 
 
     std::string host() const;
     Port port() const;
 
 private:
-    void init(const std::string& addr);
+    void init(std::string addr);
     std::string host_;
     Port port_;
 };
@@ -117,8 +112,7 @@ struct Size<const char*> {
 
 template<size_t N>
 struct Size<char[N]> {
-    constexpr size_t operator()(const char (&)[N]) const {
-
+    constexpr size_t operator()(const char (&arr)[N]) const {
         // We omit the \0
         return N - 1;
     }

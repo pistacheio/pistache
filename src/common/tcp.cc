@@ -1,6 +1,6 @@
 /* tcp.cc
    Mathieu Stefani, 05 novembre 2015
-
+   
    TCP
 */
 
@@ -24,12 +24,10 @@ Handler::associateTransport(Transport* transport) {
 
 void
 Handler::onConnection(const std::shared_ptr<Tcp::Peer>& peer) {
-    UNUSED(peer)
 }
 
 void
 Handler::onDisconnection(const std::shared_ptr<Tcp::Peer>& peer) {
-    UNUSED(peer)
 }
 
 } // namespace Tcp

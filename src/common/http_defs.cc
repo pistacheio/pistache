@@ -1,6 +1,6 @@
 /* http_defs.cc
    Mathieu Stefani, 01 September 2015
-
+   
    Implementation of http definitions
 */
 
@@ -15,8 +15,8 @@ namespace Pistache {
 namespace Http {
 
 namespace {
-    using time_point = FullDate::time_point;
-
+    using time_point = FullDate::time_point;    
+    
     bool parse_RFC_1123(const std::string& s, time_point &tp)
     {
         std::istringstream in{s};
@@ -37,7 +37,7 @@ namespace {
         in >> date::parse("%a %b %d %T %Y", tp);
         return !in.fail();
     }
-
+    
 } // anonymous namespace
 
 CacheDirective::CacheDirective(Directive directive)
@@ -62,9 +62,9 @@ CacheDirective::delta() const
             return std::chrono::seconds(data.maxStale);
         case MinFresh:
             return std::chrono::seconds(data.minFresh);
-        default:
-            throw std::domain_error("Invalid operation on cache directive");
     }
+
+    throw std::domain_error("Invalid operation on cache directive");    
 }
 
 void
@@ -84,14 +84,12 @@ CacheDirective::init(Directive directive, std::chrono::seconds delta)
         case MinFresh:
             data.minFresh = delta.count();
             break;
-        default:
-            break;
     }
 }
 
 FullDate
 FullDate::fromString(const std::string& str) {
-
+    
     FullDate::time_point tp;
     if(parse_RFC_1123(str, tp))
         return FullDate(tp);
@@ -99,7 +97,7 @@ FullDate::fromString(const std::string& str) {
         return FullDate(tp);
     else if(parse_asctime(str, tp))
         return FullDate(tp);
-
+    
     throw std::runtime_error("Invalid Date format");
 }
 
