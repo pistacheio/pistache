@@ -1,6 +1,6 @@
 /* http_server.cc
    Mathieu Stefani, 07 février 2016
-   
+
    Example of an http server
 */
 
@@ -121,6 +121,16 @@ class MyHandler : public Http::Handler {
                 response.send(Http::Code::Method_Not_Allowed);
             }
         }
+        else if (req.resource() == "/stream_binary") {
+            auto stream = response.stream(Http::Code::Ok);
+            char binary_data[] = "some \0\r\n data\n";
+            size_t chunk_size = 14;
+            for (size_t i = 0; i < 10; ++i) {
+                stream.write(binary_data, chunk_size);
+                stream.flush();
+            }
+            stream.ends();
+        }
         else if (req.resource() == "/exception") {
             throw std::runtime_error("Exception thrown in the handler");
         }
@@ -129,7 +139,7 @@ class MyHandler : public Http::Handler {
         }
         else if (req.resource() == "/static") {
             if (req.method() == Http::Method::Get) {
-                Http::serveFile(response, "README.md").then([](ssize_t bytes) {;
+                Http::serveFile(response, "README.md").then([](ssize_t bytes) {
                     std::cout << "Sent " << bytes << " bytes" << std::endl;
                 }, Async::NoExcept);
             }
@@ -140,6 +150,7 @@ class MyHandler : public Http::Handler {
     }
 
     void onTimeout(const Http::Request& req, Http::ResponseWriter response) {
+        UNUSED(req);
         response
             .send(Http::Code::Request_Timeout, "Timeout")
             .then([=](ssize_t) { }, PrintException());
@@ -160,7 +171,6 @@ int main(int argc, char *argv[]) {
     }
 
     Address addr(Ipv4::any(), port);
-    static constexpr size_t Workers = 4;
 
     cout << "Cores = " << hardware_concurrency() << endl;
     cout << "Using " << thr << " threads" << endl;

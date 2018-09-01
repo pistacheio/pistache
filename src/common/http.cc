@@ -1,6 +1,6 @@
 /* http.cc
    Mathieu Stefani, 13 August 2015
-   
+
    Http layer implementation
 */
 
@@ -294,9 +294,7 @@ namespace Private {
             }
 
             if (name == "Cookie") {
-                message->cookies_.add(
-                        Cookie::fromRaw(cursor.offset(start), cursor.diff(start))
-                );
+                message->cookies_.addFromRaw(cursor.offset(start), cursor.diff(start));
             }
 
             else if (Header::Registry::isRegistered(name)) {
@@ -404,7 +402,7 @@ namespace Private {
 
         message->body_.reserve(size);
         StreamCursor::Token chunkData(cursor);
-        const size_t available = cursor.remaining();
+        const ssize_t available = cursor.remaining();
 
         if (available < size) {
             cursor.advance(available);
@@ -500,8 +498,8 @@ namespace Uri {
 
         return Some(it->second);
     }
-    
-    std::string 
+
+    std::string
     Query::as_str() const {
         std::string query_url;
         for(const auto &e : params) {
@@ -684,7 +682,7 @@ serveFile(ResponseWriter& response, const char* fileName, const Mime::MediaType&
         if(errno == ENOENT) {
             throw HttpError(Http::Code::Not_Found, std::move(str_error));
         }
-        //eles if TODO 
+        //eles if TODO
         /* @Improvement: maybe could we check for errno here and emit a different error
             message
         */
@@ -743,6 +741,7 @@ serveFile(ResponseWriter& response, const char* fileName, const Mime::MediaType&
 
     auto buffer = buf->buffer();
     return transport->asyncWrite(sockFd, buffer, MSG_MORE).then([=](ssize_t bytes) {
+        UNUSED(bytes)
         return transport->asyncWrite(sockFd, FileBuffer(fileName));
     }, Async::Throw);
 
@@ -790,14 +789,18 @@ Handler::onConnection(const std::shared_ptr<Tcp::Peer>& peer) {
 
 void
 Handler::onDisconnection(const shared_ptr<Tcp::Peer>& peer) {
+    UNUSED(peer)
 }
 
 void
 Handler::onTimeout(const Request& request, ResponseWriter response) {
+    UNUSED(request)
+    UNUSED(response)
 }
 
 void
 Timeout::onTimeout(uint64_t numWakeup) {
+    UNUSED(numWakeup)
     if (!peer.lock()) return;
 
     ResponseWriter response(transport, request, handler);
