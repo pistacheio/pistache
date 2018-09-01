@@ -22,6 +22,6 @@ struct Prototype {
 #define PROTOTYPE_OF(Base, Class)                                        \
 private:                                                                 \
     std::shared_ptr<Base> clone() const {                                \
-        return std::make_shared<Class>();                                \
+        return std::make_shared<Class>(*this);                           \
     }                                                                    \
 public:

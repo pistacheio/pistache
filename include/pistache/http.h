@@ -786,6 +786,10 @@ namespace Private {
 
 class Handler : public Tcp::Handler {
 public:
+    void Handler() : max_payload_(Const::MaxPayload) {}
+    void Handler(size_t max_payload) {
+    }
+
     void onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer>& peer);
 
     void onConnection(const std::shared_ptr<Tcp::Peer>& peer);
