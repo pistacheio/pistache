@@ -109,8 +109,7 @@ TEST(listener_test, listener_bind_port_free) {
 
 
     if (port_nb == 0) {
-        std::cerr << "Could not find a free port. Abord test.\n";
-        exit(1);
+        FAIL() << "Could not find a free port. Abord test.\n";
     }
 
     Pistache::Port port(port_nb);
@@ -129,8 +128,7 @@ TEST(listener_test, listener_bind_port_not_free_throw_runtime) {
     uint16_t port_nb = s.port();
 
     if (port_nb == 0) {
-        std::cerr << "Could not find a free port. Abord test.\n";
-        exit(1);
+        FAIL() << "Could not find a free port. Abord test.\n";
     }
 
     Pistache::Port port(port_nb);
@@ -146,7 +144,6 @@ TEST(listener_test, listener_bind_port_not_free_throw_runtime) {
         std::cout << err.what() << std::endl;
         ASSERT_STREQ("Address already in use", err.what());
     } catch ( ... ) {
-        // We are expecting a runtime error
         FAIL() << "Expected std::runtime_error";
     }
 }
