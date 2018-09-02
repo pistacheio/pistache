@@ -21,11 +21,13 @@ public:
         Options& threads(int val);
         Options& flags(Flags<Tcp::Options> flags);
         Options& backlog(int val);
+        Options& maxPayload(size_t val);
 
     private:
         int threads_;
         Flags<Tcp::Options> flags_;
         int backlog_;
+        size_t maxPayload_;
         Options();
     };
     Endpoint();
@@ -64,6 +66,7 @@ private:
         if (!handler_)
             throw std::runtime_error("Must call setHandler() prior to serve()");
 
+        handler_->setMaxPayload(maxPayload_);
         listener.setHandler(handler_);
 
         if (listener.bind()) {
@@ -74,6 +77,7 @@ private:
 
     std::shared_ptr<Handler> handler_;
     Tcp::Listener listener;
+    size_t maxPayload_;
 };
 
 template<typename Handler>

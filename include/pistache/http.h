@@ -791,11 +791,11 @@ namespace Private {
 
 class Handler : public Tcp::Handler {
 public:
-    Handler() : max_payload_(Const::DefaultMaxPayload) {}
-    Handler(size_t max_payload) : max_payload_(max_payload) { }
+    Handler() : maxPayload_(Const::DefaultMaxPayload) {}
+    Handler(size_t maxPayload) : maxPayload_(maxPayload) { }
 
-    size_t getMaxPayload() { return max_payload_; }
-    void setMaxPayload(size_t sz) { max_payload_ = sz; }
+    size_t getMaxPayload() { return maxPayload_; }
+    void setMaxPayload(size_t sz) { maxPayload_ = sz; }
 
     void onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer>& peer);
 
@@ -811,7 +811,7 @@ public:
 private:
     Private::Parser<Http::Request>& getParser(const std::shared_ptr<Tcp::Peer>& peer) const;
 protected:
-    size_t max_payload_;
+    size_t maxPayload_;
 };
 
 template<typename H, typename... Args>

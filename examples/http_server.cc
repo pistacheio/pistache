@@ -176,16 +176,14 @@ int main(int argc, char *argv[]) {
     cout << "Using " << thr << " threads" << endl;
 
     auto server = std::make_shared<Http::Endpoint>(addr);
-
-    auto handler = Http::make_handler<MyHandler>();
-    // Adjust maximum payload size. Default is 4096 Const::DefaultMaxPayload
-    // handler->setMaxPayload(65536);
+    size_t maxPayload = 6144;
 
     auto opts = Http::Endpoint::options()
         .threads(thr)
-        .flags(Tcp::Options::InstallSignalHandler);
+        .flags(Tcp::Options::InstallSignalHandler)
+        .maxPayload(maxPayload);
     server->init(opts);
-    server->setHandler(handler);
+    server->setHandler(Http::make_handler<MyHandler>());
     server->serve();
 
     std::cout << "Shutdowning server" << std::endl;

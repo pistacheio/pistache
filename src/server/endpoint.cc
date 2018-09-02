@@ -14,6 +14,7 @@ namespace Http {
 
 Endpoint::Options::Options()
     : threads_(1)
+    , maxPayload_(Const::DefaultMaxPayload)
 { }
 
 Endpoint::Options&
@@ -34,6 +35,12 @@ Endpoint::Options::backlog(int val) {
     return *this;
 }
 
+Endpoint::Options&
+Endpoint::Options::maxPayload(size_t val) {
+    maxPayload_ = val;
+    return *this;
+}
+
 Endpoint::Endpoint()
 { }
 
@@ -44,6 +51,7 @@ Endpoint::Endpoint(const Address& addr)
 void
 Endpoint::init(const Endpoint::Options& options) {
     listener.init(options.threads_, options.flags_);
+    maxPayload_ = options.maxPayload_;
 }
 
 void
