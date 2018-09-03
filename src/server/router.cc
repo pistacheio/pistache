@@ -244,7 +244,9 @@ Router::fromDescription(const Rest::Description& desc) {
 
 std::shared_ptr<Private::RouterHandler>
 Router::handler() const {
-    return std::make_shared<Private::RouterHandler>(*this);
+    auto handler = std::make_shared<Private::RouterHandler>(*this);
+    handler->setMaxPayload(maxPayload_);
+    return std::move(handler);
 }
 
 void
@@ -258,7 +260,6 @@ Router::initFromDescription(const Rest::Description& desc) {
                 oss << "Path '" << path.value << "' is not bound";
                 throw std::runtime_error(oss.str());
             }
-
             addRoute(path.method, std::move(path.value), std::move(path.handler));
         }
     }
@@ -298,6 +299,17 @@ void
 Router::addCustomHandler(Route::Handler handler) {
     customHandlers.push_back(std::move(handler));
 }
+
+void
+Router::setMaxPayload(size_t maxPayload) {
+    maxPayload_ = maxPayload;
+}
+
+size_t
+Router::getMaxPayload() const {
+    return maxPayload_;
+}
+
 
 void
 Router::addNotFoundHandler(Route::Handler handler) {
