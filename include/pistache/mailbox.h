@@ -183,6 +183,7 @@ public:
 
     virtual ~Queue() {
         while (auto *e = pop()) delete e;
+        delete tail;
     }
 
     template<typename U>
