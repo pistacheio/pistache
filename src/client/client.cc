@@ -236,6 +236,63 @@ Transport::asyncSendRequest(
     });
 }
 
+ssize_t Connection::sendWithIncreasingDelays(const char* const ptr,
+                                             const size_t len)
+{
+    if (fd <= 0)
+        throw(std::runtime_error("Failed to get fd"));
+    
+    unsigned int except_count = 0;
+    std::chrono::milliseconds wait_duration(8);
+    std::chrono::milliseconds total_wait(0);
+
+    // Non-SSL case:
+    
+    for(unsigned int loop_count = 0; loop_count<100; loop_count++)
+    {
+        ssize_t bytes_written = 0;
+        errno = 0;
+        bool did_except = false;
+
+        try {
+            bytes_written = ::send(fd, ptr, len, 0);
+        }
+        catch(...)
+        {
+            if (except_count > 3)
+            {
+                errno = EINVAL;
+                return(-1);
+            }
+            did_except = true;
+        }
+        if (did_except)
+        {
+            bytes_written = -1;
+            errno = EAGAIN;
+        }
+
+        if (bytes_written >= 0)
+            return(bytes_written);
+
+        if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
+            return(bytes_written);
+
+        if (wait_duration > std::chrono::milliseconds(4096/*4 secs*/))
+        {
+            return(bytes_written);
+        }
+        
+        std::this_thread::sleep_for(wait_duration);
+        total_wait += wait_duration;
+
+        wait_duration = wait_duration * 2;
+    }
+
+    // Should never get here
+    return(-1);
+}
+    
 
 void
 Transport::asyncSendRequestImpl(
@@ -256,13 +313,11 @@ Transport::asyncSendRequestImpl(
         ssize_t bytesWritten = 0;
         ssize_t len = buffer.len - totalWritten;
         auto ptr = buffer.data + totalWritten;
-        bytesWritten = ::send(fd, ptr, len, 0);
+        bytesWritten = conn->sendWithIncreasingDelays(ptr, len);
         if (bytesWritten < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                if (status == FirstTry) {
-                    throw std::runtime_error("Unimplemented, fix me!");
-                }
-                reactor()->modifyFd(key(), fd, NotifyOn::Write, Polling::Mode::Edge);
+                reactor()->modifyFd(key(), fd, NotifyOn::Write,
+                                    Polling::Mode::Edge);
             }
             else {
                 cleanUp();

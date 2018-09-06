@@ -85,6 +85,8 @@ struct Connection : public std::enable_shared_from_this<Connection> {
             std::chrono::milliseconds timeout,
             OnDone onDone);
 
+    ssize_t sendWithIncreasingDelays(const char* const ptr, const size_t len);
+
     void performImpl(
             const Http::Request& request,
             std::chrono::milliseconds timeout,
