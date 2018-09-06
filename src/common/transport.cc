@@ -235,7 +235,9 @@ Transport::asyncWriteImpl(
                     ::close(buffer.fd());
                 }
 
-                deferred.resolve(totalWritten);
+                // Cast to match the type of defered template
+                // to avoid a BadType exception
+                deferred.resolve(static_cast<ssize_t>(totalWritten));
                 break;
             }
         }
