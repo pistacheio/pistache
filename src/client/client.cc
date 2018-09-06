@@ -272,7 +272,7 @@ Transport::asyncSendRequestImpl(
         }
         else {
             totalWritten += bytesWritten;
-            if (totalWritten == len) {
+            if (totalWritten == buffer.len) {
                 cleanUp();
                 if (req.timer) {
                     timeouts.insert(
