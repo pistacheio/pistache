@@ -812,9 +812,7 @@ Timeout::onTimeout(uint64_t numWakeup) {
 
 Private::Parser<Http::Request>&
 Handler::getParser(const std::shared_ptr<Tcp::Peer>& peer) const {
-    auto & parser = *peer->getData<Private::Parser<Http::Request>>(ParserData);
-    parser.setMaxSize(maxPayload_);
-    return parser;
+    return *peer->getData<Private::Parser<Http::Request>>(ParserData);
 }
 
 

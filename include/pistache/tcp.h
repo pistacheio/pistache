@@ -37,11 +37,7 @@ public:
     friend class Transport;
 
     Handler();
-    Handler(const Handler & rhs);
     ~Handler();
-
-    size_t getMaxPayload() { return maxPayload_; }
-    void setMaxPayload(size_t sz) { maxPayload_ = sz; }
 
     virtual void onInput(const char *buffer, size_t len, const std::shared_ptr<Tcp::Peer>& peer) = 0;
 
@@ -58,8 +54,6 @@ protected:
             throw std::logic_error("Orphaned handler");
         return transport_;
      }
-    size_t maxPayload_;
-
 };
 
 } // namespace Tcp

@@ -12,14 +12,8 @@ namespace Tcp {
 
 Handler::Handler()
     : transport_(nullptr)
-    , maxPayload_(Const::DefaultMaxPayload)
 {
 }
-
-Handler::Handler(const Handler & rhs)
-    : transport_(nullptr)
-    , maxPayload_(rhs.maxPayload_)
-{ }
 
 Handler::~Handler()
 { }

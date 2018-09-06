@@ -244,9 +244,7 @@ Router::fromDescription(const Rest::Description& desc) {
 
 std::shared_ptr<Private::RouterHandler>
 Router::handler() const {
-    auto handler = std::make_shared<Private::RouterHandler>(*this);
-    handler->setMaxPayload(maxPayload_);
-    return std::move(handler);
+    return std::make_shared<Private::RouterHandler>(*this);
 }
 
 void

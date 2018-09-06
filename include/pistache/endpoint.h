@@ -66,7 +66,6 @@ private:
         if (!handler_)
             throw std::runtime_error("Must call setHandler() prior to serve()");
 
-        handler_->setMaxPayload(maxPayload_);
         listener.setHandler(handler_);
 
         if (listener.bind()) {
@@ -77,7 +76,6 @@ private:
 
     std::shared_ptr<Handler> handler_;
     Tcp::Listener listener;
-    size_t maxPayload_;
 };
 
 template<typename Handler>

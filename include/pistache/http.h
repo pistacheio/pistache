@@ -690,15 +690,13 @@ namespace Private {
     class ParserBase {
     public:
         ParserBase()
-            : buffer(Const::DefaultMaxPayload)
-            , cursor(&buffer)
+            : cursor(&buffer)
             , currentStep(0)
         {
         }
 
         ParserBase(const char* data, size_t len)
-            : buffer(len > Const::DefaultMaxPayload ? len : Const::DefaultMaxPayload)
-            , cursor(&buffer)
+            : cursor(&buffer)
             , currentStep(0)
         {
             UNUSED(data)
@@ -710,8 +708,6 @@ namespace Private {
 
         bool feed(const char* data, size_t len);
         virtual void reset();
-
-        void setMaxSize(size_t sz) { buffer.setMaxSize(sz); }
 
         virtual ~ParserBase() { }
 

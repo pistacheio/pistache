@@ -14,7 +14,6 @@ namespace Http {
 
 Endpoint::Options::Options()
     : threads_(1)
-    , maxPayload_(Const::DefaultMaxPayload)
 { }
 
 Endpoint::Options&
@@ -51,7 +50,7 @@ Endpoint::Endpoint(const Address& addr)
 void
 Endpoint::init(const Endpoint::Options& options) {
     listener.init(options.threads_, options.flags_);
-    maxPayload_ = options.maxPayload_;
+    ArrayStreamBuf<char>::maxSize = options.maxPayload_;
 }
 
 void
