@@ -168,6 +168,7 @@ Transport::handlePeerDisconnection(const std::shared_ptr<Peer>& peer) {
         throw std::runtime_error("Could not find peer to erase");
 
     peers.erase(it);
+    toWrite.erase(fd);
 
     close(fd);
 }
@@ -199,7 +200,7 @@ Transport::asyncWriteImpl(
         if (buffer.isRaw()) {
             auto raw = buffer.raw();
             auto ptr = raw.data + totalWritten;
-            bytesWritten = ::send(fd, ptr, len, flags);
+            bytesWritten = ::send(fd, ptr, len, flags | MSG_NOSIGNAL);
         } else {
             auto file = buffer.fd();
             off_t offset = totalWritten;
