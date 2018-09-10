@@ -174,7 +174,6 @@ Listener::bind(const Address& address) {
         TRY(::listen(fd, backlog_));
         break;
     }
-    freeaddrinfo(addrs);
 
     make_non_blocking(fd);
     poller.addFd(fd, Polling::NotifyOn::Read, Polling::Tag(fd));
