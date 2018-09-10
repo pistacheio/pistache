@@ -386,7 +386,7 @@ Connection::connect(Address addr)
 
     const auto& host = addr.host();
     const auto& port = addr.port().toString();
-    TRY(::getaddrinfo(host.c_str(), port.c_str(), &hints, &addrs));
+    AddressInfo addressInfo(host.c_str(), port.c_str(), hints, &addrs);
 
     int sfd = -1;
 

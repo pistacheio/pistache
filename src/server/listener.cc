@@ -156,7 +156,7 @@ Listener::bind(const Address& address) {
     const auto& host = addr_.host();
     const auto& port = addr_.port().toString();
     struct addrinfo *addrs;
-    TRY(::getaddrinfo(host.c_str(), port.c_str(), &hints, &addrs));
+    AddressInfo addressInfo(host.c_str(), port.c_str(), hints, &addrs);
 
     int fd = -1;
 

@@ -53,6 +53,24 @@
 #define UNUSED(x) (void)(x);
 
 namespace Pistache {
+
+// RAII class for address info
+class AddressInfo {
+public:
+    AddressInfo(const char* host, const char* port,
+            const struct addrinfo& hints, struct addrinfo**addrs) {
+        addressInfo = addrs;
+        TRY(::getaddrinfo(host, port, &hints, addressInfo));
+    }
+
+    ~AddressInfo() {
+        freeaddrinfo(*addressInfo);
+    }
+
+private:
+    struct addrinfo **addressInfo;
+};
+
 namespace Const {
 
     static constexpr int MaxBacklog = 128;
