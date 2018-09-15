@@ -176,9 +176,7 @@ Listener::bind(const Address& address) {
         TRY(::listen(fd, backlog_));
         break;
     }
-
-    freeaddrinfo(addrs);
-
+    
     // At this point, it is still possible that we couldn't bind any socket. If it is the case, the previous
     // loop would have exited naturally and addr will be null.
     if (addr == nullptr) {
