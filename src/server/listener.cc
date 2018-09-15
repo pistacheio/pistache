@@ -200,7 +200,7 @@ Listener::bind(const Address& address) {
 
 bool
 Listener::isBound() const {
-    return g_listen_fd != -1;
+    return listen_fd != -1;
 }
 
 void
