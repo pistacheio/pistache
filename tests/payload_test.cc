@@ -27,21 +27,17 @@ struct TestSet {
 };
 
 typedef std::vector<TestSet> PayloadTestSets;
- 
-void testPayloads(std::string url, PayloadTestSets & testPayloads) {
+
+static const uint16_t PORT = 9080;
+
+void testPayloads(Http::Client & client, std::string url, PayloadTestSets & testPayloads) {
    // Client tests to make sure the payload is enforced
     std::mutex resultsetMutex;
     PayloadTestSets test_results;
-    Http::Client client;
-    auto client_opts = Http::Client::options()
-                         .threads(1)
-                         .maxConnectionsPerHost(1);
-    client.init(client_opts);
-    auto rb = client.post(url);
+    std::vector<Async::Promise<Http::Response> > responses;
     for (auto & t : testPayloads) {
         std::string payload(t.bytes, 'A');
-        std::vector<Async::Promise<Http::Response> > responses;
-        auto response = rb.body(payload).send();
+        auto response = client.post(url).body(payload).send();
         response.then([t,&test_results,&resultsetMutex](Http::Response rsp) {
                 TestSet res(t);
                 res.actualCode = rsp.code();
@@ -51,11 +47,11 @@ void testPayloads(std::string url, PayloadTestSets & testPayloads) {
                 }
                 }, Async::IgnoreException);
         responses.push_back(std::move(response));
-        auto sync = Async::whenAll(responses.begin(), responses.end());
-        Async::Barrier<std::vector<Http::Response>> barrier(sync);
-        barrier.wait_for(std::chrono::seconds(5));
     }
-    client.shutdown();
+
+    auto sync = Async::whenAll(responses.begin(), responses.end());
+    Async::Barrier<std::vector<Http::Response>> barrier(sync);
+    barrier.wait_for(std::chrono::milliseconds(500));
 
     for (auto & result : test_results) {
         ASSERT_EQ(result.expectedCode, result.actualCode);
@@ -63,87 +59,107 @@ void testPayloads(std::string url, PayloadTestSets & testPayloads) {
 }
 
 void handleEcho(const Rest::Request&req, Http::ResponseWriter response) {
-    response.send(Http::Code::Ok, req.body(), MIME(Text, Plain));
+    UNUSED(req);
+    response.send(Http::Code::Ok, "", MIME(Text, Plain));
 }
 
-TEST(payload_test, from_description)
+TEST(payload, from_description)
 {
-    Address addr(Ipv4::any(), 9084);
+    Http::Client client;
+    auto client_opts = Http::Client::options()
+        .threads(3)
+        .maxConnectionsPerHost(3);
+    client.init(client_opts);
+
+    Address addr(Ipv4::any(), 9080);
     const size_t threads = 20;
     const size_t maxPayload = 1024; // very small
 
-    std::shared_ptr<Http::Endpoint> endpoint;
-    Rest::Description desc("Rest Description Test", "v1");
-    Rest::Router router;
+    auto pid = fork();
+    if ( pid == 0) {
+        std::shared_ptr<Http::Endpoint> endpoint;
+        Rest::Description desc("Rest Description Test", "v1");
+        Rest::Router router;
 
-    desc
-        .route(desc.post("/echo"))
-        .bind(&handleEcho)
-        .response(Http::Code::Ok, "Response to the /ready call");
+        desc
+            .route(desc.post("/"))
+            .bind(&handleEcho)
+            .response(Http::Code::Ok, "Response to the /ready call");
 
-    router.initFromDescription(desc);
+        router.initFromDescription(desc);
 
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+        auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
 
-    auto opts = Http::Endpoint::options()
-        .threads(threads)
-        .flags(flags)
-        .maxPayload(maxPayload);
-        ;
+        auto opts = Http::Endpoint::options()
+            .threads(threads)
+            .flags(flags)
+            .maxPayload(maxPayload);
+            ;
 
-    endpoint = std::make_shared<Pistache::Http::Endpoint>(addr);
-    endpoint->init(opts);
-    endpoint->setHandler(router.handler());
-
-    endpoint->serveThreaded();
-
+        endpoint = std::make_shared<Pistache::Http::Endpoint>(addr);
+        endpoint->init(opts);
+        endpoint->setHandler(router.handler());
+        endpoint->serve();
+        endpoint->shutdown();
+        return;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
     PayloadTestSets payloads{
        {800, Http::Code::Ok}
        , {1024, Http::Code::Request_Entity_Too_Large}
         ,{2048, Http::Code::Request_Entity_Too_Large}
     };
 
-    testPayloads("127.0.0.1:9084/echo", payloads);
-    endpoint->shutdown();
+    testPayloads(client, "127.0.0.1:" + std::to_string(PORT), payloads);
+    kill(pid, SIGTERM);
+    int r;
+    waitpid(pid, &r, 0);
+    client.shutdown();
 }
 
-TEST(payload_test, manual_construction) {
+TEST(payload, manual_construction) {
     class MyHandler : public Http::Handler {
+        public:
         HTTP_PROTOTYPE(MyHandler)
 
         void onRequest(
                 const Http::Request& req,
                 Http::ResponseWriter response)
         {
-            if (req.resource() == "/echo") {
-                if (req.method() == Http::Method::Post) {
-                    response.send(Http::Code::Ok, req.body(), MIME(Text, Plain));
-                } else {
-                    response.send(Http::Code::Method_Not_Allowed);
-                }
-            } else {
-                response.send(Http::Code::Not_Found);
-            }
-
+            UNUSED(req);
+            response.send(Http::Code::Ok, "All good");
         }
     private:
         tag placeholder;
     };
 
-    Port port(9080);
-    int thr = 20;
+    Http::Client client;
+    auto client_opts = Http::Client::options()
+        .threads(3)
+        .maxConnectionsPerHost(3);
+    client.init(client_opts);
+
+    Port    port(PORT);
     Address addr(Ipv4::any(), port);
-    auto endpoint = std::make_shared<Http::Endpoint>(addr);
-    size_t maxPayload = 2048;
+    int     threads = 20;
+    auto    flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    size_t  maxPayload = 2048;
 
-    auto opts = Http::Endpoint::options()
-        .threads(thr)
-        .flags(Tcp::Options::InstallSignalHandler)
-        .maxPayload(maxPayload);
+    auto pid = fork();
+    if (pid == 0) {
+        auto endpoint = std::make_shared<Http::Endpoint>(addr);
+        auto opts = Http::Endpoint::options()
+            .threads(threads)
+            .flags(flags)
+            .maxPayload(maxPayload);
+            ;
 
-    endpoint->init(opts);
-    endpoint->setHandler(Http::make_handler<MyHandler>());
-    endpoint->serveThreaded();
+        endpoint->init(opts);
+        endpoint->setHandler(Http::make_handler<MyHandler>());
+        endpoint->serve();
+        endpoint->shutdown();
+        return;
+    }
 
     PayloadTestSets payloads{
        {1024, Http::Code::Ok}
@@ -151,9 +167,11 @@ TEST(payload_test, manual_construction) {
        , {2048, Http::Code::Request_Entity_Too_Large}
        , {4096, Http::Code::Request_Entity_Too_Large}
     };
+    testPayloads(client, "127.0.0.1:" + std::to_string(PORT), payloads);
 
-    testPayloads("127.0.0.1:9080/echo", payloads);
-
+    // Cleanup
+    kill(pid, SIGTERM);
+    int r;
+    waitpid(pid, &r, 0);
+    client.shutdown();
 }
-
-
