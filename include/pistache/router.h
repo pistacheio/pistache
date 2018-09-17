@@ -182,7 +182,7 @@ namespace Private {
 
     private:
         std::shared_ptr<Tcp::Handler> clone() const {
-            return std::make_shared<RouterHandler>(router);
+            return std::make_shared<RouterHandler>(*this);
         }
 
         Rest::Router router;
