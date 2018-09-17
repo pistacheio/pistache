@@ -299,17 +299,6 @@ Router::addCustomHandler(Route::Handler handler) {
 }
 
 void
-Router::setMaxPayload(size_t maxPayload) {
-    maxPayload_ = maxPayload;
-}
-
-size_t
-Router::getMaxPayload() const {
-    return maxPayload_;
-}
-
-
-void
 Router::addNotFoundHandler(Route::Handler handler) {
     notFoundHandler = std::move(handler);
 }

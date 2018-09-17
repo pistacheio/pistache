@@ -155,9 +155,6 @@ public:
 
     void addCustomHandler(Route::Handler handler);
 
-    void setMaxPayload(size_t maxPayload);
-    size_t getMaxPayload() const;
-
     void addNotFoundHandler(Route::Handler handler);
     inline bool hasNotFoundHandler() { return notFoundHandler != nullptr; }
     void invokeNotFoundHandler(const Http::Request &req, Http::ResponseWriter resp) const;
@@ -169,7 +166,6 @@ private:
     std::unordered_map<Http::Method, std::vector<Route>> routes;
 
     std::vector<Route::Handler> customHandlers;
-    size_t maxPayload_;
 
     Route::Handler notFoundHandler;
 };
