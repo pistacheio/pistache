@@ -3,7 +3,7 @@ function(pistache_test test_name)
     set(TEST_SOURCE ${test_name}.cc)
 
     add_executable(${TEST_EXECUTABLE} ${TEST_SOURCE})
-    target_link_libraries(${TEST_EXECUTABLE} gtest gtest_main pistache)
+    target_link_libraries(${TEST_EXECUTABLE} gtest gtest_main pistache curl)
     add_test(${test_name} ${TEST_EXECUTABLE})
 endfunction()
 
@@ -19,3 +19,4 @@ pistache_test(http_parsing_test)
 pistache_test(http_client_test)
 pistache_test(net_test)
 pistache_test(payload_test)
+pistache_test(streaming_test)
