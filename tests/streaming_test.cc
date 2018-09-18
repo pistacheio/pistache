@@ -15,15 +15,29 @@ void dumpData(const Rest::Request&req, Http::ResponseWriter response) {
     UNUSED(req);
 
     auto stream = response.stream(Http::Code::Ok);
-
     std::streamsize n = 1000;
-    char data = 'A';
+    char letter = 'A';
+
+    std::mutex responseGuard;
+    std::vector<std::thread> workers;
+    auto sendPayload =
+        [&responseGuard, &stream, n](char let) -> void {
+            size_t chunk_size = n / 10;
+            {
+                std::unique_lock<std::mutex> l(responseGuard);
+                for (size_t chunk = 0; chunk < 10; ++chunk) {
+                    std::string payload(chunk_size * chunk, let);
+                    stream.write(payload.c_str(), n);
+                    stream.flush();
+                }
+            }
+    };
+
     for (size_t i ; i < 26; ++i) {
-        std::cout << "Sending " << n << " bytes of " << data << std::endl;
-        std::string payload(data++, n);
-        stream.write(payload.c_str(), n);
-        stream.flush();
+        workers.emplace_back(std::thread(sendPayload, letter + i));
     }
+
+    for (auto &w : workers) { w.join(); }
     stream.ends();
 }
 
@@ -87,16 +101,12 @@ TEST(stream, from_description)
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ss);
         res = curl_easy_perform(curl);
         if (res != CURLE_OK) {
-            std::cout << "Curl failed: " << curl_easy_strerror(res) << std::endl;
+            throw std::runtime_error(curl_easy_strerror(res));
         }
         curl_easy_cleanup(curl);
     }
 
-    std::cout << "GOT HERE" << std::endl;
-
-    std::cout << ss.str() << std::endl;
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+    ASSERT_EQ(ss.str().size(), 26000);
 
     kill(pid, SIGTERM);
     int r;
