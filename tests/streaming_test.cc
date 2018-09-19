@@ -86,14 +86,12 @@ TEST(stream, from_description)
         return size * nmemb;
     };
 
-
     std::string url = "http://localhost:" + std::to_string(PORT) + "/";
-    std::cout << url <<std::endl;
     CURLcode res;
     CURL * curl = curl_easy_init();
     if (curl)
     {
-        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, static_cast<CURL_WRITEFUNCTION_PTR>(curl_callback));
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ss);
         res = curl_easy_perform(curl);
