@@ -82,21 +82,27 @@ TEST(stream, from_description)
 
     auto curl_callback = [](void *ptr, size_t size, size_t nmemb, void *stream) -> size_t {
         auto ss = static_cast<std::stringstream *>(stream);
-        (*ss).write(static_cast<char *>(ptr), size* nmemb);
+        ss->write(static_cast<char *>(ptr), size* nmemb);
         return size * nmemb;
     };
 
+
+    std::string url = "http://localhost:" + std::to_string(PORT) + "/";
+    std::cout << url <<std::endl;
     CURLcode res;
     CURL * curl = curl_easy_init();
     if (curl)
     {
-        curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:9080/");
+        curl_easy_setopt(curl, CURLOPT_URL, url);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, static_cast<CURL_WRITEFUNCTION_PTR>(curl_callback));
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ss);
         res = curl_easy_perform(curl);
         curl_easy_cleanup(curl);
     }
     endpoint->shutdown();
+
+    if (res != CURLE_OK)
+        std::cerr << curl_easy_strerror(res) << std::endl;
 
     ASSERT_EQ(res, CURLE_OK);
     ASSERT_EQ(ss.str().size(), SET_REPEATS * LETTER_REPEATS * N_LETTERS);
