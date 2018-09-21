@@ -110,10 +110,10 @@ private:
     std::shared_ptr<FragmentTreeNode> splat_;
     std::shared_ptr<Route> route_;
 
-    static FragmentType getFragmentType(const std::string_view &fragment);
+    static FragmentType getFragmentType(const std::string_view& fragment);
 
     std::tuple<std::shared_ptr<Route>, std::vector<TypedParam>, std::vector<TypedParam>>
-    findRoute(const std::string_view &path,
+    findRoute(const std::string_view& path,
               std::vector<TypedParam> &params,
               std::vector<TypedParam> &splats) const;
 
@@ -121,10 +121,10 @@ public:
     FragmentTreeNode();
     explicit FragmentTreeNode(const std::shared_ptr<char> &resourceReference);
 
-    void addRoute(const std::string_view &path, const Route::Handler &handler,
+    void addRoute(const std::string_view& path, const Route::Handler &handler,
             const std::shared_ptr<char> &resourceReference);
 
-    bool removeRoute(const std::string_view &path);
+    bool removeRoute(const std::string_view& path);
 
     /**
      * Finds the correct route for the given path.
@@ -134,7 +134,7 @@ public:
      * is a null pointer).
      */
     std::tuple<std::shared_ptr<Route>, std::vector<TypedParam>, std::vector<TypedParam>>
-    findRoute(const std::string_view &path) const;
+    findRoute(const std::string_view& path) const;
 };
 
 class Router {
@@ -143,6 +143,8 @@ public:
 
     std::shared_ptr<Private::RouterHandler>
     handler() const;
+    static std::shared_ptr<Private::RouterHandler>
+    handler(std::shared_ptr<Rest::Router> router);
 
     void initFromDescription(const Rest::Description& desc);
 
@@ -152,7 +154,7 @@ public:
     void patch(std::string resource, Route::Handler handler);
     void del(std::string resource, Route::Handler handler);
     void options(std::string resource, Route::Handler handler);
-    void removeRoute(Http::Method method, std::string resource);
+    void removeRoute(Http::Method method, const std::string& resource);
 
     void addCustomHandler(Route::Handler handler);
     void addNotFoundHandler(Route::Handler handler);
@@ -162,7 +164,7 @@ public:
     Route::Status route(const Http::Request& request, Http::ResponseWriter response);
 
 private:
-    void addRoute(Http::Method method, std::string resource, Route::Handler handler);
+    void addRoute(Http::Method method, const std::string& resource, Route::Handler handler);
     std::unordered_map<Http::Method, FragmentTreeNode> routes;
 
     std::vector<Route::Handler> customHandlers;
@@ -175,6 +177,7 @@ namespace Private {
     class RouterHandler : public Http::Handler {
     public:
         RouterHandler(const Rest::Router& router);
+        RouterHandler(std::shared_ptr<Rest::Router> router);
 
         void onRequest(
                 const Http::Request& req,
@@ -185,7 +188,7 @@ namespace Private {
             return std::make_shared<RouterHandler>(router);
         }
 
-        Rest::Router router;
+        std::shared_ptr<Rest::Router> router;
     };
 }
 

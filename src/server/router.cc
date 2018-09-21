@@ -68,7 +68,7 @@ FragmentTreeNode::FragmentTreeNode(const std::shared_ptr<char> &resourceReferenc
         resourceRef_(resourceReference), fixed_(), param_(), optional_(), splat_(), route_() { }
 
 FragmentTreeNode::FragmentType
-FragmentTreeNode::getFragmentType(const std::string_view &fragment) {
+FragmentTreeNode::getFragmentType(const std::string_view& fragment) {
 
     auto optpos = fragment.find('?');
     if (fragment[0] == ':') {
@@ -95,7 +95,7 @@ FragmentTreeNode::getFragmentType(const std::string_view &fragment) {
 }
 
 void
-FragmentTreeNode::addRoute(const std::string_view &path,
+FragmentTreeNode::addRoute(const std::string_view& path,
                            const Route::Handler &handler,
                            const std::shared_ptr<char> &resourceReference) {
     if (path.length() == 0) {
@@ -115,8 +115,12 @@ FragmentTreeNode::addRoute(const std::string_view &path,
         }
     } else { // recursion to correct descendant
         const auto pos = currPath.find('/', 1);
-        const auto next = (pos == std::string_view::npos) ? currPath.substr(1) : currPath.substr(pos); // complete lower path
-        auto mid = (pos == std::string_view::npos) ? currPath.substr(1) : currPath.substr(1, currPath.find('/', pos) - 1); // middle resource name
+        const auto next = (pos == std::string_view::npos) ?
+            currPath.substr(1) :
+            currPath.substr(pos); // complete lower path
+        auto mid = (pos == std::string_view::npos) ?
+            currPath.substr(1) :
+            currPath.substr(1, currPath.find('/', pos) - 1); // middle resource name
 
         std::unordered_map<std::string_view, std::shared_ptr<FragmentTreeNode>> *collection;
         const auto fragmentType = getFragmentType(mid);
@@ -147,7 +151,7 @@ FragmentTreeNode::addRoute(const std::string_view &path,
     }
 }
 
-bool Pistache::Rest::FragmentTreeNode::removeRoute(const std::string_view &path) {
+bool Pistache::Rest::FragmentTreeNode::removeRoute(const std::string_view& path) {
     if (path.length() == 0) {
         throw std::runtime_error("Invalid zero-length URL.");
     }
@@ -196,7 +200,7 @@ bool Pistache::Rest::FragmentTreeNode::removeRoute(const std::string_view &path)
 
 std::tuple<std::shared_ptr<Route>, std::vector<TypedParam>, std::vector<TypedParam>>
 Pistache::Rest::FragmentTreeNode::findRoute(
-        const std::string_view &path,
+        const std::string_view& path,
         std::vector<TypedParam> &params,
         std::vector<TypedParam> &splats) const {
     if (path.length() == 0) {
@@ -218,8 +222,12 @@ Pistache::Rest::FragmentTreeNode::findRoute(
         } else return std::make_tuple(route_, std::move(params), std::move(splats));
     } else { // recursion to correct descendant
         const auto pos = currPath.find('/', 1);
-        const auto next = (pos == std::string_view::npos) ? currPath.substr(1) : currPath.substr(pos); // complete lower path
-        auto mid = (pos == std::string_view::npos) ? currPath.substr(1) : currPath.substr(1, currPath.find('/', pos) - 1); // middle resource name
+        const auto next = (pos == std::string_view::npos) ?
+            currPath.substr(1) :
+            currPath.substr(pos); // complete lower path
+        auto mid = (pos == std::string_view::npos) ?
+            currPath.substr(1) :
+            currPath.substr(1, currPath.find('/', pos) - 1); // middle resource name
 
         if (fixed_.count(mid) != 0) {
             auto result = fixed_.at(mid)->findRoute(next, params, splats);
@@ -268,7 +276,7 @@ Pistache::Rest::FragmentTreeNode::findRoute(
 }
 
 std::tuple<std::shared_ptr<Route>, std::vector<TypedParam>, std::vector<TypedParam>>
-Pistache::Rest::FragmentTreeNode::findRoute(const std::string_view &path) const {
+Pistache::Rest::FragmentTreeNode::findRoute(const std::string_view& path) const {
     std::vector<TypedParam> params;
     std::vector<TypedParam> splats;
     return findRoute(path, params, splats);
@@ -277,6 +285,11 @@ Pistache::Rest::FragmentTreeNode::findRoute(const std::string_view &path) const 
 namespace Private {
 
 RouterHandler::RouterHandler(const Rest::Router& router)
+    : router(std::make_shared<Rest::Router>(router))
+{
+}
+
+RouterHandler::RouterHandler(std::shared_ptr<Rest::Router> router)
     : router(router)
 {
 }
@@ -287,15 +300,15 @@ RouterHandler::onRequest(
         Http::ResponseWriter response)
 {
     auto resp = response.clone();
-    auto result = router.route(req, std::move(resp));
+    auto result = router->route(req, std::move(resp));
 
     /* @Feature: add support for a custom NotFound handler */
     if (result == Route::Status::NotFound)
     {
-        if (router.hasNotFoundHandler())
+        if (router->hasNotFoundHandler())
         {
             auto resp2 = response.clone();
-            router.invokeNotFoundHandler(req, std::move(resp2));
+            router->invokeNotFoundHandler(req, std::move(resp2));
         }
         else
             response.send(Http::Code::Not_Found, "Could not find a matching route");
@@ -313,6 +326,11 @@ Router::fromDescription(const Rest::Description& desc) {
 std::shared_ptr<Private::RouterHandler>
 Router::handler() const {
     return std::make_shared<Private::RouterHandler>(*this);
+}
+
+std::shared_ptr<Private::RouterHandler>
+Router::handler(std::shared_ptr<Rest::Router> router) {
+  return std::make_shared<Private::RouterHandler>(router);
 }
 
 void
@@ -363,9 +381,9 @@ Router::options(std::string resource, Route::Handler handler) {
 }
 
 void
-Router::removeRoute(Http::Method method, std::string resource) {
+Router::removeRoute(Http::Method method, const std::string& resource) {
     auto& r = routes[method];
-    r.removeRoute(std::string_view(resource.data(), resource.length()));
+    r.removeRoute(std::string_view{resource.data(), resource.length()});
 }
 
 void
@@ -388,7 +406,8 @@ Route::Status
 Router::route(const Http::Request& req, Http::ResponseWriter response) {
     auto& r = routes[req.method()];
 
-    std::string_view path {req.resource().data(), req.resource().size()};
+    const auto resource = req.resource();
+    const std::string_view path {resource.data(), resource.size()};
     auto result = r.findRoute(path);
 
     auto route = std::get<0>(result);
@@ -409,12 +428,12 @@ Router::route(const Http::Request& req, Http::ResponseWriter response) {
 }
 
 void
-Router::addRoute(Http::Method method, std::string resource, Route::Handler handler)
+Router::addRoute(Http::Method method, const std::string& resource, Route::Handler handler)
 {
     auto& r = routes[method];
     std::shared_ptr<char> ptr(new char[resource.length()], std::default_delete<char[]>());
     memcpy(ptr.get(), resource.data(), resource.length());
-    r.addRoute(std::string_view(ptr.get(), resource.length()), handler, ptr);
+    r.addRoute(std::string_view{ptr.get(), resource.length()}, handler, ptr);
 }
 
 namespace Routes {
