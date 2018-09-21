@@ -12,7 +12,7 @@ TEST(headers_test, accept) {
 
     {
         const auto& media = a1.media();
-        ASSERT_EQ(media.size(), 1U);
+        ASSERT_EQ(media.size(), 1);
 
         const auto& mime = media[0];
         ASSERT_EQ(mime, MIME(Audio, Star));
@@ -24,7 +24,7 @@ TEST(headers_test, accept) {
 
     {
         const auto& media = a2.media();
-        ASSERT_EQ(media.size(), 4U);
+        ASSERT_EQ(media.size(), 4);
 
         const auto &m1 = media[0];
         ASSERT_EQ(m1, MIME(Text, Star));
@@ -44,7 +44,7 @@ TEST(headers_test, accept) {
 
     {
         const auto& media = a3.media();
-        ASSERT_EQ(media.size(), 5U);
+        ASSERT_EQ(media.size(), 5);
 
         ASSERT_EQ(media[0], MIME(Text, Star));
         ASSERT_EQ(media[0].q().getOrElse(Mime::Q(0)), Mime::Q(30));
@@ -98,7 +98,7 @@ TEST(headers_test, cache_control) {
         cc.parse(str);
 
         auto directives = cc.directives();
-        ASSERT_EQ(directives.size(), 1U);
+        ASSERT_EQ(directives.size(), 1);
         ASSERT_EQ(directives[0].directive(), expected);
     };
 
@@ -108,7 +108,7 @@ TEST(headers_test, cache_control) {
         cc.parse(str);
 
         auto directives = cc.directives();
-        ASSERT_EQ(directives.size(), 1U);
+        ASSERT_EQ(directives.size(), 1);
 
         ASSERT_EQ(directives[0].directive(), expected);
         ASSERT_EQ(directives[0].delta(), std::chrono::seconds(delta));
@@ -128,7 +128,7 @@ TEST(headers_test, cache_control) {
     Header::CacheControl cc1;
     cc1.parse("private, max-age=600");
     auto d1 = cc1.directives();
-    ASSERT_EQ(d1.size(), 2U);
+    ASSERT_EQ(d1.size(), 2);
     ASSERT_EQ(d1[0].directive(), CacheDirective::Private);
     ASSERT_EQ(d1[1].directive(), CacheDirective::MaxAge);
     ASSERT_EQ(d1[1].delta(), std::chrono::seconds(600));
@@ -136,7 +136,7 @@ TEST(headers_test, cache_control) {
     Header::CacheControl cc2;
     cc2.parse("public, s-maxage=200, proxy-revalidate");
     auto d2 = cc2.directives();
-    ASSERT_EQ(d2.size(), 3U);
+    ASSERT_EQ(d2.size(), 3);
     ASSERT_EQ(d2[0].directive(), CacheDirective::Public);
     ASSERT_EQ(d2[1].directive(), CacheDirective::SMaxAge);
     ASSERT_EQ(d2[1].delta(), std::chrono::seconds(200));
@@ -167,7 +167,7 @@ TEST(headers_test, content_length) {
     Header::ContentLength cl;
 
     cl.parse("3495");
-    ASSERT_EQ(cl.value(), 3495U);
+    ASSERT_EQ(cl.value(), 3495);
 }
 
 TEST(headers_test, connection) {
@@ -197,43 +197,30 @@ TEST(headers_test, connection) {
 }
 
 
-TEST(headers_test, date_test_rfc_1123) {
-
+TEST(headers_test, date_test) {
+    
     using namespace std::chrono;
     FullDate::time_point expected_time_point = date::sys_days(date::year{1994}/11/6)
                                                 + hours(8) + minutes(49) + seconds(37);
-
-    /* RFC-1123 */
+                                                
+    /* RFC-1123 */                                    
     Header::Date d1;
     d1.parse("Sun, 06 Nov 1994 08:49:37 GMT");
     auto dd1 = d1.fullDate().date();
     ASSERT_EQ(expected_time_point, dd1);
-}
-
-TEST(headers_test, date_test_rfc_850) {
-
-    using namespace std::chrono;
-    FullDate::time_point expected_time_point = date::sys_days(date::year{1994}/11/6)
-                                                + hours(8) + minutes(49) + seconds(37);
-
+    
     /* RFC-850 */
     Header::Date d2;
     d2.parse("Sunday, 06-Nov-94 08:49:37 GMT");
     auto dd2 = d2.fullDate().date();
     ASSERT_EQ(dd2, expected_time_point);
-}
-
-TEST(headers_test, date_test_asctime) {
-
-    using namespace std::chrono;
-    FullDate::time_point expected_time_point = date::sys_days(date::year{1994}/11/6)
-                                                + hours(8) + minutes(49) + seconds(37);
 
     /* ANSI C's asctime format */
     Header::Date d3;
     d3.parse("Sun Nov  6 08:49:37 1994");
     auto dd3 = d3.fullDate().date();
     ASSERT_EQ(dd3, expected_time_point);
+
 }
 
 TEST(headers_test, host) {
@@ -277,12 +264,4 @@ TEST(headers_test, access_control_allow_origin_test)
 
     allowOrigin.parse("http://foo.bar");
     ASSERT_EQ(allowOrigin.uri(), "http://foo.bar");
-}
-
-TEST(headers_test, access_control_allow_headers_test)
-{
-    Header::AccessControlAllowHeaders allowHeaders;
-
-    allowHeaders.parse("Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
-    ASSERT_EQ(allowHeaders.val(), "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
 }

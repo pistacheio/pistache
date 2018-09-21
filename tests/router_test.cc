@@ -19,8 +19,8 @@ bool match(const Rest::FragmentTreeNode& routes, const std::string& req) {
 }
 
 bool matchParams(
-    const Rest::FragmentTreeNode& routes, const std::string& req,
-    std::initializer_list<std::pair<std::string, std::string>> list)
+        const Rest::FragmentTreeNode& routes, const std::string& req,
+        std::initializer_list<std::pair<std::string, std::string>> list)
 {
     std::shared_ptr<Rest::Route> route;
     std::vector<Rest::TypedParam> params;
@@ -30,7 +30,7 @@ bool matchParams(
 
     for (const auto& p: list) {
         auto it = std::find_if(params.begin(), params.end(), [&](const Rest::TypedParam& param) {
-          return param.name() == p.first;
+            return param.name() == std::string_view(p.first.data(), p.first.size());
         });
         if (it == std::end(params)) {
             std::cerr << "Did not find param '" << p.first << "'" << std::endl;
@@ -47,8 +47,8 @@ bool matchParams(
 }
 
 bool matchSplat(
-    const Rest::FragmentTreeNode& routes, const std::string& req,
-    std::initializer_list<std::string> list)
+        const Rest::FragmentTreeNode& routes, const std::string& req,
+        std::initializer_list<std::string> list)
 {
     std::shared_ptr<Rest::Route> route;
     std::vector<Rest::TypedParam> splats;
@@ -93,13 +93,13 @@ TEST(router_test, test_parameters) {
     routes.addRoute(std::string_view("/v1/hello/:name"), nullptr, nullptr);
 
     ASSERT_TRUE(matchParams(routes, "/v1/hello/joe", {
-        { ":name", "joe" }
+            { ":name", "joe" }
     }));
 
     routes.addRoute(std::string_view("/greetings/:from/:to"), nullptr, nullptr);
     ASSERT_TRUE(matchParams(routes, "/greetings/foo/bar", {
-        { ":from", "foo" },
-        { ":to"   , "bar" }
+            { ":from", "foo" },
+            { ":to"   , "bar" }
     }));
 }
 
@@ -110,10 +110,10 @@ TEST(router_test, test_optional) {
     ASSERT_TRUE(match(routes, "/get"));
     ASSERT_TRUE(match(routes, "/get/"));
     ASSERT_TRUE(matchParams(routes, "/get/foo", {
-        { ":key", "foo" }
+            { ":key", "foo" }
     }));
     ASSERT_TRUE(matchParams(routes, "/get/foo/", {
-        { ":key", "foo" }
+            { ":key", "foo" }
     }));
 
     ASSERT_FALSE(match(routes, "/get/foo/bar"));

@@ -24,8 +24,8 @@ class Description;
 
 namespace details {
     template<typename T> struct LexicalCast {
-        static T cast(const std::string& value) {
-            std::istringstream iss(value);
+        static T cast(const std::string_view& value) {
+            std::istringstream iss(std::string{value.data(), value.length()});
             T out;
             if (!(iss >> out))
                 throw std::runtime_error("Bad lexical cast");
@@ -34,8 +34,8 @@ namespace details {
     };
 
     template<>
-    struct LexicalCast<std::string> {
-        static std::string cast(const std::string& value) {
+    struct LexicalCast<std::string_view> {
+        static std::string_view cast(const std::string_view& value) {
             return value;
         }
     };
@@ -44,8 +44,8 @@ namespace details {
 class TypedParam {
 public:
     TypedParam(const std::string_view& name, const std::string_view& value)
-        : name_(name.data(), name.length())
-        , value_(value.data(), value.length())
+        : name_(name)
+        , value_(value)
     { }
 
     template<typename T>
@@ -54,16 +54,16 @@ public:
     }
 
     std::string name() const {
-        return name_;
+        return std::string{name_.data(), name_.length()};
     }
     
     std::string value() const {
-        return value_;
+        return std::string{value_.data(), value_.length()};
     }
 
 private:
-    std::string name_;
-    std::string value_;
+    std::string_view name_;
+    std::string_view value_;
 };
 
 class Request;
@@ -165,6 +165,7 @@ public:
 
 private:
     void addRoute(Http::Method method, const std::string& resource, Route::Handler handler);
+
     std::unordered_map<Http::Method, FragmentTreeNode> routes;
 
     std::vector<Route::Handler> customHandlers;

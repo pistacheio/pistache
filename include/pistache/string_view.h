@@ -64,7 +64,8 @@ namespace std {
             return size_;
         }
 
-        constexpr char operator[](size_type pos) const {
+
+        constexpr const char operator[](size_type pos) const {
             return data_[pos];
         }
 
@@ -107,7 +108,8 @@ namespace std {
             if (pos >= size_) {
                 pos = size_ - v.size_;
             }
-            for(; pos != npos; pos--) {
+
+            for(; pos >= 0 && pos != npos; pos--) {
                 string_view compare = substr(pos, v.size_);
                 if (v == compare) {
                     return pos;
@@ -228,4 +230,6 @@ namespace std {
 #undef FORCE_INLINE
     };
 }
+
 #endif
+

@@ -34,7 +34,7 @@ Request::hasParam(std::string name) const {
 TypedParam
 Request::param(std::string name) const {
     auto it = std::find_if(params_.begin(), params_.end(), [&](const TypedParam& param) {
-            return param.name() == name;
+            return param.name() == std::string_view(name.data(), name.length());
     });
 
     if (it == std::end(params_)) {
@@ -68,7 +68,11 @@ FragmentTreeNode::FragmentTreeNode(const std::shared_ptr<char> &resourceReferenc
         resourceRef_(resourceReference), fixed_(), param_(), optional_(), splat_(), route_() { }
 
 FragmentTreeNode::FragmentType
+<<<<<<< HEAD
 FragmentTreeNode::getFragmentType(const std::string_view& fragment) {
+=======
+FragmentTreeNode::getFragmentType(const std::string_view &fragment) {
+>>>>>>> master
 
     auto optpos = fragment.find('?');
     if (fragment[0] == ':') {
@@ -95,7 +99,11 @@ FragmentTreeNode::getFragmentType(const std::string_view& fragment) {
 }
 
 void
+<<<<<<< HEAD
 FragmentTreeNode::addRoute(const std::string_view& path,
+=======
+FragmentTreeNode::addRoute(const std::string_view &path,
+>>>>>>> master
                            const Route::Handler &handler,
                            const std::shared_ptr<char> &resourceReference) {
     if (path.length() == 0) {
@@ -115,6 +123,7 @@ FragmentTreeNode::addRoute(const std::string_view& path,
         }
     } else { // recursion to correct descendant
         const auto pos = currPath.find('/', 1);
+<<<<<<< HEAD
         const auto next = (pos == std::string_view::npos) ?
             currPath.substr(1) :
             currPath.substr(pos); // complete lower path
@@ -143,6 +152,32 @@ FragmentTreeNode::addRoute(const std::string_view& path,
                 return;
         }
 
+=======
+        const auto next = (pos == std::string_view::npos) ? currPath.substr(1) : currPath.substr(pos); // complete lower path
+        auto mid = (pos == std::string_view::npos) ? currPath.substr(1) : currPath.substr(1, currPath.find('/', pos) - 1); // middle resource name
+
+        std::unordered_map<std::string_view, std::shared_ptr<FragmentTreeNode>> *collection;
+        const auto fragmentType = getFragmentType(mid);
+        switch (fragmentType) {
+            case FragmentType::Fixed:
+                collection = &fixed_;
+                break;
+            case FragmentType::Param:
+                collection = &param_;
+                break;
+            case FragmentType::Optional:
+                mid = mid.substr(0, mid.length() - 1);
+                collection = &optional_;
+                break;
+            case FragmentType::Splat:
+                if (splat_ == nullptr) {
+                    splat_ = std::make_shared<FragmentTreeNode>(resourceReference);
+                }
+                splat_->addRoute(next, handler, resourceReference);
+                return;
+        }
+
+>>>>>>> master
 
         if (collection->count(mid) == 0) { // direct subpath does not exist
             collection->insert(std::make_pair(mid, std::make_shared<FragmentTreeNode>(resourceReference)));
@@ -151,7 +186,11 @@ FragmentTreeNode::addRoute(const std::string_view& path,
     }
 }
 
+<<<<<<< HEAD
 bool Pistache::Rest::FragmentTreeNode::removeRoute(const std::string_view& path) {
+=======
+bool Pistache::Rest::FragmentTreeNode::removeRoute(const std::string_view &path) {
+>>>>>>> master
     if (path.length() == 0) {
         throw std::runtime_error("Invalid zero-length URL.");
     }
@@ -200,7 +239,11 @@ bool Pistache::Rest::FragmentTreeNode::removeRoute(const std::string_view& path)
 
 std::tuple<std::shared_ptr<Route>, std::vector<TypedParam>, std::vector<TypedParam>>
 Pistache::Rest::FragmentTreeNode::findRoute(
+<<<<<<< HEAD
         const std::string_view& path,
+=======
+        const std::string_view &path,
+>>>>>>> master
         std::vector<TypedParam> &params,
         std::vector<TypedParam> &splats) const {
     if (path.length() == 0) {
@@ -217,7 +260,7 @@ Pistache::Rest::FragmentTreeNode::findRoute(
         // it is resolved by using the first optional
         if (!optional_.empty()) {
             auto optional = optional_.begin();
-            params.emplace_back(optional->first, optional->first);
+            params.emplace_back(optional->first, std::string_view());
             return optional->second->findRoute(currPath, params, splats);
         } else return std::make_tuple(route_, std::move(params), std::move(splats));
     } else { // recursion to correct descendant
@@ -276,7 +319,11 @@ Pistache::Rest::FragmentTreeNode::findRoute(
 }
 
 std::tuple<std::shared_ptr<Route>, std::vector<TypedParam>, std::vector<TypedParam>>
+<<<<<<< HEAD
 Pistache::Rest::FragmentTreeNode::findRoute(const std::string_view& path) const {
+=======
+Pistache::Rest::FragmentTreeNode::findRoute(const std::string_view &path) const {
+>>>>>>> master
     std::vector<TypedParam> params;
     std::vector<TypedParam> splats;
     return findRoute(path, params, splats);
@@ -381,9 +428,15 @@ Router::options(std::string resource, Route::Handler handler) {
 }
 
 void
+<<<<<<< HEAD
 Router::removeRoute(Http::Method method, const std::string& resource) {
     auto& r = routes[method];
     r.removeRoute(std::string_view{resource.data(), resource.length()});
+=======
+Router::removeRoute(Http::Method method, std::string resource) {
+    auto& r = routes[method];
+    r.removeRoute(std::string_view(resource.data(), resource.length()));
+>>>>>>> master
 }
 
 void
@@ -406,8 +459,12 @@ Route::Status
 Router::route(const Http::Request& req, Http::ResponseWriter response) {
     auto& r = routes[req.method()];
 
+<<<<<<< HEAD
     const auto resource = req.resource();
     const std::string_view path {resource.data(), resource.size()};
+=======
+    std::string_view path {req.resource().data(), req.resource().size()};
+>>>>>>> master
     auto result = r.findRoute(path);
 
     auto route = std::get<0>(result);
@@ -433,7 +490,11 @@ Router::addRoute(Http::Method method, const std::string& resource, Route::Handle
     auto& r = routes[method];
     std::shared_ptr<char> ptr(new char[resource.length()], std::default_delete<char[]>());
     memcpy(ptr.get(), resource.data(), resource.length());
+<<<<<<< HEAD
     r.addRoute(std::string_view{ptr.get(), resource.length()}, handler, ptr);
+=======
+    r.addRoute(std::string_view(ptr.get(), resource.length()), handler, ptr);
+>>>>>>> master
 }
 
 namespace Routes {

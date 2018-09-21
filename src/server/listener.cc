@@ -1,6 +1,6 @@
 /* listener.cc
    Mathieu Stefani, 12 August 2015
-
+   
 */
 
 #include <iostream>
@@ -8,7 +8,7 @@
 #include <cstring>
 
 #include <sys/socket.h>
-#include <unistd.h>
+#include <unistd.h> 
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
@@ -121,8 +121,6 @@ Listener::setHandler(const std::shared_ptr<Handler>& handler) {
 void
 Listener::pinWorker(size_t worker, const CpuSet& set)
 {
-    UNUSED(worker)
-    UNUSED(set)
 #if 0
     if (ioGroup.empty()) {
         throw std::domain_error("Invalid operation, did you call init() before ?");
@@ -149,7 +147,7 @@ Listener::bind(const Address& address) {
 
     struct addrinfo hints;
     hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_socktype = SOCK_STREAM; 
     hints.ai_flags = AI_PASSIVE;
     hints.ai_protocol = 0;
 
@@ -222,7 +220,7 @@ Listener::run() {
                 else {
                     if (event.flags.hasFlag(Polling::NotifyOn::Read)) {
                         auto fd = event.tag.value();
-                        if (static_cast<ssize_t>(fd) == listen_fd)
+                        if (fd == listen_fd)
                             handleNewConnection();
                     }
                 }

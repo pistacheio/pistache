@@ -1,17 +1,11 @@
 cmake_minimum_required (VERSION 3.8.2)
 project (pistache)
-include(CheckCXXCompilerFlag)
 
-set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -pedantic -Wextra -Wno-missing-field-initializers")
+include(CheckCXXCompilerFlag)
 
 option(PISTACHE_BUILD_TESTS "build tests alongside the project" OFF)
 option(PISTACHE_BUILD_EXAMPLES "build examples alongside the project" OFF)
 option(PISTACHE_INSTALL "add pistache as install target (recommended)" ON)
-
-CHECK_CXX_COMPILER_FLAG("-std=c++17" COMPILER_SUPPORTS_CXX17)
-CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
-CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
-CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
 
 # Clang exports C++17 in std::experimental namespace (tested on Clang 5 and 6).
 # This gives an error on date.h external library.
@@ -90,4 +84,3 @@ endif()
         DESTINATION
         lib/pkgconfig/
     )
-
