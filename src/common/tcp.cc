@@ -12,7 +12,8 @@ namespace Tcp {
 
 Handler::Handler()
     : transport_(nullptr)
-{ }
+{
+}
 
 Handler::~Handler()
 { }

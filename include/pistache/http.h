@@ -12,6 +12,7 @@
 #include <vector>
 #include <sstream>
 #include <algorithm>
+#include <memory>
 
 #include <sys/timerfd.h>
 
@@ -114,7 +115,7 @@ namespace Uri {
         // \brief Return iterator to the end of the parameters map
         std::unordered_map<std::string, std::string>::const_iterator
           parameters_end() const {
-            return params.begin();
+            return params.end();
         }
 
         // \brief returns all parameters given in the query
@@ -712,7 +713,7 @@ namespace Private {
 
         State parse();
 
-        ArrayStreamBuf<Const::MaxBuffer> buffer;
+        ArrayStreamBuf<char> buffer;
         StreamCursor cursor;
 
     protected:

@@ -52,6 +52,13 @@ Be patient, async_test can take some time before completing.
 
 And that's it, now you can start playing with your newly installed Pistache framework.
 
+Some other CMAKE defines:
+
+| Option                    | Default     | Description                                                 |
+|---------------------------|-------------|-------------------------------------------------------------|
+| PISTACHE_BUILD_EXAMPLES   | False       | Build all of the example apps                               |
+| PISTACHE_BUILD_TESTS      | False       | Build all of the unit tests                                 |
+
 # Example
 
 ## Hello World (server)
