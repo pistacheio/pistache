@@ -579,8 +579,7 @@ Connection::performImpl(
 
 
     transport_->asyncSendRequest(shared_from_this(), timer, buffer).then(
-        [=](ssize_t bytes) mutable {
-            UNUSED(bytes)
+        [=](ssize_t) mutable {
             inflightRequests.push_back(RequestEntry(std::move(resolveMover), std::move(rejectMover), std::move(timer), std::move(onDone)));
         },
         [=](std::exception_ptr e) { rejectCloneMover.val(e); });
