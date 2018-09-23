@@ -346,7 +346,7 @@ Host::parse(const std::string& data) {
         port_ = p;
     } else {
         host_ = data;
-        port_ = 80;
+        port_ = HTTP_STANDARD_PORT;
     }
 }
 

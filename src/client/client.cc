@@ -10,6 +10,7 @@
 #include <netdb.h>
 
 #include <pistache/client.h>
+#include <pistache/http.h>
 #include <pistache/stream.h>
 
 
@@ -18,20 +19,6 @@ namespace Pistache {
 using namespace Polling;
 
 namespace Http {
-
-namespace {
-    Address httpAddr(const StringView& view) {
-        auto str = view.toString();
-        auto pos = str.find(':');
-        if (pos == std::string::npos) {
-            return Address(std::move(str), 80);
-        }
-
-        auto host = str.substr(0, pos);
-        auto port = std::stoi(str.substr(pos + 1));
-        return Address(std::move(host), port);
-    }
-}
 
 static constexpr const char* UA = "pistache/0.1";
 
@@ -872,7 +859,7 @@ Client::doRequest(
         }
 
         if (!conn->isConnected()) {
-            conn->connect(httpAddr(s.first));
+            conn->connect(helpers::httpAddr(s.first));
         }
 
         return conn->perform(request, timeout, [=]() {
