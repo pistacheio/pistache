@@ -1,6 +1,6 @@
 /* common.h
    Mathieu Stefani, 12 August 2015
-   
+
    A collection of macro / utilities / constants
 */
 
@@ -52,12 +52,16 @@
 // Until we require C++17 compiler with [[maybe_unused]]
 #define UNUSED(x) (void)(x);
 
+// Allow compile-time overload
 namespace Pistache {
 namespace Const {
 
-    static constexpr int MaxBacklog = 128;
-    static constexpr int MaxEvents = 1024;
-    static constexpr int MaxBuffer = 4096;
-    static constexpr int ChunkSize = 1024;
+    static constexpr size_t MaxBacklog = 128;
+    static constexpr size_t MaxEvents  = 1024;
+    static constexpr size_t MaxBuffer  = 4096;
+
+    // Defined from CMakeLists.txt in project root
+    static constexpr size_t DefaultMaxPayload = 4096;
+    static constexpr size_t ChunkSize  = 1024;
 } // namespace Const
 } // namespace Pistache

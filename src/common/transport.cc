@@ -74,7 +74,6 @@ Transport::onReady(const Aio::FdSet& fds) {
 
         else if (entry.isReadable()) {
             auto tag = entry.getTag();
-            auto val = tag.value();
             if (isPeerFd(tag)) {
                 auto& peer = getPeer(tag);
                 handleIncoming(peer);
@@ -150,11 +149,7 @@ Transport::handleIncoming(const std::shared_ptr<Peer>& peer) {
         }
 
         else {
-            totalBytes += bytes;
-            if (totalBytes >= Const::MaxBuffer) {
-                std::cerr << "Too long packet" << std::endl;
-                break;
-            }
+            handler_->onInput(buffer, bytes, peer);
         }
     }
 }
@@ -169,6 +164,7 @@ Transport::handlePeerDisconnection(const std::shared_ptr<Peer>& peer) {
         throw std::runtime_error("Could not find peer to erase");
 
     peers.erase(it);
+    toWrite.erase(fd);
 
     close(fd);
 }
@@ -193,14 +189,14 @@ Transport::asyncWriteImpl(
             toWrite.erase(fd);
     };
 
-    ssize_t totalWritten = buffer.offset();
+    size_t totalWritten = buffer.offset();
     for (;;) {
         ssize_t bytesWritten = 0;
         auto len = buffer.size() - totalWritten;
         if (buffer.isRaw()) {
             auto raw = buffer.raw();
             auto ptr = raw.data + totalWritten;
-            bytesWritten = ::send(fd, ptr, len, flags);
+            bytesWritten = ::send(fd, ptr, len, flags | MSG_NOSIGNAL);
         } else {
             auto file = buffer.fd();
             off_t offset = totalWritten;
@@ -236,7 +232,9 @@ Transport::asyncWriteImpl(
                     ::close(buffer.fd());
                 }
 
-                deferred.resolve(totalWritten);
+                // Cast to match the type of defered template
+                // to avoid a BadType exception
+                deferred.resolve(static_cast<ssize_t>(totalWritten));
                 break;
             }
         }

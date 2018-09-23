@@ -1,6 +1,6 @@
 /* peer.cc
    Mathieu Stefani, 12 August 2015
-   
+
 */
 
 #include <iostream>

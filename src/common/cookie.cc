@@ -1,6 +1,6 @@
-/* 
+/*
    Mathieu Stefani, 16 janvier 2016
-   
+
    Cookie implementation
 */
 
@@ -65,6 +65,7 @@ namespace {
     template<>
     struct AttributeMatcher<bool> {
         static void match(StreamCursor& cursor, Cookie* obj, bool Cookie::*attr) {
+            UNUSED(cursor)
             obj->*attr = true;
         }
     };
@@ -129,7 +130,6 @@ Cookie::fromRaw(const char* str, size_t len)
 
 #define STR(str) str, sizeof(str) - 1
 
-    int c;
     do {
         skip_whitespaces(cursor);
 
@@ -237,7 +237,7 @@ CookieJar::addFromRaw(const char *str, size_t len) {
         cursor.advance(1);
         skip_whitespaces(cursor);
     }
-}       
+}
 
 Cookie
 CookieJar::get(const std::string& name) const {

@@ -12,6 +12,7 @@
 #include <vector>
 #include <sstream>
 #include <algorithm>
+#include <memory>
 
 #include <sys/timerfd.h>
 
@@ -25,6 +26,7 @@
 #include <pistache/peer.h>
 #include <pistache/tcp.h>
 #include <pistache/transport.h>
+#include <pistache/view.h>
 
 namespace Pistache {
 namespace Http {
@@ -40,7 +42,7 @@ namespace details {
         static constexpr bool value =
             std::is_same<decltype(test<P>(nullptr)), prototype_tag>::value;
     };
-};
+}
 
 #define HTTP_PROTOTYPE(Class) \
     PROTOTYPE_OF(Pistache::Tcp::Handler, Class) \
@@ -48,7 +50,7 @@ namespace details {
 
 namespace Private {
     class ParserBase;
-    template<typename T> struct Parser;
+    template<typename T> class Parser;
     class RequestLineStep;
     class ResponseLineStep;
     class HeadersStep;
@@ -100,7 +102,7 @@ namespace Uri {
         bool has(const std::string& name) const;
         // Return empty string or "?key1=value1&key2=value2" if query exist
         std::string as_str() const;
-        
+
         void clear() {
             params.clear();
         }
@@ -114,7 +116,7 @@ namespace Uri {
         // \brief Return iterator to the end of the parameters map
         std::unordered_map<std::string, std::string>::const_iterator
           parameters_end() const {
-            return params.begin();
+            return params.end();
         }
 
         // \brief returns all parameters given in the query
@@ -204,22 +206,22 @@ public:
     Timeout(Timeout&& other)
         : handler(other.handler)
         , request(std::move(other.request))
-        , peer(std::move(other.peer))
         , transport(other.transport)
         , armed(other.armed)
         , timerFd(other.timerFd)
+        , peer(std::move(other.peer))
     {
         other.timerFd = -1;
     }
 
     Timeout& operator=(Timeout&& other) {
         handler = other.handler;
-        request = std::move(other.request);
-        peer = std::move(other.peer);
         transport = other.transport;
+        request = std::move(other.request);
         armed = other.armed;
         timerFd = other.timerFd;
         other.timerFd = -1;
+        peer = std::move(other.peer);
         return *this;
     }
 
@@ -282,12 +284,10 @@ private:
 
     Handler* handler;
     Request request;
-
-    std::weak_ptr<Tcp::Peer> peer;
-
     Tcp::Transport* transport;
     bool armed;
     Fd timerFd;
+    std::weak_ptr<Tcp::Peer> peer;
 };
 
 class ResponseStream : public Message {
@@ -315,6 +315,14 @@ public:
     template<typename T>
     friend
     ResponseStream& operator<<(ResponseStream& stream, const T& val);
+
+    std::streamsize write(const char * data, std::streamsize sz) {
+        std::ostream os(&buf_);
+        os << std::hex << sz << crlf;
+        os.write(data, sz);
+        os << crlf;
+        return sz;
+    }
 
     const Header::Collection& headers() const {
         return headers_;
@@ -549,7 +557,7 @@ public:
        return &buf_;
     }
 
-    DynamicStreamBuf *rdbuf([[maybe_unused]] DynamicStreamBuf* other) {
+    DynamicStreamBuf *rdbuf(DynamicStreamBuf* other) {
        UNUSED(other)
        throw std::domain_error("Unimplemented");
     }
@@ -613,7 +621,8 @@ namespace Private {
         Message *message;
     };
 
-    struct RequestLineStep : public Step {
+    class RequestLineStep : public Step {
+    public:
         RequestLineStep(Request* request)
             : Step(request)
         { }
@@ -621,7 +630,8 @@ namespace Private {
         State apply(StreamCursor& cursor);
     };
 
-    struct ResponseLineStep : public Step {
+    class ResponseLineStep : public Step {
+    public:
         ResponseLineStep(Response* response)
             : Step(response)
         { }
@@ -629,7 +639,8 @@ namespace Private {
         State apply(StreamCursor& cursor);
     };
 
-    struct HeadersStep : public Step {
+    class HeadersStep : public Step {
+    public:
         HeadersStep(Message* request)
             : Step(request)
         { }
@@ -637,7 +648,8 @@ namespace Private {
         State apply(StreamCursor& cursor);
     };
 
-    struct BodyStep : public Step {
+    class BodyStep : public Step {
+    public:
         BodyStep(Message* message_)
             : Step(message_)
             , chunk(message_)
@@ -676,7 +688,8 @@ namespace Private {
         size_t bytesRead;
     };
 
-    struct ParserBase {
+    class ParserBase {
+    public:
         ParserBase()
             : cursor(&buffer)
             , currentStep(0)
@@ -697,9 +710,11 @@ namespace Private {
         bool feed(const char* data, size_t len);
         virtual void reset();
 
+        virtual ~ParserBase() { }
+
         State parse();
 
-        ArrayStreamBuf<Const::MaxBuffer> buffer;
+        ArrayStreamBuf<char> buffer;
         StreamCursor cursor;
 
     protected:
@@ -710,9 +725,12 @@ namespace Private {
 
     };
 
-    template<typename Message> struct Parser;
+    template<typename Message> class Parser;
 
-    template<> struct Parser<Http::Request> : public ParserBase {
+    template<> class Parser<Http::Request> : public ParserBase {
+
+    public:
+
         Parser()
             : ParserBase()
         {
@@ -743,7 +761,8 @@ namespace Private {
         Request request;
     };
 
-    template<> struct Parser<Http::Response> : public ParserBase {
+    template<> class Parser<Http::Response> : public ParserBase {
+    public:
         Parser()
             : ParserBase()
         {
@@ -778,6 +797,8 @@ public:
 
     virtual void onTimeout(const Request& request, ResponseWriter response);
 
+    virtual ~Handler() { }
+
 private:
     Private::Parser<Http::Request>& getParser(const std::shared_ptr<Tcp::Peer>& peer) const;
 };
@@ -790,5 +811,19 @@ std::shared_ptr<H> make_handler(Args&& ...args) {
     return std::make_shared<H>(std::forward<Args>(args)...);
 }
 
+namespace helpers
+{
+    inline Address httpAddr(const StringView& view) {
+        auto const str = view.toString();
+        auto const pos = str.find(':');
+        if (pos == std::string::npos) {
+            return Address(std::move(str), HTTP_STANDARD_PORT);
+        }
+
+        auto const host = str.substr(0, pos);
+        auto const port = std::stoi(str.substr(pos + 1));
+        return Address(std::move(host), port);
+    }
+} // namespace helpers
 } // namespace Http
 } // namespace Pistache

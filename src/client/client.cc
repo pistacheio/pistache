@@ -1,6 +1,6 @@
-/* 
+/*
    Mathieu Stefani, 29 janvier 2016
-   
+
    Implementation of the Http client
 */
 
@@ -10,6 +10,7 @@
 #include <netdb.h>
 
 #include <pistache/client.h>
+#include <pistache/http.h>
 #include <pistache/stream.h>
 
 
@@ -18,20 +19,6 @@ namespace Pistache {
 using namespace Polling;
 
 namespace Http {
-
-namespace {
-    Address httpAddr(const StringView& view) {
-        auto str = view.toString();
-        auto pos = str.find(':');
-        if (pos == std::string::npos) {
-            return Address(std::move(str), 80);
-        }
-
-        auto host = str.substr(0, pos);
-        auto port = std::stoi(str.substr(pos + 1));
-        return Address(std::move(host), port);
-    }
-}
 
 static constexpr const char* UA = "pistache/0.1";
 
@@ -254,7 +241,7 @@ Transport::asyncSendRequestImpl(
     ssize_t totalWritten = 0;
     for (;;) {
         ssize_t bytesWritten = 0;
-        auto len = buffer.len - totalWritten;
+        ssize_t len = buffer.len - totalWritten;
         auto ptr = buffer.data + totalWritten;
         bytesWritten = ::send(fd, ptr, len, 0);
         if (bytesWritten < 0) {
@@ -355,8 +342,8 @@ Transport::handleIncoming(const std::shared_ptr<Connection>& connection) {
 
         else {
             totalBytes += bytes;
-            if (totalBytes > Const::MaxBuffer) {
-                std::cerr << "Too long packet" << std::endl;
+            if (static_cast<size_t>(totalBytes) > Const::MaxBuffer) {
+                std::cerr << "Client: Too long packet" << std::endl;
                 break;
             }
         }
@@ -382,18 +369,11 @@ Connection::connect(Address addr)
     hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
     hints.ai_socktype = SOCK_STREAM; /* Stream socket */
     hints.ai_flags = 0;
-    hints.ai_protocol = 0;  
+    hints.ai_protocol = 0;
 
-    auto host = addr.host();
-
-    /* We rely on the fact that a string literal is an lvalue const char[N] */
-    static constexpr size_t MaxPortLen = sizeof("65535");
-
-    char port[MaxPortLen];
-    std::fill(port, port + MaxPortLen, 0);
-    std::snprintf(port, MaxPortLen, "%d", static_cast<uint16_t>(addr.port()));
-
-    TRY(::getaddrinfo(host.c_str(), port, &hints, &addrs));
+    const auto& host = addr.host();
+    const auto& port = addr.port().toString();
+    TRY(::getaddrinfo(host.c_str(), port.c_str(), &hints, &addrs));
 
     int sfd = -1;
 
@@ -407,7 +387,7 @@ Connection::connect(Address addr)
         fd = sfd;
 
         transport_->asyncConnect(shared_from_this(), addr->ai_addr, addr->ai_addrlen)
-            .then([=]() { 
+            .then([=]() {
                 socklen_t len = sizeof(saddr);
                 getsockname(sfd, (struct sockaddr *)&saddr, &len);
                 connectionState_ = Connected;
@@ -476,7 +456,7 @@ Connection::handleResponsePacket(const char* buffer, size_t bytes) {
             if (req.onDone)
                 req.onDone();
         }
-        
+
         parser_.reset();
     }
 }
@@ -600,6 +580,7 @@ Connection::performImpl(
 
     transport_->asyncSendRequest(shared_from_this(), timer, buffer).then(
         [=](ssize_t bytes) mutable {
+            UNUSED(bytes)
             inflightRequests.push_back(RequestEntry(std::move(resolveMover), std::move(rejectMover), std::move(timer), std::move(onDone)));
         },
         [=](std::exception_ptr e) { rejectCloneMover.val(e); });
@@ -695,11 +676,13 @@ ConnectionPool::idleConnections(const std::string& domain) const {
 
 size_t
 ConnectionPool::availableConnections(const std::string& domain) const {
+    UNUSED(domain)
     return 0;
 }
 
 void
 ConnectionPool::closeIdleConnections(const std::string& domain) {
+    UNUSED(domain)
 }
 
 RequestBuilder&
@@ -734,14 +717,26 @@ RequestBuilder::cookie(const Cookie& cookie) {
 }
 
 RequestBuilder&
-RequestBuilder::body(std::string val) {
+RequestBuilder::body(const std::string& val) {
+    request_.body_ = val;
+    return *this;
+}
+
+RequestBuilder&
+RequestBuilder::body(std::string&& val) {
     request_.body_ = std::move(val);
+    return *this;
+}
+
+RequestBuilder&
+RequestBuilder::timeout(std::chrono::milliseconds timeout) {
+    timeout_ = timeout;
     return *this;
 }
 
 Async::Promise<Response>
 RequestBuilder::send() {
-    return client_->doRequest(std::move(request_), timeout_);
+    return client_->doRequest(request_, timeout_);
 }
 
 Client::Options&
@@ -864,7 +859,7 @@ Client::doRequest(
         }
 
         if (!conn->isConnected()) {
-            conn->connect(httpAddr(s.first));
+            conn->connect(helpers::httpAddr(s.first));
         }
 
         return conn->perform(request, timeout, [=]() {

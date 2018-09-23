@@ -1,6 +1,6 @@
-/* 
+/*
    Mathieu Stefani, 22 janvier 2016
-   
+
    An Http endpoint
 */
 
@@ -21,11 +21,13 @@ public:
         Options& threads(int val);
         Options& flags(Flags<Tcp::Options> flags);
         Options& backlog(int val);
+        Options& maxPayload(size_t val);
 
     private:
         int threads_;
         Flags<Tcp::Options> flags_;
         int backlog_;
+        size_t maxPayload_;
         Options();
     };
     Endpoint();
@@ -67,7 +69,6 @@ private:
         listener.setHandler(handler_);
 
         if (listener.bind()) {
-            const auto& addr = listener.address();
             CALL_MEMBER_FN(listener, method)();
         }
 #undef CALL_MEMBER_FN
