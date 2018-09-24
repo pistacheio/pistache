@@ -693,16 +693,7 @@ namespace Private {
         ParserBase()
             : cursor(&buffer)
             , currentStep(0)
-        {
-        }
-
-        ParserBase(const char* data, size_t len)
-            : cursor(&buffer)
-            , currentStep(0)
-        {
-            UNUSED(data)
-            UNUSED(len)
-        }
+        { }
 
         ParserBase(const ParserBase& other) = delete;
         ParserBase(ParserBase&& other) = default;
