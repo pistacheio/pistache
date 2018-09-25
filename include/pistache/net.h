@@ -32,6 +32,7 @@ public:
 
     bool isReserved() const;
     bool isUsed() const;
+    std::string toString() const;
 
     static constexpr uint16_t max() {
         return std::numeric_limits<uint16_t>::max();

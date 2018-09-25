@@ -12,6 +12,7 @@
 #include <vector>
 #include <sstream>
 #include <algorithm>
+#include <memory>
 
 #include <sys/timerfd.h>
 
@@ -25,6 +26,7 @@
 #include <pistache/peer.h>
 #include <pistache/tcp.h>
 #include <pistache/transport.h>
+#include <pistache/view.h>
 
 namespace Pistache {
 namespace Http {
@@ -114,7 +116,7 @@ namespace Uri {
         // \brief Return iterator to the end of the parameters map
         std::unordered_map<std::string, std::string>::const_iterator
           parameters_end() const {
-            return params.begin();
+            return params.end();
         }
 
         // \brief returns all parameters given in the query
@@ -680,16 +682,7 @@ namespace Private {
         ParserBase()
             : cursor(&buffer)
             , currentStep(0)
-        {
-        }
-
-        ParserBase(const char* data, size_t len)
-            : cursor(&buffer)
-            , currentStep(0)
-        {
-            UNUSED(data)
-            UNUSED(len)
-        }
+        { }
 
         ParserBase(const ParserBase& other) = delete;
         ParserBase(ParserBase&& other) = default;
@@ -699,7 +692,7 @@ namespace Private {
 
         State parse();
 
-        ArrayStreamBuf<Const::MaxBuffer> buffer;
+        ArrayStreamBuf<char> buffer;
         StreamCursor cursor;
 
     protected:
@@ -790,5 +783,19 @@ std::shared_ptr<H> make_handler(Args&& ...args) {
     return std::make_shared<H>(std::forward<Args>(args)...);
 }
 
+namespace helpers
+{
+    inline Address httpAddr(const StringView& view) {
+        auto const str = view.toString();
+        auto const pos = str.find(':');
+        if (pos == std::string::npos) {
+            return Address(std::move(str), HTTP_STANDARD_PORT);
+        }
+
+        auto const host = str.substr(0, pos);
+        auto const port = std::stoi(str.substr(pos + 1));
+        return Address(std::move(host), port);
+    }
+} // namespace helpers
 } // namespace Http
 } // namespace Pistache

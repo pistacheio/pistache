@@ -342,7 +342,6 @@ Router::initFromDescription(const Rest::Description& desc) {
                 oss << "Path '" << path.value << "' is not bound";
                 throw std::runtime_error(oss.str());
             }
-
             addRoute(path.method, std::move(path.value), std::move(path.handler));
         }
     }

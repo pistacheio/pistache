@@ -10,6 +10,7 @@
 #include <netdb.h>
 
 #include <pistache/client.h>
+#include <pistache/http.h>
 #include <pistache/stream.h>
 
 
@@ -18,20 +19,6 @@ namespace Pistache {
 using namespace Polling;
 
 namespace Http {
-
-namespace {
-    Address httpAddr(const StringView& view) {
-        auto str = view.toString();
-        auto pos = str.find(':');
-        if (pos == std::string::npos) {
-            return Address(std::move(str), 80);
-        }
-
-        auto host = str.substr(0, pos);
-        auto port = std::stoi(str.substr(pos + 1));
-        return Address(std::move(host), port);
-    }
-}
 
 static constexpr const char* UA = "pistache/0.1";
 
@@ -355,8 +342,8 @@ Transport::handleIncoming(const std::shared_ptr<Connection>& connection) {
 
         else {
             totalBytes += bytes;
-            if (totalBytes > Const::MaxBuffer) {
-                std::cerr << "Too long packet" << std::endl;
+            if (static_cast<size_t>(totalBytes) > Const::MaxBuffer) {
+                std::cerr << "Client: Too long packet" << std::endl;
                 break;
             }
         }
@@ -384,16 +371,9 @@ Connection::connect(Address addr)
     hints.ai_flags = 0;
     hints.ai_protocol = 0;  
 
-    auto host = addr.host();
-
-    /* We rely on the fact that a string literal is an lvalue const char[N] */
-    static constexpr size_t MaxPortLen = sizeof("65535");
-
-    char port[MaxPortLen];
-    std::fill(port, port + MaxPortLen, 0);
-    std::snprintf(port, MaxPortLen, "%d", static_cast<uint16_t>(addr.port()));
-
-    TRY(::getaddrinfo(host.c_str(), port, &hints, &addrs));
+    const auto& host = addr.host();
+    const auto& port = addr.port().toString();
+    TRY(::getaddrinfo(host.c_str(), port.c_str(), &hints, &addrs));
 
     int sfd = -1;
 
@@ -598,7 +578,7 @@ Connection::performImpl(
 
 
     transport_->asyncSendRequest(shared_from_this(), timer, buffer).then(
-        [=](ssize_t bytes) mutable {
+        [=](ssize_t) mutable {
             inflightRequests.push_back(RequestEntry(std::move(resolveMover), std::move(rejectMover), std::move(timer), std::move(onDone)));
         },
         [=](std::exception_ptr e) { rejectCloneMover.val(e); });
@@ -876,7 +856,7 @@ Client::doRequest(
         }
 
         if (!conn->isConnected()) {
-            conn->connect(httpAddr(s.first));
+            conn->connect(helpers::httpAddr(s.first));
         }
 
         return conn->perform(request, timeout, [=]() {

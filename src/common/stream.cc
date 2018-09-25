@@ -30,6 +30,9 @@ FileBuffer::FileBuffer(const std::string& fileName)
 void
 FileBuffer::init(const char* fileName)
 {
+    if (!fileName) {
+        throw std::runtime_error("Missing fileName");
+    }
     int fd = open(fileName, O_RDONLY);
     if (fd == -1) {
         throw std::runtime_error("Could not open file");

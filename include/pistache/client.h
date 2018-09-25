@@ -165,6 +165,9 @@ public:
 
     PROTOTYPE_OF(Aio::Handler, Transport)
 
+    Transport() {}
+    Transport(const Transport &rhs) { UNUSED(rhs); }
+
     typedef std::function<void()> OnResponseParsed;
 
     void onReady(const Aio::FdSet& fds);
