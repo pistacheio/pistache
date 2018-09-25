@@ -116,6 +116,8 @@ TEST(listener_test, listener_bind_port_free) {
     Pistache::Address address(Pistache::Ipv4::any(), port);
 
     Pistache::Tcp::Listener listener;
+    Pistache::Flags<Pistache::Tcp::Options> options;
+    listener.init(1, options);
     listener.setHandler(Pistache::Http::make_handler<DummyHandler>());
     listener.bind(address);
     ASSERT_TRUE(true);
@@ -135,6 +137,8 @@ TEST(listener_test, listener_bind_port_not_free_throw_runtime) {
     Pistache::Address address(Pistache::Ipv4::any(), port);
 
     Pistache::Tcp::Listener listener;
+    Pistache::Flags<Pistache::Tcp::Options> options;
+    listener.init(1, options);
     listener.setHandler(Pistache::Http::make_handler<DummyHandler>());
 
     try {
