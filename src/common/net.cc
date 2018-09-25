@@ -121,13 +121,12 @@ Address::init(std::string addr) {
     }
 
     char *end;
-
     const std::string portPart = addr.substr(pos + 1);
+    if (portPart.empty())
+        throw std::invalid_argument("Invalid port");
     long port = strtol(portPart.c_str(), &end, 10);
     if (*end != 0 || port > Port::max())
         throw std::invalid_argument("Invalid port");
-
-    host_ = std::move(host);
     port_ = port;
 }
 
