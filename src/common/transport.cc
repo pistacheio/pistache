@@ -74,6 +74,7 @@ Transport::onReady(const Aio::FdSet& fds) {
 
         else if (entry.isReadable()) {
             auto tag = entry.getTag();
+            auto val = tag.value();
             if (isPeerFd(tag)) {
                 auto& peer = getPeer(tag);
                 handleIncoming(peer);
@@ -189,7 +190,7 @@ Transport::asyncWriteImpl(
             toWrite.erase(fd);
     };
 
-    size_t totalWritten = buffer.offset();
+    ssize_t totalWritten = buffer.offset();
     for (;;) {
         ssize_t bytesWritten = 0;
         auto len = buffer.size() - totalWritten;

@@ -109,8 +109,8 @@ Address::port() const {
 }
 
 void
-Address::init(const std::string& addr) {
-    const auto pos = addr.find(':');
+Address::init(std::string addr) {
+    auto pos = addr.find(':');
 
     if (pos == std::string::npos)
         throw std::invalid_argument("Invalid address");
@@ -125,9 +125,9 @@ Address::init(const std::string& addr) {
     if (portPart.empty())
         throw std::invalid_argument("Invalid port");
     long port = strtol(portPart.c_str(), &end, 10);
-    if (*end != 0 || port < Port::min() || port > Port::max())
+    if (*end != 0 || port > Port::max())
         throw std::invalid_argument("Invalid port");
-    port_ = static_cast<uint16_t>(port);
+    port_ = port;
 }
 
 Error::Error(const char* message)

@@ -1,6 +1,6 @@
 /* common.h
    Mathieu Stefani, 12 August 2015
-
+   
    A collection of macro / utilities / constants
 */
 

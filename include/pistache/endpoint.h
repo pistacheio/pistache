@@ -1,6 +1,6 @@
-/*
+/* 
    Mathieu Stefani, 22 janvier 2016
-
+   
    An Http endpoint
 */
 
@@ -69,6 +69,7 @@ private:
         listener.setHandler(handler_);
 
         if (listener.bind()) {
+            const auto& addr = listener.address();
             CALL_MEMBER_FN(listener, method)();
         }
 #undef CALL_MEMBER_FN
