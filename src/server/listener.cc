@@ -18,6 +18,7 @@
 #include <signal.h>
 #include <sys/timerfd.h>
 #include <sys/sendfile.h>
+#include <cerrno>
 
 #include <pistache/listener.h>
 #include <pistache/peer.h>
@@ -160,7 +161,8 @@ Listener::bind(const Address& address) {
 
     int fd = -1;
 
-    for (struct addrinfo *addr = addrs; addr; addr = addr->ai_next) {
+    addrinfo *addr;
+    for (addr = addrs; addr; addr = addr->ai_next) {
         fd = ::socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
         if (fd < 0) continue;
 
@@ -173,6 +175,12 @@ Listener::bind(const Address& address) {
 
         TRY(::listen(fd, backlog_));
         break;
+    }
+    
+    // At this point, it is still possible that we couldn't bind any socket. If it is the case, the previous
+    // loop would have exited naturally and addr will be null.
+    if (addr == nullptr) {
+        throw std::runtime_error(strerror(errno));
     }
 
     make_non_blocking(fd);
@@ -190,7 +198,7 @@ Listener::bind(const Address& address) {
 
 bool
 Listener::isBound() const {
-    return g_listen_fd != -1;
+    return listen_fd != -1;
 }
 
 void
