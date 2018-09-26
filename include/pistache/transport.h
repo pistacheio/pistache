@@ -195,11 +195,6 @@ private:
         std::shared_ptr<Peer> peer;
     };
 
-    /* @Incomplete: this should be a std::dequeue.
-        If an asyncWrite on a particular fd is initiated whereas the fd is not write-ready
-        yet and some writes are still on-hold, writes should queue-up so that when the
-        fd becomes ready again, we can write everything
-    */
     PollableQueue<WriteEntry> writesQueue;
     std::unordered_map<Fd, std::deque<WriteEntry> > toWrite;
 
