@@ -42,7 +42,7 @@ public:
     Listener();
     ~Listener();
 
-    Listener(const Address& address);
+    explicit Listener(const Address& address);
     void init(
             size_t workers,
             Flags<Options> options = Options::None,

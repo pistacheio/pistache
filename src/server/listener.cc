@@ -74,16 +74,27 @@ void setSocketOptions(Fd fd, Flags<Options> options) {
 }
 
 Listener::Listener()
-    : listen_fd(-1)
+    : addr_()
+    , listen_fd(-1)
     , backlog_(Const::MaxBacklog)
+    , shutdownFd()
+    , poller()
+    , options_()
+    , workers_(Const::DefaultWorkers)
     , reactor_(Aio::Reactor::create())
+    , transportKey()
 { }
 
 Listener::Listener(const Address& address)
     : addr_(address)
     , listen_fd(-1)
     , backlog_(Const::MaxBacklog)
+    , shutdownFd()
+    , poller()
+    , options_()
+    , workers_(Const::DefaultWorkers)
     , reactor_(Aio::Reactor::create())
+    , transportKey()
 {
 }
 
