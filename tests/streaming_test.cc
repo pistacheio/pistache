@@ -14,7 +14,7 @@ using namespace Pistache;
 static const size_t N_LETTERS = 26;
 static const size_t LETTER_REPEATS = 100000;
 static const size_t SET_REPEATS = 10;
-static const uint16_t PORT = 9080;
+static const uint16_t PORT = 9082;
 
 void dumpData(const Rest::Request&req, Http::ResponseWriter response) {
     UNUSED(req);

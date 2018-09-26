@@ -99,8 +99,8 @@ Transport::onReady(const Aio::FdSet& fds) {
 
             reactor()->modifyFd(key(), fd, NotifyOn::Read, Polling::Mode::Edge);
 
-            auto& write = it->second;
-            asyncWriteImpl(fd, write, Retry);
+            // Try to drain the queue
+            asyncWriteImpl(fd);
         }
     }
 }
@@ -164,80 +164,90 @@ Transport::handlePeerDisconnection(const std::shared_ptr<Peer>& peer) {
         throw std::runtime_error("Could not find peer to erase");
 
     peers.erase(it);
+
+    // Clean up buffers
+    auto & wq = toWrite[fd];
+    while (wq.size() > 0) {
+        auto & entry = wq.front();
+        const BufferHolder & buffer = entry.buffer;
+        if (buffer.isRaw()) {
+            auto raw = buffer.raw();
+            if (raw.isOwned) delete[] raw.data;
+        }
+    }
     toWrite.erase(fd);
 
     close(fd);
 }
 
 void
-Transport::asyncWriteImpl(Fd fd, Transport::WriteEntry& entry, WriteStatus status) {
-    asyncWriteImpl(fd, entry.flags, entry.buffer, std::move(entry.deferred), status);
-}
-
-void
-Transport::asyncWriteImpl(
-        Fd fd, int flags, const BufferHolder& buffer,
-        Async::Deferred<ssize_t> deferred, WriteStatus status)
+Transport::asyncWriteImpl(Fd fd)
 {
-    auto cleanUp = [&]() {
-        if (buffer.isRaw()) {
-            auto raw = buffer.raw();
-            if (raw.isOwned) delete[] raw.data;
-        }
+    auto & wq = toWrite[fd];
+    while (wq.size() > 0) {
+        auto & entry = wq.front();
+        int flags    = entry.flags;
+        const BufferHolder &buffer = entry.buffer;
+        Async::Deferred<ssize_t> deferred = std::move(entry.deferred);
 
-        if (status == Retry)
-            toWrite.erase(fd);
-    };
-
-    size_t totalWritten = buffer.offset();
-    for (;;) {
-        ssize_t bytesWritten = 0;
-        auto len = buffer.size() - totalWritten;
-        if (buffer.isRaw()) {
-            auto raw = buffer.raw();
-            auto ptr = raw.data + totalWritten;
-            bytesWritten = ::send(fd, ptr, len, flags | MSG_NOSIGNAL);
-        } else {
-            auto file = buffer.fd();
-            off_t offset = totalWritten;
-            bytesWritten = ::sendfile(fd, file, &offset, len);
-        }
-        if (bytesWritten < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                // save for a future retry with the totalWritten offset.
-                if (status == Retry) {
-                    toWrite.erase(fd);
-                }
-
-                toWrite.insert(
-                        std::make_pair(fd,
-                            WriteEntry(std::move(deferred), buffer.detach(totalWritten), flags)));
-
-                reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
+        auto cleanUp = [&]() {
+            if (buffer.isRaw()) {
+                auto raw = buffer.raw();
+                if (raw.isOwned) delete[] raw.data;
             }
-            else {
-                cleanUp();
-                deferred.reject(Pistache::Error::system("Could not write data"));
+            wq.pop_front();
+            if (wq.size() == 0) {
+                toWrite.erase(fd);
+                reactor()->modifyFd(key(), fd, NotifyOn::Read, Polling::Mode::Edge);
             }
-            break;
-        }
-        else {
-            totalWritten += bytesWritten;
-            if (totalWritten >= buffer.size()) {
-                cleanUp();
+        };
 
-                if (buffer.isFile()) {
-                    // done with the file buffer, nothing else knows whether to
-                    // close it with the way the code is written.
-                    ::close(buffer.fd());
+        bool halt = false;
+        size_t totalWritten = buffer.offset();
+        for (;;) {
+            ssize_t bytesWritten = 0;
+            auto len = buffer.size() - totalWritten;
+            if (buffer.isRaw()) {
+                auto raw = buffer.raw();
+                auto ptr = raw.data + totalWritten;
+                bytesWritten = ::send(fd, ptr, len, flags | MSG_NOSIGNAL);
+            } else {
+                auto file = buffer.fd();
+                off_t offset = totalWritten;
+                bytesWritten = ::sendfile(fd, file, &offset, len);
+            }
+            if (bytesWritten < 0) {
+                if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                    wq.pop_front();
+                    wq.push_front(WriteEntry(std::move(deferred), buffer.detach(totalWritten), flags));
+                    reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
                 }
-
-                // Cast to match the type of defered template
-                // to avoid a BadType exception
-                deferred.resolve(static_cast<ssize_t>(totalWritten));
+                else {
+                    cleanUp();
+                    deferred.reject(Pistache::Error::system("Could not write data"));
+                    halt = true;
+                }
                 break;
             }
+            else {
+                totalWritten += bytesWritten;
+                if (totalWritten >= buffer.size()) {
+                    cleanUp();
+
+                    if (buffer.isFile()) {
+                        // done with the file buffer, nothing else knows whether to
+                        // close it with the way the code is written.
+                        ::close(buffer.fd());
+                    }
+
+                    // Cast to match the type of defered template
+                    // to avoid a BadType exception
+                    deferred.resolve(static_cast<ssize_t>(totalWritten));
+                    break;
+                }
+            }
         }
+        if (halt) break;
     }
 }
 
@@ -299,7 +309,9 @@ Transport::handleWriteQueue() {
         if (!entry) break;
 
         auto &write = entry->data();
-        asyncWriteImpl(write.peerFd, write);
+        auto fd = write.peerFd;
+        toWrite[fd].push_back(std::move(write));
+        reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
     }
 }
 

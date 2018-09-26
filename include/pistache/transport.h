@@ -12,6 +12,8 @@
 #include <pistache/async.h>
 #include <pistache/stream.h>
 
+#include <deque>
+
 namespace Pistache {
 namespace Tcp {
 
@@ -199,7 +201,7 @@ private:
         fd becomes ready again, we can write everything
     */
     PollableQueue<WriteEntry> writesQueue;
-    std::unordered_map<Fd, WriteEntry> toWrite;
+    std::unordered_map<Fd, std::deque<WriteEntry> > toWrite;
 
     PollableQueue<TimerEntry> timersQueue;
     std::unordered_map<Fd, TimerEntry> timers;
@@ -227,11 +229,8 @@ private:
 
     void armTimerMsImpl(TimerEntry entry);
 
-    void asyncWriteImpl(Fd fd, WriteEntry& entry, WriteStatus status = FirstTry);
-    void asyncWriteImpl(
-            Fd fd, int flags, const BufferHolder& buffer,
-            Async::Deferred<ssize_t> deferred,
-            WriteStatus status = FirstTry);
+    // This will attempt to drain the write queue for the fd
+    void asyncWriteImpl(Fd fd);
 
     void handlePeerDisconnection(const std::shared_ptr<Peer>& peer);
     void handleIncoming(const std::shared_ptr<Peer>& peer);
