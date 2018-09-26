@@ -81,7 +81,7 @@ Listener::Listener()
     , poller()
     , options_()
     , workers_(Const::DefaultWorkers)
-    , reactor_(Aio::Reactor::create())
+    , reactor_()
     , transportKey()
 { }
 
@@ -93,7 +93,7 @@ Listener::Listener(const Address& address)
     , poller()
     , options_()
     , workers_(Const::DefaultWorkers)
-    , reactor_(Aio::Reactor::create())
+    , reactor_()
     , transportKey()
 {
 }
@@ -201,8 +201,8 @@ Listener::bind(const Address& address) {
 
     transport_.reset(new Transport(handler_));
 
-    reactor_->init(Aio::AsyncContext(workers_));
-    transportKey = reactor_->addHandler(transport_);
+    reactor_.init(Aio::AsyncContext(workers_));
+    transportKey = reactor_.addHandler(transport_);
 
     return true;
 }
@@ -214,7 +214,7 @@ Listener::isBound() const {
 
 void
 Listener::run() {
-    reactor_->run();
+    reactor_.run();
 
     for (;;) {
         std::vector<Polling::Event> events;
@@ -249,12 +249,12 @@ Listener::runThreaded() {
 void
 Listener::shutdown() {
     if (shutdownFd.isBound()) shutdownFd.notify();
-    reactor_->shutdown();
+    reactor_.shutdown();
 }
 
 Async::Promise<Listener::Load>
 Listener::requestLoad(const Listener::Load& old) {
-    auto handlers = reactor_->handlers(transportKey);
+    auto handlers = reactor_.handlers(transportKey);
 
     std::vector<Async::Promise<rusage>> loads;
     for (const auto& handler: handlers) {
@@ -332,7 +332,7 @@ Listener::handleNewConnection() {
 
 void
 Listener::dispatchPeer(const std::shared_ptr<Peer>& peer) {
-    auto handlers = reactor_->handlers(transportKey);
+    auto handlers = reactor_.handlers(transportKey);
     auto idx = peer->fd() % handlers.size();
     auto transport = std::static_pointer_cast<Transport>(handlers[idx]);
 

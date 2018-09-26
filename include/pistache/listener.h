@@ -80,7 +80,7 @@ private:
     std::shared_ptr<Transport> transport_;
     std::shared_ptr<Handler> handler_;
 
-    std::shared_ptr<Aio::Reactor> reactor_;
+    Aio::Reactor reactor_;
     Aio::Reactor::Key transportKey;
 
     void handleNewConnection();
