@@ -109,7 +109,7 @@ TEST(listener_test, listener_bind_port_free) {
 
 
     if (port_nb == 0) {
-        FAIL() << "Could not find a free port. Abord test.\n";
+        FAIL() << "Could not find a free port. Abort test.\n";
     }
 
     Pistache::Port port(port_nb);
@@ -138,7 +138,7 @@ TEST(listener_test, listener_uses_default) {
 
 
     if (port_nb == 0) {
-        FAIL() << "Could not find a free port. Abord test.\n";
+        FAIL() << "Could not find a free port. Abort test.\n";
     }
 
     Pistache::Port port(port_nb);
@@ -158,7 +158,7 @@ TEST(listener_test, listener_bind_port_not_free_throw_runtime) {
     uint16_t port_nb = s.port();
 
     if (port_nb == 0) {
-        FAIL() << "Could not find a free port. Abord test.\n";
+        FAIL() << "Could not find a free port. Abort test.\n";
     }
 
     Pistache::Port port(port_nb);
