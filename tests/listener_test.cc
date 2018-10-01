@@ -109,7 +109,7 @@ TEST(listener_test, listener_bind_port_free) {
 
 
     if (port_nb == 0) {
-        FAIL() << "Could not find a free port. Abord test.\n";
+        FAIL() << "Could not find a free port. Abort test.\n";
     }
 
     Pistache::Port port(port_nb);
@@ -123,6 +123,34 @@ TEST(listener_test, listener_bind_port_free) {
     ASSERT_TRUE(true);
 }
 
+// Listener should not crash if an additional member is added to the listener class. This test
+// is there to prevent regression for PR 303
+TEST(listener_test, listener_uses_default) {
+    uint16_t port_nb;
+
+    // This is just done to get the value of a free port. The socket will be closed
+    // after the closing curly bracket and the port will be free again (SO_REUSEADDR option).
+    // In theory, it is possible that some application grab this port before we bind it again...
+    {
+        SocketWrapper s = bind_free_port();
+        port_nb = s.port();
+    }
+
+
+    if (port_nb == 0) {
+        FAIL() << "Could not find a free port. Abort test.\n";
+    }
+
+    Pistache::Port port(port_nb);
+    Pistache::Address address(Pistache::Ipv4::any(), port);
+
+    Pistache::Tcp::Listener listener;
+    listener.setHandler(Pistache::Http::make_handler<DummyHandler>());
+    listener.bind(address);
+    ASSERT_TRUE(true);
+}
+
+
 
 TEST(listener_test, listener_bind_port_not_free_throw_runtime) {
 
@@ -130,7 +158,7 @@ TEST(listener_test, listener_bind_port_not_free_throw_runtime) {
     uint16_t port_nb = s.port();
 
     if (port_nb == 0) {
-        FAIL() << "Could not find a free port. Abord test.\n";
+        FAIL() << "Could not find a free port. Abort test.\n";
     }
 
     Pistache::Port port(port_nb);
