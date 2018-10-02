@@ -399,10 +399,15 @@ public:
         return *this;
     }
 
+    Schema::PathDecl options(std::string name);
     Schema::PathDecl get(std::string name);
     Schema::PathDecl post(std::string name);
+    Schema::PathDecl head(std::string name);
     Schema::PathDecl put(std::string name);
+    Schema::PathDecl patch(std::string name);
     Schema::PathDecl del(std::string name);
+    Schema::PathDecl trace(std::string name);
+    Schema::PathDecl connect(std::string name);
 
     Schema::SubPath path(std::string name);
 
