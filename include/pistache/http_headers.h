@@ -104,6 +104,10 @@ public:
 
     std::vector<std::shared_ptr<Header>> list() const;
 
+    const std::unordered_map<std::string, Raw>& rawList() const {
+        return rawHeaders;
+    }
+
     bool remove(const std::string& name);
 
     void clear();

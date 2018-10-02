@@ -18,6 +18,7 @@
 #include <signal.h>
 #include <sys/timerfd.h>
 #include <sys/sendfile.h>
+#include <cerrno>
 
 #include <pistache/listener.h>
 #include <pistache/peer.h>
@@ -73,16 +74,27 @@ void setSocketOptions(Fd fd, Flags<Options> options) {
 }
 
 Listener::Listener()
-    : listen_fd(-1)
+    : addr_()
+    , listen_fd(-1)
     , backlog_(Const::MaxBacklog)
-    , reactor_(Aio::Reactor::create())
+    , shutdownFd()
+    , poller()
+    , options_()
+    , workers_(Const::DefaultWorkers)
+    , reactor_()
+    , transportKey()
 { }
 
 Listener::Listener(const Address& address)
     : addr_(address)
     , listen_fd(-1)
     , backlog_(Const::MaxBacklog)
-    , reactor_(Aio::Reactor::create())
+    , shutdownFd()
+    , poller()
+    , options_()
+    , workers_(Const::DefaultWorkers)
+    , reactor_()
+    , transportKey()
 {
 }
 
@@ -160,7 +172,8 @@ Listener::bind(const Address& address) {
 
     int fd = -1;
 
-    for (struct addrinfo *addr = addrs; addr; addr = addr->ai_next) {
+    addrinfo *addr;
+    for (addr = addrs; addr; addr = addr->ai_next) {
         fd = ::socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
         if (fd < 0) continue;
 
@@ -174,6 +187,12 @@ Listener::bind(const Address& address) {
         TRY(::listen(fd, backlog_));
         break;
     }
+    
+    // At this point, it is still possible that we couldn't bind any socket. If it is the case, the previous
+    // loop would have exited naturally and addr will be null.
+    if (addr == nullptr) {
+        throw std::runtime_error(strerror(errno));
+    }
 
     make_non_blocking(fd);
     poller.addFd(fd, Polling::NotifyOn::Read, Polling::Tag(fd));
@@ -182,20 +201,20 @@ Listener::bind(const Address& address) {
 
     transport_.reset(new Transport(handler_));
 
-    reactor_->init(Aio::AsyncContext(workers_));
-    transportKey = reactor_->addHandler(transport_);
+    reactor_.init(Aio::AsyncContext(workers_));
+    transportKey = reactor_.addHandler(transport_);
 
     return true;
 }
 
 bool
 Listener::isBound() const {
-    return g_listen_fd != -1;
+    return listen_fd != -1;
 }
 
 void
 Listener::run() {
-    reactor_->run();
+    reactor_.run();
 
     for (;;) {
         std::vector<Polling::Event> events;
@@ -230,12 +249,12 @@ Listener::runThreaded() {
 void
 Listener::shutdown() {
     if (shutdownFd.isBound()) shutdownFd.notify();
-    reactor_->shutdown();
+    reactor_.shutdown();
 }
 
 Async::Promise<Listener::Load>
 Listener::requestLoad(const Listener::Load& old) {
-    auto handlers = reactor_->handlers(transportKey);
+    auto handlers = reactor_.handlers(transportKey);
 
     std::vector<Async::Promise<rusage>> loads;
     for (const auto& handler: handlers) {
@@ -313,7 +332,7 @@ Listener::handleNewConnection() {
 
 void
 Listener::dispatchPeer(const std::shared_ptr<Peer>& peer) {
-    auto handlers = reactor_->handlers(transportKey);
+    auto handlers = reactor_.handlers(transportKey);
     auto idx = peer->fd() % handlers.size();
     auto transport = std::static_pointer_cast<Transport>(handlers[idx]);
 

@@ -740,8 +740,7 @@ serveFile(ResponseWriter& response, const char* fileName, const Mime::MediaType&
     auto sockFd = peer->fd();
 
     auto buffer = buf->buffer();
-    return transport->asyncWrite(sockFd, buffer, MSG_MORE).then([=](ssize_t bytes) {
-        UNUSED(bytes)
+    return transport->asyncWrite(sockFd, buffer, MSG_MORE).then([=](ssize_t) {
         return transport->asyncWrite(sockFd, FileBuffer(fileName));
     }, Async::Throw);
 
