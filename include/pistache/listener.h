@@ -42,7 +42,7 @@ public:
     Listener();
     ~Listener();
 
-    Listener(const Address& address);
+    explicit Listener(const Address& address);
     void init(
             size_t workers,
             Flags<Options> options = Options::None,
@@ -80,7 +80,7 @@ private:
     std::shared_ptr<Transport> transport_;
     std::shared_ptr<Handler> handler_;
 
-    std::shared_ptr<Aio::Reactor> reactor_;
+    Aio::Reactor reactor_;
     Aio::Reactor::Key transportKey;
 
     void handleNewConnection();
