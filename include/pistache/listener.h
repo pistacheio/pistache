@@ -74,7 +74,7 @@ private:
     Polling::Epoll poller;
 
     Flags<Options> options_;
-    std::unique_ptr<std::thread> acceptThread;
+    std::thread acceptThread;
 
     size_t workers_;
     std::shared_ptr<Transport> transport_;
