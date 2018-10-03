@@ -9,7 +9,9 @@
 #include <ctime>
 #include <string>
 #include <map>
-#include <unordered_map>
+//#include <unordered_map>
+//#include <unordered_set>
+#include <list>
 
 #include <pistache/optional.h>
 #include <pistache/http_defs.h>
@@ -41,7 +43,7 @@ struct Cookie {
 
 class CookieJar {
 public:
-    typedef std::unordered_map<std::string, Cookie> Storage;
+    typedef std::list<Cookie> Storage;  
 
     struct iterator : std::iterator<std::bidirectional_iterator_tag, Cookie> {
         iterator(const Storage::const_iterator& _iterator)
@@ -49,7 +51,7 @@ public:
         { }
 
         Cookie operator*() const {
-            return it_->second;
+            return *it_; // return it_->second;
         }
 
         iterator operator++() {
@@ -78,6 +80,8 @@ public:
     CookieJar();
 
     void add(const Cookie& cookie);
+    void removeCookie(const std::string& name);  // ADDED with fix
+    
     void addFromRaw(const char *str, size_t len);
     Cookie get(const std::string& name) const;
 
