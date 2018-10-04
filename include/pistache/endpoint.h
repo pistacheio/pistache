@@ -67,10 +67,9 @@ private:
             throw std::runtime_error("Must call setHandler() prior to serve()");
 
         listener.setHandler(handler_);
+        listener.bind();
 
-        if (listener.bind()) {
-            CALL_MEMBER_FN(listener, method)();
-        }
+        CALL_MEMBER_FN(listener, method)();
 #undef CALL_MEMBER_FN
     }
 

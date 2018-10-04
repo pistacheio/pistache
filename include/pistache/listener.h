@@ -49,8 +49,8 @@ public:
             int backlog = Const::MaxBacklog);
     void setHandler(const std::shared_ptr<Handler>& handler);
 
-    bool bind();
-    bool bind(const Address& adress);
+    void bind();
+    void bind(const Address& adress);
 
     bool isBound() const;
 
