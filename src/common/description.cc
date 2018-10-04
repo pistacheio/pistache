@@ -282,6 +282,11 @@ Description::basePath(std::string value) {
 }
 
 Schema::PathDecl
+Description::options(std::string name) {
+    return Schema::PathDecl(std::move(name), Http::Method::Options);
+}
+
+Schema::PathDecl
 Description::get(std::string name) {
     return Schema::PathDecl(std::move(name), Http::Method::Get);
 }
@@ -292,13 +297,33 @@ Description::post(std::string name) {
 }
 
 Schema::PathDecl
+Description::head(std::string name) {
+    return Schema::PathDecl(std::move(name), Http::Method::Head);
+}
+
+Schema::PathDecl
 Description::put(std::string name) {
     return Schema::PathDecl(std::move(name), Http::Method::Put);
 }
 
 Schema::PathDecl
+Description::patch(std::string name) {
+    return Schema::PathDecl(std::move(name), Http::Method::Patch);
+}
+
+Schema::PathDecl
 Description::del(std::string name) {
     return Schema::PathDecl(std::move(name), Http::Method::Delete);
+}
+
+Schema::PathDecl
+Description::trace(std::string name) {
+    return Schema::PathDecl(std::move(name), Http::Method::Trace);
+}
+
+Schema::PathDecl
+Description::connect(std::string name) {
+    return Schema::PathDecl(std::move(name), Http::Method::Connect);
 }
 
 Schema::SubPath
