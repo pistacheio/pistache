@@ -201,7 +201,7 @@ Listener::bind(const Address& address) {
     listen_fd = fd;
     g_listen_fd = fd;
 
-    transport_.reset(new Transport(handler_));
+    transport_ = std::make_shared<Transport>(handler_);
 
     reactor_.init(Aio::AsyncContext(workers_));
     transportKey = reactor_.addHandler(transport_);
