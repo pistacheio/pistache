@@ -26,7 +26,8 @@ bool matchParams(
     const auto& s = SegmentTreeNode::sanitizeResource(req);
     std::shared_ptr<Route> route;
     std::vector<TypedParam> params;
-    std::tie(route, params, std::ignore) = routes.findRoute(s);
+    std::string_view sv {s.data(), s.length()};
+    std::tie(route, params, std::ignore) = routes.findRoute(sv);
 
     if (route == nullptr) return false;
 
@@ -48,7 +49,8 @@ bool matchSplat(
     const auto& s = SegmentTreeNode::sanitizeResource(req);
     std::shared_ptr<Route> route;
     std::vector<TypedParam> splats;
-    std::tie(route, std::ignore, splats) = routes.findRoute(s);
+    std::string_view sv {s.data(), s.length()};
+    std::tie(route, std::ignore, splats) = routes.findRoute(sv);
 
     if (route == nullptr) return false;
 
