@@ -99,8 +99,10 @@ Listener::Listener(const Address& address)
 }
 
 Listener::~Listener() {
-    if (isBound()) shutdown();
-    if (acceptThread) acceptThread->join();
+    if (isBound())
+        shutdown();
+    if (acceptThread.joinable())
+        acceptThread.join();
 }
 
 void
@@ -243,7 +245,7 @@ Listener::run() {
 void
 Listener::runThreaded() {
     shutdownFd.bind(poller);
-    acceptThread.reset(new std::thread([=]() { this->run(); }));
+    acceptThread = std::thread([=]() { this->run(); });
 }
 
 void
