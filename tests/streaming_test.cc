@@ -87,7 +87,7 @@ TEST(stream, from_description)
     };
 
     std::string url = "http://localhost:" + std::to_string(PORT) + "/";
-    CURLcode res;
+    CURLcode res = CURLE_FAILED_INIT;
     CURL * curl = curl_easy_init();
     if (curl)
     {

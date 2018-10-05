@@ -54,6 +54,8 @@ Transport::handleNewPeer(const std::shared_ptr<Tcp::Peer>& peer) {
     } else {
         handlePeer(peer);
     }
+    int fd = peer->fd();
+    toWrite.emplace(fd, std::deque<WriteEntry>{});
 }
 
 void
@@ -183,7 +185,11 @@ Transport::handlePeerDisconnection(const std::shared_ptr<Peer>& peer) {
 void
 Transport::asyncWriteImpl(Fd fd)
 {
-    auto & wq = toWrite[fd];
+    auto it = toWrite.find(fd);
+
+    // cleanup will have been handled by handlePeerDisconnection
+    if (it == std::end(toWrite)) { return; }
+    auto & wq = it->second;
     while (wq.size() > 0) {
         auto & entry = wq.front();
         int flags    = entry.flags;
@@ -310,7 +316,11 @@ Transport::handleWriteQueue() {
 
         auto &write = entry->data();
         auto fd = write.peerFd;
-        toWrite[fd].push_back(std::move(write));
+        // Sometimes writes can be enqueued after a client has already disconnected.
+        // In that case, clear the queue
+        auto it = toWrite.find(fd);
+        if (it == std::end(toWrite)) { continue; }
+        it->second.push_back(std::move(write));
         reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
     }
 }
