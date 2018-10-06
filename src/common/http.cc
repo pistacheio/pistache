@@ -214,8 +214,6 @@ namespace Private {
         }
         else {
             std::string problem("Encountered invalid HTTP version");
-            problem += std::string(ver);
-            raise(problem.c_str());
         }
 
         if (!cursor.advance(2)) return State::Again;
