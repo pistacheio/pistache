@@ -41,7 +41,7 @@ struct Cookie {
 
 class CookieJar {
 public:
-    typedef std::unordered_map<std::string, Cookie> Storage;
+    using Storage = std::unordered_map<std::string, Cookie>;
 
     struct iterator : std::iterator<std::bidirectional_iterator_tag, Cookie> {
         iterator(const Storage::const_iterator& _iterator)
@@ -59,7 +59,7 @@ public:
 
         iterator operator++(int) {
             iterator ret(it_);
-            it_++;
+            ++it_;
             return ret;
         }
 
