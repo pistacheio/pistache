@@ -150,12 +150,12 @@ Listener::pinWorker(size_t worker, const CpuSet& set)
 #endif
 }
 
-bool
+void
 Listener::bind() {
-    return bind(addr_);
+    bind(addr_);
 }
 
-bool
+void
 Listener::bind(const Address& address) {
     if (!handler_)
         throw std::runtime_error("Call setHandler before calling bind()");
@@ -201,12 +201,10 @@ Listener::bind(const Address& address) {
     listen_fd = fd;
     g_listen_fd = fd;
 
-    transport_.reset(new Transport(handler_));
+    transport_ = std::make_shared<Transport>(handler_);
 
     reactor_.init(Aio::AsyncContext(workers_));
     transportKey = reactor_.addHandler(transport_);
-
-    return true;
 }
 
 bool

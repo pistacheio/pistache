@@ -31,7 +31,7 @@ class Listener {
 public:
 
     struct Load {
-        typedef std::chrono::system_clock::time_point TimePoint;
+        using TimePoint = std::chrono::system_clock::time_point;
         double global;
         std::vector<double> workers;
 
@@ -49,8 +49,8 @@ public:
             int backlog = Const::MaxBacklog);
     void setHandler(const std::shared_ptr<Handler>& handler);
 
-    bool bind();
-    bool bind(const Address& adress);
+    void bind();
+    void bind(const Address& address);
 
     bool isBound() const;
 
