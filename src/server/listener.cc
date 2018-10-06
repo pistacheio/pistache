@@ -3,30 +3,27 @@
 
 */
 
-#include <iostream>
-#include <cassert>
-#include <cstring>
-
-#include <sys/socket.h>
-#include <unistd.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <sys/epoll.h>
-#include <pthread.h>
-#include <signal.h>
-#include <sys/timerfd.h>
-#include <sys/sendfile.h>
-#include <cerrno>
-
 #include <pistache/listener.h>
 #include <pistache/peer.h>
 #include <pistache/common.h>
 #include <pistache/os.h>
 #include <pistache/transport.h>
 
-using namespace std;
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <sys/epoll.h>
+#include <sys/timerfd.h>
+
+#include <chrono>
+#include <memory>
+#include <vector>
+
+#include <cerrno>
+#include <signal.h>
+
 
 namespace Pistache {
 namespace Tcp {
@@ -45,9 +42,6 @@ namespace {
         closeListener();
     }
 }
-
-using Polling::NotifyOn;
-
 
 void setSocketOptions(Fd fd, Flags<Options> options) {
     if (options.hasFlag(Options::ReuseAddr)) {
@@ -324,7 +318,7 @@ Listener::handleNewConnection() {
 
     make_non_blocking(client_fd);
 
-    auto peer = make_shared<Peer>(Address::fromUnix((struct sockaddr *)&peer_addr));
+    auto peer = std::make_shared<Peer>(Address::fromUnix((struct sockaddr *)&peer_addr));
     peer->associateFd(client_fd);
 
     dispatchPeer(peer);
