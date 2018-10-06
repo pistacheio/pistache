@@ -12,6 +12,8 @@
 #include <pistache/async.h>
 #include <pistache/stream.h>
 
+#include <deque>
+
 namespace Pistache {
 namespace Tcp {
 
@@ -31,30 +33,15 @@ public:
 
     template<typename Buf>
     Async::Promise<ssize_t> asyncWrite(Fd fd, const Buf& buffer, int flags = 0) {
-        // If the I/O operation has been initiated from an other thread, we queue it and we'll process
-        // it in our own thread so that we make sure that every I/O operation happens in the right thread
-        auto ctx = context();
-        const bool isInRightThread = std::this_thread::get_id() == ctx.thread();
-        if (!isInRightThread) {
-            return Async::Promise<ssize_t>([=](Async::Deferred<ssize_t> deferred) mutable {
-                BufferHolder holder(buffer);
-                auto detached = holder.detach();
-                WriteEntry write(std::move(deferred), detached, flags);
-                write.peerFd = fd;
-                auto *e = writesQueue.allocEntry(std::move(write));
-                writesQueue.push(e);
-            });
-        }
-        return Async::Promise<ssize_t>([&](Async::Resolver& resolve, Async::Rejection& reject) {
-
-            auto it = toWrite.find(fd);
-            if (it != std::end(toWrite)) {
-                reject(Pistache::Error("Multiple writes on the same fd"));
-                return;
-            }
-
-            asyncWriteImpl(fd, flags, BufferHolder(buffer), Async::Deferred<ssize_t>(std::move(resolve), std::move(reject)));
-
+        // Always enqueue reponses for sending. Giving preference to consumer
+        // context means chunked responses could be sent out of order.
+        return Async::Promise<ssize_t>([=](Async::Deferred<ssize_t> deferred) mutable {
+            BufferHolder holder(buffer);
+            auto detached = holder.detach();
+            WriteEntry write(std::move(deferred), detached, flags);
+            write.peerFd = fd;
+            auto *e = writesQueue.allocEntry(std::move(write));
+            writesQueue.push(e);
         });
     }
 
@@ -208,13 +195,8 @@ private:
         std::shared_ptr<Peer> peer;
     };
 
-    /* @Incomplete: this should be a std::dequeue.
-        If an asyncWrite on a particular fd is initiated whereas the fd is not write-ready
-        yet and some writes are still on-hold, writes should queue-up so that when the
-        fd becomes ready again, we can write everything
-    */
     PollableQueue<WriteEntry> writesQueue;
-    std::unordered_map<Fd, WriteEntry> toWrite;
+    std::unordered_map<Fd, std::deque<WriteEntry> > toWrite;
 
     PollableQueue<TimerEntry> timersQueue;
     std::unordered_map<Fd, TimerEntry> timers;
@@ -242,11 +224,8 @@ private:
 
     void armTimerMsImpl(TimerEntry entry);
 
-    void asyncWriteImpl(Fd fd, WriteEntry& entry, WriteStatus status = FirstTry);
-    void asyncWriteImpl(
-            Fd fd, int flags, const BufferHolder& buffer,
-            Async::Deferred<ssize_t> deferred,
-            WriteStatus status = FirstTry);
+    // This will attempt to drain the write queue for the fd
+    void asyncWriteImpl(Fd fd);
 
     void handlePeerDisconnection(const std::shared_ptr<Peer>& peer);
     void handleIncoming(const std::shared_ptr<Peer>& peer);
