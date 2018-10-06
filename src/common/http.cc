@@ -213,7 +213,9 @@ namespace Private {
             request->version_ = Version::Http11;
         }
         else {
-            raise("Encountered invalid HTTP version");
+            std::string problem("Encountered invalid HTTP version");
+            problem += std::string(ver);
+            raise(problem.c_str());
         }
 
         if (!cursor.advance(2)) return State::Again;
@@ -505,9 +507,9 @@ namespace Uri {
         for(const auto &e : params) {
             query_url += "&" + e.first + "=" + e.second;
         }
-        if(not query_url.empty()) {
+        if(!query_url.empty()) {
             query_url[0] = '?'; // replace first `&` with `?`
-        } else {/* query_url is empty */}
+        }
         return query_url;
     }
 
