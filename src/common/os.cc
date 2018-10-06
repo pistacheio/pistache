@@ -25,13 +25,13 @@ uint hardware_concurrency() {
 }
 
 
-bool make_non_blocking(int sfd)
+bool make_non_blocking(int fd)
 {
-    int flags = fcntl (sfd, F_GETFL, 0);
+    int flags = fcntl (fd, F_GETFL, 0);
     if (flags == -1) return false;
 
     flags |= O_NONBLOCK;
-    int ret = fcntl (sfd, F_SETFL, flags);
+    int ret = fcntl (fd, F_SETFL, flags);
     if (ret == -1) return false;
 
     return true;
@@ -206,7 +206,7 @@ namespace Polling {
     }
 
     int
-    Epoll::toEpollEvents(Flags<NotifyOn> interest) const {
+    Epoll::toEpollEvents(const Flags<NotifyOn>& interest) {
         int events = 0;
 
         if (interest.hasFlag(NotifyOn::Read))
@@ -222,7 +222,7 @@ namespace Polling {
     }
 
     Flags<NotifyOn>
-    Epoll::toNotifyOn(int events) const {
+    Epoll::toNotifyOn(int events) {
         Flags<NotifyOn> flags;
 
         if (events & EPOLLIN)
