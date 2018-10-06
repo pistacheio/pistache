@@ -213,7 +213,7 @@ namespace Private {
             request->version_ = Version::Http11;
         }
         else {
-            std::string problem("Encountered invalid HTTP version");
+            raise("Encountered invalid HTTP version");
         }
 
         if (!cursor.advance(2)) return State::Again;
