@@ -10,6 +10,8 @@
 #include <string>
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
+#include <list>
 
 #include <pistache/optional.h>
 #include <pistache/http_defs.h>
@@ -41,25 +43,46 @@ struct Cookie {
 
 class CookieJar {
 public:
-    using Storage = std::unordered_map<std::string, Cookie>;
+    typedef std::unordered_map<std::string, Cookie> HashMapCookies; // "value" -> Cookie  
+    typedef std::unordered_map<std::string, HashMapCookies> Storage; // "name" -> Hashmap("value" -> Cookie)
 
     struct iterator : std::iterator<std::bidirectional_iterator_tag, Cookie> {
         iterator(const Storage::const_iterator& _iterator)
             : it_(_iterator)
-        { }
-
-        Cookie operator*() const {
-            return it_->second;
+        {  
+        }
+        
+        iterator(const Storage::const_iterator& _iterator, const Storage::const_iterator& end)
+            : it_(_iterator),end_(end)
+        {   
+            if(it_ != end_) {
+                it_2 = it_->second.begin();
+            }
         }
 
+        Cookie operator*() const {
+            return it_2->second; // return it_->second;
+        }
+        
         iterator operator++() {
-            ++it_;
-            return iterator(it_);
+            ++it_2;
+            if(it_2 == it_->second.end()) {
+                ++it_;
+                if(it_ != end_)
+                    it_2 = it_->second.begin();
+            }
+            return iterator(it_,end_);
         }
 
         iterator operator++(int) {
-            iterator ret(it_);
-            ++it_;
+            iterator ret(it_,end_);
+            ++it_2;
+            if(it_2 == it_->second.end()) {
+                ++it_;
+                if(it_ != end_)   // this check is important
+                    it_2 = it_->second.begin();
+            }
+
             return ret;
         }
 
@@ -73,18 +96,22 @@ public:
 
     private:
         Storage::const_iterator it_;
+        HashMapCookies::const_iterator it_2;
+        Storage::const_iterator end_; // we need to know where main hashmap ends. 
     };
 
     CookieJar();
 
     void add(const Cookie& cookie);
+    void removeCookie(const std::string& name);  // ADDED LATER
+    
     void addFromRaw(const char *str, size_t len);
     Cookie get(const std::string& name) const;
 
     bool has(const std::string& name) const;
 
     iterator begin() const {
-        return iterator(cookies.begin());
+        return iterator(cookies.begin(),cookies.end());
     }
 
     iterator end() const {
