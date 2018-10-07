@@ -44,7 +44,7 @@ private:
         Routes::Get(router, "/read/function1", Routes::bind(&StatsEndpoint::doAuth, this));
     }
 
-    void doAuth(const Rest::Request& request, Http::ResponseWriter response) {
+    void doAuth(const Rest::Request& /*request*/, Http::ResponseWriter response) {
         std::thread worker([](Http::ResponseWriter writer) {
             writer.send(Http::Code::Ok, "1");
         }, std::move(response));

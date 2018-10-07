@@ -505,9 +505,9 @@ namespace Uri {
         for(const auto &e : params) {
             query_url += "&" + e.first + "=" + e.second;
         }
-        if(not query_url.empty()) {
+        if(!query_url.empty()) {
             query_url[0] = '?'; // replace first `&` with `?`
-        } else {/* query_url is empty */}
+        }
         return query_url;
     }
 
