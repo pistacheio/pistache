@@ -1,8 +1,8 @@
-#include "gtest/gtest.h"
-
 #include <pistache/http.h>
 #include <pistache/client.h>
 #include <pistache/endpoint.h>
+
+#include "gtest/gtest.h"
 
 #include <chrono>
 
@@ -11,9 +11,8 @@ using namespace Pistache;
 struct HelloHandler : public Http::Handler {
     HTTP_PROTOTYPE(HelloHandler)
 
-    void onRequest(const Http::Request& request, Http::ResponseWriter writer)
+    void onRequest(const Http::Request& /*request*/, Http::ResponseWriter writer)
     {
-        UNUSED(request)
         writer.send(Http::Code::Ok, "Hello, World!");
     }
 };
@@ -22,7 +21,8 @@ TEST(request_builder, multiple_send_test) {
     const std::string address = "localhost:9080";
 
     Http::Endpoint server(address);
-    auto server_opts = Http::Endpoint::options().threads(1);
+    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto server_opts = Http::Endpoint::options().flags(flags).threads(1);
     server.init(server_opts);
     server.setHandler(Http::make_handler<HelloHandler>());
     server.serveThreaded();
