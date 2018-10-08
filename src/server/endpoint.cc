@@ -14,6 +14,9 @@ namespace Http {
 
 Endpoint::Options::Options()
     : threads_(1)
+    , flags_()
+    , backlog_(Const::MaxBacklog)
+    , maxPayload_(Const::DefaultMaxPayload)
 { }
 
 Endpoint::Options&
