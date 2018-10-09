@@ -38,7 +38,7 @@ public:
         listener.init(std::forward<Args>(args)...);
     }
 
-    void init(const Options& options);
+    void init(const Options& options = Options());
     void setHandler(const std::shared_ptr<Handler>& handler);
 
     void bind();

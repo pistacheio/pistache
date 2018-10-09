@@ -63,11 +63,8 @@ TEST(stream, from_description)
 
     router.initFromDescription(desc);
 
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
-
     auto opts = Http::Endpoint::options()
         .threads(threads)
-        .flags(flags)
         .maxPayload(1024*1024)
         ;
 

@@ -14,7 +14,7 @@ namespace Http {
 
 Endpoint::Options::Options()
     : threads_(1)
-    , flags_()
+    , flags_(Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr)
     , backlog_(Const::MaxBacklog)
     , maxPayload_(Const::DefaultMaxPayload)
 { }

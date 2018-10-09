@@ -21,15 +21,12 @@ TEST(http_client_test, one_client_with_one_request) {
     const std::string address = "localhost:9079";
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
-    auto server_opts = Http::Endpoint::options().flags(flags).threads(1);
-    server.init(server_opts);
+    server.init();
     server.setHandler(Http::make_handler<HelloHandler>());
     server.serveThreaded();
 
     Http::Client client;
-    auto client_opts = Http::Client::options();
-    client.init(client_opts);
+    client.init();
 
     std::vector<Async::Promise<Http::Response>> responses;
     auto rb = client.get(address);
@@ -55,15 +52,12 @@ TEST(http_client_test, one_client_with_multiple_requests) {
     const std::string address = "localhost:9080";
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
-    auto server_opts = Http::Endpoint::options().flags(flags).threads(1);
-    server.init(server_opts);
+    server.init();
     server.setHandler(Http::make_handler<HelloHandler>());
     server.serveThreaded();
 
     Http::Client client;
-    auto client_opts = Http::Client::options().threads(1).maxConnectionsPerHost(1);
-    client.init(client_opts);
+    client.init();
 
     std::vector<Async::Promise<Http::Response>> responses;
     const int RESPONSE_SIZE = 3;
@@ -94,20 +88,17 @@ TEST(http_client_test, multiple_clients_with_one_request) {
     const std::string address = "localhost:9081";
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
-    auto server_opts = Http::Endpoint::options().flags(flags).threads(1);
-    server.init(server_opts);
+    server.init();
     server.setHandler(Http::make_handler<HelloHandler>());
     server.serveThreaded();
 
-    auto client_opts = Http::Client::options();
     const int CLIENT_SIZE = 3;
     Http::Client client1;
-    client1.init(client_opts);
+    client1.init();
     Http::Client client2;
-    client2.init(client_opts);
+    client2.init();
     Http::Client client3;
-    client3.init(client_opts);
+    client3.init();
 
     std::vector<Async::Promise<Http::Response>> responses;
     int response_counter = 0;

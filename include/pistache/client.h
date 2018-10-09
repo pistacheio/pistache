@@ -306,7 +306,6 @@ public:
            : threads_(Default::Threads)
            , maxConnectionsPerHost_(Default::MaxConnectionsPerHost)
            , keepAlive_(Default::KeepAlive)
-
        { }
 
        Options& threads(int val);
@@ -323,7 +322,7 @@ public:
    ~Client();
 
    static Options options();
-   void init(const Options& options);
+   void init(const Options& options = Options());
 
    RequestBuilder get(const std::string& resource);
    RequestBuilder post(const std::string& resource);
