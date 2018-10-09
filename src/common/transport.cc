@@ -316,11 +316,12 @@ Transport::handleWriteQueue() {
 
         auto &write = entry->data();
         auto fd = write.peerFd;
+        toWrite[fd].push_back(std::move(write));
         // Sometimes writes can be enqueued after a client has already disconnected.
-        // In that case, clear the queue
-        auto it = toWrite.find(fd);
-        if (it == std::end(toWrite)) { continue; }
-        it->second.push_back(std::move(write));
+        // // In that case, clear the queue
+        // auto it = toWrite.find(fd);
+        // if (it == std::end(toWrite)) { continue; }
+        // it->second.push_back(std::move(write));
         reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
     }
 }
