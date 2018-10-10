@@ -105,8 +105,6 @@ Cookie::Cookie(std::string name, std::string value)
 Cookie
 Cookie::fromRaw(const char* str, size_t len)
 {
-    std::cout<<"From Raw initiated with" << str <<" " << endl;
-
     RawStreamBuf<> buf(const_cast<char *>(str), len);
     StreamCursor cursor(&buf);
 
@@ -167,7 +165,6 @@ Cookie::fromRaw(const char* str, size_t len)
 
 Cookie
 Cookie::fromString(const std::string& str) {
-	std::cout<<"From String initiated with" << str <<" " << endl;
     return Cookie::fromRaw(str.c_str(), str.size());
 }
 
@@ -227,7 +224,7 @@ CookieJar::add(const Cookie& cookie) {
 
 }
 
-void // ADDED later with fix
+void // Unimplemented
 CookieJar::removeCookie(const std::string& name) {
 	// Empty for now, can be used later
 }
