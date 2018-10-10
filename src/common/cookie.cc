@@ -10,6 +10,8 @@
 #include <pistache/cookie.h>
 #include <pistache/stream.h>
 
+using namespace std;
+
 namespace Pistache {
 namespace Http {
 
@@ -207,7 +209,24 @@ CookieJar::CookieJar()
 
 void
 CookieJar::add(const Cookie& cookie) {
-    cookies.insert(std::make_pair(cookie.name, cookie));
+
+    std::string cookieName = cookie.name;
+    std::string cookieValue = cookie.value;
+
+    Storage::iterator it = cookies.find(cookieName);
+    if(it == cookies.end()) {
+        HashMapCookies hashmapWithFirstCookie;
+        hashmapWithFirstCookie.insert(std::make_pair(cookieValue,cookie));
+        cookies.insert(std::make_pair(cookieName, hashmapWithFirstCookie));
+    } else {
+        it->second.insert(std::make_pair(cookieValue,cookie));
+    }
+
+}
+
+void // Unimplemented
+CookieJar::removeCookie(const std::string& name) {
+	// Empty for now, can be used later
 }
 
 void
@@ -241,17 +260,16 @@ CookieJar::addFromRaw(const char *str, size_t len) {
 
 Cookie
 CookieJar::get(const std::string& name) const {
-    auto it = cookies.find(name);
-    if (it == std::end(cookies))
-        throw std::runtime_error("Could not find requested cookie");
-
-    return it->second;
+    Storage::const_iterator it = cookies.find(name);
+    if(it != cookies.end()) {
+        return it->second.begin()->second;  // it returns begin(), first element, could be changed.
+    } 
+    throw std::runtime_error("Could not find requested cookie");
 }
 
 bool
 CookieJar::has(const std::string& name) const {
-    auto it = cookies.find(name);
-    return it != std::end(cookies);
+    return cookies.find(name) != cookies.end();
 }
 
 } // namespace Http
