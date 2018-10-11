@@ -78,14 +78,7 @@ private:
 };
 
 template<typename Handler>
-void listenAndServe(Address addr)
-{
-    auto options = Endpoint::options().threads(1);
-    listenAndServe<Handler>(addr, options);
-}
-
-template<typename Handler>
-void listenAndServe(Address addr, const Endpoint::Options& options)
+void listenAndServe(Address addr, const Endpoint::Options& options = Endpoint::Options())
 {
     Endpoint endpoint(addr);
     endpoint.init(options);
