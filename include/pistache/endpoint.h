@@ -78,7 +78,7 @@ private:
 };
 
 template<typename Handler>
-void listenAndServe(Address addr, const Endpoint::Options& options = Endpoint::Options())
+void listenAndServe(Address addr, const Endpoint::Options& options = Endpoint::options())
 {
     Endpoint endpoint(addr);
     endpoint.init(options);
