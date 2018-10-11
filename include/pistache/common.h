@@ -30,6 +30,7 @@
             } else { \
                 oss << strerror(errno); \
             } \
+            oss << " (" << __FILE__ << ":" << __LINE__ << ")"; \
             throw std::runtime_error(oss.str()); \
         } \
     } while (0)
@@ -41,6 +42,7 @@
             const char *str = #__VA_ARGS__; \
             std::ostringstream oss; \
             oss << str << ": " << strerror(errno); \
+            oss << " (" << __FILE__ << ":" << __LINE__ << ")"; \
             throw std::runtime_error(oss.str()); \
         } \
         return ret; \
