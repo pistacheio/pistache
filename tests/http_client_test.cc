@@ -21,7 +21,9 @@ TEST(http_client_test, one_client_with_one_request) {
     const std::string address = "localhost:9079";
 
     Http::Endpoint server(address);
-    server.init();
+    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto server_opts = Http::Endpoint::options().flags(flags);
+    server.init(server_opts);
     server.setHandler(Http::make_handler<HelloHandler>());
     server.serveThreaded();
 
@@ -52,7 +54,9 @@ TEST(http_client_test, one_client_with_multiple_requests) {
     const std::string address = "localhost:9080";
 
     Http::Endpoint server(address);
-    server.init();
+    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto server_opts = Http::Endpoint::options().flags(flags);
+    server.init(server_opts);
     server.setHandler(Http::make_handler<HelloHandler>());
     server.serveThreaded();
 
@@ -88,7 +92,9 @@ TEST(http_client_test, multiple_clients_with_one_request) {
     const std::string address = "localhost:9081";
 
     Http::Endpoint server(address);
-    server.init();
+    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto server_opts = Http::Endpoint::options().flags(flags);
+    server.init(server_opts);
     server.setHandler(Http::make_handler<HelloHandler>());
     server.serveThreaded();
 

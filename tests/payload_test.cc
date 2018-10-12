@@ -88,8 +88,11 @@ TEST(payload, from_description)
 
         router.initFromDescription(desc);
 
+        auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+
         auto opts = Http::Endpoint::options()
             .threads(threads)
+            .flags(flags)
             .maxPayload(maxPayload);
             ;
 
@@ -139,6 +142,7 @@ TEST(payload, manual_construction) {
     Port    port(PORT);
     Address addr(Ipv4::any(), port);
     int     threads = 20;
+    auto    flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
     size_t  maxPayload = 2048;
 
     auto pid = fork();
@@ -146,6 +150,7 @@ TEST(payload, manual_construction) {
         auto endpoint = std::make_shared<Http::Endpoint>(addr);
         auto opts = Http::Endpoint::options()
             .threads(threads)
+            .flags(flags)
             .maxPayload(maxPayload);
             ;
 
