@@ -176,6 +176,7 @@ Transport::handlePeerDisconnection(const std::shared_ptr<Peer>& peer) {
             auto raw = buffer.raw();
             if (raw.isOwned) delete[] raw.data;
         }
+        wq.pop_front();
     }
     toWrite.erase(fd);
 
@@ -316,12 +317,10 @@ Transport::handleWriteQueue() {
 
         auto &write = entry->data();
         auto fd = write.peerFd;
+        if (!isPeerFd(fd)) continue;
+
         toWrite[fd].push_back(std::move(write));
-        // Sometimes writes can be enqueued after a client has already disconnected.
-        // // In that case, clear the queue
-        // auto it = toWrite.find(fd);
-        // if (it == std::end(toWrite)) { continue; }
-        // it->second.push_back(std::move(write));
+
         reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
     }
 }
