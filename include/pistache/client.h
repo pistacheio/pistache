@@ -170,7 +170,7 @@ public:
 
     typedef std::function<void()> OnResponseParsed;
 
-    void onReady(const Aio::FdSet& fds);
+    void onReady(const Aio::FdSet& fds) override;
     void registerPoller(Polling::Epoll& poller);
 
     Async::Promise<void>

@@ -5,7 +5,13 @@
 */
 
 #include <pistache/reactor.h>
+
 #include <array>
+#include <atomic>
+#include <memory>
+#include <mutex>
+#include <unordered_map>
+#include <vector>
 
 namespace Pistache {
 namespace Aio {
@@ -69,7 +75,7 @@ public:
     }
 
     Reactor::Key addHandler(
-            const std::shared_ptr<Handler>& handler, bool setKey = true) {
+            const std::shared_ptr<Handler>& handler, bool setKey = true) override {
 
         handler->registerPoller(poller);
 
@@ -85,7 +91,7 @@ public:
         return handlers_[key.data()];
     }
 
-    std::vector<std::shared_ptr<Handler>> handlers(const Reactor::Key& key) const {
+    std::vector<std::shared_ptr<Handler>> handlers(const Reactor::Key& key) const override {
         std::vector<std::shared_ptr<Handler>> res;
 
         res.push_back(handler(key));
@@ -97,7 +103,7 @@ public:
             Fd fd,
             Polling::NotifyOn interest,
             Polling::Tag tag,
-            Polling::Mode mode = Polling::Mode::Level) {
+            Polling::Mode mode = Polling::Mode::Level) override {
 
         auto pollTag = encodeTag(key, tag);
         poller.addFd(fd, interest, pollTag, mode);
@@ -108,7 +114,7 @@ public:
             Fd fd,
             Polling::NotifyOn interest,
             Polling::Tag tag,
-            Polling::Mode mode = Polling::Mode::Level) {
+            Polling::Mode mode = Polling::Mode::Level) override {
 
         auto pollTag = encodeTag(key, tag);
         poller.addFdOneShot(fd, interest, pollTag, mode);
@@ -119,7 +125,7 @@ public:
             Fd fd,
             Polling::NotifyOn interest,
             Polling::Tag tag,
-            Polling::Mode mode = Polling::Mode::Level) {
+            Polling::Mode mode = Polling::Mode::Level) override {
 
         auto pollTag = encodeTag(key, tag);
         poller.rearmFd(fd, interest, pollTag, mode);
@@ -341,7 +347,7 @@ public:
     }
 
     Reactor::Key addHandler(
-            const std::shared_ptr<Handler>& handler, bool) {
+            const std::shared_ptr<Handler>& handler, bool) override {
 
         Reactor::Key keys[SyncImpl::MaxHandlers()];
 
@@ -361,7 +367,7 @@ public:
         return Reactor::Key(data);
     }
 
-    std::vector<std::shared_ptr<Handler>> handlers(const Reactor::Key& key) const {
+    std::vector<std::shared_ptr<Handler>> handlers(const Reactor::Key& key) const override {
 
         uint32_t idx;
         uint32_t marker;
@@ -385,7 +391,7 @@ public:
             Fd fd,
             Polling::NotifyOn interest,
             Polling::Tag tag,
-            Polling::Mode mode = Polling::Mode::Level) {
+            Polling::Mode mode = Polling::Mode::Level) override {
         dispatchCall(key, &SyncImpl::registerFd, fd, interest, tag, mode);
     }
 
@@ -394,7 +400,7 @@ public:
             Fd fd,
             Polling::NotifyOn interest,
             Polling::Tag tag,
-            Polling::Mode mode = Polling::Mode::Level) {
+            Polling::Mode mode = Polling::Mode::Level) override {
         dispatchCall(key, &SyncImpl::registerFdOneShot, fd, interest, tag, mode);
     }
 
@@ -403,7 +409,7 @@ public:
             Fd fd,
             Polling::NotifyOn interest,
             Polling::Tag tag,
-            Polling::Mode mode = Polling::Mode::Level) {
+            Polling::Mode mode = Polling::Mode::Level) override {
         dispatchCall(key, &SyncImpl::modifyFd, fd, interest, tag, mode);
     }
 
@@ -455,21 +461,21 @@ private:
         }
 
         ~Worker() {
-            if (thread)
-                thread->join();
+            if (thread.joinable())
+                thread.join();
         }
 
         void run() {
-            thread.reset(new std::thread([=]() {
+            thread = std::thread([=]() {
                 sync->run();
-            }));
+            });
         }
 
         void shutdown() {
             sync->shutdown();
         }
 
-        std::unique_ptr<std::thread> thread;
+        std::thread thread;
         std::unique_ptr<SyncImpl> sync;
     };
 

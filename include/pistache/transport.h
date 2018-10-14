@@ -29,7 +29,7 @@ public:
     void registerPoller(Polling::Epoll& poller);
 
     void handleNewPeer(const std::shared_ptr<Peer>& peer);
-    void onReady(const Aio::FdSet& fds);
+    void onReady(const Aio::FdSet& fds) override;
 
     template<typename Buf>
     Async::Promise<ssize_t> asyncWrite(Fd fd, const Buf& buffer, int flags = 0) {

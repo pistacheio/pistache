@@ -10,20 +10,17 @@
 
 #pragma once
 
-#include <thread>
-#include <mutex>
-#include <atomic>
-#include <memory>
-#include <unordered_map>
-
-#include <sys/time.h>
-#include <sys/resource.h>
-
 #include <pistache/flags.h>
 #include <pistache/os.h>
 #include <pistache/net.h>
 #include <pistache/prototype.h>
 
+#include <sys/time.h>
+#include <sys/resource.h>
+
+#include <thread>
+#include <memory>
+#include <vector>
 
 namespace Pistache {
 namespace Aio {
@@ -58,8 +55,8 @@ public:
         Polling::Tag getTag() const { return this->tag; }
     };
 
-    typedef std::vector<Entry>::iterator iterator;
-    typedef std::vector<Entry>::const_iterator const_iterator;
+    using iterator = std::vector<Entry>::iterator;
+    using const_iterator = std::vector<Entry>::const_iterator;
 
     size_t size() const {
         return events_.size();
@@ -171,7 +168,7 @@ public:
 
 class SyncContext : public ExecutionContext {
 public:
-    Reactor::Impl* makeImpl(Reactor* reactor) const;
+    Reactor::Impl* makeImpl(Reactor* reactor) const override;
 };
 
 class AsyncContext : public ExecutionContext {
@@ -180,7 +177,7 @@ public:
         : threads_(threads)
     { }
 
-    Reactor::Impl* makeImpl(Reactor* reactor) const;
+    Reactor::Impl* makeImpl(Reactor* reactor) const override;
 
     static AsyncContext singleThreaded();
 
@@ -194,6 +191,12 @@ public:
     friend class SyncImpl;
     friend class AsyncImpl;
 
+    Handler()
+        : reactor_(nullptr)
+        , context_()
+        , key_()
+    { }
+
     struct Context {
         friend class SyncImpl;
 
@@ -204,7 +207,7 @@ public:
     };
 
     virtual void onReady(const FdSet& fds) = 0;
-    virtual void registerPoller(Polling::Epoll& poller) { UNUSED(poller) }
+    virtual void registerPoller(Polling::Epoll& /*poller*/) { }
 
     Reactor* reactor() const {
         return reactor_;
