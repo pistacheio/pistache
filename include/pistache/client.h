@@ -171,7 +171,7 @@ public:
     typedef std::function<void()> OnResponseParsed;
 
     void onReady(const Aio::FdSet& fds) override;
-    void registerPoller(Polling::Epoll& poller);
+    void registerPoller(Polling::Epoll& poller) override;
 
     Async::Promise<void>
     asyncConnect(const std::shared_ptr<Connection>& connection, const struct sockaddr* address, socklen_t addr_len);

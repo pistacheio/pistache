@@ -12,7 +12,9 @@
 #include <pistache/async.h>
 #include <pistache/stream.h>
 
+#include <chrono>
 #include <deque>
+#include <memory>
 #include <unordered_map>
 
 namespace Pistache {
@@ -27,7 +29,7 @@ public:
 
     void init(const std::shared_ptr<Tcp::Handler>& handler);
 
-    void registerPoller(Polling::Epoll& poller);
+    void registerPoller(Polling::Epoll& poller) override;
 
     void handleNewPeer(const std::shared_ptr<Peer>& peer);
     void onReady(const Aio::FdSet& fds) override;
