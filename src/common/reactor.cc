@@ -131,7 +131,7 @@ public:
         poller.rearmFd(fd, interest, pollTag, mode);
     }
 
-    void runOnce() {
+    void runOnce() override {
         if (handlers_.empty())
             throw std::runtime_error("You need to set at least one handler");
 
@@ -153,7 +153,7 @@ public:
         }
     }
 
-    void run() {
+    void run() override {
         handlers_.forEachHandler([](const std::shared_ptr<Handler> handler) {
             handler->context_.tid = std::this_thread::get_id();
         });
@@ -162,7 +162,7 @@ public:
             runOnce();
     }
 
-    void shutdown() {
+    void shutdown() override {
         shutdown_.store(true);
         shutdownFd.notify();
     }
@@ -413,15 +413,15 @@ public:
         dispatchCall(key, &SyncImpl::modifyFd, fd, interest, tag, mode);
     }
 
-    void runOnce() {
+    void runOnce() override {
     }
 
-    void run() {
+    void run() override {
         for (auto& wrk: workers_)
             wrk->run();
     }
 
-    void shutdown() {
+    void shutdown() override {
         for (auto& wrk: workers_)
             wrk->shutdown();
     }
