@@ -13,6 +13,7 @@
 #include <pistache/stream.h>
 
 #include <deque>
+#include <unordered_map>
 
 namespace Pistache {
 namespace Tcp {
