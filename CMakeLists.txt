@@ -12,11 +12,12 @@ option(PISTACHE_INSTALL "add pistache as install target (recommended)" ON)
 if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
     include(CheckCXXCompilerFlag)
     CHECK_CXX_COMPILER_FLAG("-std=c++17" COMPILER_SUPPORTS_CXX17)
-    if(COMPILER_SUPPORTS_CXX11)
+    if(COMPILER_SUPPORTS_CXX17)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
     else()
         set(CMAKE_CXX_STANDARD 14)
     endif()
+else()
     # Clang exports C++17 in std::experimental namespace (tested on Clang 5 and 6).
     # This gives an error on date.h external library.
     # Following workaround forces Clang to compile at best with C++14
