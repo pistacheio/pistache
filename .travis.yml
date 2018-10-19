@@ -4,7 +4,7 @@ dist: trusty
 script:
     - mkdir build
     - cd build
-    - cmake -DBUILD_PISTACHE_EXAMPLES=true -DBUILD_PISTACHE_TESTS=true ..
+    - cmake -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_TESTS=true ..
     - make all test
 compiler:
     - clang
