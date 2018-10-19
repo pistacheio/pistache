@@ -387,7 +387,7 @@ Swagger::install(Rest::Router& router) {
                 : value(value)
                 , trailingSlashValue(value)
             {
-                if (trailingSlashValue.back() != '/')
+                if (trailingSlashValue.empty() || trailingSlashValue.back() != '/')
                     trailingSlashValue += '/';
             }
 
