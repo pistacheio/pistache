@@ -363,8 +363,6 @@ private:
 
 struct SubPath {
     SubPath(std::string prefix, PathGroup* paths);
-    SubPath(const SubPath&) = delete;
-    SubPath& operator=(const SubPath&) = delete;
 
     PathBuilder route(std::string path, Http::Method method, std::string description = "");
     PathBuilder route(PathDecl fragment, std::string description = "");
