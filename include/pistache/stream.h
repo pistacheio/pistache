@@ -84,6 +84,8 @@ public:
     static size_t maxSize;
 
     ArrayStreamBuf()
+      : StreamBuf<CharT>()
+      , bytes()
     {
         bytes.clear();
         Base::setg(bytes.data(), bytes.data(), bytes.data() + bytes.size());

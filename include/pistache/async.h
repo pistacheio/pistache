@@ -171,6 +171,9 @@ namespace Async {
         struct Core {
             Core(State _state, TypeId _id)
                 : state(_state)
+                , exc()
+                , mtx()
+                , requests()
                 , id(_id)
             { }
 
@@ -217,6 +220,7 @@ namespace Async {
         struct CoreT : public Core {
             CoreT()
                 : Core(State::Pending, TypeId::of<T>())
+                , storage()
             { }
 
             template<class Other>

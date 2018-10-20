@@ -42,12 +42,14 @@ public:
         , size_(size)
     { }
 
-    explicit ViewBase(const T* begin, const T* end) {
+    explicit ViewBase(const T* begin, const T* end)
+        : begin_(begin)
+        , size_(0)
+    {
         if (begin > end) {
             throw std::invalid_argument("begin > end");
         }
 
-        begin_ = begin;
         size_ = std::distance(begin, end);
     }
 
