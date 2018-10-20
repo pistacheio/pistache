@@ -225,7 +225,7 @@ CookieJar::add(const Cookie& cookie) {
 }
 
 void // Unimplemented
-CookieJar::removeCookie(const std::string& name) {
+CookieJar::removeCookie(const std::string& /*name*/) {
 	// Empty for now, can be used later
 }
 

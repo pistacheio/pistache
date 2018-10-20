@@ -45,7 +45,10 @@ Info::Info(
     : title(std::move(title))
     , version(std::move(version))
     , description(std::move(description))
-{ }   
+    , termsOfService()
+    , contact()
+    , license()
+{ }
 
 PathDecl::PathDecl(
         std::string value, Http::Method method)
@@ -59,6 +62,10 @@ Path::Path(
     , method(method)
     , description(std::move(description))
     , hidden(false)
+    , pc()
+    , parameters()
+    , responses()
+    , handler()
 { }
 
 std::string
@@ -191,7 +198,8 @@ PathBuilder::PathBuilder(Path* path)
 SubPath::SubPath(
         std::string prefix, PathGroup* paths)
     : prefix(std::move(prefix))
-   , paths(paths)
+    , parameters()
+    , paths(paths)
 { }
 
 PathBuilder
@@ -220,7 +228,8 @@ Parameter::Parameter(
     : name(std::move(name))
     , description(std::move(description))
     , required(true)
-{ } 
+    , type()
+{ }
 
 Response::Response(
         Http::Code statusCode, std::string description)
@@ -260,6 +269,11 @@ InfoBuilder::license(std::string name, std::string url) {
 Description::Description(
         std::string title, std::string version, std::string description)
     : info_(std::move(title), std::move(version), std::move(description))
+    , host_()
+    , basePath_()
+    , schemes_()
+    , pc()
+    , paths_()
 {
 }
 

@@ -235,6 +235,12 @@ public:
 
     Route::Status route(const Http::Request& request, Http::ResponseWriter response);
 
+    Router()
+      : routes()
+      , customHandlers()
+      , notFoundHandler()
+    { }
+
 private:
 
     void addRoute(Http::Method method, const std::string& resource,

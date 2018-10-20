@@ -165,8 +165,21 @@ public:
 
     PROTOTYPE_OF(Aio::Handler, Transport)
 
-    Transport() {}
-    Transport(const Transport &rhs) { UNUSED(rhs); }
+    Transport()
+      : requestsQueue()
+      , connectionsQueue()
+      , connections()
+      , requests()
+      , timeouts()
+    { }
+
+    Transport(const Transport &)
+      : requestsQueue()
+      , connectionsQueue()
+      , connections()
+      , requests()
+      , timeouts()
+    { }
 
     typedef std::function<void()> OnResponseParsed;
 
@@ -284,6 +297,7 @@ public:
 private:
     RequestBuilder(Client* const client)
         : client_(client)
+        , request_()
         , timeout_(std::chrono::milliseconds(0))
     { }
 
