@@ -115,19 +115,19 @@ private:
 
     }
 
-    void retrieveAllAccounts(const Rest::Request& req, Http::ResponseWriter response) {
+    void retrieveAllAccounts(const Rest::Request&, Http::ResponseWriter response) {
         response.send(Http::Code::Ok, "No Account");
     }
 
-    void retrieveAccount(const Rest::Request& req, Http::ResponseWriter response) {
+    void retrieveAccount(const Rest::Request&, Http::ResponseWriter response) {
         response.send(Http::Code::Ok, "The bank is closed, come back later");
     }
 
-    void createAccount(const Rest::Request& req, Http::ResponseWriter response) {
+    void createAccount(const Rest::Request&, Http::ResponseWriter response) {
         response.send(Http::Code::Ok, "The bank is closed, come back later");
     }
 
-    void creditAccount(const Rest::Request& req, Http::ResponseWriter response) {
+    void creditAccount(const Rest::Request&, Http::ResponseWriter response) {
         response.send(Http::Code::Ok, "The bank is closed, come back later");
     }
 
