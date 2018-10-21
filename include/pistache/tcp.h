@@ -37,7 +37,7 @@ public:
     friend class Transport;
 
     Handler();
-    ~Handler();
+    virtual ~Handler();
 
     virtual void onInput(const char *buffer, size_t len, const std::shared_ptr<Tcp::Peer>& peer) = 0;
 

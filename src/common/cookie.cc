@@ -231,7 +231,7 @@ CookieJar::add(const Cookie& cookie) {
 void 
 CookieJar::removeAllCookies() {
 	cookies.clear();
-}
+
 
 void
 CookieJar::addFromRaw(const char *str, size_t len) {

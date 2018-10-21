@@ -103,6 +103,10 @@ template<typename DT> struct DataTypeValidation {
 } // namespace Traits
 
 struct ProduceConsume {
+    ProduceConsume()
+    : produce()
+    , consume()
+    { }
 
     std::vector<Http::Mime::MediaType> produce;
     std::vector<Http::Mime::MediaType> consume;
@@ -152,6 +156,8 @@ struct DataType {
     virtual const char* format() const = 0;
 
     virtual bool validate(const std::string& input) const = 0;
+
+    virtual ~DataType() {}
 };
 
 template<typename T>
@@ -160,6 +166,8 @@ struct DataTypeT : public DataType {
     const char* format() const { return Traits::DataTypeInfo<T>::format(); }
 
     bool validate(const std::string& input) const { return Traits::DataTypeValidation<T>::validate(input); }
+
+    virtual ~DataTypeT() {}
 };
 
 template<typename T>
@@ -254,6 +262,10 @@ public:
 
     bool hasPath(const std::string& name, Http::Method method) const;
     bool hasPath(const Path& path) const;
+
+    PathGroup()
+      : groups_()
+    { }
 
     Group paths(const std::string& name) const;
     Optional<Path> path(const std::string& name, Http::Method method) const;
@@ -437,6 +449,10 @@ class Swagger {
 public:
     Swagger(const Description& description)
         : description_(description)
+        , uiPath_()
+        , uiDirectory_()
+        , apiPath_()
+        , serializer_()
     { }
 
     typedef std::function<std::string (const Description&)> Serializer;
@@ -445,7 +461,7 @@ public:
     Swagger& uiDirectory(std::string dir);
     Swagger& apiPath(std::string path);
     Swagger& serializer(Serializer serialize);
-   
+
     void install(Rest::Router& router);
 
 private:

@@ -12,7 +12,10 @@
 #include <pistache/async.h>
 #include <pistache/stream.h>
 
+#include <chrono>
 #include <deque>
+#include <memory>
+#include <unordered_map>
 
 namespace Pistache {
 namespace Tcp {
@@ -26,10 +29,10 @@ public:
 
     void init(const std::shared_ptr<Tcp::Handler>& handler);
 
-    void registerPoller(Polling::Epoll& poller);
+    void registerPoller(Polling::Epoll& poller) override;
 
     void handleNewPeer(const std::shared_ptr<Peer>& peer);
-    void onReady(const Aio::FdSet& fds);
+    void onReady(const Aio::FdSet& fds) override;
 
     template<typename Buf>
     Async::Promise<ssize_t> asyncWrite(Fd fd, const Buf& buffer, int flags = 0) {
@@ -63,7 +66,7 @@ public:
 
     void disarmTimer(Fd fd);
 
-    std::shared_ptr<Aio::Handler> clone() const;
+    std::shared_ptr<Aio::Handler> clone() const override;
 
 private:
     enum WriteStatus {
@@ -162,6 +165,7 @@ private:
           : fd(fd_)
           , value(value_)
           , deferred(std::move(deferred_))
+          , active()
         {
             active.store(true, std::memory_order_relaxed);
         }

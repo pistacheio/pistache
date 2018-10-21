@@ -84,6 +84,8 @@ public:
     static size_t maxSize;
 
     ArrayStreamBuf()
+      : StreamBuf<CharT>()
+      , bytes()
     {
         bytes.clear();
         Base::setg(bytes.data(), bytes.data(), bytes.data() + bytes.size());
@@ -150,7 +152,11 @@ struct Buffer {
 };
 
 struct FileBuffer {
-    FileBuffer() { }
+    FileBuffer()
+        : fileName_()
+        , fd_()
+        , size_()
+    { }
 
     FileBuffer(const char* fileName);
     FileBuffer(const std::string& fileName);
@@ -177,6 +183,7 @@ public:
             size_t size,
             size_t maxSize = std::numeric_limits<uint32_t>::max())
         : maxSize_(maxSize)
+        , data_()
     {
         reserve(size);
     }
@@ -272,6 +279,9 @@ public:
             , active(true)
         { }
 
+        Revert(const Revert&) = delete;
+        Revert& operator=(const Revert&) = delete;
+
         ~Revert() {
             if (active)
                 revert();
@@ -291,7 +301,6 @@ public:
         char *gptr;
         char *egptr;
         bool active;
-
     };
 
     bool advance(size_t count);

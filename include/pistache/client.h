@@ -165,13 +165,26 @@ public:
 
     PROTOTYPE_OF(Aio::Handler, Transport)
 
-    Transport() {}
-    Transport(const Transport &rhs) { UNUSED(rhs); }
+    Transport()
+      : requestsQueue()
+      , connectionsQueue()
+      , connections()
+      , requests()
+      , timeouts()
+    { }
+
+    Transport(const Transport &)
+      : requestsQueue()
+      , connectionsQueue()
+      , connections()
+      , requests()
+      , timeouts()
+    { }
 
     typedef std::function<void()> OnResponseParsed;
 
-    void onReady(const Aio::FdSet& fds);
-    void registerPoller(Polling::Epoll& poller);
+    void onReady(const Aio::FdSet& fds) override;
+    void registerPoller(Polling::Epoll& poller) override;
 
     Async::Promise<void>
     asyncConnect(const std::shared_ptr<Connection>& connection, const struct sockaddr* address, socklen_t addr_len);
@@ -284,6 +297,7 @@ public:
 private:
     RequestBuilder(Client* const client)
         : client_(client)
+        , request_()
         , timeout_(std::chrono::milliseconds(0))
     { }
 

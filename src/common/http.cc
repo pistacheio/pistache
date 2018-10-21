@@ -475,11 +475,16 @@ namespace Private {
 
 Message::Message()
     : version_(Version::Http11)
+    , code_()
+    , headers_()
+    , body_()
+    , cookies_()
 { }
 
 namespace Uri {
 
     Query::Query()
+        : params()
     { }
 
     Query::Query(std::initializer_list<std::pair<const std::string, std::string>> params)
@@ -521,6 +526,9 @@ namespace Uri {
 
 Request::Request()
     : Message()
+    , method_()
+    , resource_()
+    , query_()
 { }
 
 Version

@@ -174,6 +174,8 @@ public:
     };
 
     Queue()
+        : head()
+        , tail(nullptr)
     {
         auto *sentinel = new Entry;
         sentinel->next = nullptr;

@@ -35,6 +35,10 @@ struct LowercaseEqual {
 
 class Collection {
 public:
+    Collection()
+        : headers()
+        , rawHeaders()
+    { }
 
     template<typename H>
     typename std::enable_if<
