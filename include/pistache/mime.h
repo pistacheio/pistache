@@ -89,6 +89,7 @@ public:
     typedef uint16_t Type;
 
     explicit Q(Type val)
+       : val_()
     {
         if (val > 100) {
             throw std::runtime_error("Invalid quality value, must be in the [0; 100] range");
@@ -123,12 +124,22 @@ public:
         : top_(Type::None)
         , sub_(Subtype::None)
         , suffix_(Suffix::None)
+        , raw_()
+        , rawSubIndex()
+        , rawSuffixIndex()
+        , params()
+        , q_()
     { }
 
     MediaType(std::string raw, Parse parse = DontParse)
         : top_(Type::None)
         , sub_(Subtype::None)
         , suffix_(Suffix::None)
+        , raw_()
+        , rawSubIndex()
+        , rawSuffixIndex()
+        , params()
+        , q_()
     {
         if (parse == DoParse) {
             parseRaw(raw.c_str(), raw.length());
@@ -142,12 +153,22 @@ public:
         : top_(top)
         , sub_(sub)
         , suffix_(Suffix::None)
+        , raw_()
+        , rawSubIndex()
+        , rawSuffixIndex()
+        , params()
+        , q_()
     { }
 
     MediaType(Mime::Type top, Mime::Subtype sub, Mime::Suffix suffix)
         : top_(top)
         , sub_(sub)
         , suffix_(suffix)
+        , raw_()
+        , rawSubIndex()
+        , rawSuffixIndex()
+        , params()
+        , q_()
     { }
 
 

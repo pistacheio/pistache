@@ -341,7 +341,11 @@ public:
         dequeueIndex.store(other.enqueueIndex.load(), std::memory_order_relaxed);
     }
 
-    MPMCQueue() {
+    MPMCQueue()
+        : cells_()
+        , enqueueIndex()
+        , dequeueIndex()
+    {
         for (size_t i = 0; i < Size; ++i) {
             cells_[i].sequence.store(i, std::memory_order_relaxed);
         }
@@ -400,6 +404,10 @@ public:
 
 private:
     struct Cell {
+        Cell()
+            : sequence()
+            , data()
+        { }
         std::atomic<size_t> sequence;
         T data;
     };

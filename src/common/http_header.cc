@@ -331,7 +331,10 @@ Expect::write(std::ostream& os) const {
     }
 }
 
-Host::Host(const std::string& data) {
+Host::Host(const std::string& data)
+    : host_()
+    , port_(0)
+{
     parse(data);
 }
 
@@ -474,11 +477,13 @@ Server::Server(const std::vector<std::string>& tokens)
 { }
 
 Server::Server(const std::string& token)
+    : tokens_()
 {
     tokens_.push_back(token);
 }
 
 Server::Server(const char* token)
+   : tokens_()
 {
     tokens_.emplace_back(token);
 }
