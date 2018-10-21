@@ -15,7 +15,7 @@ struct HelloHandlerWithDelay : public Http::Handler {
     explicit HelloHandlerWithDelay(int delay = 0) : delay_(delay)
     { }
 
-    void onRequest(const Http::Request& /*request*/, Http::ResponseWriter writer)
+    void onRequest(const Http::Request& /*request*/, Http::ResponseWriter writer) override
     {
         std::this_thread::sleep_for(std::chrono::seconds(delay_));
         writer.send(Http::Code::Ok, "Hello, World!");
@@ -32,7 +32,7 @@ struct SlowHandlerOnSpecialPage : public Http::Handler {
     explicit SlowHandlerOnSpecialPage(int delay = 0) : delay_(delay)
     { }
 
-    void onRequest(const Http::Request& request, Http::ResponseWriter writer)
+    void onRequest(const Http::Request& request, Http::ResponseWriter writer) override
     {
         if (request.resource() == SPECIAL_PAGE)
         {

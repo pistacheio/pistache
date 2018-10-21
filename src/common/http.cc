@@ -474,11 +474,13 @@ namespace Private {
 
 Message::Message()
     : version_(Version::Http11)
+    , cookies_()
 { }
 
 namespace Uri {
 
     Query::Query()
+        : params()
     { }
 
     Query::Query(std::initializer_list<std::pair<const std::string, std::string>> params)

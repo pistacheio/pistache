@@ -66,7 +66,7 @@ public:
 
     void disarmTimer(Fd fd);
 
-    std::shared_ptr<Aio::Handler> clone() const;
+    std::shared_ptr<Aio::Handler> clone() const override;
 
 private:
     enum WriteStatus {
@@ -165,6 +165,7 @@ private:
           : fd(fd_)
           , value(value_)
           , deferred(std::move(deferred_))
+          , active()
         {
             active.store(true, std::memory_order_relaxed);
         }

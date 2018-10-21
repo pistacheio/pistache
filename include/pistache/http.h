@@ -262,6 +262,7 @@ private:
         , transport(other.transport)
         , armed(other.armed)
         , timerFd(other.timerFd)
+        , peer()
     { }
 
     Timeout(Tcp::Transport* transport_,
@@ -272,8 +273,8 @@ private:
         , transport(transport_)
         , armed(false)
         , timerFd(-1)
-    {
-    }
+        , peer()
+    { }
 
     template<typename Ptr>
     void associatePeer(const Ptr& ptr) {
@@ -569,6 +570,7 @@ public:
 private:
     ResponseWriter(Tcp::Transport* transport, Request request, Handler* handler)
         : Response(request.version())
+        , peer_()
         , buf_(DefaultStreamSize)
         , transport_(transport)
         , timeout_(transport, handler, std::move(request))
@@ -691,7 +693,9 @@ namespace Private {
     class ParserBase {
     public:
         ParserBase()
-            : cursor(&buffer)
+            : buffer()
+            , cursor(&buffer)
+            , allSteps()
             , currentStep(0)
         { }
 
@@ -724,6 +728,7 @@ namespace Private {
 
         Parser()
             : ParserBase()
+            , request()
         {
             allSteps[0].reset(new RequestLineStep(&request));
             allSteps[1].reset(new HeadersStep(&request));
@@ -732,6 +737,7 @@ namespace Private {
 
         Parser(const char* data, size_t len)
             : ParserBase()
+            , request()
         {
             allSteps[0].reset(new RequestLineStep(&request));
             allSteps[1].reset(new HeadersStep(&request));
@@ -756,6 +762,7 @@ namespace Private {
     public:
         Parser()
             : ParserBase()
+            , response()
         {
             allSteps[0].reset(new ResponseLineStep(&response));
             allSteps[1].reset(new HeadersStep(&response));
@@ -764,6 +771,7 @@ namespace Private {
 
         Parser(const char* data, size_t len)
             : ParserBase()
+            , response()
         {
             allSteps[0].reset(new ResponseLineStep(&response));
             allSteps[1].reset(new HeadersStep(&response));
