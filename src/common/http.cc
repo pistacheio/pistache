@@ -474,6 +474,9 @@ namespace Private {
 
 Message::Message()
     : version_(Version::Http11)
+    , code_()
+    , headers_()
+    , body_()
     , cookies_()
 { }
 
@@ -522,6 +525,9 @@ namespace Uri {
 
 Request::Request()
     : Message()
+    , method_()
+    , resource_()
+    , query_()
 { }
 
 Version
