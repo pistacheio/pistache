@@ -294,7 +294,7 @@ namespace Private {
             }
 
             if (name == "Cookie") {
-                message->cookies_.removeAllCookies(); // removing existing cookies before re-adding them .
+                message->cookies_.removeAllCookies(); // removing existing cookies before re-adding them.
                 message->cookies_.addFromRaw(cursor.offset(start), cursor.diff(start));
             }
 
