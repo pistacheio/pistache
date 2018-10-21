@@ -67,14 +67,18 @@ public:
             return iter_cookie_values->second; // return iter_storage->second;
         }
 
-        iterator operator++() {
+        const Cookie* operator->() const {
+            return &(iter_cookie_values->second);
+        }
+
+        iterator& operator++() {
             ++iter_cookie_values;
             if(iter_cookie_values == iter_storage->second.end()) {
                 ++iter_storage;
                 if(iter_storage != iter_storage_end)
                     iter_cookie_values = iter_storage->second.begin();
             }
-            return iterator(iter_storage,iter_storage_end);
+            return *this;
         }
 
         iterator operator++(int) {
@@ -107,7 +111,7 @@ public:
 
     void add(const Cookie& cookie);
     void removeCookie(const std::string& name);  // Unimplemented
-    
+
     void addFromRaw(const char *str, size_t len);
     Cookie get(const std::string& name) const;
 
