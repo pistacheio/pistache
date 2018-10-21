@@ -26,3 +26,49 @@ TEST(cookie_test_2, cookiejar_test_2) {
         ASSERT_EQ(count,4); // number of cookies must be 4 in this case
     });
 }
+
+TEST(cookie_test_2, cookiejar_iterator) {
+    // NOTE: Cookies are stored in an unordered map.  Iterator order
+    // is NOT guaranteed (infact, will be different on different versions
+    // of libc++).
+
+    std::unordered_map<std::string, std::string> control = {
+      { "a", "blossom" },
+      { "b", "bubbles" },
+      { "c", "buttercup" },
+    };
+
+    addCookies("a=blossom; b=bubbles; c=buttercup",
+            [&control](const CookieJar& jar) {
+        auto i = jar.begin();
+
+        // Test "operator*"
+        do {
+          const auto name = (*i).name;
+          const auto value = control.at(name);
+          ASSERT_EQ((*i).value, value);
+        } while (0);
+
+        // Test "operator->" and pre-increment++
+        do {
+          const auto r = ++i;
+          const auto name = i->name;
+          const auto value = control.at(name);
+          ASSERT_EQ(i->value, value);
+          ASSERT_EQ(r->name, i->name);
+        } while (0);
+
+        // Test "operator->" and post-increment++
+        do {
+          const auto r = i++;
+          const auto name = i->name;
+          const auto value = control.at(name);
+          ASSERT_EQ(i->value, value);
+          ASSERT_NE(r->name, i->name);
+        } while (0);
+
+        // pre-increment should end the iterator.
+        ++i;
+        ASSERT_EQ(i, jar.end());
+    });
+}
