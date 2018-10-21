@@ -124,7 +124,7 @@ TEST(payload, manual_construction) {
 
         void onRequest(
                 const Http::Request& req,
-                Http::ResponseWriter response)
+                Http::ResponseWriter response) override
         {
             UNUSED(req);
             response.send(Http::Code::Ok, "All good");

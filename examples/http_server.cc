@@ -85,7 +85,7 @@ class MyHandler : public Http::Handler {
 
     void onRequest(
             const Http::Request& req,
-            Http::ResponseWriter response) {
+            Http::ResponseWriter response) override {
 
         if (req.resource() == "/ping") {
             if (req.method() == Http::Method::Get) {
@@ -149,7 +149,9 @@ class MyHandler : public Http::Handler {
 
     }
 
-    void onTimeout(const Http::Request& req, Http::ResponseWriter response) {
+    void onTimeout(
+            const Http::Request& req,
+            Http::ResponseWriter response) override {
         UNUSED(req);
         response
             .send(Http::Code::Request_Timeout, "Timeout")
