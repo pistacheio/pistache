@@ -1,6 +1,6 @@
-/* 
+/*
    Mathieu Stefani, 28 février 2016
-   
+
    A collection of sample iterator adapters
 */
 
@@ -18,9 +18,9 @@ struct FlatMapIteratorAdapter {
         : it(_it)
     { }
 
-    FlatMapIteratorAdapter operator++() {
+    FlatMapIteratorAdapter& operator++() {
         ++it;
-        return FlatMapIteratorAdapter(it);
+        return *this;
     }
 
     const Value& operator*() {
