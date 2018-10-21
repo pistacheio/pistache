@@ -29,6 +29,7 @@ namespace Aio {
 class FdSet {
 public:
     FdSet(std::vector<Polling::Event>&& events)
+       : events_()
     {
         events_.reserve(events.size());
         for (auto &&event: events) {
@@ -163,11 +164,13 @@ private:
 
 class ExecutionContext {
 public:
+    virtual ~ExecutionContext() {}
     virtual Reactor::Impl* makeImpl(Reactor* reactor) const = 0;
 };
 
 class SyncContext : public ExecutionContext {
 public:
+    virtual ~SyncContext() {}
     Reactor::Impl* makeImpl(Reactor* reactor) const override;
 };
 
@@ -176,6 +179,8 @@ public:
     AsyncContext(size_t threads)
         : threads_(threads)
     { }
+
+    virtual ~AsyncContext() {}
 
     Reactor::Impl* makeImpl(Reactor* reactor) const override;
 
@@ -199,6 +204,10 @@ public:
 
     struct Context {
         friend class SyncImpl;
+
+        Context()
+            : tid()
+        { }
 
         std::thread::id thread() const { return tid; }
 

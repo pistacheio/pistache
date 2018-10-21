@@ -758,9 +758,13 @@ Client::Options::maxConnectionsPerHost(int val) {
 
 Client::Client()
     : reactor_(Aio::Reactor::create())
+    , pool()
+    , transport_()
+    , transportKey()
     , ioIndex(0)
-{
-}
+    , queuesLock()
+    , requestsQueues()
+{ }
 
 Client::~Client() {
 }

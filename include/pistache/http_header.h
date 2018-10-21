@@ -118,7 +118,9 @@ class Allow : public Header {
 public:
     NAME("Allow");
 
-    Allow() { }
+    Allow()
+        : methods_()
+    { }
 
     explicit Allow(const std::vector<Http::Method>& methods)
         : methods_(methods)
@@ -128,6 +130,7 @@ public:
     { }
 
     explicit Allow(Http::Method method)
+        : methods_()
     {
         methods_.push_back(method);
     }
@@ -149,7 +152,9 @@ class Accept : public Header {
 public:
     NAME("Accept")
 
-    Accept() { }
+    Accept()
+        : mediaRange_()
+    { }
 
     void parseRaw(const char *str, size_t len);
     void write(std::ostream& os) const;
@@ -164,7 +169,9 @@ class AccessControlAllowOrigin : public Header {
 public:
   NAME("Access-Control-Allow-Origin")
 
-  AccessControlAllowOrigin() { }
+  AccessControlAllowOrigin()
+    : uri_()
+  { }
 
   explicit AccessControlAllowOrigin(const char* uri)
     : uri_(uri)
@@ -190,7 +197,9 @@ class AccessControlAllowHeaders : public Header {
 public:
   NAME("Access-Control-Allow-Headers")
 
-  AccessControlAllowHeaders() { }
+  AccessControlAllowHeaders()
+    : val_()
+  { }
 
   explicit AccessControlAllowHeaders(const char* val)
     : val_(val)
@@ -216,7 +225,10 @@ class CacheControl : public Header {
 public:
     NAME("Cache-Control")
 
-    CacheControl() { }
+    CacheControl()
+       : directives_()
+    { }
+
     explicit CacheControl(const std::vector<Http::CacheDirective>& directives)
         : directives_(directives)
     { }
@@ -257,6 +269,10 @@ private:
 
 class EncodingHeader : public Header {
 public:
+
+    EncodingHeader()
+       : encoding_()
+    { }
 
     void parseRaw(const char* str, size_t len);
     void write(std::ostream& os) const;
@@ -325,10 +341,12 @@ class ContentType : public Header {
 public:
     NAME("Content-Type")
 
-    ContentType() { }
+    ContentType()
+       : mime_()
+    { }
 
-    explicit ContentType(const Mime::MediaType& mime) :
-        mime_(mime)
+    explicit ContentType(const Mime::MediaType& mime)
+        : mime_(mime)
     { }
 
     void parseRaw(const char* str, size_t len);
@@ -346,10 +364,12 @@ class Date : public Header {
 public:
     NAME("Date")
 
-    Date() { }
+    Date()
+        : fullDate_()
+    { }
 
-    explicit Date(const FullDate& date) :
-        fullDate_(date)
+    explicit Date(const FullDate& date)
+        : fullDate_(date)
     { }
 
     void parse(const std::string &str);
@@ -365,10 +385,12 @@ class Expect : public Header {
 public:
     NAME("Expect")
 
-    Expect() { }
+    Expect()
+        : expectation_()
+    { }
 
-    explicit Expect(Http::Expectation expectation) :
-        expectation_(expectation)
+    explicit Expect(Http::Expectation expectation)
+        : expectation_(expectation)
     { }
 
     void parseRaw(const char* str, size_t len);
@@ -385,6 +407,8 @@ public:
     NAME("Host");
 
     Host()
+       : host_()
+       , port_(0)
     { }
 
     explicit Host(const std::string& host);
@@ -408,7 +432,9 @@ class Location : public Header {
 public:
     NAME("Location")
 
-    Location() { }
+    Location()
+       : location_()
+    { }
 
     explicit Location(const std::string& location);
 
@@ -425,7 +451,9 @@ class Server : public Header {
 public:
     NAME("Server")
 
-    Server() { }
+    Server()
+       : tokens_()
+    { }
 
     explicit Server(const std::vector<std::string>& tokens);
     explicit Server(const std::string& token);
@@ -443,7 +471,10 @@ class UserAgent : public Header {
 public:
     NAME("User-Agent")
 
-    UserAgent() { }
+    UserAgent()
+        : ua_()
+    { }
+
     explicit UserAgent(const char* ua)
         : ua_(ua)
     { }
