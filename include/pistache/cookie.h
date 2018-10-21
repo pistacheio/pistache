@@ -110,7 +110,7 @@ public:
     CookieJar();
 
     void add(const Cookie& cookie);
-    void removeCookie(const std::string& name);  // Unimplemented
+    void removeAllCookies();
 
     void addFromRaw(const char *str, size_t len);
     Cookie get(const std::string& name) const;
