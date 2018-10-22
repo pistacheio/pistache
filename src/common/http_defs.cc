@@ -41,11 +41,15 @@ namespace {
 } // anonymous namespace
 
 CacheDirective::CacheDirective(Directive directive)
+    : directive_()
+    , data()
 {
     init(directive, std::chrono::seconds(0));
 }
 
 CacheDirective::CacheDirective(Directive directive, std::chrono::seconds delta)
+    : directive_()
+    , data()
 {
     init(directive, delta);
 }

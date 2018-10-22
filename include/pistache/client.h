@@ -138,6 +138,12 @@ private:
 
 class ConnectionPool {
 public:
+    ConnectionPool()
+        : connsLock()
+        , conns()
+        , maxConnectionsPerHost()
+    { }
+
     void init(size_t maxConnsPerHost);
 
     std::shared_ptr<Connection> pickConnection(const std::string& domain);
