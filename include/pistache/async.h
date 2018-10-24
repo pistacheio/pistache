@@ -549,11 +549,7 @@ namespace Async {
 
                 void doReject(const std::shared_ptr<CoreT<T>>& core) {
                     reject_(core->exc);
-                    for (const auto& req: core->requests) {
-                        req->reject(core);
-                    }
                 }
-
 
                 template<
                     typename Promise,
