@@ -41,7 +41,7 @@ splitUrl(const std::string& url) {
 }
 
 struct ExceptionPrinter {
-    void operator()(std::exception_ptr exc) {
+    void operator()(std::exception_ptr exc) const {
         try {
             std::rethrow_exception(exc);
         } catch (const std::exception& e) {

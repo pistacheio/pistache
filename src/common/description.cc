@@ -418,7 +418,7 @@ Swagger::install(Rest::Router& router) {
                 return res;
             }
 
-            bool matches(const Rest::Request& req) {
+            bool matches(const Rest::Request& req) const {
                 auto res = req.resource();
                 if (value == res)
                     return true;
