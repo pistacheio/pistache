@@ -282,7 +282,7 @@ Pistache::Rest::SegmentTreeNode::findRoute(
             // in case of more than one optional at this point, as it is an
             // ambuiguity, it is resolved by using the first optional
             auto optional = optional_.begin();
-            std::string opt {optional->first.data(), optional->first.length()};
+            // std::string opt {optional->first.data(), optional->first.length()};
             return optional->second->findRoute(path, params, splats);
         } else if (route_ == nullptr) {
             // if we are here but route is null, we reached this point

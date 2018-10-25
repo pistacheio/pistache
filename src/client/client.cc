@@ -41,7 +41,7 @@ splitUrl(const std::string& url) {
 }
 
 struct ExceptionPrinter {
-    void operator()(std::exception_ptr exc) {
+    void operator()(std::exception_ptr exc) const {
         try {
             std::rethrow_exception(exc);
         } catch (const std::exception& e) {
@@ -758,9 +758,13 @@ Client::Options::maxConnectionsPerHost(int val) {
 
 Client::Client()
     : reactor_(Aio::Reactor::create())
+    , pool()
+    , transport_()
+    , transportKey()
     , ioIndex(0)
-{
-}
+    , queuesLock()
+    , requestsQueues()
+{ }
 
 Client::~Client() {
 }
