@@ -79,19 +79,17 @@ private:
 
         explicit BufferHolder(const Buffer& buffer, off_t offset = 0)
             : u(buffer)
+            , size_(buffer.len)
+            , offset_(offset)
             , type(Raw)
-        {
-            offset_ = offset;
-            size_ = buffer.len;
-        }
+        { }
 
         explicit BufferHolder(const FileBuffer& buffer, off_t offset = 0)
             : u(buffer.fd())
+            , size_(buffer.size())
+            , offset_(offset)
             , type(File)
-        {
-            offset_ = offset;
-            size_ = buffer.size();
-        }
+        { }
 
         bool isFile() const { return type == File; }
         bool isRaw() const { return type == Raw; }
