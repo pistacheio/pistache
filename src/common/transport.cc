@@ -119,17 +119,13 @@ Transport::disarmTimer(Fd fd) {
 
 void
 Transport::handleIncoming(const std::shared_ptr<Peer>& peer) {
-    char buffer[Const::MaxBuffer];
-    memset(buffer, 0, sizeof buffer);
+    char buffer[Const::MaxBuffer] = {0};
 
     ssize_t totalBytes = 0;
     int fd = peer->fd();
 
     for (;;) {
-
-        ssize_t bytes;
-
-        bytes = recv(fd, buffer + totalBytes, Const::MaxBuffer - totalBytes, 0);
+        ssize_t bytes = recv(fd, buffer + totalBytes, Const::MaxBuffer - totalBytes, 0);
         if (bytes == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if (totalBytes > 0) {

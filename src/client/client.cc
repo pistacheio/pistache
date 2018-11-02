@@ -310,15 +310,12 @@ Transport::handleConnectionQueue() {
 
 void
 Transport::handleIncoming(const std::shared_ptr<Connection>& connection) {
-    char buffer[Const::MaxBuffer];
-    memset(buffer, 0, sizeof buffer);
+    char buffer[Const::MaxBuffer] = {0};
 
     ssize_t totalBytes = 0;
+
     for (;;) {
-
-        ssize_t bytes;
-
-        bytes = recv(connection->fd, buffer + totalBytes, Const::MaxBuffer - totalBytes, 0);
+        ssize_t bytes = recv(connection->fd, buffer + totalBytes, Const::MaxBuffer - totalBytes, 0);
         if (bytes == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if (totalBytes > 0) {
@@ -777,7 +774,7 @@ Client::options() {
 void
 Client::init(const Client::Options& options) {
     pool.init(options.maxConnectionsPerHost_);
-    transport_.reset(new Transport);
+    transport_ = std::make_shared<Transport>();
     reactor_->init(Aio::AsyncContext(options.threads_));
     transportKey = reactor_->addHandler(transport_);
     reactor_->run();
