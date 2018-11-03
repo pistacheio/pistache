@@ -207,8 +207,8 @@ Transport::asyncWriteImpl(Fd fd)
             if (wq.size() == 0) {
                 toWrite.erase(fd);
                 reactor()->modifyFd(key(), fd, NotifyOn::Read, Polling::Mode::Edge);
+                stop = true;
             }
-            stop = true;
         };
 
         size_t totalWritten = buffer.offset();
