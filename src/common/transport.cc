@@ -187,7 +187,8 @@ Transport::asyncWriteImpl(Fd fd)
     // cleanup will have been handled by handlePeerDisconnection
     if (it == std::end(toWrite)) { return; }
     auto & wq = it->second;
-    while (wq.size() > 0) {
+    bool stop = false;
+    while (!stop && wq.size() > 0) {
         auto & entry = wq.front();
         int flags    = entry.flags;
         const BufferHolder &buffer = entry.buffer;
@@ -202,10 +203,10 @@ Transport::asyncWriteImpl(Fd fd)
             if (wq.size() == 0) {
                 toWrite.erase(fd);
                 reactor()->modifyFd(key(), fd, NotifyOn::Read, Polling::Mode::Edge);
+                stop = true;
             }
         };
 
-        bool halt = false;
         size_t totalWritten = buffer.offset();
         for (;;) {
             ssize_t bytesWritten = 0;
@@ -228,20 +229,19 @@ Transport::asyncWriteImpl(Fd fd)
                 else {
                     cleanUp();
                     deferred.reject(Pistache::Error::system("Could not write data"));
-                    halt = true;
                 }
                 break;
             }
             else {
                 totalWritten += bytesWritten;
                 if (totalWritten >= buffer.size()) {
-                    cleanUp();
-
                     if (buffer.isFile()) {
                         // done with the file buffer, nothing else knows whether to
                         // close it with the way the code is written.
                         ::close(buffer.fd());
                     }
+
+                    cleanUp();
 
                     // Cast to match the type of defered template
                     // to avoid a BadType exception
@@ -250,7 +250,6 @@ Transport::asyncWriteImpl(Fd fd)
                 }
             }
         }
-        if (halt) break;
     }
 }
 
