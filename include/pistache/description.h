@@ -218,7 +218,7 @@ struct PathDecl {
 };
 
 struct Path {
-    Path(std::string path, Http::Method method, std::string description);
+    Path(std::string value, Http::Method method, std::string description);
 
     std::string value;
     Http::Method method;
@@ -364,7 +364,7 @@ private:
 struct SubPath {
     SubPath(std::string prefix, PathGroup* paths);
 
-    PathBuilder route(std::string path, Http::Method method, std::string description = "");
+    PathBuilder route(std::string name, Http::Method method, std::string description = "");
     PathBuilder route(PathDecl fragment, std::string description = "");
 
     SubPath path(std::string prefix);

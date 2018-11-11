@@ -73,7 +73,7 @@ struct Connection : public std::enable_shared_from_this<Connection> {
         Connected
     };
 
-    void connect(Address addr);
+    void connect(const Address& addr);
     void close();
     bool isIdle() const;
     bool isConnected() const;

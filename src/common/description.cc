@@ -56,8 +56,7 @@ PathDecl::PathDecl(
     , method(method)
 { }
 
-Path::Path(
-        std::string value, Http::Method method, std::string description)
+Path::Path(std::string value, Http::Method method, std::string description)
     : value(std::move(value))
     , method(method)
     , description(std::move(description))
