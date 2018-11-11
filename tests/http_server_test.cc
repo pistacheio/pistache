@@ -216,8 +216,7 @@ TEST(http_server_test, multiple_client_with_different_requests_to_multithreaded_
     if (hardware_concurrency() > 1)
     {
         ASSERT_EQ(res1, 0);
-        // TODO: Uncomment it after fixing bug in server
-        //ASSERT_EQ(res2, SECOND_CLIENT_REQUEST_SIZE);
+        ASSERT_EQ(res2, SECOND_CLIENT_REQUEST_SIZE);
     }
     else
     {
