@@ -157,7 +157,7 @@ TEST(http_server_test, multiple_client_with_different_requests_to_multithreaded_
                                         FIRST_CLIENT_REQUEST_SIZE,
                                         server_address + SPECIAL_PAGE,
                                         SIX_SECONDS_DELAY / 2));
-    const int SECOND_CLIENT_REQUEST_SIZE = 3;
+    const int SECOND_CLIENT_REQUEST_SIZE = 2;
     std::future<int> result2(std::async(clientLogicFunc,
                                         SECOND_CLIENT_REQUEST_SIZE,
                                         server_address,
