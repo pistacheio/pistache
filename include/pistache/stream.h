@@ -13,6 +13,7 @@
 #include <vector>
 #include <limits>
 #include <iostream>
+#include <string>
 
 #include <pistache/os.h>
 
@@ -158,7 +159,6 @@ struct FileBuffer {
         , size_()
     { }
 
-    FileBuffer(const char* fileName);
     FileBuffer(const std::string& fileName);
 
     std::string fileName() const { return fileName_; }
@@ -166,7 +166,6 @@ struct FileBuffer {
     size_t size() const { return size_; }
 
 private:
-    void init(const char* fileName);
     std::string fileName_;
     Fd fd_;
     size_t size_;

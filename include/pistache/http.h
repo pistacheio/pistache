@@ -13,6 +13,7 @@
 #include <sstream>
 #include <algorithm>
 #include <memory>
+#include <string>
 
 #include <sys/timerfd.h>
 
@@ -443,7 +444,7 @@ class ResponseWriter : public Response {
 public:
     static constexpr size_t DefaultStreamSize = 512;
 
-    friend Async::Promise<ssize_t> serveFile(ResponseWriter&, const char *, const Mime::MediaType&);
+    friend Async::Promise<ssize_t> serveFile(ResponseWriter&, const std::string&, const Mime::MediaType&);
 
     friend class Handler;
     friend class Timeout;
@@ -602,7 +603,7 @@ private:
 };
 
 Async::Promise<ssize_t> serveFile(
-        ResponseWriter& response, const char *fileName,
+        ResponseWriter& response, const std::string& fileName,
         const Mime::MediaType& contentType = Mime::MediaType());
 
 namespace Private {
