@@ -8,6 +8,7 @@
 #include <pistache/common.h>
 #include <pistache/os.h>
 #include <pistache/transport.h>
+#include <pistache/errors.h>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -225,8 +226,18 @@ Listener::run() {
                 else {
                     if (event.flags.hasFlag(Polling::NotifyOn::Read)) {
                         auto fd = event.tag.value();
-                        if (static_cast<ssize_t>(fd) == listen_fd)
-                            handleNewConnection();
+                        if (static_cast<ssize_t>(fd) == listen_fd) {
+                            try {
+                                handleNewConnection();
+                            }
+                            catch (SocketError& ex) {
+                                std::cerr << "Server: " << ex.what() << std::endl;
+                            }
+                            catch (ServerError& ex) {
+                                std::cerr << "Server: " << ex.what() << std::endl;
+                                throw;
+                            }
+                        }
                     }
                 }
             }
@@ -313,7 +324,10 @@ Listener::handleNewConnection() {
     socklen_t peer_addr_len = sizeof(peer_addr);
     int client_fd = ::accept(listen_fd, (struct sockaddr *)&peer_addr, &peer_addr_len);
     if (client_fd < 0) {
-        throw std::runtime_error(strerror(errno));
+        if (errno == EBADF || errno == ENOTSOCK)
+            throw ServerError(strerror(errno));
+        else
+            throw SocketError(strerror(errno));
     }
 
     make_non_blocking(client_fd);
