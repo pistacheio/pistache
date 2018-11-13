@@ -238,9 +238,9 @@ namespace Async {
                 return *reinterpret_cast<T*>(&storage);
             }
 
-            bool isVoid() const { return false; }
+            bool isVoid() const override { return false; }
 
-            void *memory() {
+            void *memory() override {
                 return &storage;
             }
         };
@@ -251,9 +251,9 @@ namespace Async {
                 : Core(State::Pending, TypeId::of<void>())
             { }
 
-            bool isVoid() const { return true; }
+            bool isVoid() const override { return true; }
 
-            void *memory() {
+            void *memory() override {
                 return nullptr;
             }
         };
@@ -266,7 +266,7 @@ namespace Async {
                 , chain_(chain)
             { }
 
-            void resolve(const std::shared_ptr<Core>& core) {
+            void resolve(const std::shared_ptr<Core>& core) override {
                 if (resolveCount_ >= 1)
                     throw Error("Resolve must not be called more than once");
 
@@ -274,7 +274,7 @@ namespace Async {
                 ++resolveCount_;
             }
 
-            void reject(const std::shared_ptr<Core>& core) {
+            void reject(const std::shared_ptr<Core>& core) override {
                 if (rejectCount_ >= 1)
                     throw Error("Reject must not be called more than once");
 
@@ -1009,9 +1009,9 @@ namespace Async {
             return Promise<T>(std::move(core));
         }
 
-        bool isPending() const { return core_->state == State::Pending; }
-        bool isFulfilled() const { return core_->state == State::Fulfilled; }
-        bool isRejected() const { return core_->state == State::Rejected; }
+        bool isPending() const override { return core_->state == State::Pending; }
+        bool isFulfilled() const override { return core_->state == State::Fulfilled; }
+        bool isRejected() const override { return core_->state == State::Rejected; }
 
         template<typename ResolveFunc, typename RejectFunc>
         auto

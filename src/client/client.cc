@@ -358,7 +358,7 @@ Transport::handleTimeout(const std::shared_ptr<Connection>& connection) {
 }
 
 void
-Connection::connect(Address addr)
+Connection::connect(const Address& addr)
 {
     struct addrinfo hints;
     struct addrinfo *addrs;
