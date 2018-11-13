@@ -5,7 +5,7 @@ script:
     - mkdir build
     - cd build
     - cmake -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_TESTS=true ..
-    - make all test
+    - make all test ARGS="-V"
 compiler:
     - clang
     - gcc-5

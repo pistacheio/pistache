@@ -44,59 +44,15 @@ struct SlowHandlerOnSpecialPage : public Http::Handler {
     int delay_;
 };
 
-TEST(http_server_test, client_disconnection_on_timeout_from_single_threaded_server) {
-    const std::string address = "localhost:9095";
 
-    Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
-    auto server_opts = Http::Endpoint::options().flags(flags);
-    server.init(server_opts);
-    const int SEVEN_SECONDS_DELAY = 6;
-    server.setHandler(Http::make_handler<HelloHandlerWithDelay>(SEVEN_SECONDS_DELAY));
-    server.serveThreaded();
-
+int clientLogicFunc(int response_size, const std::string& server_page, int wait_seconds) {
     Http::Client client;
     client.init();
 
     std::vector<Async::Promise<Http::Response>> responses;
-    auto rb = client.get(address);
-    auto response = rb.send();
-    bool done = false;
-    response.then([&](Http::Response rsp) {
-        if (rsp.code() == Http::Code::Ok)
-            done = true;
-        }, Async::IgnoreException);
-    responses.push_back(std::move(response));
-
-    auto sync = Async::whenAll(responses.begin(), responses.end());
-    Async::Barrier<std::vector<Http::Response>> barrier(sync);
-    barrier.wait_for(std::chrono::seconds(5));
-
-    server.shutdown();
-    client.shutdown();
-
-    ASSERT_FALSE(done);
-}
-
-TEST(http_server_test, client_multiple_requests_disconnection_on_timeout_from_single_threaded_server) {
-    const std::string address = "localhost:9096";
-
-    Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
-    auto server_opts = Http::Endpoint::options().flags(flags);
-    server.init(server_opts);
-    const int SEVEN_SECONDS_DELAY = 6;
-    server.setHandler(Http::make_handler<HelloHandlerWithDelay>(SEVEN_SECONDS_DELAY));
-    server.serveThreaded();
-
-    Http::Client client;
-    client.init();
-
-    std::vector<Async::Promise<Http::Response>> responses;
-    auto rb = client.get(address);
+    auto rb = client.get(server_page);
     int counter = 0;
-    const int RESPONSE_SIZE = 3;
-    for (int i = 0; i < RESPONSE_SIZE; ++i)
+    for (int i = 0; i < response_size; ++i)
     {
         auto response = rb.send();
         response.then([&](Http::Response rsp) {
@@ -108,54 +64,73 @@ TEST(http_server_test, client_multiple_requests_disconnection_on_timeout_from_si
 
     auto sync = Async::whenAll(responses.begin(), responses.end());
     Async::Barrier<std::vector<Http::Response>> barrier(sync);
-    barrier.wait_for(std::chrono::seconds(5));
+    barrier.wait_for(std::chrono::seconds(wait_seconds));
+
+    client.shutdown();
+
+    return counter;
+}
+
+TEST(http_server_test, client_disconnection_on_timeout_from_single_threaded_server) {
+    const std::string server_address = "localhost:9095";
+
+    Http::Endpoint server(server_address);
+    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto server_opts = Http::Endpoint::options().flags(flags);
+    server.init(server_opts);
+    const int SIX_SECONDS_DELAY = 6;
+    server.setHandler(Http::make_handler<HelloHandlerWithDelay>(SIX_SECONDS_DELAY));
+    server.serveThreaded();
+
+    const int CLIENT_REQUEST_SIZE = 1;
+    int counter = clientLogicFunc(CLIENT_REQUEST_SIZE, server_address, SIX_SECONDS_DELAY);
 
     server.shutdown();
-    client.shutdown();
+
+    ASSERT_EQ(counter, 0);
+}
+
+TEST(http_server_test, client_multiple_requests_disconnection_on_timeout_from_single_threaded_server) {
+    const std::string server_address = "localhost:9096";
+
+    Http::Endpoint server(server_address);
+    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto server_opts = Http::Endpoint::options().flags(flags);
+    server.init(server_opts);
+
+    const int SIX_SECONDS_DELAY = 6;
+    server.setHandler(Http::make_handler<HelloHandlerWithDelay>(SIX_SECONDS_DELAY));
+    server.serveThreaded();
+
+    const int CLIENT_REQUEST_SIZE = 3;
+    int counter = clientLogicFunc(CLIENT_REQUEST_SIZE, server_address, SIX_SECONDS_DELAY);
+
+    server.shutdown();
 
     ASSERT_EQ(counter, 0);
 }
 
 TEST(http_server_test, multiple_client_with_requests_to_multithreaded_server) {
-    const std::string address = "localhost:9097";
+    const std::string server_address = "localhost:9097";
 
-    Http::Endpoint server(address);
+    Http::Endpoint server(server_address);
     auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
     auto server_opts = Http::Endpoint::options().flags(flags).threads(3);
     server.init(server_opts);
     server.setHandler(Http::make_handler<HelloHandlerWithDelay>());
     server.serveThreaded();
 
-    auto client_logic = [&address](int response_size) {
-        Http::Client client;
-        client.init();
-
-        std::vector<Async::Promise<Http::Response>> responses;
-        auto rb = client.get(address);
-        int counter = 0;
-        for (int i = 0; i < response_size; ++i)
-        {
-            auto response = rb.send();
-            response.then([&](Http::Response rsp) {
-                if (rsp.code() == Http::Code::Ok)
-                    ++counter;
-                }, Async::IgnoreException);
-            responses.push_back(std::move(response));
-        }
-
-        auto sync = Async::whenAll(responses.begin(), responses.end());
-        Async::Barrier<std::vector<Http::Response>> barrier(sync);
-        barrier.wait_for(std::chrono::seconds(5));
-
-        client.shutdown();
-
-        return counter;
-    };
-
+    const int SIX_SECONDS_TIMOUT = 6;
     const int FIRST_CLIENT_REQUEST_SIZE = 4;
-    std::future<int> result1(std::async(client_logic, FIRST_CLIENT_REQUEST_SIZE));
+    std::future<int> result1(std::async(clientLogicFunc,
+                                        FIRST_CLIENT_REQUEST_SIZE,
+                                        server_address,
+                                        SIX_SECONDS_TIMOUT));
     const int SECOND_CLIENT_REQUEST_SIZE = 5;
-    std::future<int> result2(std::async(client_logic, SECOND_CLIENT_REQUEST_SIZE));
+    std::future<int> result2(std::async(clientLogicFunc,
+                                        SECOND_CLIENT_REQUEST_SIZE,
+                                        server_address,
+                                        SIX_SECONDS_TIMOUT));
 
     int res1 = result1.get();
     int res2 = result2.get();
@@ -167,46 +142,26 @@ TEST(http_server_test, multiple_client_with_requests_to_multithreaded_server) {
 }
 
 TEST(http_server_test, multiple_client_with_different_requests_to_multithreaded_server) {
-    const std::string address = "localhost:9098";
+    const std::string server_address = "localhost:9098";
 
-    Http::Endpoint server(address);
+    Http::Endpoint server(server_address);
     auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
     auto server_opts = Http::Endpoint::options().flags(flags).threads(3);
     server.init(server_opts);
-    const int SEVEN_SECONDS_DELAY = 6;
-    server.setHandler(Http::make_handler<SlowHandlerOnSpecialPage>(SEVEN_SECONDS_DELAY));
+    const int SIX_SECONDS_DELAY = 6;
+    server.setHandler(Http::make_handler<SlowHandlerOnSpecialPage>(SIX_SECONDS_DELAY));
     server.serveThreaded();
 
-    auto client_logic = [&address](int response_size, const std::string& page) {
-        Http::Client client;
-        client.init();
-
-        std::vector<Async::Promise<Http::Response>> responses;
-        auto rb = client.get(address + page);
-        int counter = 0;
-        for (int i = 0; i < response_size; ++i)
-        {
-            auto response = rb.send();
-            response.then([&](Http::Response rsp) {
-                if (rsp.code() == Http::Code::Ok)
-                    ++counter;
-                }, Async::IgnoreException);
-            responses.push_back(std::move(response));
-        }
-
-        auto sync = Async::whenAll(responses.begin(), responses.end());
-        Async::Barrier<std::vector<Http::Response>> barrier(sync);
-        barrier.wait_for(std::chrono::seconds(5));
-
-        client.shutdown();
-
-        return counter;
-    };
-
     const int FIRST_CLIENT_REQUEST_SIZE = 1;
-    std::future<int> result1(std::async(client_logic, FIRST_CLIENT_REQUEST_SIZE, SPECIAL_PAGE));
+    std::future<int> result1(std::async(clientLogicFunc,
+                                        FIRST_CLIENT_REQUEST_SIZE,
+                                        server_address + SPECIAL_PAGE,
+                                        SIX_SECONDS_DELAY / 2));
     const int SECOND_CLIENT_REQUEST_SIZE = 2;
-    std::future<int> result2(std::async(client_logic, SECOND_CLIENT_REQUEST_SIZE, ""));
+    std::future<int> result2(std::async(clientLogicFunc,
+                                        SECOND_CLIENT_REQUEST_SIZE,
+                                        server_address,
+                                        SIX_SECONDS_DELAY * 2));
 
     int res1 = result1.get();
     int res2 = result2.get();
