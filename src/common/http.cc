@@ -681,11 +681,11 @@ ResponseWriter::putOnWire(const char* data, size_t len)
 }
 
 Async::Promise<ssize_t>
-serveFile(ResponseWriter& response, const char* fileName, const Mime::MediaType& contentType)
+serveFile(ResponseWriter& response, const std::string& fileName, const Mime::MediaType& contentType)
 {
     struct stat sb;
 
-    int fd = open(fileName, O_RDONLY);
+    int fd = open(fileName.c_str(), O_RDONLY);
     if (fd == -1) {
         std::string str_error(strerror(errno));
         if(errno == ENOENT) {
@@ -731,7 +731,7 @@ serveFile(ResponseWriter& response, const char* fileName, const Mime::MediaType&
     if (contentType.isValid()) {
         setContentType(contentType);
     } else {
-        auto mime = Mime::MediaType::fromFile(fileName);
+        auto mime = Mime::MediaType::fromFile(fileName.c_str());
         if (mime.isValid())
             setContentType(mime);
     }

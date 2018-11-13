@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <algorithm>
+#include <string>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -15,25 +16,15 @@
 
 namespace Pistache {
 
-FileBuffer::FileBuffer(const char* fileName)
-    : fileName_(fileName)
-{
-    init(fileName);
-}
 
 FileBuffer::FileBuffer(const std::string& fileName)
     : fileName_(fileName)
 {
-    init(fileName.c_str());
-}
-
-void
-FileBuffer::init(const char* fileName)
-{
-    if (!fileName) {
-        throw std::runtime_error("Missing fileName");
+    if (fileName.empty()) {
+        throw std::runtime_error("Empty fileName");
     }
-    int fd = open(fileName, O_RDONLY);
+
+    int fd = open(fileName.c_str(), O_RDONLY);
     if (fd == -1) {
         throw std::runtime_error("Could not open file");
     }

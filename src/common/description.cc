@@ -461,14 +461,14 @@ Swagger::install(Rest::Router& router) {
                 response.send(Http::Code::Moved_Permanently);
             } else {
                 auto index = uiDir.join("index.html");
-                Http::serveFile(response, index.c_str());
+                Http::serveFile(response, index);
             }
             return Route::Result::Ok;
         }
         else if (ui.isPrefix(req)) {
             auto file = ui.stripPrefix(req);
             auto path = uiDir.join(file);
-            Http::serveFile(response, path.c_str());
+            Http::serveFile(response, path);
             return Route::Result::Ok;
         }
 
