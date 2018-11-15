@@ -65,6 +65,16 @@ endif()
         @ONLY
     )
 
+# Set libraries...
+
+    # Minimum...
+    set(LIBS "-lpistache -lpthread")
+
+    # If building with OpenSSL support...
+    if(PISTACHE_SSL)
+        set(LIBS "${LIBS} -lssl -lcrypto")
+    endif(PISTACHE_SSL)
+
 if(PISTACHE_INSTALL)
     # Install header...
     install (
@@ -77,10 +87,11 @@ endif()
 
 # Configure the pkg-config metadata...
 
-    # Initialize the metadata variables to support remote builds...
+    # Initialize the metadata variables and to support remote builds...
     set(prefix         ${CMAKE_INSTALL_PREFIX})
     set(exec_prefix    ${CMAKE_INSTALL_PREFIX}/bin)
     set(libdir         ${CMAKE_INSTALL_PREFIX}/lib)
+    set(libs           ${LIBS})
     set(includedir     ${CMAKE_INSTALL_PREFIX}/include)
     set(version        ${VERSION_MAJOR}.${VERSION_MINOR})
 
