@@ -8,7 +8,7 @@ URL: http://pistache.io/
 Description: An elegant C++ REST framework.
 Version: @version@
 Requires:
-Libs: -L'${libdir}/' -lpistache -lpthread
+Libs: -L'${libdir}/' @libs@
 Libs.private:
 Cflags: -I'${includedir}/'
 
