@@ -55,7 +55,10 @@ Transport::handleNewPeer(const std::shared_ptr<Tcp::Peer>& peer) {
         handlePeer(peer);
     }
     int fd = peer->fd();
-    toWrite.emplace(fd, std::deque<WriteEntry>{});
+    {
+        std::lock_guard<std::mutex> lock(toWriteLock);
+        toWrite.emplace(fd, std::deque<WriteEntry>{});
+    }
 }
 
 void
@@ -94,9 +97,12 @@ Transport::onReady(const Aio::FdSet& fds) {
             auto tag = entry.getTag();
             auto fd = tag.value();
 
-            auto it = toWrite.find(fd);
-            if (it == std::end(toWrite)) {
-                throw std::runtime_error("Assertion Error: could not find write data");
+            {
+                std::lock_guard<std::mutex> lock(toWriteLock);
+                auto it = toWrite.find(fd);
+                if (it == std::end(toWrite)) {
+                    throw std::runtime_error("Assertion Error: could not find write data");
+                }
             }
 
             reactor()->modifyFd(key(), fd, NotifyOn::Read, Polling::Mode::Edge);
@@ -163,18 +169,21 @@ Transport::handlePeerDisconnection(const std::shared_ptr<Peer>& peer) {
 
     peers.erase(it);
 
-    // Clean up buffers
-    auto & wq = toWrite[fd];
-    while (wq.size() > 0) {
-        auto & entry = wq.front();
-        const BufferHolder & buffer = entry.buffer;
-        if (buffer.isRaw()) {
-            auto raw = buffer.raw();
-            if (raw.isOwned) delete[] raw.data;
+    {
+        // Clean up buffers
+        std::lock_guard<std::mutex> lock(toWriteLock);
+        auto & wq = toWrite[fd];
+        while (wq.size() > 0) {
+            auto & entry = wq.front();
+            const BufferHolder & buffer = entry.buffer;
+            if (buffer.isRaw()) {
+                auto raw = buffer.raw();
+                if (raw.isOwned) delete[] raw.data;
+            }
+            wq.pop_front();
         }
-        wq.pop_front();
+        toWrite.erase(fd);
     }
-    toWrite.erase(fd);
 
     close(fd);
 }
@@ -182,13 +191,19 @@ Transport::handlePeerDisconnection(const std::shared_ptr<Peer>& peer) {
 void
 Transport::asyncWriteImpl(Fd fd)
 {
-    auto it = toWrite.find(fd);
-
-    // cleanup will have been handled by handlePeerDisconnection
-    if (it == std::end(toWrite)) { return; }
-    auto & wq = it->second;
     bool stop = false;
-    while (!stop && wq.size() > 0) {
+    while (!stop) {
+        std::lock_guard<std::mutex> lock(toWriteLock);
+
+        auto it = toWrite.find(fd);
+
+        // cleanup will have been handled by handlePeerDisconnection
+        if (it == std::end(toWrite)) { return; }
+        auto & wq = it->second;
+        if (wq.size() == 0) {
+            break;
+        }
+
         auto & entry = wq.front();
         int flags    = entry.flags;
         const BufferHolder &buffer = entry.buffer;
@@ -314,7 +329,10 @@ Transport::handleWriteQueue() {
         auto fd = write.peerFd;
         if (!isPeerFd(fd)) continue;
 
-        toWrite[fd].push_back(std::move(write));
+        {
+            std::lock_guard<std::mutex> lock(toWriteLock);
+            toWrite[fd].push_back(std::move(write));
+        }
 
         reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
     }
