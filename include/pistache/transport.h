@@ -16,6 +16,7 @@
 #include <deque>
 #include <memory>
 #include <unordered_map>
+#include <mutex>
 
 namespace Pistache {
 namespace Tcp {
@@ -199,6 +200,7 @@ private:
 
     PollableQueue<WriteEntry> writesQueue;
     std::unordered_map<Fd, std::deque<WriteEntry> > toWrite;
+    std::mutex toWriteLock;
 
     PollableQueue<TimerEntry> timersQueue;
     std::unordered_map<Fd, TimerEntry> timers;
