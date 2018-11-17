@@ -725,7 +725,7 @@ RequestBuilder::body(std::string&& val) {
 }
 
 RequestBuilder&
-RequestBuilder::timeout(std::chrono::milliseconds timeout) {
+RequestBuilder::timeout(std::chrono::milliseconds val) {
     timeout_ = timeout;
     return *this;
 }
