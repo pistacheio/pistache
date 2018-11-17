@@ -157,9 +157,9 @@ public:
     void closeIdleConnections(const std::string& domain);
 
 private:
-    typedef std::vector<std::shared_ptr<Connection>> Connections;
-    typedef std::mutex Lock;
-    typedef std::lock_guard<Lock> Guard;
+    using Connections = std::vector<std::shared_ptr<Connection>>;
+    using Lock = std::mutex;
+    using Guard = std::lock_guard<Lock>;
 
     mutable Lock connsLock;
     std::unordered_map<std::string, Connections> conns;
@@ -296,7 +296,7 @@ public:
     RequestBuilder& body(const std::string& val);
     RequestBuilder& body(std::string&& val);
 
-    RequestBuilder& timeout(std::chrono::milliseconds value);
+    RequestBuilder& timeout(std::chrono::milliseconds val);
 
     Async::Promise<Response> send();
 
@@ -361,8 +361,8 @@ private:
 
    std::atomic<uint64_t> ioIndex;
 
-   typedef std::mutex Lock;
-   typedef std::lock_guard<Lock> Guard;
+   using Lock = std::mutex;
+   using Guard = std::lock_guard<Lock>;
 
    Lock queuesLock;
    std::unordered_map<std::string, MPMCQueue<std::shared_ptr<Connection::RequestData>, 2048>> requestsQueues;
@@ -370,7 +370,7 @@ private:
    RequestBuilder prepareRequest(const std::string& resource, Http::Method method);
 
    Async::Promise<Response> doRequest(
-           Http::Request req,
+           Http::Request request,
            std::chrono::milliseconds timeout);
 
    void processRequestQueue();

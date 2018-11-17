@@ -436,9 +436,9 @@ Connection::hasTransport() const {
 }
 
 void
-Connection::handleResponsePacket(const char* buffer, size_t bytes) {
+Connection::handleResponsePacket(const char* buffer, size_t totalBytes) {
 
-    parser_.feed(buffer, bytes);
+    parser_.feed(buffer, totalBytes);
     if (parser_.parse() == Private::State::Done) {
         if (!inflightRequests.empty()) {
             auto req = std::move(inflightRequests.front());
@@ -695,8 +695,8 @@ RequestBuilder::resource(const std::string& val) {
 }
 
 RequestBuilder&
-RequestBuilder::params(const Uri::Query& params) {
-    request_.query_ = params;
+RequestBuilder::params(const Uri::Query& query) {
+    request_.query_ = query;
     return *this;
 }
 
@@ -725,8 +725,8 @@ RequestBuilder::body(std::string&& val) {
 }
 
 RequestBuilder&
-RequestBuilder::timeout(std::chrono::milliseconds timeout) {
-    timeout_ = timeout;
+RequestBuilder::timeout(std::chrono::milliseconds val) {
+    timeout_ = val;
     return *this;
 }
 

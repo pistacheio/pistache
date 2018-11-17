@@ -56,7 +56,7 @@ Transport::handleNewPeer(const std::shared_ptr<Tcp::Peer>& peer) {
     }
     int fd = peer->fd();
     {
-        std::lock_guard<std::mutex> lock(toWriteLock);
+        Guard guard(toWriteLock);
         toWrite.emplace(fd, std::deque<WriteEntry>{});
     }
 }
@@ -98,7 +98,7 @@ Transport::onReady(const Aio::FdSet& fds) {
             auto fd = tag.value();
 
             {
-                std::lock_guard<std::mutex> lock(toWriteLock);
+                Guard guard(toWriteLock);
                 auto it = toWrite.find(fd);
                 if (it == std::end(toWrite)) {
                     throw std::runtime_error("Assertion Error: could not find write data");
@@ -171,7 +171,7 @@ Transport::handlePeerDisconnection(const std::shared_ptr<Peer>& peer) {
 
     {
         // Clean up buffers
-        std::lock_guard<std::mutex> lock(toWriteLock);
+        Guard guard(toWriteLock);
         auto & wq = toWrite[fd];
         while (wq.size() > 0) {
             auto & entry = wq.front();
@@ -193,7 +193,7 @@ Transport::asyncWriteImpl(Fd fd)
 {
     bool stop = false;
     while (!stop) {
-        std::lock_guard<std::mutex> lock(toWriteLock);
+        Guard guard(toWriteLock);
 
         auto it = toWrite.find(fd);
 
@@ -330,7 +330,7 @@ Transport::handleWriteQueue() {
         if (!isPeerFd(fd)) continue;
 
         {
-            std::lock_guard<std::mutex> lock(toWriteLock);
+            Guard guard(toWriteLock);
             toWrite[fd].push_back(std::move(write));
         }
 
