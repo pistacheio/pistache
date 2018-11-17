@@ -26,7 +26,9 @@ class Handler;
 
 class Transport : public Aio::Handler {
 public:
-    Transport(const std::shared_ptr<Tcp::Handler>& handler);
+    explicit Transport(const std::shared_ptr<Tcp::Handler>& handler);
+    Transport(const Transport&) = delete;
+    Transport& operator=(const Transport&) = delete;
 
     void init(const std::shared_ptr<Tcp::Handler>& handler);
 
@@ -197,10 +199,12 @@ private:
 
         std::shared_ptr<Peer> peer;
     };
+    using Lock = std::mutex;
+    using Guard = std::lock_guard<Lock>;
 
     PollableQueue<WriteEntry> writesQueue;
-    std::unordered_map<Fd, std::deque<WriteEntry> > toWrite;
-    std::mutex toWriteLock;
+    std::unordered_map<Fd, std::deque<WriteEntry>> toWrite;
+    Lock toWriteLock;
 
     PollableQueue<TimerEntry> timersQueue;
     std::unordered_map<Fd, TimerEntry> timers;
