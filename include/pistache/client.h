@@ -157,7 +157,7 @@ public:
     void closeIdleConnections(const std::string& domain);
 
 private:
-    using Connections = std::vector<std::shared_ptr<Connection>> ;
+    using Connections = std::vector<std::shared_ptr<Connection>>;
     using Lock = std::mutex;
     using Guard = std::lock_guard<Lock>;
 
