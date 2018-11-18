@@ -298,9 +298,7 @@ namespace Private {
                 message->cookies_.addFromRaw(cursor.offset(start), cursor.diff(start));
             }
             else if (name == "Set-Cookie") {
-                auto c = Cookie::fromRaw(cursor.offset(start), cursor.diff(start));
-                message->cookies_.add(c);
-                std::cout << "[HeadersStep::apply] Set-Cookie: " << c.name << " " << c.value << "\n";
+                message->cookies_.add(Cookie::fromRaw(cursor.offset(start), cursor.diff(start)));
             }
             else if (Header::Registry::isRegistered(name)) {
                 std::shared_ptr<Header::Header> header = Header::Registry::makeHeader(name);
