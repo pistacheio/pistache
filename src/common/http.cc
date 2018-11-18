@@ -675,7 +675,6 @@ ResponseWriter::putOnWire(const char* data, size_t len)
 #undef OUT
 
         auto fd = peer()->fd();
-        std::cout << "ResponseWriter -> buffer sent to: " << buffer.data << "\n";
         return transport_->asyncWrite(fd, buffer);
 
     } catch (const std::runtime_error& e) {
