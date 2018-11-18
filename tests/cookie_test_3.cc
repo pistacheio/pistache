@@ -17,7 +17,7 @@ struct CookieHandler : public Http::Handler {
         // Synthetic behaviour, just for testing purposes
         for(auto&& cookie: request.cookies()) {
             response.cookies().add(cookie);
-    }
+        }
         response.send(Http::Code::Ok, "Ok");
     }
 };
