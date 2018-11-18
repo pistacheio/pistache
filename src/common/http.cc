@@ -297,7 +297,11 @@ namespace Private {
                 message->cookies_.removeAllCookies(); // removing existing cookies before re-adding them.
                 message->cookies_.addFromRaw(cursor.offset(start), cursor.diff(start));
             }
-
+            else if (name == "Set-Cookie") {
+                auto c = Cookie::fromRaw(cursor.offset(start), cursor.diff(start));
+                message->cookies_.add(c);
+                std::cout << "[HeadersStep::apply] Set-Cookie: " << c.name << " " << c.value << "\n";
+            }
             else if (Header::Registry::isRegistered(name)) {
                 std::shared_ptr<Header::Header> header = Header::Registry::makeHeader(name);
                 header->parseRaw(cursor.offset(start), cursor.diff(start));
@@ -673,6 +677,7 @@ ResponseWriter::putOnWire(const char* data, size_t len)
 #undef OUT
 
         auto fd = peer()->fd();
+        std::cout << "ResponseWriter -> buffer sent to: " << buffer.data << "\n";
         return transport_->asyncWrite(fd, buffer);
 
     } catch (const std::runtime_error& e) {
