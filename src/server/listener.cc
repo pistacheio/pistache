@@ -219,25 +219,22 @@ Listener::run() {
             if (errno == EINTR && g_listen_fd == -1) return;
             throw Error::system("Polling");
         }
-        else if (ready_fds > 0) {
-            for (const auto& event: events) {
-                if (event.tag == shutdownFd.tag())
-                    return;
-                else {
-                    if (event.flags.hasFlag(Polling::NotifyOn::Read)) {
-                        auto fd = event.tag.value();
-                        if (static_cast<ssize_t>(fd) == listen_fd) {
-                            try {
-                                handleNewConnection();
-                            }
-                            catch (SocketError& ex) {
-                                std::cerr << "Server: " << ex.what() << std::endl;
-                            }
-                            catch (ServerError& ex) {
-                                std::cerr << "Server: " << ex.what() << std::endl;
-                                throw;
-                            }
-                        }
+        for (const auto& event: events) {
+            if (event.tag == shutdownFd.tag())
+                return;
+
+            if (event.flags.hasFlag(Polling::NotifyOn::Read)) {
+                auto fd = event.tag.value();
+                if (static_cast<ssize_t>(fd) == listen_fd) {
+                    try {
+                        handleNewConnection();
+                    }
+                    catch (SocketError& ex) {
+                        std::cerr << "Server: " << ex.what() << std::endl;
+                    }
+                    catch (ServerError& ex) {
+                        std::cerr << "Server: " << ex.what() << std::endl;
+                        throw;
                     }
                 }
             }
