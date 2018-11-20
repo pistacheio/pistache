@@ -116,7 +116,7 @@ public:
         }
 
     private:
-        Key(uint64_t data);
+        explicit Key(uint64_t data);
         uint64_t data_;
     };
 
@@ -134,7 +134,7 @@ public:
             const Key& key, Fd fd, Polling::NotifyOn interest, Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level);
     void registerFdOneShot(
-            const Key& key, Fd fd, Polling::NotifyOn intereset, Polling::Tag tag,
+            const Key& key, Fd fd, Polling::NotifyOn interest, Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level);
 
     void registerFd(
@@ -176,7 +176,7 @@ public:
 
 class AsyncContext : public ExecutionContext {
 public:
-    AsyncContext(size_t threads)
+    explicit AsyncContext(size_t threads)
         : threads_(threads)
     { }
 
@@ -216,7 +216,7 @@ public:
     };
 
     virtual void onReady(const FdSet& fds) = 0;
-    virtual void registerPoller(Polling::Epoll& /*poller*/) { }
+    virtual void registerPoller(Polling::Epoll& poller) = 0;
 
     Reactor* reactor() const {
         return reactor_;
