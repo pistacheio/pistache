@@ -114,6 +114,8 @@ namespace std {
 
         size_type rfind(string_view v, size_type pos = npos) const noexcept {
             if (v.size_ <= size_) {
+                if (pos > size_)
+                    pos = size_;
                 size_t start = size_ - v.size_;
                 if (pos != npos)
                     start = pos;

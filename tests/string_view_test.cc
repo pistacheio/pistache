@@ -77,6 +77,12 @@ TEST(string_view_test, rfind_test_2) {
 
     ASSERT_EQ(orig4.rfind(find4), std::size_t(0));
     ASSERT_EQ(orig4.rfind(find4, 1), std::size_t(0));
+
+    std::string_view orig5 ("a");
+    std::string_view find5 ("b");
+
+    ASSERT_EQ(orig5.rfind(find5), std::size_t(-1));
+    ASSERT_EQ(orig5.rfind(find5, 4), std::size_t(-1));
 }
 
 TEST(string_view_test, emptiness) {
