@@ -53,6 +53,32 @@ TEST(string_view_test, rfind_test) {
     ASSERT_EQ(orig.rfind("set"), std::size_t(-1));
 }
 
+TEST(string_view_test, rfind_test_2) {
+    std::string_view orig1 ("e");
+    std::string_view find1 ("e");
+
+    ASSERT_EQ(orig1.rfind(find1), std::size_t(0));
+    ASSERT_EQ(orig1.rfind(find1, 1), std::size_t(0));
+
+    std::string_view orig2 ("e");
+    std::string_view find2 ("");
+
+    ASSERT_EQ(orig2.rfind(find2), std::size_t(1));
+    ASSERT_EQ(orig2.rfind(find2, 1), std::size_t(1));
+
+    std::string_view orig3 ("");
+    std::string_view find3 ("e");
+
+    ASSERT_EQ(orig3.rfind(find3), std::size_t(-1));
+    ASSERT_EQ(orig3.rfind(find3, 1), std::size_t(-1));
+
+    std::string_view orig4 ("");
+    std::string_view find4 ("");
+
+    ASSERT_EQ(orig4.rfind(find4), std::size_t(0));
+    ASSERT_EQ(orig4.rfind(find4, 1), std::size_t(0));
+}
+
 TEST(string_view_test, emptiness) {
     std::string_view e1;
     std::string_view e2 ("");
