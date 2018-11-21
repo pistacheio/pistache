@@ -115,7 +115,7 @@ namespace std {
         size_type rfind(string_view v, size_type pos = npos) const noexcept {
             if (v.size_ <= size_) {
                 size_t start = size_ - v.size_;
-                if (pos != std::string::npos)
+                if (pos != npos)
                     start = pos;
                 for (size_t offset = 0; offset <= pos; ++offset, --start) {
                     bool found = true;
@@ -130,7 +130,7 @@ namespace std {
                     }
                 }
             }
-            return std::string::npos;
+            return npos;
         }
 
         size_type rfind(char c, size_type pos = npos) const noexcept {
