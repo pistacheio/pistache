@@ -113,25 +113,27 @@ namespace std {
         }
 
         size_type rfind(string_view v, size_type pos = npos) const noexcept {
-            if (v.size_ <= size_) {
-                if (pos > size_)
-                    pos = size_;
-                size_t start = size_ - v.size_;
-                if (pos != npos)
-                    start = pos;
-                for (size_t offset = 0; offset <= pos; ++offset, --start) {
-                    bool found = true;
-                    for (size_t j = 0; j < v.size_; ++j) {
-                        if (data_[start + j] != v.data_[j]) {
-                            found = false;
-                            break;
-                        }
-                    }
-                    if (found) {
-                        return start;
+            if (v.size_ > size_)
+                return npos;
+
+            if (pos > size_)
+                pos = size_;
+            size_t start = size_ - v.size_;
+            if (pos != npos)
+                start = pos;
+            for (size_t offset = 0; offset <= pos; ++offset, --start) {
+                bool found = true;
+                for (size_t j = 0; j < v.size_; ++j) {
+                    if (data_[start + j] != v.data_[j]) {
+                        found = false;
+                        break;
                     }
                 }
+                if (found) {
+                    return start;
+                }
             }
+
             return npos;
         }
 
