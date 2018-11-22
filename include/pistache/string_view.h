@@ -11,7 +11,7 @@
 #           undef CUSTOM_STRING_VIEW
 #           include <experimental/string_view>
 			namespace std {
-				typedef experimental::string_view string_view;
+				using string_view = experimental::string_view;
 			}
 #       endif
 #   endif
@@ -25,7 +25,7 @@
 #include <stdexcept>
 #include <cstring>
 
-typedef std::size_t size_type;
+using size_type = std::size_t ;
 
 namespace std {
 
@@ -83,12 +83,25 @@ namespace std {
         operator=(const string_view &view) noexcept = default;
 
         size_type find(string_view v, size_type pos = 0) const noexcept {
-            for(; size_ - pos >= v.size_; pos++) {
-                string_view compare = substr(pos, v.size_);
-                if (v == compare) {
+            if (size_ < pos)
+                return npos;
+
+            if ((size_ - pos) < v.size_)
+                return npos;
+
+            for (; pos <= (size_ - v.size_); ++pos) {
+                bool found = true;
+                for (size_type i = 0; i < v.size_; ++i) {
+                    if (data_[pos + i] != v.data_[i]) {
+                        found = false;
+                        break;
+                    }
+                }
+                if (found) {
                     return pos;
                 }
             }
+
             return npos;
         }
 
@@ -105,16 +118,27 @@ namespace std {
         }
 
         size_type rfind(string_view v, size_type pos = npos) const noexcept {
-            if (pos >= size_) {
-                pos = size_ - v.size_;
-            }
+            if (v.size_ > size_)
+                return npos;
 
-            for(; pos != npos; pos--) {
-                string_view compare = substr(pos, v.size_);
-                if (v == compare) {
-                    return pos;
+            if (pos > size_)
+                pos = size_;
+            size_t start = size_ - v.size_;
+            if (pos != npos)
+                start = pos;
+            for (size_t offset = 0; offset <= pos; ++offset, --start) {
+                bool found = true;
+                for (size_t j = 0; j < v.size_; ++j) {
+                    if (data_[start + j] != v.data_[j]) {
+                        found = false;
+                        break;
+                    }
+                }
+                if (found) {
+                    return start;
                 }
             }
+
             return npos;
         }
 
