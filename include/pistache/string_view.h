@@ -83,20 +83,25 @@ namespace std {
         operator=(const string_view &view) noexcept = default;
 
         size_type find(string_view v, size_type pos = 0) const noexcept {
-            if (v.size_ <= (size_ - pos)) {
-                for (; pos <= (size_ - v.size_); ++pos) {
-                    bool found = true;
-                    for (size_type i = 0; i < v.size_; ++i) {
-                        if (data_[pos + i] != v.data_[i]) {
-                            found = false;
-                            break;
-                        }
-                    }
-                    if (found) {
-                        return pos;
+            if (size_ < pos)
+                return npos;
+
+            if ((size_ - pos) < v.size_)
+                return npos;
+
+            for (; pos <= (size_ - v.size_); ++pos) {
+                bool found = true;
+                for (size_type i = 0; i < v.size_; ++i) {
+                    if (data_[pos + i] != v.data_[i]) {
+                        found = false;
+                        break;
                     }
                 }
+                if (found) {
+                    return pos;
+                }
             }
+
             return npos;
         }
 

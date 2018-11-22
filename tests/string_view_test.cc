@@ -1,6 +1,9 @@
 #include "gtest/gtest.h"
 #include <pistache/string_view.h>
 
+#include <limits>
+#include <string>
+
 TEST(string_view_test, substr_test) {
     std::string_view orig ("test");
     std::string_view targ ("est");
@@ -34,6 +37,24 @@ TEST(string_view_test, find_test) {
     ASSERT_EQ(orig.find("set"), std::size_t(-1));
     ASSERT_EQ(orig.find("est", 2), std::size_t(-1));
     ASSERT_EQ(orig.find("est", 2, 2), std::size_t(-1));
+}
+
+TEST(string_view_test, find_test_2) {
+    std::string_view orig1 ("test");
+    std::string_view find1 ("est");
+    ASSERT_EQ(orig1.find(find1, std::size_t(-1)), std::size_t(-1));
+    ASSERT_EQ(orig1.find(find1, std::size_t(-1) - 2), std::size_t(-1));
+
+    std::string_view orig2 ("test");
+    std::string_view find2 ("");
+    ASSERT_EQ(orig2.find(find2, std::size_t(6)), std::size_t(-1));
+    ASSERT_EQ(orig2.find(find2, std::size_t(2)), std::size_t(2));
+    ASSERT_EQ(orig2.find(find2, std::size_t(-1)), std::size_t(-1));
+
+    std::string_view orig3 ("");
+    std::string_view find3 ("");
+    ASSERT_EQ(orig3.find(find3, std::size_t(0)), std::size_t(0));
+    ASSERT_EQ(orig3.find(find3, std::size_t(6)), std::size_t(-1));
 }
 
 TEST(string_view_test, rfind_test) {
