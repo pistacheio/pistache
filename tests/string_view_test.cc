@@ -1,7 +1,6 @@
 #include "gtest/gtest.h"
 #include <pistache/string_view.h>
 
-#include <limits>
 #include <string>
 
 TEST(string_view_test, substr_test) {

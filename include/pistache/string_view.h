@@ -11,7 +11,7 @@
 #           undef CUSTOM_STRING_VIEW
 #           include <experimental/string_view>
 			namespace std {
-				typedef experimental::string_view string_view;
+				using string_view = experimental::string_view;
 			}
 #       endif
 #   endif
@@ -25,7 +25,7 @@
 #include <stdexcept>
 #include <cstring>
 
-typedef std::size_t size_type;
+using size_type = std::size_t ;
 
 namespace std {
 
