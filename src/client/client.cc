@@ -89,15 +89,22 @@ namespace {
     bool writeCookies(const Http::CookieJar& cookies, DynamicStreamBuf& buf) {
         using Http::crlf;
 
-        std::ostream os(&buf);
+        std::vector<std::pair<std::string, std::string>> cookiesInfo;
         for (const auto& cookie: cookies) {
-            OUT(os << "Cookie: ");
-            OUT(cookie.write(os));
-            OUT(os << crlf);
+            cookiesInfo.emplace_back(cookie.name, cookie.value);
         }
 
-        return true;
+        std::ostream os(&buf);
+        OUT(os << "Cookie: ");
+        for (size_t i = 0; i < cookiesInfo.size(); ++i) {
+            if (i > 0) {
+                OUT(os << "; ");
+            }
+            OUT(os << cookiesInfo[i].first << "=" << cookiesInfo[i].second);
+        }
+        OUT(os << crlf);
 
+        return true;
     }
 
     bool writeRequest(const Http::Request& request, DynamicStreamBuf &buf) {

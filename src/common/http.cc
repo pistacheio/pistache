@@ -297,7 +297,9 @@ namespace Private {
                 message->cookies_.removeAllCookies(); // removing existing cookies before re-adding them.
                 message->cookies_.addFromRaw(cursor.offset(start), cursor.diff(start));
             }
-
+            else if (name == "Set-Cookie") {
+                message->cookies_.add(Cookie::fromRaw(cursor.offset(start), cursor.diff(start)));
+            }
             else if (Header::Registry::isRegistered(name)) {
                 std::shared_ptr<Header::Header> header = Header::Registry::makeHeader(name);
                 header->parseRaw(cursor.offset(start), cursor.diff(start));
