@@ -1,3 +1,4 @@
+#include <pistache/async.h>
 #include <pistache/client.h>
 #include <pistache/cookie.h>
 #include <pistache/endpoint.h>
@@ -7,6 +8,7 @@
 
 #include <chrono>
 #include <unordered_map>
+#include <string>
 
 using namespace Pistache;
 
@@ -22,8 +24,46 @@ struct CookieHandler : public Http::Handler {
     }
 };
 
-TEST(http_client_test, one_client_with_one_request_with_cookies) {
-    const std::string address = "localhost:9085";
+TEST(http_client_test, one_client_with_one_request_with_onecookie) {
+    const std::string address = "localhost:9086";
+
+    Http::Endpoint server(address);
+    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto server_opts = Http::Endpoint::options().flags(flags);
+    server.init(server_opts);
+    server.setHandler(Http::make_handler<CookieHandler>());
+    server.serveThreaded();
+
+    Http::Client client;
+    client.init();
+
+    std::vector<Async::Promise<Http::Response>> responses;
+    const std::string name = "FOO";
+    const std::string value = "bar";
+    auto cookie = Http::Cookie(name, value);
+    auto rb = client.get(address).cookie(cookie);
+    auto response = rb.send();
+
+    Http::CookieJar cj;
+    response.then([&](Http::Response rsp) {
+            cj = rsp.cookies();
+        },
+        Async::IgnoreException);
+    responses.push_back(std::move(response));
+
+    auto sync = Async::whenAll(responses.begin(), responses.end());
+    Async::Barrier<std::vector<Http::Response>> barrier(sync);
+    barrier.wait_for(std::chrono::seconds(5));
+
+    server.shutdown();
+    client.shutdown();
+
+
+    ASSERT_TRUE(cj.has(name));
+}
+
+TEST(http_client_test, one_client_with_one_request_with_several_cookies) {
+    const std::string address = "localhost:9088";
 
     Http::Endpoint server(address);
     auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
@@ -52,7 +92,6 @@ TEST(http_client_test, one_client_with_one_request_with_cookies) {
     response.then([&](Http::Response rsp) {
             for (auto&& cookie: rsp.cookies()) {
                 cookiesStorages[cookie.name] = cookie.value;
-                std::cout << "get: " << cookie.name << "\n";
             }
         },
         Async::IgnoreException);
