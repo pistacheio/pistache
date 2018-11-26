@@ -1,3 +1,4 @@
+#include <pistache/async.h>
 #include <pistache/client.h>
 #include <pistache/cookie.h>
 #include <pistache/endpoint.h>
@@ -7,6 +8,7 @@
 
 #include <chrono>
 #include <unordered_map>
+#include <string>
 
 using namespace Pistache;
 
@@ -90,7 +92,6 @@ TEST(http_client_test, one_client_with_one_request_with_several_cookies) {
     response.then([&](Http::Response rsp) {
             for (auto&& cookie: rsp.cookies()) {
                 cookiesStorages[cookie.name] = cookie.value;
-                std::cout << "get: " << cookie.name << "\n";
             }
         },
         Async::IgnoreException);
