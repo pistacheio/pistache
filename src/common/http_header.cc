@@ -6,6 +6,7 @@
 
 #include <stdexcept>
 #include <iterator>
+#include <limits>
 #include <cstring>
 #include <iostream>
 
@@ -361,15 +362,14 @@ Host::parse(const std::string& data) {
     char *end;
     const std::string portPart = data.substr(pos + 1);
     long port;
-    if (portPart.empty()) {
-        port = HTTP_STANDARD_PORT;
-    }
-    else {
+    if (pos != std::string::npos) {
         port = strtol(portPart.c_str(), &end, 10);
+        if (port < std::numeric_limits<uint16_t>::min()|| port > std::numeric_limits<uint16_t>::max())
+            throw std::invalid_argument("Invalid port");
+        port_ = static_cast<uint16_t>(port);
+    } else {
+        port_ = HTTP_STANDARD_PORT;
     }
-    if (*end != 0 || port < Port::min() || port > Port::max())
-        throw std::invalid_argument("Invalid port");
-    port_ = static_cast<uint16_t>(port);
 }
 
 void
