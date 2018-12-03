@@ -52,12 +52,71 @@ Ipv4::any() {
 
 std::string
 Ipv4::toString() const {
-    static constexpr size_t MaxSize = sizeof("255") * 4 + 3 + 1; /* 4 * 255 + 3 * dot + \0 */
-
-    char buff[MaxSize];
-    snprintf(buff, MaxSize, "%d.%d.%d.%d", a, b, c, d);
-
+    
+    // Use the built-in ipv4 string length from arpa/inet.h
+    char buff[INET_ADDRSTRLEN+1];
+    
+    in_addr_t addr;
+    toNetwork(&addr);
+    
+    // Convert the network format address into display format
+    inet_ntop(AF_INET, &addr, buff, INET_ADDRSTRLEN);
+    
     return std::string(buff);
+}
+
+void Ipv4::toNetwork(in_addr_t *addr) const {
+    // Bitshift the bytes into an in_addr_t (a single 32bit unsigned int);
+    *addr = (uint32_t)(d<<24) | (uint32_t)(c<<16) | (uint32_t)(b<<8) | (uint32_t)a;
+}
+
+Ipv6::Ipv6(uint16_t a, uint16_t b, uint16_t c, uint16_t d, uint16_t e, uint16_t f, uint16_t g, uint16_t h)
+    : a(a)
+    , b(b)
+    , c(c)
+    , d(d)
+    , e(e)
+    , f(f)
+    , g(g)
+    , h(h)
+{ }
+
+Ipv6
+Ipv6::any() {
+    return Ipv6(0, 0, 0, 0, 0, 0, 0, 0);
+}
+
+std::string
+Ipv6::toString() const {
+    
+    // Use the built-in ipv6 string length from arpa/inet.h
+    char buff6[INET6_ADDRSTRLEN+1];
+    
+    in6_addr addr;
+    toNetwork(&addr);
+    
+    inet_ntop(AF_INET6, &addr, buff6, INET6_ADDRSTRLEN);
+
+    return std::string(buff6);
+}
+
+void Ipv6::toNetwork(in6_addr *addr6) const {
+    uint16_t temp_ip6[8] = {a, b, c, d, e, f, g, h};
+    uint16_t remap_ip6[8] = {0};
+    uint16_t x, y;
+    
+     // If native endianness is little-endian swap the bytes, otherwise just copy them into the new array
+    if ( htonl(1) != 1 ) {
+        for (uint16_t i = 0; i<8; i++) {
+            x = temp_ip6[i];
+            y = __builtin_bswap16 (x);
+            remap_ip6[i] = y;
+        }
+    } else {
+        memcpy(remap_ip6, temp_ip6, 16);
+    }
+    // Copy the bytes into the in6_addr struct
+    memcpy(addr6->s6_addr16, remap_ip6, 16);
 }
 
 Address::Address()
@@ -86,16 +145,31 @@ Address::Address(Ipv4 ip, Port port)
     , port_(port)
 { }
 
+Address::Address(Ipv6 ip, Port port)
+    : host_(ip.toString())
+    , port_(port)
+{ }
+
 Address
 Address::fromUnix(struct sockaddr* addr) {
-    struct sockaddr_in *in_addr = reinterpret_cast<struct sockaddr_in *>(addr);
+    if (addr->sa_family == AF_INET) { 
+        struct sockaddr_in *in_addr = reinterpret_cast<struct sockaddr_in *>(addr);
+        char host[INET_ADDRSTRLEN+1];
+        inet_ntop(AF_INET, &(in_addr->sin_addr), host, INET_ADDRSTRLEN);
+        int port = ntohs(in_addr->sin_port);
+        assert(addr);
+        return Address(host, port);
+    } else if (addr->sa_family == AF_INET6) {
+        struct sockaddr_in6 *in_addr = reinterpret_cast<struct sockaddr_in6 *>(addr);
+        char host[INET6_ADDRSTRLEN+1];
+        inet_ntop(AF_INET6, &(in_addr->sin6_addr), host, INET6_ADDRSTRLEN);
+        int port = ntohs(in_addr->sin6_port);
+        assert(addr);
+        return Address(host, port);
+    }
+    throw Error("Not an IP socket");
 
-    char *host = inet_ntoa(in_addr->sin_addr);
-    assert(addr);
-
-    int port = ntohs(in_addr->sin_port);
-
-    return Address(host, port);
+    
 }
 
 std::string
@@ -108,18 +182,30 @@ Address::port() const {
     return port_;
 }
 
+int
+Address::family() const {
+    return family_;
+}
+
 void
 Address::init(const std::string& addr) {
-    const auto pos = addr.find(':');
+    unsigned long pos = addr.find(']');
+    unsigned long s_pos = addr.find('[');
+    if (pos != std::string::npos && s_pos != std::string::npos) {
+        //IPv6 address
+        host_ = addr.substr(s_pos+1, pos-1);
+        pos++;
+    } else {
+        //IPv4 address
+        pos = addr.find(':');
+        if (pos == std::string::npos)
+            throw std::invalid_argument("Invalid address");
 
-    if (pos == std::string::npos)
-        throw std::invalid_argument("Invalid address");
-
-    host_ = addr.substr(0, pos);
-    if (host_ == "*") {
-        host_ = "0.0.0.0";
+        host_ = addr.substr(0, pos);
+        if (host_ == "*") {
+            host_ = "0.0.0.0";
+        }
     }
-
     char *end;
     const std::string portPart = addr.substr(pos + 1);
     if (portPart.empty())

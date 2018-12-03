@@ -340,17 +340,32 @@ Host::Host(const std::string& data)
 
 void
 Host::parse(const std::string& data) {
-    auto pos = data.find(':');
-    if (pos != std::string::npos) {
-        std::string h = data.substr(0, pos);
-        int16_t p = std::stoi(data.substr(pos + 1));
-
-        host_ = h;
-        port_ = p;
+    unsigned long pos = data.find(']');
+    unsigned long s_pos = data.find('[');
+    if (pos != std::string::npos && s_pos != std::string::npos) {
+        //IPv6 address
+        host_ = data.substr(s_pos+1, pos-1);
+        pos++;
     } else {
-        host_ = data;
-        port_ = HTTP_STANDARD_PORT;
+        //IPv4 address
+        pos = data.find(':');
+        if (pos == std::string::npos) {
+            host_ = data;
+            port_ = HTTP_STANDARD_PORT;
+        }
+        host_ = data.substr(0, pos);
+        if (host_ == "*") {
+            host_ = "0.0.0.0";
+        }
     }
+    char *end;
+    const std::string portPart = data.substr(pos + 1);
+    if (portPart.empty())
+        throw std::invalid_argument("Invalid port");
+    long port = strtol(portPart.c_str(), &end, 10);
+    if (*end != 0 || port < Port::min() || port > Port::max())
+        throw std::invalid_argument("Invalid port");
+    port_ = static_cast<uint16_t>(port);
 }
 
 void
