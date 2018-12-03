@@ -360,9 +360,11 @@ Host::parse(const std::string& data) {
     }
     char *end;
     const std::string portPart = data.substr(pos + 1);
+    long port;
     if (portPart.empty())
-        throw std::invalid_argument("Invalid port");
-    long port = strtol(portPart.c_str(), &end, 10);
+        port = HTTP_STANDARD_PORT;
+    else
+        port = strtol(portPart.c_str(), &end, 10);
     if (*end != 0 || port < Port::min() || port > Port::max())
         throw std::invalid_argument("Invalid port");
     port_ = static_cast<uint16_t>(port);
