@@ -106,7 +106,7 @@ private:
     void init(const std::string& addr);
     std::string host_;
     Port port_;
-    int family_;
+    int family_ = AF_INET;
 };
 
 class Error : public std::runtime_error {

@@ -125,9 +125,12 @@ Address::Address()
 { }
 
 Address::Address(std::string host, Port port)
-    : host_(std::move(host))
-    , port_(port)
-{ }
+{   
+    std::string addr = host;
+    addr.append(":");
+    addr.append(port.toString());
+    init(std::move(addr));
+}
 
 
 Address::Address(std::string addr)
@@ -143,11 +146,13 @@ Address::Address(const char* addr)
 Address::Address(Ipv4 ip, Port port)
     : host_(ip.toString())
     , port_(port)
+    , family_(AF_INET)
 { }
 
 Address::Address(Ipv6 ip, Port port)
     : host_(ip.toString())
     , port_(port)
+    , family_(AF_INET6)
 { }
 
 Address
