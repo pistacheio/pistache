@@ -67,7 +67,7 @@ Ipv4::toString() const {
 
 void Ipv4::toNetwork(in_addr_t *addr) const {
     // Bitshift the bytes into an in_addr_t (a single 32bit unsigned int);
-    *addr = (uint32_t)(d<<24) | (uint32_t)(c<<16) | (uint32_t)(b<<8) | (uint32_t)a;
+    *addr = htonl( (uint32_t)(a<<24) | (uint32_t)(b<<16) | (uint32_t)(c<<8) | (uint32_t)d );;
 }
 
 Ipv6::Ipv6(uint16_t a, uint16_t b, uint16_t c, uint16_t d, uint16_t e, uint16_t f, uint16_t g, uint16_t h)
@@ -109,7 +109,7 @@ void Ipv6::toNetwork(in6_addr *addr6) const {
     if ( htonl(1) != 1 ) {
         for (uint16_t i = 0; i<8; i++) {
             x = temp_ip6[i];
-            y = __builtin_bswap16 (x);
+            y = htons(x);
             remap_ip6[i] = y;
         }
     } else {
