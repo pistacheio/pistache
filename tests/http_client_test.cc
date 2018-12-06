@@ -4,6 +4,7 @@
 
 #include "gtest/gtest.h"
 
+#include <atomic>
 #include <chrono>
 
 using namespace Pistache;
@@ -107,7 +108,7 @@ TEST(http_client_test, multiple_clients_with_one_request) {
     client3.init();
 
     std::vector<Async::Promise<Http::Response>> responses;
-    int response_counter = 0;
+    std::atomic<int> response_counter = 0;
 
     auto rb1 = client1.get(address);
     auto response1 = rb1.send();
