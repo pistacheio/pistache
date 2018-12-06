@@ -253,7 +253,7 @@ public:
             return end() - start();
         }
 
-        std::string text() {
+        std::string text() const {
             return std::string(gptr, size());
         }
 
