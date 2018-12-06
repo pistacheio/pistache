@@ -79,18 +79,18 @@ namespace {
     void writeCookies(std::stringstream& streamBuf, const Http::CookieJar& cookies) {
         using Http::crlf;
 
-        std::vector<std::pair<std::string, std::string>> cookiesInfo;
-        for (const auto& cookie: cookies) {
-            cookiesInfo.emplace_back(cookie.name, cookie.value);
-        }
-
         streamBuf << "Cookie: ";
-        for (size_t i = 0; i < cookiesInfo.size(); ++i) {
-            if (i > 0) {
+        bool first = true;
+        for (const auto& cookie: cookies) {
+            if (!first) {
                 streamBuf << "; ";
             }
-            streamBuf << cookiesInfo[i].first << "=" << cookiesInfo[i].second;
+            else {
+                first = false;
+            }
+            streamBuf << cookie.name << "=" << cookie.value;
         }
+
         streamBuf << crlf;
     }
 
