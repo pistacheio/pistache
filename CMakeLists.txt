@@ -33,8 +33,6 @@ endif()
 include_directories (${CMAKE_CURRENT_SOURCE_DIR}/include)
 add_subdirectory (src)
 
-include_directories (src)
-
 if (PISTACHE_BUILD_EXAMPLES)
     add_subdirectory (examples)
 endif()
