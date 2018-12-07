@@ -136,8 +136,6 @@ public:
     Registry& operator=(const Registry&) = delete;
     static Registry& instance();
 
-    using RegistryFunc = std::function<std::unique_ptr<Header>()>;
-
     template<typename H, REQUIRES(IsHeader<H>::value)>
     void registerHeader() {
         registerHeader(H::Name, []() -> std::unique_ptr<Header> {
@@ -146,22 +144,24 @@ public:
 
     }
 
-    void registerHeader(std::string name, RegistryFunc func);
-
     std::vector<std::string> headersList();
 
     std::unique_ptr<Header> makeHeader(const std::string& name);
     bool isRegistered(const std::string& name);
 
-    using RegistryStorageType = std::unordered_map<
-        std::string,
-        Registry::RegistryFunc,
-        LowercaseHash,
-        LowercaseEqual>;
-
 private:
     Registry();
     ~Registry();
+
+    using RegistryFunc = std::function<std::unique_ptr<Header>()>;
+    using RegistryStorageType = std::unordered_map<
+        std::string,
+        RegistryFunc,
+        LowercaseHash,
+        LowercaseEqual>;
+
+    void registerHeader(std::string name, RegistryFunc func);
+
     RegistryStorageType registry;
 };
 
