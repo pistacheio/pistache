@@ -68,5 +68,5 @@ private:
 };
 
 int main() {
-    Header::Registry::registerHeader<XProtocolVersion>();
+    Header::Registry::instance().registerHeader<XProtocolVersion>();
 }
