@@ -221,6 +221,62 @@ private:
   std::string val_;
 };
 
+class AccessControlExposeHeaders : public Header {
+public:
+  NAME("Access-Control-Expose-Headers")
+
+  AccessControlExposeHeaders()
+    : val_()
+  { }
+
+  explicit AccessControlExposeHeaders(const char* val)
+    : val_(val)
+  { }
+  explicit AccessControlExposeHeaders(const std::string& val)
+    : val_(val)
+  { }
+
+  void parse(const std::string& data);
+  void write(std::ostream& os) const;
+
+  void setUri(std::string val) {
+    val_ = std::move(val);
+  }
+
+  std::string val() const { return val_; }
+
+private:
+  std::string val_;
+};
+
+class AccessControlAllowMethods : public Header {
+public:
+  NAME("Access-Control-Allow-Methods")
+
+  AccessControlAllowMethods()
+    : val_()
+  { }
+
+  explicit AccessControlAllowMethods(const char* val)
+    : val_(val)
+  { }
+  explicit AccessControlAllowMethods(const std::string& val)
+    : val_(val)
+  { }
+
+  void parse(const std::string& data);
+  void write(std::ostream& os) const;
+
+  void setUri(std::string val) {
+    val_ = std::move(val);
+  }
+
+  std::string val() const { return val_; }
+
+private:
+  std::string val_;
+};
+
 class CacheControl : public Header {
 public:
     NAME("Cache-Control")

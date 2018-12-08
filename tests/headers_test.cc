@@ -286,3 +286,19 @@ TEST(headers_test, access_control_allow_headers_test)
     allowHeaders.parse("Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
     ASSERT_EQ(allowHeaders.val(), "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
 }
+
+TEST(headers_test, access_control_expose_headers_test)
+{
+    Header::AccessControlExposeHeaders exposeHeaders;
+
+    exposeHeaders.parse("Accept, Location");
+    ASSERT_EQ(exposeHeaders.val(), "Accept, Location");
+}
+
+TEST(headers_test, access_control_allow_methods_test)
+{
+    Header::AccessControlAllowMethods allowMethods;
+
+    allowMethods.parse("GET, POST, DELETE");
+    ASSERT_EQ(allowMethods.val(), "GET, POST, DELETE");
+}

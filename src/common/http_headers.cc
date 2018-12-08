@@ -17,6 +17,8 @@ namespace Header {
 RegisterHeader(Accept);
 RegisterHeader(AccessControlAllowOrigin);
 RegisterHeader(AccessControlAllowHeaders);
+RegisterHeader(AccessControlExposeHeaders);
+RegisterHeader(AccessControlAllowMethods);
 RegisterHeader(Allow);
 RegisterHeader(CacheControl);
 RegisterHeader(Connection);
