@@ -1,10 +1,21 @@
-#include "gtest/gtest.h"
-#include <chrono>
-
 #include <pistache/http_headers.h>
 #include <pistache/date.h>
 
+#include "gtest/gtest.h"
+
+#include <algorithm>
+#include <chrono>
+
 using namespace Pistache::Http;
+
+class TestHeader : public Header::Header {
+public:
+    NAME("TestHeader");
+
+    void write(std::ostream& os) const override {
+        os << "TestHeader";
+    }
+};
 
 TEST(headers_test, accept) {
     Header::Accept a1;
@@ -285,4 +296,17 @@ TEST(headers_test, access_control_allow_headers_test)
 
     allowHeaders.parse("Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
     ASSERT_EQ(allowHeaders.val(), "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+}
+
+TEST(headers_test, add_new_header_test)
+{
+    const std::string headerName = "TestHeader";
+
+    ASSERT_FALSE(Header::Registry::instance().isRegistered(headerName));
+    Header::Registry::instance().registerHeader<TestHeader>();
+    ASSERT_TRUE(Header::Registry::instance().isRegistered(headerName));
+
+    const auto& headersList = Header::Registry::instance().headersList();
+    const bool isFound = std::find(headersList.begin(), headersList.end(), headerName) != headersList.end();
+    ASSERT_TRUE(isFound);
 }

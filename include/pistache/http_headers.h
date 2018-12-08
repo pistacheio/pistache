@@ -160,7 +160,7 @@ private:
         LowercaseHash,
         LowercaseEqual>;
 
-    void registerHeader(std::string name, RegistryFunc func);
+    void registerHeader(const std::string& name, RegistryFunc func);
 
     RegistryStorageType registry;
 };
