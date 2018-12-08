@@ -4,11 +4,12 @@
    Headers registry
 */
 
-#include <unordered_map>
-#include <iterator>
-#include <stdexcept>
-
 #include <pistache/http_headers.h>
+
+#include <memory>
+#include <stdexcept>
+#include <unordered_map>
+#include <vector>
 
 namespace Pistache {
 namespace Http {
@@ -52,7 +53,7 @@ Registry::~Registry()
 {}
 
 void
-Registry::registerHeader(std::string name, Registry::RegistryFunc func)
+Registry::registerHeader(const std::string& name, Registry::RegistryFunc func)
 {
     auto it = registry.find(name);
     if (it != std::end(registry)) {
