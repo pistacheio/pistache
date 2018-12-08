@@ -49,7 +49,7 @@ public:
             min = std::stoi(minor);
     }
 
-    void write(std::ostream& os) const {
+    void write(std::ostream& os) const override {
         os << maj;
         os << "." << min;
     }
