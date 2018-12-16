@@ -512,7 +512,7 @@ Connection::performImpl(
 
     requestEntry.reset(new RequestEntry(std::move(resolve), std::move(reject), timer, std::move(onDone)));
     transport_->asyncSendRequest(shared_from_this(), timer, std::move(buffer)).then(
-        Async::EmptyCall,
+        [](size_t /*bytes*/) {},
         [&](std::exception_ptr e) { rejectClone(e); });
 }
 
