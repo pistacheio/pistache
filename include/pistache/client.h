@@ -107,9 +107,6 @@ struct Connection : public std::enable_shared_from_this<Connection> {
     std::string dump() const;
 
 private:
-    struct sockaddr_in saddr;
-
-
     void processRequestQueue();
 
     struct RequestEntry {
@@ -129,6 +126,7 @@ private:
         OnDone onDone;
     };
 
+    struct sockaddr_in saddr;
     std::unique_ptr<RequestEntry> requestEntry;
     std::atomic<uint32_t> state_;
     ConnectionState connectionState_;
