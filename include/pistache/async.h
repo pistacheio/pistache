@@ -159,6 +159,10 @@ namespace Async {
             }
         };
 
+        struct EmptyCall {
+            void operator()(size_t) const { }
+        };
+
         struct Core;
 
         class Request {
@@ -923,6 +927,8 @@ namespace Async {
     static constexpr Private::IgnoreException IgnoreException{};
     static constexpr Private::NoExcept NoExcept{};
     static constexpr Private::Throw Throw{};
+
+    static constexpr Private::EmptyCall EmptyCall{};
 
     namespace details {
 

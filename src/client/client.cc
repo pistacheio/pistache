@@ -415,53 +415,54 @@ Connection::hasTransport() const {
 void
 Connection::handleResponsePacket(const char* buffer, size_t totalBytes) {
 
-    parser_.feed(buffer, totalBytes);
-    if (parser_.parse() == Private::State::Done) {
-        if (!inflightRequests.empty()) {
-            auto req = std::move(inflightRequests.front());
-            inflightRequests.pop_back();
-
-            if (req.timer) {
-                req.timer->disarm();
-                timerPool_.releaseTimer(req.timer);
+    Private::Parser<Http::Response> parser;
+    parser.feed(buffer, totalBytes);
+    if (parser.parse() == Private::State::Done) {
+        if (requestEntry) {
+            if (requestEntry->timer) {
+                requestEntry->timer->disarm();
+                timerPool_.releaseTimer(requestEntry->timer);
             }
 
-            req.resolve(std::move(parser_.response));
-            if (req.onDone)
-                req.onDone();
-        }
+            requestEntry->resolve(std::move(parser.response));
+            if (requestEntry->onDone)
+                requestEntry->onDone();
 
-        parser_.reset();
+            requestEntry.reset(nullptr);
+        }
+    } else {
+        // TODO: Do more specific error
+        requestEntry->reject(Error("Response problem"));
     }
 }
 
 void
 Connection::handleError(const char* error) {
-    if (!inflightRequests.empty()) {
-        auto req = std::move(inflightRequests.front());
-        if (req.timer) {
-            req.timer->disarm();
-            timerPool_.releaseTimer(req.timer);
+    if (requestEntry) {
+        if (requestEntry->timer) {
+            requestEntry->timer->disarm();
+            timerPool_.releaseTimer(requestEntry->timer);
         }
 
-        req.reject(Error(error));
-        if (req.onDone)
-            req.onDone();
+        requestEntry->reject(Error(error));
+        if (requestEntry->onDone)
+            requestEntry->onDone();
+        
+        requestEntry.reset(nullptr);
     }
 }
 
 void
 Connection::handleTimeout() {
-    if (!inflightRequests.empty()) {
-        auto req = std::move(inflightRequests.front());
-        inflightRequests.pop_back();
+    if (requestEntry) {
+        timerPool_.releaseTimer(requestEntry->timer);
 
-        timerPool_.releaseTimer(req.timer);
-
-        if (req.onDone)
-            req.onDone();
+        if (requestEntry->onDone)
+            requestEntry->onDone();
         /* @API: create a TimeoutException */
-        req.reject(std::runtime_error("Timeout"));
+        requestEntry->reject(std::runtime_error("Timeout"));
+
+        requestEntry.reset(nullptr);
     }
 }
 
@@ -487,43 +488,6 @@ Connection::perform(
     });
 }
 
-/**
- * This class is used to emulate the generalized lambda capture feature from C++14
- * whereby a given object can be moved inside a lambda, directly from the capture-list
- *
- * So instead, it will use the exact same semantic than auto_ptr (don't beat me for that),
- * meaning that it will move the value on copy
- */
-template<typename T>
-struct MoveOnCopy {
-    MoveOnCopy(T val)
-        : val(std::move(val))
-    { }
-
-    MoveOnCopy(MoveOnCopy& other)
-        : val(std::move(other.val))
-    { }
-
-    MoveOnCopy& operator=(MoveOnCopy& other) {
-        val = std::move(other.val);
-        return *this;
-    }
-
-    MoveOnCopy(MoveOnCopy&& other) = default;
-    MoveOnCopy& operator=(MoveOnCopy&& other) = default;
-
-    operator T&&() {
-        return std::move(val);
-    }
-
-    T val;
-};
-
-template<typename T>
-MoveOnCopy<T> make_copy_mover(T arg) {
-    return MoveOnCopy<T>(std::move(arg));
-}
-
 void
 Connection::performImpl(
         const Http::Request& request,
@@ -545,18 +509,11 @@ Connection::performImpl(
     }
 
     auto rejectClone = reject.clone();
-    auto rejectCloneMover = make_copy_mover(std::move(rejectClone));
 
-    // Move the resolver and rejecter inside the lambda
-    auto resolveMover = make_copy_mover(std::move(resolve));
-    auto rejectMover = make_copy_mover(std::move(reject));
-
-
+    requestEntry.reset(new RequestEntry(std::move(resolve), std::move(reject), timer, std::move(onDone)));
     transport_->asyncSendRequest(shared_from_this(), timer, std::move(buffer)).then(
-        [=](ssize_t) mutable {
-            inflightRequests.push_back(RequestEntry(std::move(resolveMover), std::move(rejectMover), std::move(timer), std::move(onDone)));
-        },
-        [=](std::exception_ptr e) { rejectCloneMover.val(e); });
+        Async::EmptyCall,
+        [&](std::exception_ptr e) { rejectClone(e); });
 }
 
 void
