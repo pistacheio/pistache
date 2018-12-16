@@ -9,7 +9,8 @@
 
 using namespace Pistache;
 
-struct HelloHandler : public Http::Handler {
+struct HelloHandler : public Http::Handler
+{
     HTTP_PROTOTYPE(HelloHandler)
 
     void onRequest(const Http::Request& /*request*/, Http::ResponseWriter writer) override
@@ -18,8 +19,20 @@ struct HelloHandler : public Http::Handler {
     }
 };
 
-TEST(http_client_test, one_client_with_one_request) {
-    const std::string address = "localhost:9079";
+struct DelayHandler : public Http::Handler
+{
+    HTTP_PROTOTYPE(DelayHandler)
+
+    void onRequest(const Http::Request& /*request*/, Http::ResponseWriter writer) override
+    {
+        std::this_thread::sleep_for(std::chrono::seconds(4));
+        writer.send(Http::Code::Ok, "Hello, World!");
+    }
+};
+
+TEST(http_client_test, one_client_with_one_request)
+{
+    const std::string address = "localhost:9100";
 
     Http::Endpoint server(address);
     auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
@@ -31,18 +44,16 @@ TEST(http_client_test, one_client_with_one_request) {
     Http::Client client;
     client.init();
 
-    std::vector<Async::Promise<Http::Response>> responses;
     auto rb = client.get(address);
     auto response = rb.send();
     bool done = false;
-    response.then([&](Http::Response rsp) {
-        if (rsp.code() == Http::Code::Ok)
-            done = true;
-        }, Async::IgnoreException);
-    responses.push_back(std::move(response));
+    response.then([&](Http::Response rsp)
+                  {
+                      if (rsp.code() == Http::Code::Ok)
+                          done = true;
+                  }, Async::IgnoreException);
 
-    auto sync = Async::whenAll(responses.begin(), responses.end());
-    Async::Barrier<std::vector<Http::Response>> barrier(sync);
+    Async::Barrier<Http::Response> barrier(response);
     barrier.wait_for(std::chrono::seconds(5));
 
     server.shutdown();
@@ -52,7 +63,7 @@ TEST(http_client_test, one_client_with_one_request) {
 }
 
 TEST(http_client_test, one_client_with_multiple_requests) {
-    const std::string address = "localhost:9080";
+    const std::string address = "localhost:9101";
 
     Http::Endpoint server(address);
     auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
@@ -90,7 +101,7 @@ TEST(http_client_test, one_client_with_multiple_requests) {
 }
 
 TEST(http_client_test, multiple_clients_with_one_request) {
-    const std::string address = "localhost:9081";
+    const std::string address = "localhost:9102";
 
     Http::Endpoint server(address);
     auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
@@ -143,4 +154,39 @@ TEST(http_client_test, multiple_clients_with_one_request) {
     client3.shutdown();
 
     ASSERT_TRUE(response_counter == CLIENT_SIZE);
+}
+
+TEST(http_client_test, timeout_reject)
+{
+    const std::string address = "localhost:9103";
+
+    Http::Endpoint server(address);
+    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto server_opts = Http::Endpoint::options().flags(flags);
+    server.init(server_opts);
+    server.setHandler(Http::make_handler<DelayHandler>());
+    server.serveThreaded();
+
+    Http::Client client;
+    client.init();
+
+    auto rb = client.get(address).timeout(std::chrono::milliseconds(1000));
+    auto response = rb.send();
+    bool is_reject = false;
+    response.then([&is_reject](Http::Response /*rsp*/)
+                  {
+                      is_reject = false;
+                  },
+                  [&is_reject](std::exception_ptr /*exc*/)
+                  {
+                      is_reject = true;  
+                  });
+
+    Async::Barrier<Http::Response> barrier(response);
+    barrier.wait_for(std::chrono::seconds(5));
+
+    server.shutdown();
+    client.shutdown();
+
+    ASSERT_TRUE(is_reject);
 }

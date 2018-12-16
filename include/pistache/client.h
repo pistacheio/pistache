@@ -18,7 +18,6 @@
 
 #include <atomic>
 #include <chrono>
-#include <deque>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -41,8 +40,7 @@ struct Connection : public std::enable_shared_from_this<Connection> {
 
     Connection()
         : fd(-1)
-        , inflightCount(0)
-        , responsesReceived(0)
+        , requestEntry(nullptr)
         , connectionState_(NotConnected)
     {
         state_.store(static_cast<uint32_t>(State::Idle));
@@ -108,11 +106,6 @@ struct Connection : public std::enable_shared_from_this<Connection> {
     std::string dump() const;
 
 private:
-    std::atomic<int> inflightCount;
-    std::atomic<int> responsesReceived;
-    struct sockaddr_in saddr;
-
-
     void processRequestQueue();
 
     struct RequestEntry {
@@ -132,15 +125,14 @@ private:
         OnDone onDone;
     };
 
+    struct sockaddr_in saddr;
+    std::unique_ptr<RequestEntry> requestEntry;
     std::atomic<uint32_t> state_;
     ConnectionState connectionState_;
     std::shared_ptr<Transport> transport_;
     Queue<RequestData> requestsQueue;
 
-    std::deque<RequestEntry> inflightRequests;
-
     TimerPool timerPool_;
-    Private::Parser<Http::Response> parser_;
 };
 
 class ConnectionPool {
