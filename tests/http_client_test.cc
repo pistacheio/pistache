@@ -208,7 +208,7 @@ TEST(http_client_test, one_client_with_multiple_requests_and_one_connection_per_
 
     std::vector<Async::Promise<Http::Response>> responses;
     const int RESPONSE_SIZE = 6;
-    std::atomic<int> response_counter = 0;
+    std::atomic<int> response_counter(0);
 
     auto rb = client.get(address);
     for (int i = 0; i < RESPONSE_SIZE; ++i)
