@@ -133,6 +133,7 @@ private:
     Queue<RequestData> requestsQueue;
 
     TimerPool timerPool_;
+    Private::Parser<Http::Response> parser;
 };
 
 class ConnectionPool {

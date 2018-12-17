@@ -415,7 +415,6 @@ Connection::hasTransport() const {
 void
 Connection::handleResponsePacket(const char* buffer, size_t totalBytes) {
 
-    Private::Parser<Http::Response> parser;
     parser.feed(buffer, totalBytes);
     if (parser.parse() == Private::State::Done) {
         if (requestEntry) {
@@ -425,6 +424,8 @@ Connection::handleResponsePacket(const char* buffer, size_t totalBytes) {
             }
 
             requestEntry->resolve(std::move(parser.response));
+            parser.reset();
+
             auto onDone = requestEntry->onDone;
 
             requestEntry.reset(nullptr);
@@ -432,9 +433,6 @@ Connection::handleResponsePacket(const char* buffer, size_t totalBytes) {
             if (onDone)
                 onDone();
         }
-    } else {
-        // TODO: Do more specific error
-        requestEntry->reject(Error("Response problem"));
     }
 }
 
