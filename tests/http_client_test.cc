@@ -190,3 +190,46 @@ TEST(http_client_test, timeout_reject)
 
     ASSERT_TRUE(is_reject);
 }
+
+TEST(http_client_test, one_client_with_multiple_requests_and_one_connection_per_host)
+{
+    const std::string address = "localhost:9104";
+
+    Http::Endpoint server(address);
+    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto server_opts = Http::Endpoint::options().flags(flags);
+    server.init(server_opts);
+    server.setHandler(Http::make_handler<HelloHandler>());
+    server.serveThreaded();
+
+    Http::Client client;
+    auto opts = Http::Client::options().maxConnectionsPerHost(1).threads(2);
+    client.init(opts);
+
+    std::vector<Async::Promise<Http::Response>> responses;
+    const int RESPONSE_SIZE = 6;
+    std::atomic<int> response_counter(0);
+
+    auto rb = client.get(address);
+    for (int i = 0; i < RESPONSE_SIZE; ++i)
+    {
+        auto response = rb.send();
+        response.then([&](Http::Response rsp)
+                      {
+                          if (rsp.code() == Http::Code::Ok)
+                              ++response_counter;
+                      },
+                      Async::IgnoreException);
+        responses.push_back(std::move(response));
+    }
+
+    auto sync = Async::whenAll(responses.begin(), responses.end());
+    Async::Barrier<std::vector<Http::Response>> barrier(sync);
+
+    barrier.wait_for(std::chrono::seconds(5));
+
+    server.shutdown();
+    client.shutdown();
+
+    ASSERT_TRUE(response_counter == RESPONSE_SIZE);
+}

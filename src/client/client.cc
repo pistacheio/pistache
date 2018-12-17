@@ -415,7 +415,6 @@ Connection::hasTransport() const {
 void
 Connection::handleResponsePacket(const char* buffer, size_t totalBytes) {
 
-    Private::Parser<Http::Response> parser;
     parser.feed(buffer, totalBytes);
     if (parser.parse() == Private::State::Done) {
         if (requestEntry) {
@@ -425,14 +424,15 @@ Connection::handleResponsePacket(const char* buffer, size_t totalBytes) {
             }
 
             requestEntry->resolve(std::move(parser.response));
-            if (requestEntry->onDone)
-                requestEntry->onDone();
+            parser.reset();
+
+            auto onDone = requestEntry->onDone;
 
             requestEntry.reset(nullptr);
+
+            if (onDone)
+                onDone();
         }
-    } else {
-        // TODO: Do more specific error
-        requestEntry->reject(Error("Response problem"));
     }
 }
 
@@ -444,11 +444,14 @@ Connection::handleError(const char* error) {
             timerPool_.releaseTimer(requestEntry->timer);
         }
 
+        auto onDone = requestEntry->onDone;
+
         requestEntry->reject(Error(error));
-        if (requestEntry->onDone)
-            requestEntry->onDone();
-        
+
         requestEntry.reset(nullptr);
+
+        if (onDone)
+            onDone();
     }
 }
 
@@ -457,12 +460,15 @@ Connection::handleTimeout() {
     if (requestEntry) {
         timerPool_.releaseTimer(requestEntry->timer);
 
-        if (requestEntry->onDone)
-            requestEntry->onDone();
+        auto onDone = requestEntry->onDone;
+
         /* @API: create a TimeoutException */
         requestEntry->reject(std::runtime_error("Timeout"));
 
         requestEntry.reset(nullptr);
+
+        if (onDone)
+            onDone();
     }
 }
 
