@@ -97,7 +97,7 @@ Ipv6::toString() const {
     
     inet_ntop(AF_INET6, &addr, buff6, INET6_ADDRSTRLEN);
 
-    return std::string(buff6);
+    return std::string("[") + std::string(buff6) + std::string("]");
 }
 
 void Ipv6::toNetwork(in6_addr *addr6) const {
@@ -198,7 +198,7 @@ Address::init(const std::string& addr) {
     unsigned long s_pos = addr.find('[');
     if (pos != std::string::npos && s_pos != std::string::npos) {
         //IPv6 address
-        host_ = addr.substr(s_pos+1, pos-1);
+        host_ = addr.substr(s_pos, pos+1);
         pos++;
     } else {
         //IPv4 address

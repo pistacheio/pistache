@@ -46,8 +46,33 @@ TEST(net_test, address_creation)
     ASSERT_EQ(address4.port(), 8080);
 
     Address address5("*:8080");
-    ASSERT_EQ(address4.host(), "0.0.0.0");
-    ASSERT_EQ(address4.port(), 8080);
+    ASSERT_EQ(address5.host(), "0.0.0.0");
+    ASSERT_EQ(address5.port(), 8080);
+    
+    Address address6("[::1]:8080");
+    ASSERT_EQ(address6.host(), "[::1]");
+    ASSERT_EQ(address6.port(), 8080);
+
+    std::string addr2 = "[::1]";
+    Address address7(addr2, Port(8080));
+    ASSERT_EQ(address7.host(), "[::1]");
+    ASSERT_EQ(address7.port(), 8080);
+
+    Address address8(Ipv6(0, 0, 0, 0, 0, 0, 0, 1), Port(8080));
+    ASSERT_EQ(address8.host(), "[::1]");
+    ASSERT_EQ(address8.port(), 8080);    
+
+    Address address9(Ipv6::any(), Port(8080));
+    ASSERT_EQ(address9.host(), "[::]");
+    ASSERT_EQ(address9.port(), 8080);
+
+    Address address10("[::]:8080");
+    ASSERT_EQ(address10.host(), "[::]");
+    ASSERT_EQ(address10.port(), 8080);
+    
+    Address address11("[2001:0DB8:AABB:CCDD:EEFF:0011:2233:4455]:8080");
+    ASSERT_EQ(address11.host(), "[2001:0DB8:AABB:CCDD:EEFF:0011:2233:4455]");
+    ASSERT_EQ(address11.port(), 8080);
 }
 
 TEST(net_test, invalid_address)
