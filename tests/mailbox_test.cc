@@ -25,8 +25,7 @@ TEST(queue_test, destructor_test) {
     EXPECT_TRUE(queue.empty());
 
     for( int i = 0; i < 5; i++ ) {
-        auto* e = queue.allocEntry(Data());
-        queue.push(e);
+        queue.push(Data());
     }
     // Should call Data::~Data 5 times and not 6 (placeholder entry)
 }

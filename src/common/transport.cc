@@ -49,8 +49,7 @@ Transport::handleNewPeer(const std::shared_ptr<Tcp::Peer>& peer) {
     const bool isInRightThread = std::this_thread::get_id() == ctx.thread();
     if (!isInRightThread) {
         PeerEntry entry(peer);
-        auto *e = peersQueue.allocEntry(entry);
-        peersQueue.push(e);
+        peersQueue.push(std::move(entry));
     } else {
         handlePeer(peer);
     }
@@ -278,8 +277,7 @@ Transport::armTimerMs(
     TimerEntry entry(fd, value, std::move(deferred));
 
     if (!isInRightThread) {
-        auto *e = timersQueue.allocEntry(std::move(entry));
-        timersQueue.push(e);
+        timersQueue.push(std::move(entry));
     } else {
         armTimerMsImpl(std::move(entry));
     }

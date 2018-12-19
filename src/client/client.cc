@@ -184,8 +184,7 @@ Transport::asyncConnect(const std::shared_ptr<Connection>& connection, const str
 {
     return Async::Promise<void>([=](Async::Resolver& resolve, Async::Rejection& reject) {
         ConnectionEntry entry(std::move(resolve), std::move(reject), connection, address, addr_len);
-        auto *e = connectionsQueue.allocEntry(std::move(entry));
-        connectionsQueue.push(e);
+        connectionsQueue.push(std::move(entry));
     });
 }
 
@@ -199,8 +198,7 @@ Transport::asyncSendRequest(
         auto ctx = context();
         RequestEntry req(std::move(resolve), std::move(reject), connection, std::move(timer), std::move(buffer));
         if (std::this_thread::get_id() != ctx.thread()) {
-            auto *e = requestsQueue.allocEntry(std::move(req));
-            requestsQueue.push(e);
+            requestsQueue.push(std::move(req));
         } else {
             asyncSendRequestImpl(req);
         }
@@ -480,14 +478,13 @@ Connection::perform(
         Connection::OnDone onDone) {
     return Async::Promise<Response>([=](Async::Resolver& resolve, Async::Rejection& reject) {
         if (!isConnected()) {
-            auto* entry = requestsQueue.allocEntry(
+            requestsQueue.push(
                 RequestData(
                     std::move(resolve),
                     std::move(reject),
                     request,
                     timeout,
                     std::move(onDone)));
-            requestsQueue.push(entry);
         } else {
             performImpl(request, timeout, std::move(resolve), std::move(reject), std::move(onDone));
         }
