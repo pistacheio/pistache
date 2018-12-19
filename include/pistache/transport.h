@@ -46,8 +46,7 @@ public:
             auto detached = holder.detach();
             WriteEntry write(std::move(deferred), detached, flags);
             write.peerFd = fd;
-            auto *e = writesQueue.allocEntry(std::move(write));
-            writesQueue.push(e);
+            writesQueue.push(std::move(write));
         });
     }
 

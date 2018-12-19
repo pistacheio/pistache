@@ -155,17 +155,28 @@ public:
     struct Entry {
         friend class Queue;
 
+        Entry() :
+            storage(),
+            next(nullptr)
+        {
+        }
+
+        template < class U >
+        Entry( U&& u ) :
+            storage(),
+            next(nullptr)
+        {
+            new (&storage) T(std::forward<U>(u));
+        }
+
+        ~Entry() = default;
+
         const T& data() const {
             return *reinterpret_cast<const T*>(&storage);
         }
 
         T& data() {
             return *reinterpret_cast<T*>(&storage);
-        }
-
-        ~Entry() {
-            auto *d = reinterpret_cast<T *>(&storage);
-            d->~T();
         }
     private:
         typedef typename std::aligned_storage<sizeof(T), alignof(T)>::type Storage;
@@ -184,18 +195,17 @@ public:
     }
 
     virtual ~Queue() {
-        while (auto *e = pop()) delete e;
+        while (!empty()) {
+            Entry* e = pop();
+            e->data().~T();
+            delete e;
+        }
+        delete tail;
     }
 
     template<typename U>
-    Entry* allocEntry(U&& u) const {
-        auto *e = new Entry;
-        new (&e->storage) T(std::forward<U>(u));
-        return e;
-    }
-
-    void push(Entry *entry) {
-        entry->next = nullptr;
+    void push( U&& u ) {
+        Entry* entry = new Entry(std::forward<U>(u));
         // @Note: we're using SC atomics here (exchange will issue a full fence),
         // but I don't think we should bother relaxing them for now
         auto *prev = head.exchange(entry);
@@ -215,9 +225,7 @@ public:
     }
 
     bool empty() {
-        auto *res = tail;
-        auto* next = res->next.load(std::memory_order_acquire);
-        return next != nullptr;
+        return head == tail;
     }
 
     std::unique_ptr<Entry> popSafe() {
@@ -261,8 +269,9 @@ public:
         return tag;
     }
 
-    void push(Entry* entry) {
-        Queue<T>::push(entry);
+    template < class U >
+    void push( U&& u ) {
+        Queue<T>::push(std::forward<U>(u));
 
         if (isBound()) {
             uint64_t val = 1;
