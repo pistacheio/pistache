@@ -4,29 +4,22 @@
    Headers registry
 */
 
-#include <unordered_map>
-#include <iterator>
-#include <stdexcept>
-#include <iostream>
-
 #include <pistache/http_headers.h>
+
+#include <memory>
+#include <stdexcept>
+#include <unordered_map>
+#include <vector>
 
 namespace Pistache {
 namespace Http {
 namespace Header {
 
-namespace {
-    std::unordered_map<
-        std::string,
-        Registry::RegistryFunc,
-        LowercaseHash,
-        LowercaseEqual
-    > registry;
-}
-
 RegisterHeader(Accept);
 RegisterHeader(AccessControlAllowOrigin);
 RegisterHeader(AccessControlAllowHeaders);
+RegisterHeader(AccessControlExposeHeaders);
+RegisterHeader(AccessControlAllowMethods);
 RegisterHeader(Allow);
 RegisterHeader(CacheControl);
 RegisterHeader(Connection);
@@ -47,8 +40,20 @@ toLowercase(std::string str) {
     return str;
 }
 
+Registry& Registry::instance() {
+    static Registry instance;
+
+    return instance;
+}
+
+Registry::Registry()
+{}
+
+Registry::~Registry()
+{}
+
 void
-Registry::registerHeader(std::string name, Registry::RegistryFunc func)
+Registry::registerHeader(const std::string& name, Registry::RegistryFunc func)
 {
     auto it = registry.find(name);
     if (it != std::end(registry)) {

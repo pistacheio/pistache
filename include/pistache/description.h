@@ -103,6 +103,10 @@ template<typename DT> struct DataTypeValidation {
 } // namespace Traits
 
 struct ProduceConsume {
+    ProduceConsume()
+    : produce()
+    , consume()
+    { }
 
     std::vector<Http::Mime::MediaType> produce;
     std::vector<Http::Mime::MediaType> consume;
@@ -152,6 +156,8 @@ struct DataType {
     virtual const char* format() const = 0;
 
     virtual bool validate(const std::string& input) const = 0;
+
+    virtual ~DataType() {}
 };
 
 template<typename T>
@@ -160,6 +166,8 @@ struct DataTypeT : public DataType {
     const char* format() const { return Traits::DataTypeInfo<T>::format(); }
 
     bool validate(const std::string& input) const { return Traits::DataTypeValidation<T>::validate(input); }
+
+    virtual ~DataTypeT() {}
 };
 
 template<typename T>
@@ -210,7 +218,7 @@ struct PathDecl {
 };
 
 struct Path {
-    Path(std::string path, Http::Method method, std::string description);
+    Path(std::string value, Http::Method method, std::string description);
 
     std::string value;
     Http::Method method;
@@ -254,6 +262,10 @@ public:
 
     bool hasPath(const std::string& name, Http::Method method) const;
     bool hasPath(const Path& path) const;
+
+    PathGroup()
+      : groups_()
+    { }
 
     Group paths(const std::string& name) const;
     Optional<Path> path(const std::string& name, Http::Method method) const;
@@ -352,7 +364,7 @@ private:
 struct SubPath {
     SubPath(std::string prefix, PathGroup* paths);
 
-    PathBuilder route(std::string path, Http::Method method, std::string description = "");
+    PathBuilder route(std::string name, Http::Method method, std::string description = "");
     PathBuilder route(PathDecl fragment, std::string description = "");
 
     SubPath path(std::string prefix);
@@ -399,10 +411,15 @@ public:
         return *this;
     }
 
+    Schema::PathDecl options(std::string name);
     Schema::PathDecl get(std::string name);
     Schema::PathDecl post(std::string name);
+    Schema::PathDecl head(std::string name);
     Schema::PathDecl put(std::string name);
+    Schema::PathDecl patch(std::string name);
     Schema::PathDecl del(std::string name);
+    Schema::PathDecl trace(std::string name);
+    Schema::PathDecl connect(std::string name);
 
     Schema::SubPath path(std::string name);
 
@@ -432,6 +449,10 @@ class Swagger {
 public:
     Swagger(const Description& description)
         : description_(description)
+        , uiPath_()
+        , uiDirectory_()
+        , apiPath_()
+        , serializer_()
     { }
 
     typedef std::function<std::string (const Description&)> Serializer;
@@ -440,7 +461,7 @@ public:
     Swagger& uiDirectory(std::string dir);
     Swagger& apiPath(std::string path);
     Swagger& serializer(Serializer serialize);
-   
+
     void install(Rest::Router& router);
 
 private:

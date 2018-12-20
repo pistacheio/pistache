@@ -4,13 +4,17 @@
    Implementation of the Http client
 */
 
-#include <algorithm>
+#include <pistache/client.h>
+#include <pistache/http.h>
+#include <pistache/stream.h>
 
 #include <sys/sendfile.h>
 #include <netdb.h>
 
-#include <pistache/client.h>
-#include <pistache/stream.h>
+#include <algorithm>
+#include <memory>
+#include <sstream>
+#include <string>
 
 
 namespace Pistache {
@@ -18,20 +22,6 @@ namespace Pistache {
 using namespace Polling;
 
 namespace Http {
-
-namespace {
-    Address httpAddr(const StringView& view) {
-        auto str = view.toString();
-        auto pos = str.find(':');
-        if (pos == std::string::npos) {
-            return Address(std::move(str), 80);
-        }
-
-        auto host = str.substr(0, pos);
-        auto port = std::stoi(str.substr(pos + 1));
-        return Address(std::move(host), port);
-    }
-}
 
 static constexpr const char* UA = "pistache/0.1";
 
@@ -54,7 +44,7 @@ splitUrl(const std::string& url) {
 }
 
 struct ExceptionPrinter {
-    void operator()(std::exception_ptr exc) {
+    void operator()(std::exception_ptr exc) const {
         try {
             std::rethrow_exception(exc);
         } catch (const std::exception& e) {
@@ -64,59 +54,48 @@ struct ExceptionPrinter {
 };
 
 namespace {
-    #define OUT(...) \
-    do { \
-        __VA_ARGS__; \
-        if (!os)  return false; \
-    } while (0)
-
-    template<typename H, typename Stream, typename... Args>
-    typename std::enable_if<Http::Header::IsHeader<H>::value, Stream&>::type
-    writeHeader(Stream& stream, Args&& ...args) {
+    template<typename H, typename... Args>
+    void writeHeader(std::stringstream& streamBuf, Args&& ...args) {
         using Http::crlf;
 
         H header(std::forward<Args>(args)...);
 
-        stream << H::Name << ": ";
-        header.write(stream);
+        streamBuf << H::Name << ": ";
+        header.write(streamBuf);
 
-        stream << crlf;
-
-        return stream;
+        streamBuf << crlf;
     }
 
-    bool writeHeaders(const Http::Header::Collection& headers, DynamicStreamBuf& buf) {
+    void writeHeaders(std::stringstream& streamBuf, const Http::Header::Collection& headers) {
         using Http::crlf;
-
-        std::ostream os(&buf);
 
         for (const auto& header: headers.list()) {
-            OUT(os << header->name() << ": ");
-            OUT(header->write(os));
-            OUT(os << crlf);
+            streamBuf << header->name() << ": ";
+            header->write(streamBuf);
+            streamBuf << crlf;
         }
-
-        return true;
     }
 
-    bool writeCookies(const Http::CookieJar& cookies, DynamicStreamBuf& buf) {
+    void writeCookies(std::stringstream& streamBuf, const Http::CookieJar& cookies) {
         using Http::crlf;
 
-        std::ostream os(&buf);
+        streamBuf << "Cookie: ";
+        bool first = true;
         for (const auto& cookie: cookies) {
-            OUT(os << "Cookie: ");
-            OUT(cookie.write(os));
-            OUT(os << crlf);
+            if (!first) {
+                streamBuf << "; ";
+            }
+            else {
+                first = false;
+            }
+            streamBuf << cookie.name << "=" << cookie.value;
         }
 
-        return true;
-
+        streamBuf << crlf;
     }
 
-    bool writeRequest(const Http::Request& request, DynamicStreamBuf &buf) {
+    void writeRequest(std::stringstream& streamBuf, const Http::Request& request) {
         using Http::crlf;
-
-        std::ostream os(&buf);
 
         auto res = request.resource();
         auto s = splitUrl(res);
@@ -127,32 +106,26 @@ namespace {
 
         auto pathStr = path.toString();
 
-        OUT(os << request.method() << " ");
+        streamBuf << request.method() << " ";
         if (pathStr[0] != '/')
-            OUT(os << '/');
-        OUT(os << pathStr);
-        OUT(os << " HTTP/1.1" << crlf);
+            streamBuf << '/';
+        streamBuf << pathStr;
+        streamBuf << " HTTP/1.1" << crlf;
 
-        if (!writeCookies(request.cookies(), buf)) return false;
-        if (!writeHeaders(request.headers(), buf)) return false;
+        writeCookies(streamBuf, request.cookies());
+        writeHeaders(streamBuf, request.headers());
 
-        if (!writeHeader<Http::Header::UserAgent>(os, UA)) return false;
-        if (!writeHeader<Http::Header::Host>(os, host.toString())) return false;
+        writeHeader<Http::Header::UserAgent>(streamBuf, UA);
+        writeHeader<Http::Header::Host>(streamBuf, host.toString());
         if (!body.empty()) {
-            if (!writeHeader<Http::Header::ContentLength>(os, body.size())) return false;
+            writeHeader<Http::Header::ContentLength>(streamBuf, body.size());
         }
-        OUT(os << crlf);
+        streamBuf << crlf;
 
         if (!body.empty()) {
-            OUT(os << body);
+            streamBuf << body;
         }
-
-        return true;
-
-
     }
-
-#undef OUT
 }
 
 void
@@ -211,8 +184,7 @@ Transport::asyncConnect(const std::shared_ptr<Connection>& connection, const str
 {
     return Async::Promise<void>([=](Async::Resolver& resolve, Async::Rejection& reject) {
         ConnectionEntry entry(std::move(resolve), std::move(reject), connection, address, addr_len);
-        auto *e = connectionsQueue.allocEntry(std::move(entry));
-        connectionsQueue.push(e);
+        connectionsQueue.push(std::move(entry));
     });
 }
 
@@ -220,17 +192,14 @@ Async::Promise<ssize_t>
 Transport::asyncSendRequest(
         const std::shared_ptr<Connection>& connection,
         std::shared_ptr<TimerPool::Entry> timer,
-        const Buffer& buffer) {
+        std::string buffer) {
 
     return Async::Promise<ssize_t>([&](Async::Resolver& resolve, Async::Rejection& reject) {
         auto ctx = context();
+        RequestEntry req(std::move(resolve), std::move(reject), connection, std::move(timer), std::move(buffer));
         if (std::this_thread::get_id() != ctx.thread()) {
-            RequestEntry req(std::move(resolve), std::move(reject), connection, std::move(timer), buffer.detach());
-            auto *e = requestsQueue.allocEntry(std::move(req));
-            requestsQueue.push(e);
+            requestsQueue.push(std::move(req));
         } else {
-            RequestEntry req(std::move(resolve), std::move(reject), connection, std::move(timer), buffer);
-
             asyncSendRequestImpl(req);
         }
     });
@@ -241,12 +210,7 @@ void
 Transport::asyncSendRequestImpl(
         const RequestEntry& req, WriteStatus status)
 {
-    auto buffer = req.buffer;
-
-    auto cleanUp = [&]() {
-        if (buffer.isOwned) delete[] buffer.data;
-    };
-
+    const auto& buffer = req.buffer;
     auto conn = req.connection;
 
     auto fd = conn->fd;
@@ -254,8 +218,8 @@ Transport::asyncSendRequestImpl(
     ssize_t totalWritten = 0;
     for (;;) {
         ssize_t bytesWritten = 0;
-        ssize_t len = buffer.len - totalWritten;
-        auto ptr = buffer.data + totalWritten;
+        ssize_t len = buffer.size() - totalWritten;
+        auto ptr = buffer.data() + totalWritten;
         bytesWritten = ::send(fd, ptr, len, 0);
         if (bytesWritten < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -265,7 +229,6 @@ Transport::asyncSendRequestImpl(
                 reactor()->modifyFd(key(), fd, NotifyOn::Write, Polling::Mode::Edge);
             }
             else {
-                cleanUp();
                 req.reject(Error::system("Could not send request"));
             }
             break;
@@ -273,7 +236,6 @@ Transport::asyncSendRequestImpl(
         else {
             totalWritten += bytesWritten;
             if (totalWritten == len) {
-                cleanUp();
                 if (req.timer) {
                     timeouts.insert(
                           std::make_pair(req.timer->fd, conn));
@@ -323,15 +285,12 @@ Transport::handleConnectionQueue() {
 
 void
 Transport::handleIncoming(const std::shared_ptr<Connection>& connection) {
-    char buffer[Const::MaxBuffer];
-    memset(buffer, 0, sizeof buffer);
+    char buffer[Const::MaxBuffer] = {0};
 
     ssize_t totalBytes = 0;
+
     for (;;) {
-
-        ssize_t bytes;
-
-        bytes = recv(connection->fd, buffer + totalBytes, Const::MaxBuffer - totalBytes, 0);
+        ssize_t bytes = recv(connection->fd, buffer + totalBytes, Const::MaxBuffer - totalBytes, 0);
         if (bytes == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if (totalBytes > 0) {
@@ -374,7 +333,7 @@ Transport::handleTimeout(const std::shared_ptr<Connection>& connection) {
 }
 
 void
-Connection::connect(Address addr)
+Connection::connect(const Address& addr)
 {
     struct addrinfo hints;
     struct addrinfo *addrs;
@@ -452,55 +411,62 @@ Connection::hasTransport() const {
 }
 
 void
-Connection::handleResponsePacket(const char* buffer, size_t bytes) {
+Connection::handleResponsePacket(const char* buffer, size_t totalBytes) {
 
-    parser_.feed(buffer, bytes);
-    if (parser_.parse() == Private::State::Done) {
-        if (!inflightRequests.empty()) {
-            auto req = std::move(inflightRequests.front());
-            inflightRequests.pop_back();
-
-            if (req.timer) {
-                req.timer->disarm();
-                timerPool_.releaseTimer(req.timer);
+    parser.feed(buffer, totalBytes);
+    if (parser.parse() == Private::State::Done) {
+        if (requestEntry) {
+            if (requestEntry->timer) {
+                requestEntry->timer->disarm();
+                timerPool_.releaseTimer(requestEntry->timer);
             }
 
-            req.resolve(std::move(parser_.response));
-            if (req.onDone)
-                req.onDone();
-        }
+            requestEntry->resolve(std::move(parser.response));
+            parser.reset();
 
-        parser_.reset();
+            auto onDone = requestEntry->onDone;
+
+            requestEntry.reset(nullptr);
+
+            if (onDone)
+                onDone();
+        }
     }
 }
 
 void
 Connection::handleError(const char* error) {
-    if (!inflightRequests.empty()) {
-        auto req = std::move(inflightRequests.front());
-        if (req.timer) {
-            req.timer->disarm();
-            timerPool_.releaseTimer(req.timer);
+    if (requestEntry) {
+        if (requestEntry->timer) {
+            requestEntry->timer->disarm();
+            timerPool_.releaseTimer(requestEntry->timer);
         }
 
-        req.reject(Error(error));
-        if (req.onDone)
-            req.onDone();
+        auto onDone = requestEntry->onDone;
+
+        requestEntry->reject(Error(error));
+
+        requestEntry.reset(nullptr);
+
+        if (onDone)
+            onDone();
     }
 }
 
 void
 Connection::handleTimeout() {
-    if (!inflightRequests.empty()) {
-        auto req = std::move(inflightRequests.front());
-        inflightRequests.pop_back();
+    if (requestEntry) {
+        timerPool_.releaseTimer(requestEntry->timer);
 
-        timerPool_.releaseTimer(req.timer);
+        auto onDone = requestEntry->onDone;
 
-        if (req.onDone)
-            req.onDone();
         /* @API: create a TimeoutException */
-        req.reject(std::runtime_error("Timeout"));
+        requestEntry->reject(std::runtime_error("Timeout"));
+
+        requestEntry.reset(nullptr);
+
+        if (onDone)
+            onDone();
     }
 }
 
@@ -512,55 +478,17 @@ Connection::perform(
         Connection::OnDone onDone) {
     return Async::Promise<Response>([=](Async::Resolver& resolve, Async::Rejection& reject) {
         if (!isConnected()) {
-            auto* entry = requestsQueue.allocEntry(
+            requestsQueue.push(
                 RequestData(
                     std::move(resolve),
                     std::move(reject),
                     request,
                     timeout,
                     std::move(onDone)));
-            requestsQueue.push(entry);
         } else {
             performImpl(request, timeout, std::move(resolve), std::move(reject), std::move(onDone));
         }
     });
-}
-
-/**
- * This class is used to emulate the generalized lambda capture feature from C++14
- * whereby a given object can be moved inside a lambda, directly from the capture-list
- *
- * So instead, it will use the exact same semantic than auto_ptr (don't beat me for that),
- * meaning that it will move the value on copy
- */
-template<typename T>
-struct MoveOnCopy {
-    MoveOnCopy(T val)
-        : val(std::move(val))
-    { }
-
-    MoveOnCopy(MoveOnCopy& other)
-        : val(std::move(other.val))
-    { }
-
-    MoveOnCopy& operator=(MoveOnCopy& other) {
-        val = std::move(other.val);
-        return *this;
-    }
-
-    MoveOnCopy(MoveOnCopy&& other) = default;
-    MoveOnCopy& operator=(MoveOnCopy&& other) = default;
-
-    operator T&&() {
-        return std::move(val);
-    }
-
-    T val;
-};
-
-template<typename T>
-MoveOnCopy<T> make_copy_mover(T arg) {
-    return MoveOnCopy<T>(std::move(arg));
 }
 
 void
@@ -571,12 +499,12 @@ Connection::performImpl(
         Async::Rejection reject,
         Connection::OnDone onDone) {
 
-    DynamicStreamBuf buf(128);
-
-    if (!writeRequest(request, buf))
+    std::stringstream streamBuf;
+    writeRequest(streamBuf, request);
+    if (!streamBuf)
         reject(std::runtime_error("Could not write request"));
+    std::string buffer = streamBuf.str();
 
-    auto buffer = buf.buffer();
     std::shared_ptr<TimerPool::Entry> timer(nullptr);
     if (timeout.count() > 0) {
         timer = timerPool_.pickTimer();
@@ -584,19 +512,11 @@ Connection::performImpl(
     }
 
     auto rejectClone = reject.clone();
-    auto rejectCloneMover = make_copy_mover(std::move(rejectClone));
 
-    // Move the resolver and rejecter inside the lambda
-    auto resolveMover = make_copy_mover(std::move(resolve));
-    auto rejectMover = make_copy_mover(std::move(reject));
-
-
-    transport_->asyncSendRequest(shared_from_this(), timer, buffer).then(
-        [=](ssize_t bytes) mutable {
-            UNUSED(bytes)
-            inflightRequests.push_back(RequestEntry(std::move(resolveMover), std::move(rejectMover), std::move(timer), std::move(onDone)));
-        },
-        [=](std::exception_ptr e) { rejectCloneMover.val(e); });
+    requestEntry.reset(new RequestEntry(std::move(resolve), std::move(reject), timer, std::move(onDone)));
+    transport_->asyncSendRequest(shared_from_this(), timer, std::move(buffer)).then(
+        [](size_t /*bytes*/) {},
+        [&](std::exception_ptr e) { rejectClone(e); });
 }
 
 void
@@ -712,8 +632,8 @@ RequestBuilder::resource(const std::string& val) {
 }
 
 RequestBuilder&
-RequestBuilder::params(const Uri::Query& params) {
-    request_.query_ = params;
+RequestBuilder::params(const Uri::Query& query) {
+    request_.query_ = query;
     return *this;
 }
 
@@ -742,8 +662,8 @@ RequestBuilder::body(std::string&& val) {
 }
 
 RequestBuilder&
-RequestBuilder::timeout(std::chrono::milliseconds timeout) {
-    timeout_ = timeout;
+RequestBuilder::timeout(std::chrono::milliseconds val) {
+    timeout_ = val;
     return *this;
 }
 
@@ -772,9 +692,13 @@ Client::Options::maxConnectionsPerHost(int val) {
 
 Client::Client()
     : reactor_(Aio::Reactor::create())
+    , pool()
+    , transport_()
+    , transportKey()
     , ioIndex(0)
-{
-}
+    , queuesLock()
+    , requestsQueues()
+{ }
 
 Client::~Client() {
 }
@@ -787,7 +711,7 @@ Client::options() {
 void
 Client::init(const Client::Options& options) {
     pool.init(options.maxConnectionsPerHost_);
-    transport_.reset(new Transport);
+    transport_ = std::make_shared<Transport>();
     reactor_->init(Aio::AsyncContext(options.threads_));
     transportKey = reactor_->addHandler(transport_);
     reactor_->run();
@@ -872,7 +796,7 @@ Client::doRequest(
         }
 
         if (!conn->isConnected()) {
-            conn->connect(httpAddr(s.first));
+            conn->connect(helpers::httpAddr(s.first));
         }
 
         return conn->perform(request, timeout, [=]() {

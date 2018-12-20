@@ -13,6 +13,7 @@
 #include <memory>
 
 #include <pistache/http_header.h>
+#include <pistache/type_checkers.h>
 
 namespace Pistache {
 namespace Http {
@@ -35,6 +36,10 @@ struct LowercaseEqual {
 
 class Collection {
 public:
+    Collection()
+        : headers()
+        , rawHeaders()
+    { }
 
     template<typename H>
     typename std::enable_if<
@@ -104,6 +109,10 @@ public:
 
     std::vector<std::shared_ptr<Header>> list() const;
 
+    const std::unordered_map<std::string, Raw>& rawList() const {
+        return rawHeaders;
+    }
+
     bool remove(const std::string& name);
 
     void clear();
@@ -120,28 +129,40 @@ private:
     std::unordered_map<std::string, Raw> rawHeaders;
 };
 
-struct Registry {
+class Registry {
 
-    typedef std::function<std::unique_ptr<Header>()> RegistryFunc;
+public:
+    Registry(const Registry&) = delete;
+    Registry& operator=(const Registry&) = delete;
+    static Registry& instance();
 
-    template<typename H>
-    static
-    typename std::enable_if<
-                IsHeader<H>::value, void
-             >::type
-    registerHeader() {
+    template<typename H, REQUIRES(IsHeader<H>::value)>
+    void registerHeader() {
         registerHeader(H::Name, []() -> std::unique_ptr<Header> {
             return std::unique_ptr<Header>(new H());
         });
 
     }
 
-    static void registerHeader(std::string name, RegistryFunc func);
+    std::vector<std::string> headersList();
 
-    static std::vector<std::string> headersList();
+    std::unique_ptr<Header> makeHeader(const std::string& name);
+    bool isRegistered(const std::string& name);
 
-    static std::unique_ptr<Header> makeHeader(const std::string& name);
-    static bool isRegistered(const std::string& name);
+private:
+    Registry();
+    ~Registry();
+
+    using RegistryFunc = std::function<std::unique_ptr<Header>()>;
+    using RegistryStorageType = std::unordered_map<
+        std::string,
+        RegistryFunc,
+        LowercaseHash,
+        LowercaseEqual>;
+
+    void registerHeader(const std::string& name, RegistryFunc func);
+
+    RegistryStorageType registry;
 };
 
 template<typename H>
@@ -149,7 +170,7 @@ struct Registrar {
     static_assert(IsHeader<H>::value, "Registrar only works with header types");
 
     Registrar() {
-        Registry::registerHeader<H>();
+        Registry::instance().registerHeader<H>();
     }
 };
 

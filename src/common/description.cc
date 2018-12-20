@@ -45,7 +45,10 @@ Info::Info(
     : title(std::move(title))
     , version(std::move(version))
     , description(std::move(description))
-{ }   
+    , termsOfService()
+    , contact()
+    , license()
+{ }
 
 PathDecl::PathDecl(
         std::string value, Http::Method method)
@@ -53,12 +56,15 @@ PathDecl::PathDecl(
     , method(method)
 { }
 
-Path::Path(
-        std::string value, Http::Method method, std::string description)
+Path::Path(std::string value, Http::Method method, std::string description)
     : value(std::move(value))
     , method(method)
     , description(std::move(description))
     , hidden(false)
+    , pc()
+    , parameters()
+    , responses()
+    , handler()
 { }
 
 std::string
@@ -191,7 +197,8 @@ PathBuilder::PathBuilder(Path* path)
 SubPath::SubPath(
         std::string prefix, PathGroup* paths)
     : prefix(std::move(prefix))
-   , paths(paths)
+    , parameters()
+    , paths(paths)
 { }
 
 PathBuilder
@@ -220,7 +227,8 @@ Parameter::Parameter(
     : name(std::move(name))
     , description(std::move(description))
     , required(true)
-{ } 
+    , type()
+{ }
 
 Response::Response(
         Http::Code statusCode, std::string description)
@@ -260,6 +268,11 @@ InfoBuilder::license(std::string name, std::string url) {
 Description::Description(
         std::string title, std::string version, std::string description)
     : info_(std::move(title), std::move(version), std::move(description))
+    , host_()
+    , basePath_()
+    , schemes_()
+    , pc()
+    , paths_()
 {
 }
 
@@ -282,6 +295,11 @@ Description::basePath(std::string value) {
 }
 
 Schema::PathDecl
+Description::options(std::string name) {
+    return Schema::PathDecl(std::move(name), Http::Method::Options);
+}
+
+Schema::PathDecl
 Description::get(std::string name) {
     return Schema::PathDecl(std::move(name), Http::Method::Get);
 }
@@ -292,13 +310,33 @@ Description::post(std::string name) {
 }
 
 Schema::PathDecl
+Description::head(std::string name) {
+    return Schema::PathDecl(std::move(name), Http::Method::Head);
+}
+
+Schema::PathDecl
 Description::put(std::string name) {
     return Schema::PathDecl(std::move(name), Http::Method::Put);
 }
 
 Schema::PathDecl
+Description::patch(std::string name) {
+    return Schema::PathDecl(std::move(name), Http::Method::Patch);
+}
+
+Schema::PathDecl
 Description::del(std::string name) {
     return Schema::PathDecl(std::move(name), Http::Method::Delete);
+}
+
+Schema::PathDecl
+Description::trace(std::string name) {
+    return Schema::PathDecl(std::move(name), Http::Method::Trace);
+}
+
+Schema::PathDecl
+Description::connect(std::string name) {
+    return Schema::PathDecl(std::move(name), Http::Method::Connect);
 }
 
 Schema::SubPath
@@ -362,7 +400,7 @@ Swagger::install(Rest::Router& router) {
                 : value(value)
                 , trailingSlashValue(value)
             {
-                if (trailingSlashValue.back() != '/')
+                if (trailingSlashValue.empty() || trailingSlashValue.back() != '/')
                     trailingSlashValue += '/';
             }
 
@@ -379,7 +417,7 @@ Swagger::install(Rest::Router& router) {
                 return res;
             }
 
-            bool matches(const Rest::Request& req) {
+            bool matches(const Rest::Request& req) const {
                 auto res = req.resource();
                 if (value == res)
                     return true;
@@ -423,14 +461,14 @@ Swagger::install(Rest::Router& router) {
                 response.send(Http::Code::Moved_Permanently);
             } else {
                 auto index = uiDir.join("index.html");
-                Http::serveFile(response, index.c_str());
+                Http::serveFile(response, index);
             }
             return Route::Result::Ok;
         }
         else if (ui.isPrefix(req)) {
             auto file = ui.stripPrefix(req);
             auto path = uiDir.join(file);
-            Http::serveFile(response, path.c_str());
+            Http::serveFile(response, path);
             return Route::Result::Ok;
         }
 

@@ -38,7 +38,7 @@ public:
         listener.init(std::forward<Args>(args)...);
     }
 
-    void init(const Options& options);
+    void init(const Options& options = Options());
     void setHandler(const std::shared_ptr<Handler>& handler);
 
     void bind();
@@ -67,10 +67,9 @@ private:
             throw std::runtime_error("Must call setHandler() prior to serve()");
 
         listener.setHandler(handler_);
+        listener.bind();
 
-        if (listener.bind()) {
-            CALL_MEMBER_FN(listener, method)();
-        }
+        CALL_MEMBER_FN(listener, method)();
 #undef CALL_MEMBER_FN
     }
 
@@ -79,14 +78,7 @@ private:
 };
 
 template<typename Handler>
-void listenAndServe(Address addr)
-{
-    auto options = Endpoint::options().threads(1);
-    listenAndServe<Handler>(addr, options);
-}
-
-template<typename Handler>
-void listenAndServe(Address addr, const Endpoint::Options& options)
+void listenAndServe(Address addr, const Endpoint::Options& options = Endpoint::options())
 {
     Endpoint endpoint(addr);
     endpoint.init(options);

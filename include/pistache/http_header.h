@@ -45,13 +45,13 @@ constexpr uint64_t hash(const char* str)
 #ifdef SAFE_HEADER_CAST
     #define NAME(header_name) \
         static constexpr uint64_t Hash = Pistache::Http::Header::detail::hash(header_name); \
-        uint64_t hash() const { return Hash; } \
+        uint64_t hash() const override { return Hash; } \
         static constexpr const char *Name = header_name; \
-        const char *name() const { return Name; }
+        const char *name() const override { return Name; }
 #else
     #define NAME(header_name) \
         static constexpr const char *Name = header_name; \
-        const char *name() const { return Name; }
+        const char *name() const override { return Name; }
 #endif
 
 // 3.5 Content Codings
@@ -118,7 +118,9 @@ class Allow : public Header {
 public:
     NAME("Allow");
 
-    Allow() { }
+    Allow()
+        : methods_()
+    { }
 
     explicit Allow(const std::vector<Http::Method>& methods)
         : methods_(methods)
@@ -128,12 +130,13 @@ public:
     { }
 
     explicit Allow(Http::Method method)
+        : methods_()
     {
         methods_.push_back(method);
     }
 
-    void parseRaw(const char *str, size_t len);
-    void write(std::ostream& os) const;
+    void parseRaw(const char *str, size_t len) override;
+    void write(std::ostream& os) const override;
 
     void addMethod(Http::Method method);
     void addMethods(std::initializer_list<Method> methods);
@@ -149,10 +152,12 @@ class Accept : public Header {
 public:
     NAME("Accept")
 
-    Accept() { }
+    Accept()
+        : mediaRange_()
+    { }
 
-    void parseRaw(const char *str, size_t len);
-    void write(std::ostream& os) const;
+    void parseRaw(const char *str, size_t len) override;
+    void write(std::ostream& os) const override;
 
     const std::vector<Mime::MediaType> media() const { return mediaRange_; }
 
@@ -164,7 +169,9 @@ class AccessControlAllowOrigin : public Header {
 public:
   NAME("Access-Control-Allow-Origin")
 
-  AccessControlAllowOrigin() { }
+  AccessControlAllowOrigin()
+    : uri_()
+  { }
 
   explicit AccessControlAllowOrigin(const char* uri)
     : uri_(uri)
@@ -173,8 +180,8 @@ public:
     : uri_(uri)
   { }
 
-  void parse(const std::string& data);
-  void write(std::ostream& os) const;
+  void parse(const std::string& data) override;
+  void write(std::ostream& os) const override;
 
   void setUri(std::string uri) {
     uri_ = std::move(uri);
@@ -190,12 +197,70 @@ class AccessControlAllowHeaders : public Header {
 public:
   NAME("Access-Control-Allow-Headers")
 
-  AccessControlAllowHeaders() { }
+  AccessControlAllowHeaders()
+    : val_()
+  { }
 
   explicit AccessControlAllowHeaders(const char* val)
     : val_(val)
   { }
   explicit AccessControlAllowHeaders(const std::string& val)
+    : val_(val)
+  { }
+
+  void parse(const std::string& data) override;
+  void write(std::ostream& os) const override;
+
+  void setUri(std::string val) {
+    val_ = std::move(val);
+  }
+
+  std::string val() const { return val_; }
+
+private:
+  std::string val_;
+};
+
+class AccessControlExposeHeaders : public Header {
+public:
+  NAME("Access-Control-Expose-Headers")
+
+  AccessControlExposeHeaders()
+    : val_()
+  { }
+
+  explicit AccessControlExposeHeaders(const char* val)
+    : val_(val)
+  { }
+  explicit AccessControlExposeHeaders(const std::string& val)
+    : val_(val)
+  { }
+
+  void parse(const std::string& data);
+  void write(std::ostream& os) const;
+
+  void setUri(std::string val) {
+    val_ = std::move(val);
+  }
+
+  std::string val() const { return val_; }
+
+private:
+  std::string val_;
+};
+
+class AccessControlAllowMethods : public Header {
+public:
+  NAME("Access-Control-Allow-Methods")
+
+  AccessControlAllowMethods()
+    : val_()
+  { }
+
+  explicit AccessControlAllowMethods(const char* val)
+    : val_(val)
+  { }
+  explicit AccessControlAllowMethods(const std::string& val)
     : val_(val)
   { }
 
@@ -216,14 +281,17 @@ class CacheControl : public Header {
 public:
     NAME("Cache-Control")
 
-    CacheControl() { }
+    CacheControl()
+       : directives_()
+    { }
+
     explicit CacheControl(const std::vector<Http::CacheDirective>& directives)
         : directives_(directives)
     { }
     explicit CacheControl(Http::CacheDirective directive);
 
     void parseRaw(const char* str, size_t len);
-    void write(std::ostream& os) const;
+    void write(std::ostream& os) const override;
 
     std::vector<Http::CacheDirective> directives() const { return directives_; }
 
@@ -247,7 +315,7 @@ public:
     { }
 
     void parseRaw(const char* str, size_t len);
-    void write(std::ostream& os) const;
+    void write(std::ostream& os) const override;
 
     ConnectionControl control() const { return control_; }
 
@@ -258,8 +326,12 @@ private:
 class EncodingHeader : public Header {
 public:
 
+    EncodingHeader()
+       : encoding_()
+    { }
+
     void parseRaw(const char* str, size_t len);
-    void write(std::ostream& os) const;
+    void write(std::ostream& os) const override;
 
     Encoding encoding() const {
         return encoding_;
@@ -312,8 +384,8 @@ public:
         : value_(val)
     { }
 
-    void parse(const std::string& data);
-    void write(std::ostream& os) const;
+    void parse(const std::string& data) override;
+    void write(std::ostream& os) const override;
 
     uint64_t value() const { return value_; }
 
@@ -325,14 +397,16 @@ class ContentType : public Header {
 public:
     NAME("Content-Type")
 
-    ContentType() { }
+    ContentType()
+       : mime_()
+    { }
 
-    explicit ContentType(const Mime::MediaType& mime) :
-        mime_(mime)
+    explicit ContentType(const Mime::MediaType& mime)
+        : mime_(mime)
     { }
 
     void parseRaw(const char* str, size_t len);
-    void write(std::ostream& os) const;
+    void write(std::ostream& os) const override;
 
     Mime::MediaType mime() const { return mime_; }
     void setMime(const Mime::MediaType& mime) { mime_ = mime; }
@@ -346,14 +420,16 @@ class Date : public Header {
 public:
     NAME("Date")
 
-    Date() { }
-
-    explicit Date(const FullDate& date) :
-        fullDate_(date)
+    Date()
+        : fullDate_()
     { }
 
-    void parse(const std::string &str);
-    void write(std::ostream& os) const;
+    explicit Date(const FullDate& date)
+        : fullDate_(date)
+    { }
+
+    void parse(const std::string& data) override;
+    void write(std::ostream& os) const override;
 
     FullDate fullDate() const { return fullDate_; }
 
@@ -365,14 +441,16 @@ class Expect : public Header {
 public:
     NAME("Expect")
 
-    Expect() { }
+    Expect()
+        : expectation_()
+    { }
 
-    explicit Expect(Http::Expectation expectation) :
-        expectation_(expectation)
+    explicit Expect(Http::Expectation expectation)
+        : expectation_(expectation)
     { }
 
     void parseRaw(const char* str, size_t len);
-    void write(std::ostream& os) const;
+    void write(std::ostream& os) const override;
 
     Http::Expectation expectation() const { return expectation_; }
 
@@ -385,6 +463,8 @@ public:
     NAME("Host");
 
     Host()
+       : host_()
+       , port_(0)
     { }
 
     explicit Host(const std::string& host);
@@ -393,8 +473,8 @@ public:
         , port_(port)
     { }
 
-    void parse(const std::string& data);
-    void write(std::ostream& os) const;
+    void parse(const std::string& data) override;
+    void write(std::ostream& os) const override;
 
     std::string host() const { return host_; }
     Port port() const { return port_; }
@@ -408,12 +488,14 @@ class Location : public Header {
 public:
     NAME("Location")
 
-    Location() { }
+    Location()
+       : location_()
+    { }
 
     explicit Location(const std::string& location);
 
-    void parse(const std::string& data);
-    void write(std::ostream& os) const;
+    void parse(const std::string& data) override;
+    void write(std::ostream& os) const override;
 
     std::string location() const { return location_; }
 
@@ -425,14 +507,16 @@ class Server : public Header {
 public:
     NAME("Server")
 
-    Server() { }
+    Server()
+       : tokens_()
+    { }
 
     explicit Server(const std::vector<std::string>& tokens);
     explicit Server(const std::string& token);
     explicit Server(const char* token);
 
-    void parse(const std::string& data);
-    void write(std::ostream& os) const;
+    void parse(const std::string& data) override;
+    void write(std::ostream& os) const override;
 
     std::vector<std::string> tokens() const { return tokens_; }
 private:
@@ -443,7 +527,10 @@ class UserAgent : public Header {
 public:
     NAME("User-Agent")
 
-    UserAgent() { }
+    UserAgent()
+        : ua_()
+    { }
+
     explicit UserAgent(const char* ua)
         : ua_(ua)
     { }
@@ -452,8 +539,8 @@ public:
         ua_(ua)
     { }
 
-    void parse(const std::string& data);
-    void write(std::ostream& os) const;
+    void parse(const std::string& data) override;
+    void write(std::ostream& os) const override;
 
     void setAgent(std::string ua) {
         ua_ = std::move(ua);

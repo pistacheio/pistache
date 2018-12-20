@@ -13,6 +13,7 @@
 #include <vector>
 #include <limits>
 #include <iostream>
+#include <string>
 
 #include <pistache/os.h>
 
@@ -84,6 +85,8 @@ public:
     static size_t maxSize;
 
     ArrayStreamBuf()
+      : StreamBuf<CharT>()
+      , bytes()
     {
         bytes.clear();
         Base::setg(bytes.data(), bytes.data(), bytes.data() + bytes.size());
@@ -150,9 +153,12 @@ struct Buffer {
 };
 
 struct FileBuffer {
-    FileBuffer() { }
+    FileBuffer()
+        : fileName_()
+        , fd_()
+        , size_()
+    { }
 
-    FileBuffer(const char* fileName);
     FileBuffer(const std::string& fileName);
 
     std::string fileName() const { return fileName_; }
@@ -160,7 +166,6 @@ struct FileBuffer {
     size_t size() const { return size_; }
 
 private:
-    void init(const char* fileName);
     std::string fileName_;
     Fd fd_;
     size_t size_;
@@ -177,6 +182,7 @@ public:
             size_t size,
             size_t maxSize = std::numeric_limits<uint32_t>::max())
         : maxSize_(maxSize)
+        , data_()
     {
         reserve(size);
     }
@@ -247,7 +253,7 @@ public:
             return end() - start();
         }
 
-        std::string text() {
+        std::string text() const {
             return std::string(gptr, size());
         }
 
@@ -272,6 +278,9 @@ public:
             , active(true)
         { }
 
+        Revert(const Revert&) = delete;
+        Revert& operator=(const Revert&) = delete;
+
         ~Revert() {
             if (active)
                 revert();
@@ -291,7 +300,6 @@ public:
         char *gptr;
         char *egptr;
         bool active;
-
     };
 
     bool advance(size_t count);

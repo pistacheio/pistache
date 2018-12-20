@@ -49,7 +49,7 @@ public:
             min = std::stoi(minor);
     }
 
-    void write(std::ostream& os) const {
+    void write(std::ostream& os) const override {
         os << maj;
         os << "." << min;
     }
@@ -68,5 +68,5 @@ private:
 };
 
 int main() {
-    Header::Registry::registerHeader<XProtocolVersion>();
+    Header::Registry::instance().registerHeader<XProtocolVersion>();
 }

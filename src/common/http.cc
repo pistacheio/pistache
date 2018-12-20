@@ -294,11 +294,14 @@ namespace Private {
             }
 
             if (name == "Cookie") {
+                message->cookies_.removeAllCookies(); // removing existing cookies before re-adding them.
                 message->cookies_.addFromRaw(cursor.offset(start), cursor.diff(start));
             }
-
-            else if (Header::Registry::isRegistered(name)) {
-                std::shared_ptr<Header::Header> header = Header::Registry::makeHeader(name);
+            else if (name == "Set-Cookie") {
+                message->cookies_.add(Cookie::fromRaw(cursor.offset(start), cursor.diff(start)));
+            }
+            else if (Header::Registry::instance().isRegistered(name)) {
+                std::shared_ptr<Header::Header> header = Header::Registry::instance().makeHeader(name);
                 header->parseRaw(cursor.offset(start), cursor.diff(start));
                 message->headers_.add(header);
             }
@@ -474,11 +477,16 @@ namespace Private {
 
 Message::Message()
     : version_(Version::Http11)
+    , code_()
+    , headers_()
+    , body_()
+    , cookies_()
 { }
 
 namespace Uri {
 
     Query::Query()
+        : params()
     { }
 
     Query::Query(std::initializer_list<std::pair<const std::string, std::string>> params)
@@ -505,9 +513,9 @@ namespace Uri {
         for(const auto &e : params) {
             query_url += "&" + e.first + "=" + e.second;
         }
-        if(not query_url.empty()) {
+        if(!query_url.empty()) {
             query_url[0] = '?'; // replace first `&` with `?`
-        } else {/* query_url is empty */}
+        }
         return query_url;
     }
 
@@ -520,6 +528,9 @@ namespace Uri {
 
 Request::Request()
     : Message()
+    , method_()
+    , resource_()
+    , query_()
 { }
 
 Version
@@ -672,11 +683,11 @@ ResponseWriter::putOnWire(const char* data, size_t len)
 }
 
 Async::Promise<ssize_t>
-serveFile(ResponseWriter& response, const char* fileName, const Mime::MediaType& contentType)
+serveFile(ResponseWriter& response, const std::string& fileName, const Mime::MediaType& contentType)
 {
     struct stat sb;
 
-    int fd = open(fileName, O_RDONLY);
+    int fd = open(fileName.c_str(), O_RDONLY);
     if (fd == -1) {
         std::string str_error(strerror(errno));
         if(errno == ENOENT) {
@@ -722,7 +733,7 @@ serveFile(ResponseWriter& response, const char* fileName, const Mime::MediaType&
     if (contentType.isValid()) {
         setContentType(contentType);
     } else {
-        auto mime = Mime::MediaType::fromFile(fileName);
+        auto mime = Mime::MediaType::fromFile(fileName.c_str());
         if (mime.isValid())
             setContentType(mime);
     }
@@ -740,8 +751,7 @@ serveFile(ResponseWriter& response, const char* fileName, const Mime::MediaType&
     auto sockFd = peer->fd();
 
     auto buffer = buf->buffer();
-    return transport->asyncWrite(sockFd, buffer, MSG_MORE).then([=](ssize_t bytes) {
-        UNUSED(bytes)
+    return transport->asyncWrite(sockFd, buffer, MSG_MORE).then([=](ssize_t) {
         return transport->asyncWrite(sockFd, FileBuffer(fileName));
     }, Async::Throw);
 

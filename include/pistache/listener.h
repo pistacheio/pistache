@@ -31,7 +31,7 @@ class Listener {
 public:
 
     struct Load {
-        typedef std::chrono::system_clock::time_point TimePoint;
+        using TimePoint = std::chrono::system_clock::time_point;
         double global;
         std::vector<double> workers;
 
@@ -42,15 +42,15 @@ public:
     Listener();
     ~Listener();
 
-    Listener(const Address& address);
+    explicit Listener(const Address& address);
     void init(
             size_t workers,
             Flags<Options> options = Options::None,
             int backlog = Const::MaxBacklog);
     void setHandler(const std::shared_ptr<Handler>& handler);
 
-    bool bind();
-    bool bind(const Address& adress);
+    void bind();
+    void bind(const Address& address);
 
     bool isBound() const;
 
@@ -74,13 +74,13 @@ private:
     Polling::Epoll poller;
 
     Flags<Options> options_;
-    std::unique_ptr<std::thread> acceptThread;
+    std::thread acceptThread;
 
     size_t workers_;
     std::shared_ptr<Transport> transport_;
     std::shared_ptr<Handler> handler_;
 
-    std::shared_ptr<Aio::Reactor> reactor_;
+    Aio::Reactor reactor_;
     Aio::Reactor::Key transportKey;
 
     void handleNewConnection();

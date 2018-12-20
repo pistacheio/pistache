@@ -18,7 +18,7 @@
 
 namespace Pistache {
 
-typedef int Fd;
+using Fd = int;
 
 uint hardware_concurrency();
 bool make_non_blocking(int fd);
@@ -87,8 +87,10 @@ inline constexpr bool operator==(Tag lhs, Tag rhs) {
 }
 
 struct Event {
-    explicit Event(Tag _tag) :
-        tag(_tag)
+    explicit Event(Tag _tag)
+        : flags()
+        , fd(-1)
+        , tag(_tag)
     { }
 
     Flags<NotifyOn> flags;
@@ -111,8 +113,8 @@ public:
              std::chrono::milliseconds timeout = std::chrono::milliseconds(0)) const;
 
 private:
-    int toEpollEvents(Flags<NotifyOn> interest) const;
-    Flags<NotifyOn> toNotifyOn(int events) const;
+    static int toEpollEvents(const Flags<NotifyOn>& interest);
+    static Flags<NotifyOn> toNotifyOn(int events);
     int epoll_fd;
 };
 

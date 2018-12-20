@@ -30,6 +30,7 @@
             } else { \
                 oss << strerror(errno); \
             } \
+            oss << " (" << __FILE__ << ":" << __LINE__ << ")"; \
             throw std::runtime_error(oss.str()); \
         } \
     } while (0)
@@ -41,6 +42,7 @@
             const char *str = #__VA_ARGS__; \
             std::ostringstream oss; \
             oss << str << ": " << strerror(errno); \
+            oss << " (" << __FILE__ << ":" << __LINE__ << ")"; \
             throw std::runtime_error(oss.str()); \
         } \
         return ret; \
@@ -59,6 +61,7 @@ namespace Const {
     static constexpr size_t MaxBacklog = 128;
     static constexpr size_t MaxEvents  = 1024;
     static constexpr size_t MaxBuffer  = 4096;
+    static constexpr size_t DefaultWorkers = 1;
 
     // Defined from CMakeLists.txt in project root
     static constexpr size_t DefaultMaxPayload = 4096;

@@ -118,6 +118,8 @@ namespace Http {
     CHARSET(Utf32-LE, "utf-32le") \
     CHARSET(Unicode-11, "unicode-1-1")
 
+const uint16_t HTTP_STANDARD_PORT = 80;
+
 enum class Method {
 #define METHOD(m, _) m,
     HTTP_METHODS
@@ -153,7 +155,11 @@ public:
                      Public, Private, MustRevalidate, ProxyRevalidate, SMaxAge,
                      Ext };
 
-    CacheDirective() { }
+    CacheDirective()
+        : directive_()
+        , data()
+    { }
+
     CacheDirective(Directive directive);
     CacheDirective(Directive directive, std::chrono::seconds delta);
 
@@ -176,7 +182,9 @@ private:
 class FullDate {
 public:
     using time_point = std::chrono::system_clock::time_point;
-    FullDate() { }
+    FullDate()
+       : date_()
+    { }
 
     enum class Type {
         RFC1123,

@@ -10,20 +10,17 @@
 
 #pragma once
 
-#include <thread>
-#include <mutex>
-#include <atomic>
-#include <memory>
-#include <unordered_map>
-
-#include <sys/time.h>
-#include <sys/resource.h>
-
 #include <pistache/flags.h>
 #include <pistache/os.h>
 #include <pistache/net.h>
 #include <pistache/prototype.h>
 
+#include <sys/time.h>
+#include <sys/resource.h>
+
+#include <thread>
+#include <memory>
+#include <vector>
 
 namespace Pistache {
 namespace Aio {
@@ -32,6 +29,7 @@ namespace Aio {
 class FdSet {
 public:
     FdSet(std::vector<Polling::Event>&& events)
+       : events_()
     {
         events_.reserve(events.size());
         for (auto &&event: events) {
@@ -58,8 +56,8 @@ public:
         Polling::Tag getTag() const { return this->tag; }
     };
 
-    typedef std::vector<Entry>::iterator iterator;
-    typedef std::vector<Entry>::const_iterator const_iterator;
+    using iterator = std::vector<Entry>::iterator;
+    using const_iterator = std::vector<Entry>::const_iterator;
 
     size_t size() const {
         return events_.size();
@@ -118,7 +116,7 @@ public:
         }
 
     private:
-        Key(uint64_t data);
+        explicit Key(uint64_t data);
         uint64_t data_;
     };
 
@@ -136,7 +134,7 @@ public:
             const Key& key, Fd fd, Polling::NotifyOn interest, Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level);
     void registerFdOneShot(
-            const Key& key, Fd fd, Polling::NotifyOn intereset, Polling::Tag tag,
+            const Key& key, Fd fd, Polling::NotifyOn interest, Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level);
 
     void registerFd(
@@ -166,21 +164,25 @@ private:
 
 class ExecutionContext {
 public:
+    virtual ~ExecutionContext() {}
     virtual Reactor::Impl* makeImpl(Reactor* reactor) const = 0;
 };
 
 class SyncContext : public ExecutionContext {
 public:
-    Reactor::Impl* makeImpl(Reactor* reactor) const;
+    virtual ~SyncContext() {}
+    Reactor::Impl* makeImpl(Reactor* reactor) const override;
 };
 
 class AsyncContext : public ExecutionContext {
 public:
-    AsyncContext(size_t threads)
+    explicit AsyncContext(size_t threads)
         : threads_(threads)
     { }
 
-    Reactor::Impl* makeImpl(Reactor* reactor) const;
+    virtual ~AsyncContext() {}
+
+    Reactor::Impl* makeImpl(Reactor* reactor) const override;
 
     static AsyncContext singleThreaded();
 
@@ -194,8 +196,18 @@ public:
     friend class SyncImpl;
     friend class AsyncImpl;
 
+    Handler()
+        : reactor_(nullptr)
+        , context_()
+        , key_()
+    { }
+
     struct Context {
         friend class SyncImpl;
+
+        Context()
+            : tid()
+        { }
 
         std::thread::id thread() const { return tid; }
 
@@ -204,7 +216,7 @@ public:
     };
 
     virtual void onReady(const FdSet& fds) = 0;
-    virtual void registerPoller(Polling::Epoll& poller) { UNUSED(poller) }
+    virtual void registerPoller(Polling::Epoll& poller) = 0;
 
     Reactor* reactor() const {
         return reactor_;

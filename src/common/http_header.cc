@@ -331,7 +331,10 @@ Expect::write(std::ostream& os) const {
     }
 }
 
-Host::Host(const std::string& data) {
+Host::Host(const std::string& data)
+    : host_()
+    , port_(0)
+{
     parse(data);
 }
 
@@ -346,7 +349,7 @@ Host::parse(const std::string& data) {
         port_ = p;
     } else {
         host_ = data;
-        port_ = 80;
+        port_ = HTTP_STANDARD_PORT;
     }
 }
 
@@ -443,6 +446,26 @@ AccessControlAllowHeaders::write(std::ostream& os) const {
 }
 
 void
+AccessControlExposeHeaders::parse(const std::string& data) {
+  val_ = data;
+}
+
+void
+AccessControlExposeHeaders::write(std::ostream& os) const {
+  os << val_;
+}
+
+void
+AccessControlAllowMethods::parse(const std::string& data) {
+  val_ = data;
+}
+
+void
+AccessControlAllowMethods::write(std::ostream& os) const {
+  os << val_;
+}
+
+void
 EncodingHeader::parseRaw(const char* str, size_t len) {
     if (!strncasecmp(str, "gzip", len)) {
         encoding_ = Encoding::Gzip;
@@ -474,11 +497,13 @@ Server::Server(const std::vector<std::string>& tokens)
 { }
 
 Server::Server(const std::string& token)
+    : tokens_()
 {
     tokens_.push_back(token);
 }
 
 Server::Server(const char* token)
+   : tokens_()
 {
     tokens_.emplace_back(token);
 }

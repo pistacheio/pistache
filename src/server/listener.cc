@@ -3,29 +3,28 @@
 
 */
 
-#include <iostream>
-#include <cassert>
-#include <cstring>
-
-#include <sys/socket.h>
-#include <unistd.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <sys/epoll.h>
-#include <pthread.h>
-#include <signal.h>
-#include <sys/timerfd.h>
-#include <sys/sendfile.h>
-
 #include <pistache/listener.h>
 #include <pistache/peer.h>
 #include <pistache/common.h>
 #include <pistache/os.h>
 #include <pistache/transport.h>
+#include <pistache/errors.h>
 
-using namespace std;
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <sys/epoll.h>
+#include <sys/timerfd.h>
+
+#include <chrono>
+#include <memory>
+#include <vector>
+
+#include <cerrno>
+#include <signal.h>
+
 
 namespace Pistache {
 namespace Tcp {
@@ -44,9 +43,6 @@ namespace {
         closeListener();
     }
 }
-
-using Polling::NotifyOn;
-
 
 void setSocketOptions(Fd fd, Flags<Options> options) {
     if (options.hasFlag(Options::ReuseAddr)) {
@@ -73,22 +69,35 @@ void setSocketOptions(Fd fd, Flags<Options> options) {
 }
 
 Listener::Listener()
-    : listen_fd(-1)
+    : addr_()
+    , listen_fd(-1)
     , backlog_(Const::MaxBacklog)
-    , reactor_(Aio::Reactor::create())
+    , shutdownFd()
+    , poller()
+    , options_()
+    , workers_(Const::DefaultWorkers)
+    , reactor_()
+    , transportKey()
 { }
 
 Listener::Listener(const Address& address)
     : addr_(address)
     , listen_fd(-1)
     , backlog_(Const::MaxBacklog)
-    , reactor_(Aio::Reactor::create())
+    , shutdownFd()
+    , poller()
+    , options_()
+    , workers_(Const::DefaultWorkers)
+    , reactor_()
+    , transportKey()
 {
 }
 
 Listener::~Listener() {
-    if (isBound()) shutdown();
-    if (acceptThread) acceptThread->join();
+    if (isBound())
+        shutdown();
+    if (acceptThread.joinable())
+        acceptThread.join();
 }
 
 void
@@ -136,12 +145,12 @@ Listener::pinWorker(size_t worker, const CpuSet& set)
 #endif
 }
 
-bool
+void
 Listener::bind() {
-    return bind(addr_);
+    bind(addr_);
 }
 
-bool
+void
 Listener::bind(const Address& address) {
     if (!handler_)
         throw std::runtime_error("Call setHandler before calling bind()");
@@ -160,7 +169,8 @@ Listener::bind(const Address& address) {
 
     int fd = -1;
 
-    for (struct addrinfo *addr = addrs; addr; addr = addr->ai_next) {
+    addrinfo *addr;
+    for (addr = addrs; addr; addr = addr->ai_next) {
         fd = ::socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
         if (fd < 0) continue;
 
@@ -174,28 +184,32 @@ Listener::bind(const Address& address) {
         TRY(::listen(fd, backlog_));
         break;
     }
+    
+    // At this point, it is still possible that we couldn't bind any socket. If it is the case, the previous
+    // loop would have exited naturally and addr will be null.
+    if (addr == nullptr) {
+        throw std::runtime_error(strerror(errno));
+    }
 
     make_non_blocking(fd);
     poller.addFd(fd, Polling::NotifyOn::Read, Polling::Tag(fd));
     listen_fd = fd;
     g_listen_fd = fd;
 
-    transport_.reset(new Transport(handler_));
+    transport_ = std::make_shared<Transport>(handler_);
 
-    reactor_->init(Aio::AsyncContext(workers_));
-    transportKey = reactor_->addHandler(transport_);
-
-    return true;
+    reactor_.init(Aio::AsyncContext(workers_));
+    transportKey = reactor_.addHandler(transport_);
 }
 
 bool
 Listener::isBound() const {
-    return g_listen_fd != -1;
+    return listen_fd != -1;
 }
 
 void
 Listener::run() {
-    reactor_->run();
+    reactor_.run();
 
     for (;;) {
         std::vector<Polling::Event> events;
@@ -205,15 +219,22 @@ Listener::run() {
             if (errno == EINTR && g_listen_fd == -1) return;
             throw Error::system("Polling");
         }
-        else if (ready_fds > 0) {
-            for (const auto& event: events) {
-                if (event.tag == shutdownFd.tag())
-                    return;
-                else {
-                    if (event.flags.hasFlag(Polling::NotifyOn::Read)) {
-                        auto fd = event.tag.value();
-                        if (static_cast<ssize_t>(fd) == listen_fd)
-                            handleNewConnection();
+        for (const auto& event: events) {
+            if (event.tag == shutdownFd.tag())
+                return;
+
+            if (event.flags.hasFlag(Polling::NotifyOn::Read)) {
+                auto fd = event.tag.value();
+                if (static_cast<ssize_t>(fd) == listen_fd) {
+                    try {
+                        handleNewConnection();
+                    }
+                    catch (SocketError& ex) {
+                        std::cerr << "Server: " << ex.what() << std::endl;
+                    }
+                    catch (ServerError& ex) {
+                        std::cerr << "Server: " << ex.what() << std::endl;
+                        throw;
                     }
                 }
             }
@@ -224,18 +245,18 @@ Listener::run() {
 void
 Listener::runThreaded() {
     shutdownFd.bind(poller);
-    acceptThread.reset(new std::thread([=]() { this->run(); }));
+    acceptThread = std::thread([=]() { this->run(); });
 }
 
 void
 Listener::shutdown() {
     if (shutdownFd.isBound()) shutdownFd.notify();
-    reactor_->shutdown();
+    reactor_.shutdown();
 }
 
 Async::Promise<Listener::Load>
 Listener::requestLoad(const Listener::Load& old) {
-    auto handlers = reactor_->handlers(transportKey);
+    auto handlers = reactor_.handlers(transportKey);
 
     std::vector<Async::Promise<rusage>> loads;
     for (const auto& handler: handlers) {
@@ -300,12 +321,15 @@ Listener::handleNewConnection() {
     socklen_t peer_addr_len = sizeof(peer_addr);
     int client_fd = ::accept(listen_fd, (struct sockaddr *)&peer_addr, &peer_addr_len);
     if (client_fd < 0) {
-        throw std::runtime_error(strerror(errno));
+        if (errno == EBADF || errno == ENOTSOCK)
+            throw ServerError(strerror(errno));
+        else
+            throw SocketError(strerror(errno));
     }
 
     make_non_blocking(client_fd);
 
-    auto peer = make_shared<Peer>(Address::fromUnix((struct sockaddr *)&peer_addr));
+    auto peer = std::make_shared<Peer>(Address::fromUnix((struct sockaddr *)&peer_addr));
     peer->associateFd(client_fd);
 
     dispatchPeer(peer);
@@ -313,7 +337,7 @@ Listener::handleNewConnection() {
 
 void
 Listener::dispatchPeer(const std::shared_ptr<Peer>& peer) {
-    auto handlers = reactor_->handlers(transportKey);
+    auto handlers = reactor_.handlers(transportKey);
     auto idx = peer->fd() % handlers.size();
     auto transport = std::static_pointer_cast<Transport>(handlers[idx]);
 
