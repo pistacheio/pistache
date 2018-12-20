@@ -53,6 +53,7 @@ public:
     void bind(const Address& address);
 
     bool isBound() const;
+    Port getPort() const;
 
     void run();
     void runThreaded();

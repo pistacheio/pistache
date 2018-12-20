@@ -184,7 +184,7 @@ Listener::bind(const Address& address) {
         TRY(::listen(fd, backlog_));
         break;
     }
-    
+
     // At this point, it is still possible that we couldn't bind any socket. If it is the case, the previous
     // loop would have exited naturally and addr will be null.
     if (addr == nullptr) {
@@ -205,6 +205,31 @@ Listener::bind(const Address& address) {
 bool
 Listener::isBound() const {
     return listen_fd != -1;
+}
+
+// Return actual TCP port Listener is on, or 0 on error / no port.
+// Notes:
+// 1) Default constructor for 'Port()' sets value to 0.
+// 2) Socket is created inside 'Listener::run()', which is called from
+//    'Endpoint::serve()' and 'Endpoint::serveThreaded()'.  So getting the
+//    port is only useful if you attempt to do so from a _different_ thread
+//    than the one running 'Listener::run()'.  So for a traditional single-
+//    threaded program this method is of little value.
+Port
+Listener::getPort() const {
+    if (listen_fd == -1) {
+        return Port();
+    }
+
+    struct sockaddr_in sock_addr = {0};
+    socklen_t addrlen = sizeof(sock_addr);
+    auto sock_addr_alias = reinterpret_cast<struct sockaddr*>(&sock_addr);
+
+    if (-1 == getsockname(listen_fd, sock_addr_alias, &addrlen)) {
+        return Port();
+    }
+
+    return Port(ntohs(sock_addr.sin_port));
 }
 
 void
