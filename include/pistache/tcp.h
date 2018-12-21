@@ -19,18 +19,15 @@ namespace Tcp {
 class Peer;
 class Transport;
 
-enum class Options : uint64_t {
-    None                 = 0,
-    NoDelay              = 1,
-    Linger               = NoDelay << 1,
-    FastOpen             = Linger << 1,
-    QuickAck             = FastOpen << 1,
-    ReuseAddr            = QuickAck << 1,
-    ReverseLookup        = ReuseAddr << 1,
-    InstallSignalHandler = ReverseLookup << 1
+enum class Options {
+    NoDelay,
+    Linger,
+    FastOpen,
+    QuickAck,
+    ReuseAddr,
+    ReverseLookup,
+    InstallSignalHandler
 };
-
-DECLARE_FLAGS_OPERATORS(Options)
 
 class Handler : private Prototype<Handler> {
 public:

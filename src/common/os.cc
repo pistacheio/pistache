@@ -207,13 +207,13 @@ namespace Polling {
     Epoll::toEpollEvents(const Flags<NotifyOn>& interest) {
         int events = 0;
 
-        if (interest.hasFlag(NotifyOn::Read))
+        if (interest[NotifyOn::Read])
             events |= EPOLLIN;
-        if (interest.hasFlag(NotifyOn::Write))
+        if (interest[NotifyOn::Write])
             events |= EPOLLOUT;
-        if (interest.hasFlag(NotifyOn::Hangup))
+        if (interest[NotifyOn::Hangup])
             events |= EPOLLHUP;
-        if (interest.hasFlag(NotifyOn::Shutdown))
+        if (interest[NotifyOn::Shutdown])
             events |= EPOLLRDHUP;
 
         return events;
@@ -224,13 +224,13 @@ namespace Polling {
         Flags<NotifyOn> flags;
 
         if (events & EPOLLIN)
-            flags.setFlag(NotifyOn::Read);
+            flags.set(NotifyOn::Read);
         if (events & EPOLLOUT)
-            flags.setFlag(NotifyOn::Write);
+            flags.set(NotifyOn::Write);
         if (events & EPOLLHUP)
-            flags.setFlag(NotifyOn::Hangup);
+            flags.set(NotifyOn::Hangup);
         if (events & EPOLLRDHUP) {
-            flags.setFlag(NotifyOn::Shutdown);
+            flags.set(NotifyOn::Shutdown);
         }
 
         return flags;

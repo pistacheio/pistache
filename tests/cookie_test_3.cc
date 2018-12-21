@@ -28,7 +28,7 @@ TEST(http_client_test, one_client_with_one_request_with_onecookie) {
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto flags = make_flags({Tcp::Options::InstallSignalHandler, Tcp::Options::ReuseAddr});
     auto server_opts = Http::Endpoint::options().flags(flags);
     server.init(server_opts);
     server.setHandler(Http::make_handler<CookieHandler>());
@@ -69,7 +69,7 @@ TEST(http_client_test, one_client_with_one_request_with_several_cookies) {
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto flags = make_flags({Tcp::Options::InstallSignalHandler, Tcp::Options::ReuseAddr});
     auto server_opts = Http::Endpoint::options().flags(flags);
     server.init(server_opts);
     server.setHandler(Http::make_handler<CookieHandler>());

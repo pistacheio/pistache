@@ -272,7 +272,8 @@ Transport::handleConnectionQueue() {
         int res = ::connect(conn->fd, data.addr, data.addr_len);
         if (res == -1) {
             if (errno == EINPROGRESS) {
-                reactor()->registerFdOneShot(key(), conn->fd, NotifyOn::Write | NotifyOn::Hangup | NotifyOn::Shutdown);
+                reactor()->registerFdOneShot(key(), conn->fd,
+                    make_flags({NotifyOn::Write, NotifyOn::Hangup, NotifyOn::Shutdown}));
             }
             else {
                 data.reject(Error::system("Failed to connect"));

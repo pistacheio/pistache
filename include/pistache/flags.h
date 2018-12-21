@@ -7,145 +7,90 @@
 #pragma once
 
 #include <type_traits>
+#include <bitset>
 #include <climits>
 #include <iostream>
 
 namespace Pistache {
 
-// Looks like gcc 4.6 does not implement std::underlying_type
-namespace detail {
-    template<size_t N> struct TypeStorage;
+template < typename T, typename = void >
+class Flags;
 
-    template<> struct TypeStorage<sizeof(uint8_t)> {
-        typedef uint8_t Type;
-    };
-    template<> struct TypeStorage<sizeof(uint16_t)> {
-        typedef uint16_t Type;
-    };
-    template<> struct TypeStorage<sizeof(uint32_t)> {
-        typedef uint32_t Type;
-    };
-    template<> struct TypeStorage<sizeof(uint64_t)> {
-        typedef uint64_t Type;
-    };
-
-    template<typename T> struct UnderlyingType {
-        typedef typename TypeStorage<sizeof(T)>::Type Type;
-    };
-
-    template<typename Enum>
-    struct HasNone {
-        template<typename U>
-        static auto test(U *) -> decltype(U::None, std::true_type());
-
-        template<typename U>
-        static auto test(...) -> std::false_type;
-
-        static constexpr bool value =
-            std::is_same<decltype(test<Enum>(0)), std::true_type>::value;
-    };
-}
-
-template<typename T>
-class Flags {
+template < typename T >
+class Flags<T, typename std::enable_if<std::is_enum<T>::value>::type > {
 public:
-    typedef typename detail::UnderlyingType<T>::Type Type;
+    constexpr Flags() = default;
+    Flags( const Flags& other ) = default;
+    Flags& operator= ( const Flags& other ) = default;
 
-    static_assert(std::is_enum<T>::value, "Flags only works with enumerations");
-    static_assert(detail::HasNone<T>::value, "The enumartion needs a None value");
-    static_assert(static_cast<Type>(T::None) == 0, "None should be 0");
-
-    Flags() : val(T::None) {
-    }
-
-    Flags(T _val) : val(_val)
+    constexpr Flags( T value ) :
+        _mask(1ULL<<static_cast<integral_type>(value))
     {
     }
 
-#define DEFINE_BITWISE_OP_CONST(Op) \
-    Flags<T> operator Op (T rhs) const { \
-        return Flags<T>( \
-            static_cast<T>(static_cast<Type>(val) Op static_cast<Type>(rhs)) \
-        ); \
-    } \
-    \
-    Flags<T> operator Op (Flags<T> rhs) const { \
-        return Flags<T>( \
-            static_cast<T>(static_cast<Type>(val) Op static_cast<Type>(rhs.val)) \
-        ); \
-    }
-    
-    DEFINE_BITWISE_OP_CONST(|)
-    DEFINE_BITWISE_OP_CONST(&)
-    DEFINE_BITWISE_OP_CONST(^)
-
-#undef DEFINE_BITWISE_OP_CONST
-
-#define DEFINE_BITWISE_OP(Op) \
-    Flags<T>& operator Op##=(T rhs) { \
-        val = static_cast<T>( \
-                  static_cast<Type>(val) Op static_cast<Type>(rhs) \
-              ); \
-        return *this; \
-    } \
-    \
-    Flags<T>& operator Op##=(Flags<T> rhs) { \
-        val = static_cast<T>( \
-                  static_cast<Type>(val) Op static_cast<Type>(rhs.val) \
-              ); \
-        return *this; \
+    Flags( std::initializer_list<T> values ) :
+        _mask()
+    {
+        for( T value : values ) {
+            _mask.set(static_cast<integral_type>(value));
+        }
     }
 
-    DEFINE_BITWISE_OP(|)
-    DEFINE_BITWISE_OP(&)
-    DEFINE_BITWISE_OP(^)
-
-#undef DEFINE_BITWISE_OP
-
-    bool hasFlag(T flag) const {
-        return static_cast<Type>(val) & static_cast<Type>(flag);
+    bool operator[]( T position ) const {
+        return _mask[static_cast<integral_type>(position)];
     }
 
-    Flags<T>& setFlag(T flag) {
-        *this |= flag;
-        return *this;
+    void set( T position, bool value = true ) {
+        _mask.set( static_cast<integral_type>(position), value );
     }
 
-    Flags<T>& toggleFlag(T flag) {
-        return *this ^= flag;
+    void reset( T position ) {
+        _mask.reset( static_cast<integral_type>(position) );
     }
 
-    operator T() const {
-        return val;
+    void flip( T position ) {
+        _mask.flip( static_cast<integral_type>(position) );
     }
+
+    bool all() const { return _mask.all(); }
+    bool any() const { return _mask.any(); }
+    bool none() const { return _mask.none(); }
+
+    std::string to_string() const {
+        return _mask.to_string();
+    }
+
+    Flags operator& ( const Flags& other ) { return Flags(_mask & other._mask); }
+    Flags operator| ( const Flags& other ) { return Flags(_mask & other._mask); }
+    Flags operator^ ( const Flags& other ) { return Flags(_mask & other._mask); }
+    Flags operator~ () const { return Flags(~_mask); }
+
+    Flags& operator&= ( const Flags& other ) { _mask &= other._mask; return *this; }
+    Flags& operator|= ( const Flags& other ) { _mask &= other._mask; return *this; }
+    Flags& operator^= ( const Flags& other ) { _mask &= other._mask; return *this; }
 
 private:
-    T val;
+    typedef typename std::underlying_type<T>::type integral_type;
+    typedef std::bitset<CHAR_BIT*sizeof(integral_type)> mask_type;
+
+    Flags( const mask_type mask ) :
+        _mask(mask)
+    {
+    }
+
+    mask_type _mask;
 };
 
-} // namespace Pistache
+template < typename T >
+Flags<T> make_flags( std::initializer_list<T> values ) {
+    return Flags<T>(values);
+}
 
-#define DEFINE_BITWISE_OP(Op, T) \
-    inline T operator Op (T lhs, T rhs)  { \
-        typedef Pistache::detail::UnderlyingType<T>::Type UnderlyingType; \
-        return static_cast<T>( \
-                    static_cast<UnderlyingType>(lhs) Op static_cast<UnderlyingType>(rhs) \
-                ); \
-    }
-
-#define DECLARE_FLAGS_OPERATORS(T) \
-    DEFINE_BITWISE_OP(&, T) \
-    DEFINE_BITWISE_OP(|, T)
-
-template<typename T>
-std::ostream& operator<<(std::ostream& os, Pistache::Flags<T> flags) {
-    typedef typename Pistache::detail::UnderlyingType<T>::Type UnderlyingType;
-
-    auto val = static_cast<UnderlyingType>(static_cast<T>(flags));
-    for (ssize_t i = (sizeof(UnderlyingType) * CHAR_BIT) - 1; i >= 0; --i) {
-        os << ((val >> i) & 0x1);
-    }
-
+template < typename T >
+std::ostream& operator<<(std::ostream& os, const Flags<T> flags) {
+    os << flags.to_string();
     return os;
 }
+
+} // namespace Pistache
 

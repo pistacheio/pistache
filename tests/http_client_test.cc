@@ -35,7 +35,7 @@ TEST(http_client_test, one_client_with_one_request)
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto flags = make_flags({Tcp::Options::InstallSignalHandler, Tcp::Options::ReuseAddr});
     auto server_opts = Http::Endpoint::options().flags(flags);
     server.init(server_opts);
     server.setHandler(Http::make_handler<HelloHandler>());
@@ -69,7 +69,7 @@ TEST(http_client_test, one_client_with_multiple_requests) {
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto flags = make_flags({Tcp::Options::InstallSignalHandler, Tcp::Options::ReuseAddr});
     auto server_opts = Http::Endpoint::options().flags(flags);
     server.init(server_opts);
     server.setHandler(Http::make_handler<HelloHandler>());
@@ -110,7 +110,7 @@ TEST(http_client_test, multiple_clients_with_one_request) {
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto flags = make_flags({Tcp::Options::InstallSignalHandler, Tcp::Options::ReuseAddr});
     auto server_opts = Http::Endpoint::options().flags(flags);
     server.init(server_opts);
     server.setHandler(Http::make_handler<HelloHandler>());
@@ -170,7 +170,7 @@ TEST(http_client_test, timeout_reject)
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto flags = make_flags({Tcp::Options::InstallSignalHandler, Tcp::Options::ReuseAddr});
     auto server_opts = Http::Endpoint::options().flags(flags);
     server.init(server_opts);
     server.setHandler(Http::make_handler<DelayHandler>());
@@ -208,7 +208,7 @@ TEST(http_client_test, one_client_with_multiple_requests_and_one_connection_per_
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto flags = make_flags({Tcp::Options::InstallSignalHandler, Tcp::Options::ReuseAddr});
     auto server_opts = Http::Endpoint::options().flags(flags);
     server.init(server_opts);
     server.setHandler(Http::make_handler<HelloHandler>());
@@ -254,7 +254,7 @@ TEST(http_client_test, one_client_with_multiple_requests_and_two_connections_per
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto flags = make_flags({Tcp::Options::InstallSignalHandler, Tcp::Options::ReuseAddr});
     auto server_opts = Http::Endpoint::options().flags(flags);
     server.init(server_opts);
     server.setHandler(Http::make_handler<HelloHandler>());

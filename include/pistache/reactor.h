@@ -43,13 +43,13 @@ public:
         { }
 
         bool isReadable() const {
-            return flags.hasFlag(Polling::NotifyOn::Read);
+            return flags[Polling::NotifyOn::Read];
         }
         bool isWritable() const {
-            return flags.hasFlag(Polling::NotifyOn::Write);
+            return flags[Polling::NotifyOn::Write];
         }
         bool isHangup() const {
-            return flags.hasFlag(Polling::NotifyOn::Hangup);
+            return flags[Polling::NotifyOn::Hangup];
         }
 
         Fd getFd() const { return this->fd; }
@@ -131,25 +131,25 @@ public:
     std::vector<std::shared_ptr<Handler>> handlers(const Key& key);
 
     void registerFd(
-            const Key& key, Fd fd, Polling::NotifyOn interest, Polling::Tag tag,
+            const Key& key, Fd fd, Flags<Polling::NotifyOn> interest, Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level);
     void registerFdOneShot(
-            const Key& key, Fd fd, Polling::NotifyOn interest, Polling::Tag tag,
+            const Key& key, Fd fd, Flags<Polling::NotifyOn> interest, Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level);
 
     void registerFd(
-            const Key& key, Fd fd, Polling::NotifyOn interest,
+            const Key& key, Fd fd, Flags<Polling::NotifyOn> interest,
             Polling::Mode mode = Polling::Mode::Level);
     void registerFdOneShot(
-            const Key& key, Fd fd, Polling::NotifyOn interest,
+            const Key& key, Fd fd, Flags<Polling::NotifyOn> interest,
             Polling::Mode mode = Polling::Mode::Level);
 
     void modifyFd(
-            const Key& key, Fd fd, Polling::NotifyOn interest,
+            const Key& key, Fd fd, Flags<Polling::NotifyOn> interest,
             Polling::Mode mode = Polling::Mode::Level);
 
     void modifyFd(
-            const Key& key, Fd fd, Polling::NotifyOn interest, Polling::Tag tag,
+            const Key& key, Fd fd, Flags<Polling::NotifyOn> interest, Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level);
 
     void runOnce();

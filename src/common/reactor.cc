@@ -33,21 +33,21 @@ public:
     virtual void registerFd(
             const Reactor::Key& key,
             Fd fd,
-            Polling::NotifyOn interest,
+            Flags<Polling::NotifyOn> interest,
             Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level) = 0;
 
     virtual void registerFdOneShot(
             const Reactor::Key& key,
             Fd fd,
-            Polling::NotifyOn interest,
+            Flags<Polling::NotifyOn> interest,
             Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level) = 0;
 
     virtual void modifyFd(
             const Reactor::Key& key,
             Fd fd,
-            Polling::NotifyOn interest,
+            Flags<Polling::NotifyOn> interest,
             Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level) = 0;
 
@@ -101,7 +101,7 @@ public:
     void registerFd(
             const Reactor::Key& key,
             Fd fd,
-            Polling::NotifyOn interest,
+            Flags<Polling::NotifyOn> interest,
             Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level) override {
 
@@ -112,7 +112,7 @@ public:
     void registerFdOneShot(
             const Reactor::Key& key,
             Fd fd,
-            Polling::NotifyOn interest,
+            Flags<Polling::NotifyOn> interest,
             Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level) override {
 
@@ -123,7 +123,7 @@ public:
     void modifyFd(
             const Reactor::Key& key,
             Fd fd,
-            Polling::NotifyOn interest,
+            Flags<Polling::NotifyOn> interest,
             Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level) override {
 
@@ -389,7 +389,7 @@ public:
     void registerFd(
             const Reactor::Key& key,
             Fd fd,
-            Polling::NotifyOn interest,
+            Flags<Polling::NotifyOn> interest,
             Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level) override {
         dispatchCall(key, &SyncImpl::registerFd, fd, interest, tag, mode);
@@ -398,7 +398,7 @@ public:
     void registerFdOneShot(
             const Reactor::Key& key,
             Fd fd,
-            Polling::NotifyOn interest,
+            Flags<Polling::NotifyOn> interest,
             Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level) override {
         dispatchCall(key, &SyncImpl::registerFdOneShot, fd, interest, tag, mode);
@@ -407,7 +407,7 @@ public:
     void modifyFd(
             const Reactor::Key& key,
             Fd fd,
-            Polling::NotifyOn interest,
+            Flags<Polling::NotifyOn> interest,
             Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level) override {
         dispatchCall(key, &SyncImpl::modifyFd, fd, interest, tag, mode);
@@ -523,7 +523,7 @@ Reactor::handlers(const Reactor::Key& key) {
 
 void
 Reactor::registerFd(
-        const Reactor::Key& key, Fd fd, Polling::NotifyOn interest, Polling::Tag tag,
+        const Reactor::Key& key, Fd fd, Flags<Polling::NotifyOn> interest, Polling::Tag tag,
         Polling::Mode mode)
 {
     impl()->registerFd(key, fd, interest, tag, mode);
@@ -531,7 +531,7 @@ Reactor::registerFd(
 
 void
 Reactor::registerFdOneShot(
-        const Reactor::Key& key, Fd fd, Polling::NotifyOn interest, Polling::Tag tag,
+        const Reactor::Key& key, Fd fd, Flags<Polling::NotifyOn> interest, Polling::Tag tag,
         Polling::Mode mode)
 {
     impl()->registerFdOneShot(key, fd, interest, tag, mode);
@@ -539,7 +539,7 @@ Reactor::registerFdOneShot(
 
 void
 Reactor::registerFd(
-        const Reactor::Key& key, Fd fd, Polling::NotifyOn interest,
+        const Reactor::Key& key, Fd fd, Flags<Polling::NotifyOn> interest,
         Polling::Mode mode)
 {
     impl()->registerFd(key, fd, interest, Polling::Tag(fd), mode);
@@ -547,7 +547,7 @@ Reactor::registerFd(
 
 void
 Reactor::registerFdOneShot(
-        const Reactor::Key& key, Fd fd, Polling::NotifyOn interest,
+        const Reactor::Key& key, Fd fd, Flags<Polling::NotifyOn> interest,
         Polling::Mode mode)
 {
     impl()->registerFdOneShot(key, fd, interest, Polling::Tag(fd), mode);
@@ -555,7 +555,7 @@ Reactor::registerFdOneShot(
 
 void
 Reactor::modifyFd(
-        const Reactor::Key& key, Fd fd, Polling::NotifyOn interest, Polling::Tag tag,
+        const Reactor::Key& key, Fd fd, Flags<Polling::NotifyOn> interest, Polling::Tag tag,
         Polling::Mode mode)
 {
     impl()->modifyFd(key, fd, interest, tag, mode);
@@ -563,7 +563,7 @@ Reactor::modifyFd(
 
 void
 Reactor::modifyFd(
-        const Reactor::Key& key, Fd fd, Polling::NotifyOn interest,
+        const Reactor::Key& key, Fd fd, Flags<Polling::NotifyOn> interest,
         Polling::Mode mode)
 {
     impl()->modifyFd(key, fd, interest, Polling::Tag(fd), mode);

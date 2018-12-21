@@ -75,7 +75,7 @@ TEST(http_server_test, client_disconnection_on_timeout_from_single_threaded_serv
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto flags = make_flags({Tcp::Options::InstallSignalHandler, Tcp::Options::ReuseAddr});
     auto server_opts = Http::Endpoint::options().flags(flags);
     server.init(server_opts);
     const int SIX_SECONDS_DELAY = 6;
@@ -97,7 +97,7 @@ TEST(http_server_test, client_multiple_requests_disconnection_on_timeout_from_si
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto flags = make_flags({Tcp::Options::InstallSignalHandler, Tcp::Options::ReuseAddr});
     auto server_opts = Http::Endpoint::options().flags(flags);
     server.init(server_opts);
 
@@ -120,7 +120,7 @@ TEST(http_server_test, multiple_client_with_requests_to_multithreaded_server) {
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto flags = make_flags({Tcp::Options::InstallSignalHandler, Tcp::Options::ReuseAddr});
     auto server_opts = Http::Endpoint::options().flags(flags).threads(3);
     server.init(server_opts);
     server.setHandler(Http::make_handler<HelloHandlerWithDelay>());
@@ -154,7 +154,7 @@ TEST(http_server_test, multiple_client_with_different_requests_to_multithreaded_
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto flags = make_flags({Tcp::Options::InstallSignalHandler, Tcp::Options::ReuseAddr});
     auto server_opts = Http::Endpoint::options().flags(flags).threads(3);
     server.init(server_opts);
     const int SIX_SECONDS_DELAY = 6;

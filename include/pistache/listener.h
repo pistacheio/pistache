@@ -45,7 +45,7 @@ public:
     explicit Listener(const Address& address);
     void init(
             size_t workers,
-            Flags<Options> options = Options::None,
+            Flags<Options> options = {},
             int backlog = Const::MaxBacklog);
     void setHandler(const std::shared_ptr<Handler>& handler);
 
@@ -62,7 +62,7 @@ public:
 
     Async::Promise<Load> requestLoad(const Load& old);
 
-    Options options() const;
+    Flags<Options> options() const;
     Address address() const;
 
     void pinWorker(size_t worker, const CpuSet& set);

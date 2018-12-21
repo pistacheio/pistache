@@ -57,15 +57,11 @@ enum class Mode {
 };
 
 enum class NotifyOn {
-    None = 0,
-
-    Read     = 1,
-    Write    = Read << 1,
-    Hangup   = Read << 2,
-    Shutdown = Read << 3
+    Read,
+    Write,
+    Hangup,
+    Shutdown
 };
-
-DECLARE_FLAGS_OPERATORS(NotifyOn)
 
 struct Tag {
     friend class Epoll;
@@ -76,15 +72,13 @@ struct Tag {
 
     constexpr uint64_t value() const { return value_; }
 
-    friend constexpr bool operator==(Tag lhs, Tag rhs);
+    constexpr bool operator==( const Tag& other ) const {
+        return value_ == other.value_;
+    }
 
 private:
     uint64_t value_;
 };
-
-inline constexpr bool operator==(Tag lhs, Tag rhs) {
-    return lhs.value_ == rhs.value_;
-}
 
 struct Event {
     explicit Event(Tag _tag)

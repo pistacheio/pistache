@@ -238,7 +238,9 @@ Transport::asyncWriteImpl(Fd fd)
                 if (errno == EAGAIN || errno == EWOULDBLOCK) {
                     wq.pop_front();
                     wq.push_front(WriteEntry(std::move(deferred), buffer.detach(totalWritten), flags));
-                    reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
+                    reactor()->modifyFd( key(), fd,
+                        make_flags({NotifyOn::Read, NotifyOn::Write}),
+                        Polling::Mode::Edge);
                 }
                 else {
                     cleanUp();
@@ -332,7 +334,7 @@ Transport::handleWriteQueue() {
             toWrite[fd].push_back(std::move(write));
         }
 
-        reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
+        reactor()->modifyFd(key(), fd, make_flags({NotifyOn::Read, NotifyOn::Write}), Polling::Mode::Edge);
     }
 }
 
@@ -366,7 +368,7 @@ Transport::handlePeer(const std::shared_ptr<Peer>& peer) {
     peer->associateTransport(this);
 
     handler_->onConnection(peer);
-    reactor()->registerFd(key(), fd, NotifyOn::Read | NotifyOn::Shutdown, Polling::Mode::Edge);
+    reactor()->registerFd(key(), fd, make_flags({NotifyOn::Read, NotifyOn::Shutdown}), Polling::Mode::Edge);
 }
 
 void

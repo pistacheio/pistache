@@ -202,7 +202,6 @@ TEST(listener_test, listener_bind_ephemeral_v6_port) {
         Pistache::Port port(0);
         Pistache::Address address(Pistache::Ipv6::any(), port);
 
-        Pistache::Flags<Pistache::Tcp::Options> options;
         listener.setHandler(Pistache::Http::make_handler<DummyHandler>());
         listener.bind(address);
 

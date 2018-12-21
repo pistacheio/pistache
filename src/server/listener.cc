@@ -46,23 +46,23 @@ namespace {
 }
 
 void setSocketOptions(Fd fd, Flags<Options> options) {
-    if (options.hasFlag(Options::ReuseAddr)) {
+    if (options[Options::ReuseAddr]) {
         int one = 1;
         TRY(::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof (one)));
     }
 
-    if (options.hasFlag(Options::Linger)) {
+    if (options[Options::Linger]) {
         struct linger opt;
         opt.l_onoff = 1;
         opt.l_linger = 1;
         TRY(::setsockopt(fd, SOL_SOCKET, SO_LINGER, &opt, sizeof (opt)));
     }
 
-    if (options.hasFlag(Options::FastOpen)) {
+    if (options[Options::FastOpen]) {
         int hint = 5;
         TRY(::setsockopt(fd, SOL_TCP, TCP_FASTOPEN, &hint, sizeof (hint)));
     }
-    if (options.hasFlag(Options::NoDelay)) {
+    if (options[Options::NoDelay]) {
         int one = 1;
         TRY(::setsockopt(fd, SOL_TCP, TCP_NODELAY, &one, sizeof (one)));
     }
@@ -113,7 +113,7 @@ Listener::init(
     options_ = options;
     backlog_ = backlog;
 
-    if (options_.hasFlag(Options::InstallSignalHandler)) {
+    if (options_[Options::InstallSignalHandler]) {
         if (signal(SIGINT, handle_sigint) == SIG_ERR) {
             throw std::runtime_error("Could not install signal handler");
         }
@@ -251,7 +251,7 @@ Listener::run() {
             if (event.tag == shutdownFd.tag())
                 return;
 
-            if (event.flags.hasFlag(Polling::NotifyOn::Read)) {
+            if (event.flags[Polling::NotifyOn::Read]) {
                 auto fd = event.tag.value();
                 if (static_cast<ssize_t>(fd) == listen_fd) {
                     try {
@@ -337,7 +337,7 @@ Listener::address() const {
     return addr_;
 }
 
-Options
+Flags<Options>
 Listener::options() const {
     return options_;
 }
