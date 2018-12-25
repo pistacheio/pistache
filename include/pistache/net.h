@@ -53,12 +53,32 @@ public:
 
     static Ipv4 any();
     std::string toString() const;
+    void toNetwork(in_addr_t*) const;
 
 private:
     uint8_t a;
     uint8_t b;
     uint8_t c;
     uint8_t d;
+};
+
+class Ipv6 {
+public:
+    Ipv6(uint16_t a, uint16_t b, uint16_t c, uint16_t d, uint16_t e, uint16_t f, uint16_t g, uint16_t h);
+
+    static Ipv6 any();
+    std::string toString() const;
+    void toNetwork(in6_addr*) const;
+
+private:
+    uint16_t a;
+    uint16_t b;
+    uint16_t c;
+    uint16_t d;
+    uint16_t e;
+    uint16_t f;
+    uint16_t g;
+    uint16_t h;
 };
 
 class Address {
@@ -68,6 +88,7 @@ public:
     Address(std::string addr);
     Address(const char* addr);
     Address(Ipv4 ip, Port port);
+    Address(Ipv6 ip, Port port);
 
     Address(const Address& other) = default;
     Address(Address&& other) = default;
@@ -79,11 +100,13 @@ public:
 
     std::string host() const;
     Port port() const;
+    int family() const;
 
 private:
     void init(const std::string& addr);
     std::string host_;
     Port port_;
+    int family_ = AF_INET;
 };
 
 class Error : public std::runtime_error {
