@@ -53,6 +53,10 @@ public:
         return listener.isBound();
     }
 
+    Port getPort() const {
+        return listener.getPort();
+    }
+
     Async::Promise<Tcp::Listener::Load> requestLoad(const Tcp::Listener::Load& old);
 
     static Options options();

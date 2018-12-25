@@ -236,8 +236,8 @@ public:
     : val_(val)
   { }
 
-  void parse(const std::string& data);
-  void write(std::ostream& os) const;
+  void parse(const std::string& data) override;
+  void write(std::ostream& os) const override;
 
   void setUri(std::string val) {
     val_ = std::move(val);
@@ -264,8 +264,8 @@ public:
     : val_(val)
   { }
 
-  void parse(const std::string& data);
-  void write(std::ostream& os) const;
+  void parse(const std::string& data) override;
+  void write(std::ostream& os) const override;
 
   void setUri(std::string val) {
     val_ = std::move(val);
@@ -290,7 +290,7 @@ public:
     { }
     explicit CacheControl(Http::CacheDirective directive);
 
-    void parseRaw(const char* str, size_t len);
+    void parseRaw(const char* str, size_t len) override;
     void write(std::ostream& os) const override;
 
     std::vector<Http::CacheDirective> directives() const { return directives_; }
@@ -314,7 +314,7 @@ public:
         : control_(control)
     { }
 
-    void parseRaw(const char* str, size_t len);
+    void parseRaw(const char* str, size_t len) override;
     void write(std::ostream& os) const override;
 
     ConnectionControl control() const { return control_; }
@@ -330,7 +330,7 @@ public:
        : encoding_()
     { }
 
-    void parseRaw(const char* str, size_t len);
+    void parseRaw(const char* str, size_t len) override;
     void write(std::ostream& os) const override;
 
     Encoding encoding() const {
@@ -405,7 +405,7 @@ public:
         : mime_(mime)
     { }
 
-    void parseRaw(const char* str, size_t len);
+    void parseRaw(const char* str, size_t len) override;
     void write(std::ostream& os) const override;
 
     Mime::MediaType mime() const { return mime_; }
@@ -449,7 +449,7 @@ public:
         : expectation_(expectation)
     { }
 
-    void parseRaw(const char* str, size_t len);
+    void parseRaw(const char* str, size_t len) override;
     void write(std::ostream& os) const override;
 
     Http::Expectation expectation() const { return expectation_; }
