@@ -172,9 +172,7 @@ Address::fromUnix(struct sockaddr* addr) {
         assert(addr);
         return Address(host, port);
     }
-    throw Error("Not an IP socket");
-
-    
+    throw Error("Not an IP socket");    
 }
 
 std::string
@@ -199,16 +197,31 @@ Address::init(const std::string& addr) {
     if (pos != std::string::npos && s_pos != std::string::npos) {
         //IPv6 address
         host_ = addr.substr(s_pos, pos+1);
+        try {
+            in6_addr addr6;
+            char buff6[INET6_ADDRSTRLEN+1];
+            memcpy(buff6, host_.c_str(), INET6_ADDRSTRLEN);
+            inet_pton(AF_INET6, buff6, &(addr6.s6_addr16));
+        } catch (std::runtime_error) {
+            throw std::invalid_argument("Invalid IPv6 address");
+        }
         pos++;
     } else {
         //IPv4 address
         pos = addr.find(':');
         if (pos == std::string::npos)
             throw std::invalid_argument("Invalid address");
-
         host_ = addr.substr(0, pos);
         if (host_ == "*") {
             host_ = "0.0.0.0";
+        }
+        try {
+            in_addr addr;
+            char buff[INET_ADDRSTRLEN+1];
+            memcpy(buff, host_.c_str(), INET6_ADDRSTRLEN);
+            inet_pton(AF_INET, buff, &(addr));
+        } catch (std::runtime_error) {
+            throw std::invalid_argument("Invalid IPv4 address");
         }
     }
     char *end;

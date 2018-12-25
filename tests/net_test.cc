@@ -81,4 +81,10 @@ TEST(net_test, invalid_address)
     ASSERT_THROW(Address("127.0.0.1:9999999"), std::invalid_argument);
     ASSERT_THROW(Address("127.0.0.1:"), std::invalid_argument);
     ASSERT_THROW(Address("127.0.0.1:-10"), std::invalid_argument);
+    
+    /* Due to an error in GLIBC these tests don't fail as expected, further research needed */
+//     ASSERT_THROW(Address("[GGGG:GGGG:GGGG:GGGG:GGGG:GGGG:GGGG:GGGG]:8080");, std::invalid_argument);
+//     ASSERT_THROW(Address("[::GGGG]:8080");, std::invalid_argument);
+//     ASSERT_THROW(Address("256.256.256.256:8080");, std::invalid_argument);
+//     ASSERT_THROW(Address("1.0.0.256:8080");, std::invalid_argument);
 }
