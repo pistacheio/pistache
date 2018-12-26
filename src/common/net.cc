@@ -50,6 +50,12 @@ Ipv4::any() {
     return Ipv4(0, 0, 0, 0);
 }
 
+Ipv4
+Ipv4::loopback() {
+    return Ipv4(127, 0, 0, 1);
+}
+
+
 std::string
 Ipv4::toString() const {
     
@@ -84,6 +90,11 @@ Ipv6::Ipv6(uint16_t a, uint16_t b, uint16_t c, uint16_t d, uint16_t e, uint16_t 
 Ipv6
 Ipv6::any() {
     return Ipv6(0, 0, 0, 0, 0, 0, 0, 0);
+}
+
+Ipv6
+Ipv6::loopback() {
+    return Ipv6(0, 0, 0, 0, 0, 0, 0, 1);
 }
 
 std::string

@@ -123,6 +123,60 @@ TEST(listener_test, listener_bind_port_free) {
     ASSERT_TRUE(true);
 }
 
+TEST(listener_test, listener_bind_v4_port) {
+    uint16_t port_nb;
+
+    // This is just done to get the value of a free port. The socket will be closed
+    // after the closing curly bracket and the port will be free again (SO_REUSEADDR option).
+    // In theory, it is possible that some application grab this port before we bind it again...
+    {
+        SocketWrapper s = bind_free_port();
+        port_nb = s.port();
+    }
+
+
+    if (port_nb == 0) {
+        FAIL() << "Could not find a free port. Abort test.\n";
+    }
+
+    Pistache::Port port(port_nb);
+    Pistache::Address address(Pistache::Ipv4::loopback(), port);
+
+    Pistache::Tcp::Listener listener;
+    Pistache::Flags<Pistache::Tcp::Options> options;
+    listener.init(1, options);
+    listener.setHandler(Pistache::Http::make_handler<DummyHandler>());
+    listener.bind(address);
+    ASSERT_TRUE(true);
+}
+
+TEST(listener_test, listener_bind_v6_port) {
+    uint16_t port_nb;
+
+    // This is just done to get the value of a free port. The socket will be closed
+    // after the closing curly bracket and the port will be free again (SO_REUSEADDR option).
+    // In theory, it is possible that some application grab this port before we bind it again...
+    {
+        SocketWrapper s = bind_free_port();
+        port_nb = s.port();
+    }
+
+
+    if (port_nb == 0) {
+        FAIL() << "Could not find a free port. Abort test.\n";
+    }
+
+    Pistache::Port port(port_nb);
+    Pistache::Address address(Pistache::Ipv6::loopback(), port);
+
+    Pistache::Tcp::Listener listener;
+    Pistache::Flags<Pistache::Tcp::Options> options;
+    listener.init(1, options);
+    listener.setHandler(Pistache::Http::make_handler<DummyHandler>());
+    listener.bind(address);
+    ASSERT_TRUE(true);
+}
+
 // Listener should not crash if an additional member is added to the listener class. This test
 // is there to prevent regression for PR 303
 TEST(listener_test, listener_uses_default) {
