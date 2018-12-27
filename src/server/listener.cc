@@ -234,6 +234,7 @@ Listener::getPort() const {
 
 void
 Listener::run() {
+    shutdownFd.bind(poller);
     reactor_.run();
 
     for (;;) {
@@ -269,7 +270,6 @@ Listener::run() {
 
 void
 Listener::runThreaded() {
-    shutdownFd.bind(poller);
     acceptThread = std::thread([=]() { this->run(); });
 }
 
