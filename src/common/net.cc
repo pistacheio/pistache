@@ -50,6 +50,12 @@ Ipv4::any() {
     return Ipv4(0, 0, 0, 0);
 }
 
+Ipv4
+Ipv4::loopback() {
+    return Ipv4(127, 0, 0, 1);
+}
+
+
 std::string
 Ipv4::toString() const {
     
@@ -86,6 +92,11 @@ Ipv6::any() {
     return Ipv6(0, 0, 0, 0, 0, 0, 0, 0);
 }
 
+Ipv6
+Ipv6::loopback() {
+    return Ipv6(0, 0, 0, 0, 0, 0, 0, 1);
+}
+
 std::string
 Ipv6::toString() const {
     
@@ -97,7 +108,7 @@ Ipv6::toString() const {
     
     inet_ntop(AF_INET6, &addr, buff6, INET6_ADDRSTRLEN);
 
-    return std::string("[") + std::string(buff6) + std::string("]");
+    return std::string(buff6);
 }
 
 void Ipv6::toNetwork(in6_addr *addr6) const {
@@ -196,7 +207,8 @@ Address::init(const std::string& addr) {
     unsigned long s_pos = addr.find('[');
     if (pos != std::string::npos && s_pos != std::string::npos) {
         //IPv6 address
-        host_ = addr.substr(s_pos, pos+1);
+        host_ = addr.substr(s_pos+1, pos-1);
+        family_ = AF_INET6;
         try {
             in6_addr addr6;
             char buff6[INET6_ADDRSTRLEN+1];
@@ -212,6 +224,7 @@ Address::init(const std::string& addr) {
         if (pos == std::string::npos)
             throw std::invalid_argument("Invalid address");
         host_ = addr.substr(0, pos);
+        family_ = AF_INET;
         if (host_ == "*") {
             host_ = "0.0.0.0";
         }

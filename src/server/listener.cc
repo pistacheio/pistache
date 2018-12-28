@@ -14,6 +14,8 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
+#include <sys/types.h>
+#include <ifaddrs.h>
 #include <netdb.h>
 #include <sys/epoll.h>
 #include <sys/timerfd.h>
@@ -143,6 +145,29 @@ Listener::pinWorker(size_t worker, const CpuSet& set)
     auto &wrk = ioGroup[worker];
     wrk->pin(set);
 #endif
+}
+
+bool
+Listener::systemSupportsIpv6(){
+    struct ifaddrs *ifaddr, *ifa;
+    int family, n;
+    bool supportsIpv6 = false;
+    if (getifaddrs(&ifaddr) == -1) {
+        throw std::runtime_error("Call to getifaddrs() failed");
+    }
+    
+    for (ifa = ifaddr, n = 0; ifa != NULL; ifa = ifa->ifa_next, n++) {
+            if (ifa->ifa_addr == NULL)
+                continue;
+
+            family = ifa->ifa_addr->sa_family;
+            if (family == AF_INET6) {
+                supportsIpv6 = true;
+                continue;
+            }
+    }
+    freeifaddrs(ifaddr);
+    return supportsIpv6;
 }
 
 void

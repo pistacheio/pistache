@@ -52,6 +52,7 @@ public:
     Ipv4(uint8_t a, uint8_t b, uint8_t c, uint8_t d);
 
     static Ipv4 any();
+    static Ipv4 loopback();
     std::string toString() const;
     void toNetwork(in_addr_t*) const;
 
@@ -65,8 +66,10 @@ private:
 class Ipv6 {
 public:
     Ipv6(uint16_t a, uint16_t b, uint16_t c, uint16_t d, uint16_t e, uint16_t f, uint16_t g, uint16_t h);
-
+    
     static Ipv6 any();
+    static Ipv6 loopback();
+    
     std::string toString() const;
     void toNetwork(in6_addr*) const;
 

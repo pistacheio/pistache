@@ -123,6 +123,7 @@ TEST(listener_test, listener_bind_port_free) {
     ASSERT_TRUE(true);
 }
 
+
 // Listener should not crash if an additional member is added to the listener class. This test
 // is there to prevent regression for PR 303
 TEST(listener_test, listener_uses_default) {
@@ -180,6 +181,7 @@ TEST(listener_test, listener_bind_port_not_free_throw_runtime) {
     }
 }
 
+
 // Listener should be able to bind port 0 directly to get an ephemeral port.
 TEST(listener_test, listener_bind_ephemeral_port) {
     Pistache::Port port(0);
@@ -191,4 +193,21 @@ TEST(listener_test, listener_bind_ephemeral_port) {
 
     Pistache::Port bound_port = listener.getPort();
     ASSERT_TRUE(bound_port > (uint16_t)0);
+}
+
+
+TEST(listener_test, listener_bind_ephemeral_v6_port) {
+    Pistache::Port port(0);
+    Pistache::Address address(Pistache::Ipv6::any(), port);
+
+    Pistache::Tcp::Listener listener;
+    if (not listener.systemSupportsIpv6()) {
+        Pistache::Flags<Pistache::Tcp::Options> options;
+        listener.setHandler(Pistache::Http::make_handler<DummyHandler>());
+        listener.bind(address);
+        
+        Pistache::Port bound_port = listener.getPort();
+        ASSERT_TRUE(bound_port > (uint16_t)0);
+    }
+    ASSERT_TRUE(true);
 }
