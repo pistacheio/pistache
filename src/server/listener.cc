@@ -161,8 +161,10 @@ Listener::systemSupportsIpv6(){
                 continue;
 
             family = ifa->ifa_addr->sa_family;
-            if (family == AF_INET6)
+            if (family == AF_INET6) {
+                supportsIpv6 = true;
                 continue;
+            }
     }
     freeifaddrs(ifaddr);
     return supportsIpv6;
