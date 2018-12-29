@@ -231,7 +231,7 @@ Address::init(const std::string& addr) {
         try {
             in_addr addr;
             char buff[INET_ADDRSTRLEN+1];
-            memcpy(buff, host_.c_str(), INET6_ADDRSTRLEN);
+            memcpy(buff, host_.c_str(), INET_ADDRSTRLEN);
             inet_pton(AF_INET, buff, &(addr));
         } catch (std::runtime_error) {
             throw std::invalid_argument("Invalid IPv4 address");
