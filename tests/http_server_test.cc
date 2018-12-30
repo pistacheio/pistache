@@ -72,15 +72,18 @@ int clientLogicFunc(int response_size, const std::string& server_page, int wait_
 }
 
 TEST(http_server_test, client_disconnection_on_timeout_from_single_threaded_server) {
-    const std::string server_address = "localhost:9095";
+    const Pistache::Address address("localhost", Pistache::Port(0));
 
-    Http::Endpoint server(server_address);
+    Http::Endpoint server(address);
     auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
     auto server_opts = Http::Endpoint::options().flags(flags);
     server.init(server_opts);
     const int SIX_SECONDS_DELAY = 6;
     server.setHandler(Http::make_handler<HelloHandlerWithDelay>(SIX_SECONDS_DELAY));
     server.serveThreaded();
+
+    const std::string server_address = "localhost:" + server.getPort().toString();
+    std::cout << "Server address: " << server_address << "\n";
 
     const int CLIENT_REQUEST_SIZE = 1;
     int counter = clientLogicFunc(CLIENT_REQUEST_SIZE, server_address, SIX_SECONDS_DELAY);
@@ -91,9 +94,9 @@ TEST(http_server_test, client_disconnection_on_timeout_from_single_threaded_serv
 }
 
 TEST(http_server_test, client_multiple_requests_disconnection_on_timeout_from_single_threaded_server) {
-    const std::string server_address = "localhost:9096";
+    const Pistache::Address address("localhost", Pistache::Port(0));
 
-    Http::Endpoint server(server_address);
+    Http::Endpoint server(address);
     auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
     auto server_opts = Http::Endpoint::options().flags(flags);
     server.init(server_opts);
@@ -101,6 +104,9 @@ TEST(http_server_test, client_multiple_requests_disconnection_on_timeout_from_si
     const int SIX_SECONDS_DELAY = 6;
     server.setHandler(Http::make_handler<HelloHandlerWithDelay>(SIX_SECONDS_DELAY));
     server.serveThreaded();
+
+    const std::string server_address = "localhost:" + server.getPort().toString();
+    std::cout << "Server address: " << server_address << "\n";
 
     const int CLIENT_REQUEST_SIZE = 3;
     int counter = clientLogicFunc(CLIENT_REQUEST_SIZE, server_address, SIX_SECONDS_DELAY);
@@ -111,14 +117,17 @@ TEST(http_server_test, client_multiple_requests_disconnection_on_timeout_from_si
 }
 
 TEST(http_server_test, multiple_client_with_requests_to_multithreaded_server) {
-    const std::string server_address = "localhost:9097";
+    const Pistache::Address address("localhost", Pistache::Port(0));
 
-    Http::Endpoint server(server_address);
+    Http::Endpoint server(address);
     auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
     auto server_opts = Http::Endpoint::options().flags(flags).threads(3);
     server.init(server_opts);
     server.setHandler(Http::make_handler<HelloHandlerWithDelay>());
     server.serveThreaded();
+
+    const std::string server_address = "localhost:" + server.getPort().toString();
+    std::cout << "Server address: " << server_address << "\n";
 
     const int SIX_SECONDS_TIMOUT = 6;
     const int FIRST_CLIENT_REQUEST_SIZE = 4;
@@ -142,15 +151,18 @@ TEST(http_server_test, multiple_client_with_requests_to_multithreaded_server) {
 }
 
 TEST(http_server_test, multiple_client_with_different_requests_to_multithreaded_server) {
-    const std::string server_address = "localhost:9098";
+    const Pistache::Address address("localhost", Pistache::Port(0));
 
-    Http::Endpoint server(server_address);
+    Http::Endpoint server(address);
     auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
     auto server_opts = Http::Endpoint::options().flags(flags).threads(3);
     server.init(server_opts);
     const int SIX_SECONDS_DELAY = 6;
     server.setHandler(Http::make_handler<SlowHandlerOnSpecialPage>(SIX_SECONDS_DELAY));
     server.serveThreaded();
+
+    const std::string server_address = "localhost:" + server.getPort().toString();
+    std::cout << "Server address: " << server_address << "\n";
 
     const int FIRST_CLIENT_REQUEST_SIZE = 1;
     std::future<int> result1(std::async(clientLogicFunc,
