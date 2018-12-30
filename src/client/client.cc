@@ -477,17 +477,23 @@ Connection::perform(
         std::chrono::milliseconds timeout,
         Connection::OnDone onDone) {
     return Async::Promise<Response>([=](Async::Resolver& resolve, Async::Rejection& reject) {
-        if (!isConnected()) {
-            requestsQueue.push(
-                RequestData(
-                    std::move(resolve),
-                    std::move(reject),
-                    request,
-                    timeout,
-                    std::move(onDone)));
-        } else {
-            performImpl(request, timeout, std::move(resolve), std::move(reject), std::move(onDone));
-        }
+        performImpl(request, timeout, std::move(resolve), std::move(reject), std::move(onDone));
+    });
+}
+
+Async::Promise<Response>
+Connection::asyncPerform(
+        const Http::Request& request,
+        std::chrono::milliseconds timeout,
+        Connection::OnDone onDone) {
+    return Async::Promise<Response>([=](Async::Resolver& resolve, Async::Rejection& reject) {
+        requestsQueue.push(
+            RequestData(
+                std::move(resolve),
+                std::move(reject),
+                request,
+                timeout,
+                std::move(onDone)));
     });
 }
 
@@ -796,7 +802,12 @@ Client::doRequest(
         }
 
         if (!conn->isConnected()) {
+            auto res = conn->asyncPerform(request, timeout, [=]() {
+                pool.releaseConnection(conn);
+                processRequestQueue();
+            });
             conn->connect(helpers::httpAddr(s.first));
+            return res;
         }
 
         return conn->perform(request, timeout, [=]() {

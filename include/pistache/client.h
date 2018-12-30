@@ -90,6 +90,11 @@ struct Connection : public std::enable_shared_from_this<Connection> {
             std::chrono::milliseconds timeout,
             OnDone onDone);
 
+    Async::Promise<Response> asyncPerform(
+            const Http::Request& request,
+            std::chrono::milliseconds timeout,
+            OnDone onDone);
+
     void performImpl(
             const Http::Request& request,
             std::chrono::milliseconds timeout,
