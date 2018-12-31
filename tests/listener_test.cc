@@ -183,7 +183,7 @@ TEST(listener_test, listener_bind_port_not_free_throw_runtime) {
 
 
 // Listener should be able to bind port 0 directly to get an ephemeral port.
-TEST(listener_test, listener_bind_ephemeral_port) {
+TEST(listener_test, listener_bind_ephemeral_v4_port) {
     Pistache::Port port(0);
     Pistache::Address address(Pistache::Ipv4::any(), port);
 
@@ -197,15 +197,15 @@ TEST(listener_test, listener_bind_ephemeral_port) {
 
 
 TEST(listener_test, listener_bind_ephemeral_v6_port) {
-    Pistache::Port port(0);
-    Pistache::Address address(Pistache::Ipv6::any(), port);
-
     Pistache::Tcp::Listener listener;
-    if (not listener.systemSupportsIpv6()) {
+    if (listener.systemSupportsIpv6()) {
+        Pistache::Port port(0);
+        Pistache::Address address(Pistache::Ipv6::any(), port);
+
         Pistache::Flags<Pistache::Tcp::Options> options;
         listener.setHandler(Pistache::Http::make_handler<DummyHandler>());
         listener.bind(address);
-        
+
         Pistache::Port bound_port = listener.getPort();
         ASSERT_TRUE(bound_port > (uint16_t)0);
     }
