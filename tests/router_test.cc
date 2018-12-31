@@ -8,8 +8,13 @@
 #include "gtest/gtest.h"
 #include <algorithm>
 
+#include <pistache/endpoint.h>
+#include <pistache/http.h>
 #include <pistache/router.h>
 
+#include "httplib.h"
+
+using namespace Pistache;
 using namespace Pistache::Rest;
 
 bool match(const SegmentTreeNode& routes, const std::string& req) {
@@ -143,4 +148,59 @@ TEST(router_test, test_mixed) {
 
   ASSERT_FALSE(matchSplat(routes, "/hello", { "hello" }));
   ASSERT_TRUE(matchSplat(routes, "/hi", { "hi" }));
+}
+
+TEST(router_test, test_notfound_exactly_once) {
+    Address addr(Ipv4::any(), 0);
+    auto endpoint = std::make_shared<Http::Endpoint>(addr);
+
+    auto opts = Http::Endpoint::options().threads(1).maxPayload(4096);
+    endpoint->init(opts);
+
+    int count_found = 0;
+    int count_not_found = 0;
+
+    Rest::Router router;
+    Routes::NotFound(router, [&count_not_found](
+            const Pistache::Rest::Request& request,
+            Pistache::Http::ResponseWriter response) {
+        count_not_found++;
+        std::string err{"Couldn't find route: \"" + request.resource() +
+                        "\"\n"};
+        response.send(Pistache::Http::Code::Not_Found, err);
+        return Pistache::Rest::Route::Result::Ok;
+    });
+    Routes::Get(router, "/moogle", [&count_found](
+            const Pistache::Rest::Request&,
+            Pistache::Http::ResponseWriter response) {
+        count_found++;
+        response.send(Pistache::Http::Code::Ok, "kupo!\n");
+        return Pistache::Rest::Route::Result::Ok;
+    });
+
+    endpoint->setHandler(router.handler());
+    endpoint->serveThreaded();
+    const auto bound_port = endpoint->getPort();
+    httplib::Client client("localhost", bound_port);
+
+    // Verify that the notFound handler is NOT called when route is found.
+    count_not_found = count_found = 0;
+    client.Get("/moogle");
+    ASSERT_EQ(count_found, 1);
+    ASSERT_EQ(count_not_found, 0);
+
+    // Verify simple solution to bug #323 (one bad url triggered 2 routes).
+    count_not_found = count_found = 0;
+    client.Get("/kefka");
+    ASSERT_EQ(count_found, 0);
+    ASSERT_EQ(count_not_found, 1);
+
+    // Anal test, 2 calls = 2 route hits.
+    count_not_found = count_found = 0;
+    client.Get("/vicks");
+    client.Get("/wedge");
+    ASSERT_EQ(count_found, 0);
+    ASSERT_EQ(count_not_found, 2);
+
+    endpoint->shutdown();
 }
