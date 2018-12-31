@@ -25,7 +25,7 @@ struct CookieHandler : public Http::Handler {
 };
 
 TEST(http_client_test, one_client_with_one_request_with_onecookie) {
-    const std::string address = "localhost:9086";
+    const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
     auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
@@ -34,6 +34,9 @@ TEST(http_client_test, one_client_with_one_request_with_onecookie) {
     server.setHandler(Http::make_handler<CookieHandler>());
     server.serveThreaded();
 
+    const std::string server_address = "localhost:" + server.getPort().toString();
+    std::cout << "Server address: " << server_address << "\n";
+
     Http::Client client;
     client.init();
 
@@ -41,7 +44,7 @@ TEST(http_client_test, one_client_with_one_request_with_onecookie) {
     const std::string name = "FOO";
     const std::string value = "bar";
     auto cookie = Http::Cookie(name, value);
-    auto rb = client.get(address).cookie(cookie);
+    auto rb = client.get(server_address).cookie(cookie);
     auto response = rb.send();
 
     Http::CookieJar cj;
@@ -63,7 +66,7 @@ TEST(http_client_test, one_client_with_one_request_with_onecookie) {
 }
 
 TEST(http_client_test, one_client_with_one_request_with_several_cookies) {
-    const std::string address = "localhost:9088";
+    const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
     auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
@@ -71,6 +74,9 @@ TEST(http_client_test, one_client_with_one_request_with_several_cookies) {
     server.init(server_opts);
     server.setHandler(Http::make_handler<CookieHandler>());
     server.serveThreaded();
+
+    const std::string server_address = "localhost:" + server.getPort().toString();
+    std::cout << "Server address: " << server_address << "\n";
 
     Http::Client client;
     client.init();
@@ -85,7 +91,7 @@ TEST(http_client_test, one_client_with_one_request_with_several_cookies) {
     const std::string name3 = "Key";
     const std::string value3 = "value";
     auto cookie3 = Http::Cookie(name3, value3);
-    auto rb = client.get(address).cookie(cookie1).cookie(cookie2).cookie(cookie3);
+    auto rb = client.get(server_address).cookie(cookie1).cookie(cookie2).cookie(cookie3);
     auto response = rb.send();
 
     std::unordered_map<std::string, std::string> cookiesStorages;
