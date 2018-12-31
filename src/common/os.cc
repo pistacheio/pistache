@@ -190,16 +190,14 @@ namespace Polling {
             ready_fds = epoll_wait(epoll_fd, evs, maxEvents, timeout.count());
         } while (ready_fds < 0 && errno == EINTR);
 
-        if (ready_fds > 0) {
-            for (int i = 0; i < ready_fds; ++i) {
-                const struct epoll_event *ev = evs + i;
+        for (int i = 0; i < ready_fds; ++i) {
+            const struct epoll_event *ev = evs + i;
 
-                const Tag tag(ev->data.u64);
+            const Tag tag(ev->data.u64);
 
-                Event event(tag);
-                event.flags = toNotifyOn(ev->events);
-                events.push_back(event);
-            }
+            Event event(tag);
+            event.flags = toNotifyOn(ev->events);
+            events.push_back(event);
         }
 
         return ready_fds;
