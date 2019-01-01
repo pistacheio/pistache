@@ -26,6 +26,42 @@
 
 namespace Pistache {
 
+// Wrapper around 'getaddrinfo()' that handles cleanup on destruction.
+class AddrInfo {
+public:
+    // Disable copy and assign.
+    AddrInfo(const AddrInfo &) = delete;
+    AddrInfo& operator=(const AddrInfo &) = delete;
+
+    // Default construction: do nothing.
+    AddrInfo() : addrs(nullptr) {}
+
+    ~AddrInfo() {
+        if (addrs) {
+            ::freeaddrinfo(addrs);
+        }
+    }
+
+    // Call "::getaddrinfo()", but stash result locally.  Takes the same args
+    // as the first 3 args to "::getaddrinfo()" and returns the same result.
+    int invoke(const char *node, const char *service,
+               const struct addrinfo *hints) {
+        if (addrs) {
+            ::freeaddrinfo(addrs);
+            addrs = nullptr;
+        }
+
+        return ::getaddrinfo(node, service, hints, &addrs);
+    }
+
+    const struct addrinfo *get_info_ptr() const {
+        return addrs;
+    }
+
+private:
+    struct addrinfo *addrs;
+};
+
 class Port {
 public:
     Port(uint16_t port = 0);

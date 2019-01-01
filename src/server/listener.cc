@@ -189,13 +189,14 @@ Listener::bind(const Address& address) {
 
     const auto& host = addr_.host();
     const auto& port = addr_.port().toString();
-    struct addrinfo *addrs;
-    TRY(::getaddrinfo(host.c_str(), port.c_str(), &hints, &addrs));
+    AddrInfo addr_info;
+
+    TRY(addr_info.invoke(host.c_str(), port.c_str(), &hints));
 
     int fd = -1;
 
-    addrinfo *addr;
-    for (addr = addrs; addr; addr = addr->ai_next) {
+    const addrinfo * addr = nullptr;
+    for (addr = addr_info.get_info_ptr(); addr; addr = addr->ai_next) {
         fd = ::socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
         if (fd < 0) continue;
 
