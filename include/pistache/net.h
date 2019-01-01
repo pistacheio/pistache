@@ -102,12 +102,15 @@ private:
 class Ipv6 {
 public:
     Ipv6(uint16_t a, uint16_t b, uint16_t c, uint16_t d, uint16_t e, uint16_t f, uint16_t g, uint16_t h);
-    
+
     static Ipv6 any();
     static Ipv6 loopback();
-    
+
     std::string toString() const;
     void toNetwork(in6_addr*) const;
+
+    // Returns 'true' if the kernel/libc support IPV6, false if not.
+    static bool supported();
 
 private:
     uint16_t a;
