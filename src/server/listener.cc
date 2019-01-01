@@ -15,7 +15,6 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
-#include <ifaddrs.h>
 #include <netdb.h>
 #include <sys/epoll.h>
 #include <sys/timerfd.h>
@@ -147,29 +146,6 @@ Listener::pinWorker(size_t worker, const CpuSet& set)
 #endif
 }
 
-bool
-Listener::systemSupportsIpv6(){
-    struct ifaddrs *ifaddr, *ifa;
-    int family, n;
-    bool supportsIpv6 = false;
-    if (getifaddrs(&ifaddr) == -1) {
-        throw std::runtime_error("Call to getifaddrs() failed");
-    }
-    
-    for (ifa = ifaddr, n = 0; ifa != NULL; ifa = ifa->ifa_next, n++) {
-            if (ifa->ifa_addr == NULL)
-                continue;
-
-            family = ifa->ifa_addr->sa_family;
-            if (family == AF_INET6) {
-                supportsIpv6 = true;
-                continue;
-            }
-    }
-    freeifaddrs(ifaddr);
-    return supportsIpv6;
-}
-
 void
 Listener::bind() {
     bind(addr_);
@@ -189,13 +165,14 @@ Listener::bind(const Address& address) {
 
     const auto& host = addr_.host();
     const auto& port = addr_.port().toString();
-    struct addrinfo *addrs;
-    TRY(::getaddrinfo(host.c_str(), port.c_str(), &hints, &addrs));
+    AddrInfo addr_info;
+
+    TRY(addr_info.invoke(host.c_str(), port.c_str(), &hints));
 
     int fd = -1;
 
-    addrinfo *addr;
-    for (addr = addrs; addr; addr = addr->ai_next) {
+    const addrinfo * addr = nullptr;
+    for (addr = addr_info.get_info_ptr(); addr; addr = addr->ai_next) {
         fd = ::socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
         if (fd < 0) continue;
 

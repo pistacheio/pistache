@@ -198,7 +198,7 @@ TEST(listener_test, listener_bind_ephemeral_v4_port) {
 
 TEST(listener_test, listener_bind_ephemeral_v6_port) {
     Pistache::Tcp::Listener listener;
-    if (listener.systemSupportsIpv6()) {
+    if (Pistache::Ipv6::supported()) {
         Pistache::Port port(0);
         Pistache::Address address(Pistache::Ipv6::any(), port);
 

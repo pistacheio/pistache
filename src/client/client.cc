@@ -355,14 +355,14 @@ Connection::connect(const Address& addr)
 
         make_non_blocking(sfd);
 
-        connectionState_ = Connecting;
+        connectionState_.store(Connecting);
         fd = sfd;
 
         transport_->asyncConnect(shared_from_this(), addr->ai_addr, addr->ai_addrlen)
             .then([=]() {
                 socklen_t len = sizeof(saddr);
                 getsockname(sfd, (struct sockaddr *)&saddr, &len);
-                connectionState_ = Connected;
+                connectionState_.store(Connected);
                 processRequestQueue();
             }, ExceptionPrinter());
         break;
@@ -388,12 +388,12 @@ Connection::isIdle() const {
 
 bool
 Connection::isConnected() const {
-    return connectionState_ == Connected;
+    return connectionState_.load() == Connected;
 }
 
 void
 Connection::close() {
-    connectionState_ = NotConnected;
+    connectionState_.store(NotConnected);
     ::close(fd);
 }
 
