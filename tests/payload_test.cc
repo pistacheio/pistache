@@ -28,8 +28,6 @@ struct TestSet {
 
 typedef std::vector<TestSet> PayloadTestSets;
 
-static const uint16_t PORT = 9080;
-
 void testPayloads(Http::Client & client, std::string url, PayloadTestSets & testPayloads) {
    // Client tests to make sure the payload is enforced
     std::mutex resultsetMutex;
@@ -65,56 +63,53 @@ void handleEcho(const Rest::Request&req, Http::ResponseWriter response) {
 
 TEST(payload, from_description)
 {
+    const Address addr(Ipv4::any(), Port(0));
+    const size_t threads = 20;
+    const size_t maxPayload = 1024; // very small
+
+    Rest::Description desc("Rest Description Test", "v1");
+    Rest::Router router;
+
+    desc
+        .route(desc.post("/"))
+        .bind(&handleEcho)
+        .response(Http::Code::Ok, "Response to the /ready call");
+
+    router.initFromDescription(desc);
+
+    auto flags = Tcp::Options::ReuseAddr;
+    auto opts = Http::Endpoint::options()
+        .threads(threads)
+        .flags(flags)
+        .maxPayload(maxPayload);
+
+    auto endpoint = std::make_shared<Pistache::Http::Endpoint>(addr);
+    endpoint->init(opts);
+    endpoint->setHandler(router.handler());
+    endpoint->serveThreaded();
+
+
     Http::Client client;
     auto client_opts = Http::Client::options()
         .threads(3)
         .maxConnectionsPerHost(3);
     client.init(client_opts);
 
-    Address addr(Ipv4::any(), 9080);
-    const size_t threads = 20;
-    const size_t maxPayload = 1024; // very small
-
-    auto pid = fork();
-    if ( pid == 0) {
-        std::shared_ptr<Http::Endpoint> endpoint;
-        Rest::Description desc("Rest Description Test", "v1");
-        Rest::Router router;
-
-        desc
-            .route(desc.post("/"))
-            .bind(&handleEcho)
-            .response(Http::Code::Ok, "Response to the /ready call");
-
-        router.initFromDescription(desc);
-
-        auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
-
-        auto opts = Http::Endpoint::options()
-            .threads(threads)
-            .flags(flags)
-            .maxPayload(maxPayload);
-            ;
-
-        endpoint = std::make_shared<Pistache::Http::Endpoint>(addr);
-        endpoint->init(opts);
-        endpoint->setHandler(router.handler());
-        endpoint->serve();
-        endpoint->shutdown();
-        return;
-    }
+    // TODO: Remove temp hack once 'serveThreaded()' waits for socket to be
+    // created before returning.
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
+    const auto port = endpoint->getPort();
+
     PayloadTestSets payloads{
        {800, Http::Code::Ok}
        , {1024, Http::Code::Request_Entity_Too_Large}
         ,{2048, Http::Code::Request_Entity_Too_Large}
     };
 
-    testPayloads(client, "127.0.0.1:" + std::to_string(PORT), payloads);
-    kill(pid, SIGTERM);
-    int r;
-    waitpid(pid, &r, 0);
+    testPayloads(client, "127.0.0.1:" + std::to_string(port), payloads);
+
     client.shutdown();
+    endpoint->shutdown();
 }
 
 TEST(payload, manual_construction) {
@@ -133,33 +128,34 @@ TEST(payload, manual_construction) {
         tag placeholder;
     };
 
+    // General test parameters.
+    const Address addr(Ipv4::any(), Port(0));
+    const int     threads = 20;
+    const auto    flags = Tcp::Options::ReuseAddr;
+    const size_t  maxPayload = 2048;
+
+    // Build in-process server threads.
+    auto endpoint = std::make_shared<Http::Endpoint>(addr);
+    auto opts = Http::Endpoint::options()
+        .threads(threads)
+        .flags(flags)
+        .maxPayload(maxPayload);
+
+    endpoint->init(opts);
+    endpoint->setHandler(Http::make_handler<MyHandler>());
+    endpoint->serveThreaded();
+
+    // TODO: Remove temp hack once 'serveThreaded()' waits for socket to be
+    // created before returning.
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+    const auto port = endpoint->getPort();
+
+    // Create http client.
     Http::Client client;
     auto client_opts = Http::Client::options()
         .threads(3)
         .maxConnectionsPerHost(3);
     client.init(client_opts);
-
-    Port    port(PORT);
-    Address addr(Ipv4::any(), port);
-    int     threads = 20;
-    auto    flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
-    size_t  maxPayload = 2048;
-
-    auto pid = fork();
-    if (pid == 0) {
-        auto endpoint = std::make_shared<Http::Endpoint>(addr);
-        auto opts = Http::Endpoint::options()
-            .threads(threads)
-            .flags(flags)
-            .maxPayload(maxPayload);
-            ;
-
-        endpoint->init(opts);
-        endpoint->setHandler(Http::make_handler<MyHandler>());
-        endpoint->serve();
-        endpoint->shutdown();
-        return;
-    }
 
     PayloadTestSets payloads{
        {1024, Http::Code::Ok}
@@ -167,11 +163,9 @@ TEST(payload, manual_construction) {
        , {2048, Http::Code::Request_Entity_Too_Large}
        , {4096, Http::Code::Request_Entity_Too_Large}
     };
-    testPayloads(client, "127.0.0.1:" + std::to_string(PORT), payloads);
+    testPayloads(client, "127.0.0.1:" + std::to_string(port), payloads);
 
     // Cleanup
-    kill(pid, SIGTERM);
-    int r;
-    waitpid(pid, &r, 0);
     client.shutdown();
+    endpoint->shutdown();
 }
