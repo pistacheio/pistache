@@ -40,10 +40,10 @@ struct Connection : public std::enable_shared_from_this<Connection> {
 
     Connection()
         : fd(-1)
-        , requestEntry(nullptr)
-        , connectionState_(NotConnected)
+        , requestEntry(nullptr) 
     {
         state_.store(static_cast<uint32_t>(State::Idle));
+        connectionState_.store(NotConnected);
     }
 
     struct RequestData {
@@ -133,7 +133,7 @@ private:
     struct sockaddr_in saddr;
     std::unique_ptr<RequestEntry> requestEntry;
     std::atomic<uint32_t> state_;
-    ConnectionState connectionState_;
+    std::atomic<ConnectionState> connectionState_;
     std::shared_ptr<Transport> transport_;
     Queue<RequestData> requestsQueue;
 
