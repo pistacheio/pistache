@@ -9,6 +9,7 @@
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <ifaddrs.h>
 #include <iostream>
 
 #include <pistache/net.h>
@@ -128,6 +129,32 @@ void Ipv6::toNetwork(in6_addr *addr6) const {
     }
     // Copy the bytes into the in6_addr struct
     memcpy(addr6->s6_addr16, remap_ip6, 16);
+}
+
+bool Ipv6::supported() {
+    struct ifaddrs *ifaddr = nullptr;
+    struct ifaddrs *ifa = nullptr;
+    int family, n;
+    bool supportsIpv6 = false;
+
+    if (getifaddrs(&ifaddr) == -1) {
+        throw std::runtime_error("Call to getifaddrs() failed");
+    }
+
+    for (ifa = ifaddr, n = 0; ifa != nullptr; ifa = ifa->ifa_next, n++) {
+        if (ifa->ifa_addr == nullptr) {
+            continue;
+        }
+
+        family = ifa->ifa_addr->sa_family;
+        if (family == AF_INET6) {
+            supportsIpv6 = true;
+            continue;
+        }
+    }
+
+    freeifaddrs(ifaddr);
+    return supportsIpv6;
 }
 
 Address::Address()

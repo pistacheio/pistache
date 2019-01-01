@@ -48,8 +48,6 @@ public:
             Flags<Options> options = Options::None,
             int backlog = Const::MaxBacklog);
     void setHandler(const std::shared_ptr<Handler>& handler);
-    
-    static bool systemSupportsIpv6();
 
     void bind();
     void bind(const Address& address);
