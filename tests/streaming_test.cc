@@ -14,7 +14,6 @@ using namespace Pistache;
 static const size_t N_LETTERS = 26;
 static const size_t LETTER_REPEATS = 100000;
 static const size_t SET_REPEATS = 10;
-static const uint16_t PORT = 9082;
 
 void dumpData(const Rest::Request&req, Http::ResponseWriter response) {
     UNUSED(req);
@@ -49,7 +48,7 @@ void dumpData(const Rest::Request&req, Http::ResponseWriter response) {
 
 TEST(stream, from_description)
 {
-    Address addr(Ipv4::any(), PORT);
+    Address addr(Ipv4::any(), Port(0));
     const size_t threads = 20;
 
     std::shared_ptr<Http::Endpoint> endpoint;
@@ -63,8 +62,7 @@ TEST(stream, from_description)
 
     router.initFromDescription(desc);
 
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
-
+    auto flags = Tcp::Options::ReuseAddr;
     auto opts = Http::Endpoint::options()
         .threads(threads)
         .flags(flags)
@@ -86,7 +84,8 @@ TEST(stream, from_description)
         return size * nmemb;
     };
 
-    std::string url = "http://localhost:" + std::to_string(PORT) + "/";
+    const auto port = endpoint->getPort();
+    std::string url = "http://localhost:" + std::to_string(port) + "/";
     CURLcode res = CURLE_FAILED_INIT;
     CURL * curl = curl_easy_init();
     if (curl)

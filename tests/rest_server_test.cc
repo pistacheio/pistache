@@ -38,6 +38,10 @@ public:
         httpEndpoint->shutdown();
     }
 
+    Port getPort() const {
+        return httpEndpoint->getPort();
+    }
+
 private:
     void setupRoutes() {
         using namespace Rest;
@@ -56,20 +60,21 @@ private:
 };
 
 TEST(rest_server_test, basic_test) {
-    Port port(9090);
     int thr = 1;
 
-    Address addr(Ipv4::any(), port);
+    Address addr(Ipv4::any(), Port(0));
 
     StatsEndpoint stats(addr);
 
     stats.init(thr);
     stats.start();
+    Port port = stats.getPort();
 
     cout << "Cores = " << hardware_concurrency() << endl;
     cout << "Using " << thr << " threads" << endl;
+    cout << "Port = " << port << endl;
 
-    httplib::Client client("localhost", 9090);
+    httplib::Client client("localhost", port);
     auto res = client.Get("/read/function1");
     ASSERT_EQ(res->status, 200);
     ASSERT_EQ(res->body, "1");
