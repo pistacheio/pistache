@@ -368,6 +368,7 @@ private:
 
    Lock queuesLock;
    std::unordered_map<std::string, MPMCQueue<std::shared_ptr<Connection::RequestData>, 2048>> requestsQueues;
+   bool stopProcessPequestsQueues;
 
    RequestBuilder prepareRequest(const std::string& resource, Http::Method method);
 
