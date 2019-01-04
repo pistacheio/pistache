@@ -704,9 +704,11 @@ Client::Client()
     , ioIndex(0)
     , queuesLock()
     , requestsQueues()
+    , stopProcessPequestsQueues(false)
 { }
 
 Client::~Client() {
+    assert(stopProcessPequestsQueues == true && "You must explicitly call shutdown method of Client object");
 }
 
 Client::Options
@@ -726,6 +728,8 @@ Client::init(const Client::Options& options) {
 void
 Client::shutdown() {
     reactor_->shutdown();
+    Guard guard(queuesLock);
+    stopProcessPequestsQueues = true;
 }
 
 RequestBuilder
@@ -820,6 +824,9 @@ Client::doRequest(
 void
 Client::processRequestQueue() {
     Guard guard(queuesLock);
+
+    if (stopProcessPequestsQueues)
+        return;
 
     for (auto& queues: requestsQueues) {
         for (;;) {
