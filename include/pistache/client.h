@@ -358,7 +358,6 @@ private:
    std::shared_ptr<Aio::Reactor> reactor_;
 
    ConnectionPool pool;
-   std::shared_ptr<Transport> transport_;
    Aio::Reactor::Key transportKey;
 
    std::atomic<uint64_t> ioIndex;
