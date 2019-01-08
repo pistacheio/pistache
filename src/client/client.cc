@@ -699,7 +699,6 @@ Client::Options::maxConnectionsPerHost(int val) {
 Client::Client()
     : reactor_(Aio::Reactor::create())
     , pool()
-    , transport_()
     , transportKey()
     , ioIndex(0)
     , queuesLock()
@@ -719,9 +718,8 @@ Client::options() {
 void
 Client::init(const Client::Options& options) {
     pool.init(options.maxConnectionsPerHost_);
-    transport_ = std::make_shared<Transport>();
     reactor_->init(Aio::AsyncContext(options.threads_));
-    transportKey = reactor_->addHandler(transport_);
+    transportKey = reactor_->addHandler(std::make_shared<Transport>());
     reactor_->run();
 }
 
