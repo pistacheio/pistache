@@ -23,6 +23,12 @@ else()
     # Following workaround forces Clang to compile at best with C++14
     if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         set(CMAKE_CXX_STANDARD 14)
+    elseif (CMAKE_COMPILER_IS_GNUCC)
+        if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
+            set(CMAKE_CXX_STANDARD 17)
+        else()
+            set(CMAKE_CXX_STANDARD 14)
+        endif()
     else()
         set(CMAKE_CXX_STANDARD 17)
     endif()
@@ -31,25 +37,6 @@ else()
 endif()
 
 include_directories (${CMAKE_CURRENT_SOURCE_DIR}/include)
-add_subdirectory (src)
-
-if (PISTACHE_BUILD_EXAMPLES)
-    add_subdirectory (examples)
-endif()
-
-if (PISTACHE_BUILD_TESTS)
-    find_package(GTest)
-    if (GTEST_FOUND)
-        include_directories(${GTEST_INCLUDE_DIRS})
-    else()
-        ADD_SUBDIRECTORY (googletest-release-1.7.0)
-        include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
-    endif()
-
-    enable_testing()
-    add_subdirectory(tests)
-endif()
-
 # Set version...
 
     # Major and minor version...
@@ -110,3 +97,21 @@ if(PISTACHE_INSTALL)
     )
 endif()
 
+add_subdirectory (src)
+
+if (PISTACHE_BUILD_EXAMPLES)
+    add_subdirectory (examples)
+endif()
+
+if (PISTACHE_BUILD_TESTS)
+    find_package(GTest)
+    if (GTEST_FOUND)
+        include_directories(${GTEST_INCLUDE_DIRS})
+    else()
+        ADD_SUBDIRECTORY (googletest-release-1.7.0)
+        include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
+    endif()
+
+    enable_testing()
+    add_subdirectory(tests)
+endif()
