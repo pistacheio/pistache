@@ -141,9 +141,16 @@ Transport::onReady(const Aio::FdSet& fds) {
         else if (entry.isReadable()) {
             auto tag = entry.getTag();
             auto fd = tag.value();
-            auto reqIt = connections.find(fd);
-            if (reqIt != std::end(connections))
-                handleIncoming(reqIt->second.connection);
+            auto connIt = connections.find(fd);
+            if (connIt != std::end(connections)) {
+                auto connection = connIt->second.connection.lock();
+                if (connection) {
+                    handleIncoming(connection);
+                }
+                else {
+                    throw std::runtime_error("Connection error");
+                }
+            }
             else {
                 auto timerIt = timeouts.find(fd);
                 if (timerIt != std::end(timeouts))
@@ -164,7 +171,12 @@ Transport::onReady(const Aio::FdSet& fds) {
                 else {
                     conn.resolve();
                     // We are connected, we can start reading data now
-                    reactor()->modifyFd(key(), conn.connection->fd, NotifyOn::Read);
+                    auto connection = connIt->second.connection.lock();
+                    if (connection) {
+                        reactor()->modifyFd(key(), connection->fd, NotifyOn::Read);
+                    } else {
+                        throw std::runtime_error("Connection error");
+                    }
                 }
             } else {
                 throw std::runtime_error("Unknown fd");
@@ -180,7 +192,7 @@ Transport::registerPoller(Polling::Epoll& poller) {
 }
 
 Async::Promise<void>
-Transport::asyncConnect(const std::shared_ptr<Connection>& connection, const struct sockaddr* address, socklen_t addr_len)
+Transport::asyncConnect(std::shared_ptr<Connection> connection, const struct sockaddr* address, socklen_t addr_len)
 {
     return Async::Promise<void>([=](Async::Resolver& resolve, Async::Rejection& reject) {
         ConnectionEntry entry(std::move(resolve), std::move(reject), connection, address, addr_len);
@@ -266,9 +278,11 @@ Transport::handleConnectionQueue() {
         auto entry = connectionsQueue.popSafe();
         if (!entry) break;
 
-
         auto &data = entry->data();
-        const auto& conn = data.connection;
+        auto conn = data.connection.lock();
+        if (!conn) {
+            throw std::runtime_error("Connection error");
+        }
         int res = ::connect(conn->fd, data.addr, data.addr_len);
         if (res == -1) {
             if (errno == EINPROGRESS) {
@@ -284,7 +298,7 @@ Transport::handleConnectionQueue() {
 }
 
 void
-Transport::handleIncoming(const std::shared_ptr<Connection>& connection) {
+Transport::handleIncoming(std::shared_ptr<Connection> connection) {
     char buffer[Const::MaxBuffer] = {0};
 
     ssize_t totalBytes = 0;
