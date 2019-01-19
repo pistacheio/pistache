@@ -196,7 +196,7 @@ public:
     void registerPoller(Polling::Epoll& poller) override;
 
     Async::Promise<void>
-    asyncConnect(const std::shared_ptr<Connection>& connection, const struct sockaddr* address, socklen_t addr_len);
+    asyncConnect(std::shared_ptr<Connection> connection, const struct sockaddr* address, socklen_t addr_len);
 
     Async::Promise<ssize_t> asyncSendRequest(
             const std::shared_ptr<Connection>& connection,
@@ -216,14 +216,14 @@ private:
                 std::shared_ptr<Connection> connection, const struct sockaddr* addr, socklen_t addr_len)
             : resolve(std::move(resolve))
             , reject(std::move(reject))
-            , connection(std::move(connection))
+            , connection(connection)
             , addr(addr)
             , addr_len(addr_len)
         { }
 
         Async::Resolver resolve;
         Async::Rejection reject;
-        std::shared_ptr<Connection> connection;
+        std::weak_ptr<Connection> connection;
         const struct sockaddr* addr;
         socklen_t addr_len;
     };
@@ -261,7 +261,7 @@ private:
 
     void handleRequestsQueue();
     void handleConnectionQueue();
-    void handleIncoming(const std::shared_ptr<Connection>& connection);
+    void handleIncoming(std::shared_ptr<Connection> connection);
     void handleResponsePacket(const std::shared_ptr<Connection>& connection, const char* buffer, size_t totalBytes);
     void handleTimeout(const std::shared_ptr<Connection>& connection);
 
