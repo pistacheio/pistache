@@ -202,7 +202,7 @@ Transport::asyncConnect(std::shared_ptr<Connection> connection, const struct soc
 
 Async::Promise<ssize_t>
 Transport::asyncSendRequest(
-        const std::shared_ptr<Connection>& connection,
+        std::shared_ptr<Connection> connection,
         std::shared_ptr<TimerPool::Entry> timer,
         std::string buffer) {
 
@@ -223,7 +223,9 @@ Transport::asyncSendRequestImpl(
         const RequestEntry& req, WriteStatus status)
 {
     const auto& buffer = req.buffer;
-    auto conn = req.connection;
+    auto conn = req.connection.lock();
+    if (!conn)
+        throw std::runtime_error("Send request error");
 
     auto fd = conn->fd;
 
