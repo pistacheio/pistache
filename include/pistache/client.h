@@ -199,7 +199,7 @@ public:
     asyncConnect(std::shared_ptr<Connection> connection, const struct sockaddr* address, socklen_t addr_len);
 
     Async::Promise<ssize_t> asyncSendRequest(
-            const std::shared_ptr<Connection>& connection,
+            std::shared_ptr<Connection> connection,
             std::shared_ptr<TimerPool::Entry> timer,
             std::string buffer);
 
@@ -236,7 +236,7 @@ private:
                 std::string buf)
             : resolve(std::move(resolve))
             , reject(std::move(reject))
-            , connection(std::move(connection))
+            , connection(connection)
             , timer(std::move(timer))
             , buffer(std::move(buf))
         {
@@ -244,7 +244,7 @@ private:
 
         Async::Resolver resolve;
         Async::Rejection reject;
-        std::shared_ptr<Connection> connection;
+        std::weak_ptr<Connection> connection;
         std::shared_ptr<TimerPool::Entry> timer;
         std::string buffer;
     };
