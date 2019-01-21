@@ -8,14 +8,7 @@
 
 using namespace Pistache::Http;
 
-class TestHeader : public Header::Header {
-public:
-    NAME("TestHeader");
-
-    void write(std::ostream& os) const override {
-        os << "TestHeader";
-    }
-};
+CUSTOM_HEADER(TestHeader)
 
 TEST(headers_test, accept) {
     Header::Accept a1;
@@ -336,6 +329,7 @@ TEST(headers_test, add_new_header_test)
 
     ASSERT_FALSE(Header::Registry::instance().isRegistered(headerName));
     Header::Registry::instance().registerHeader<TestHeader>();
+    ASSERT_TRUE(TestHeader::Name == "TestHeader");
     ASSERT_TRUE(Header::Registry::instance().isRegistered(headerName));
 
     const auto& headersList = Header::Registry::instance().headersList();
