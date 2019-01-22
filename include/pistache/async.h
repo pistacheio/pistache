@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <pistache/typeid.h>
+
 #include <type_traits>
 #include <functional>
 #include <memory>
@@ -14,10 +16,9 @@
 #include <vector>
 #include <mutex>
 #include <condition_variable>
+#include <stdexcept>
+#include <typeinfo>
 
-#include <pistache/optional.h>
-#include <pistache/typeid.h>
-#include <pistache/common.h>
 
 namespace Pistache {
 namespace Async {
@@ -396,8 +397,7 @@ namespace Async {
                 static_assert(sizeof...(Args) == 0,
                         "Can not attach a non-void continuation to a void-Promise");
 
-                void doResolve(const std::shared_ptr<CoreT<void>>& core) {
-                    UNUSED(core)
+                void doResolve(const std::shared_ptr<CoreT<void>>& /*core*/) {
                     finishResolve(resolve_());
                 }
 
@@ -474,8 +474,7 @@ namespace Async {
                 static_assert(sizeof...(Args) == 0,
                         "Can not attach a non-void continuation to a void-Promise");
 
-                void doResolve(const std::shared_ptr<CoreT<void>>& core) {
-                    UNUSED(core)
+                void doResolve(const std::shared_ptr<CoreT<void>>& /*core*/) {
                     resolve_();
                 }
 
@@ -582,8 +581,7 @@ namespace Async {
                     , reject_(reject)
                 { }
 
-                void doResolve(const std::shared_ptr<CoreT<void>>& core) {
-                    UNUSED(core)
+                void doResolve(const std::shared_ptr<CoreT<void>>& /*core*/) {
                     auto promise = resolve_();
                     finishResolve(promise);
                 }

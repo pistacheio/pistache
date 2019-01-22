@@ -1,13 +1,14 @@
 #include "gtest/gtest.h"
 
+#include <pistache/async.h>
+#include <pistache/common.h>
+
 #include <thread>
 #include <algorithm>
 #include <deque>
 #include <mutex>
 #include <condition_variable>
 #include <random>
-
-#include <pistache/async.h>
 
 using namespace Pistache;
 
