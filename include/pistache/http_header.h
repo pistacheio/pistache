@@ -552,6 +552,31 @@ private:
     std::string ua_;
 };
 
+#define CUSTOM_HEADER(header_name) \
+    class header_name : public Pistache::Http::Header::Header { \
+    public:                                                     \
+        NAME(#header_name)                                      \
+                                                                \
+        header_name() = default;                                \
+                                                                \
+        explicit header_name(const char* value)                 \
+        : value_{value} {}                                      \
+                                                                \
+        explicit header_name(std::string value)                 \
+        : value_(std::move(value)) {}                           \
+                                                                \
+        void parseRaw(const char *str, size_t len) final        \
+        { value_ = { str, len };}                               \
+                                                                \
+        void write(std::ostream& os) const final                \
+        { os << value_; };                                      \
+                                                                \
+        std::string val() const { return value_; };             \
+                                                                \
+    private:                                                    \
+        std::string value_;                                     \
+    };                                                          \
+
 class Raw {
 public:
     Raw();

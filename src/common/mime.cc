@@ -1,7 +1,7 @@
 /* mime.cc
    Mathieu Stefani, 29 August 2015
 
-   Implementaton of MIME Type parsing
+   Implementation of MIME Type parsing
 */
 
 #include <cstring>

@@ -8,15 +8,6 @@
 
 using namespace Pistache::Http;
 
-class TestHeader : public Header::Header {
-public:
-    NAME("TestHeader");
-
-    void write(std::ostream& os) const override {
-        os << "TestHeader";
-    }
-};
-
 TEST(headers_test, accept) {
     Header::Accept a1;
     a1.parse("audio/*; q=0.2");
@@ -257,19 +248,19 @@ TEST(headers_test, host) {
     host.parse("localhost:8080");
     ASSERT_EQ(host.host(), "localhost");
     ASSERT_EQ(host.port(), 8080);
-    
+
 /* Due to an error in GLIBC these tests don't fail as expected, further research needed */
 //     ASSERT_THROW( host.parse("256.256.256.256:8080");, std::invalid_argument);
 //     ASSERT_THROW( host.parse("1.0.0.256:8080");, std::invalid_argument);
-    
+
     host.parse("[::1]:8080");
     ASSERT_EQ(host.host(), "[::1]");
     ASSERT_EQ(host.port(), 8080);
-    
+
     host.parse("[2001:0DB8:AABB:CCDD:EEFF:0011:2233:4455]:8080");
     ASSERT_EQ(host.host(), "[2001:0DB8:AABB:CCDD:EEFF:0011:2233:4455]");
     ASSERT_EQ(host.port(), 8080);
-    
+
 /* Due to an error in GLIBC these tests don't fail as expected, further research needed */
 //     ASSERT_THROW( host.parse("[GGGG:GGGG:GGGG:GGGG:GGGG:GGGG:GGGG:GGGG]:8080");, std::invalid_argument);
 //     ASSERT_THROW( host.parse("[::GGGG]:8080");, std::invalid_argument);
@@ -328,6 +319,17 @@ TEST(headers_test, access_control_allow_methods_test)
 
     allowMethods.parse("GET, POST, DELETE");
     ASSERT_EQ(allowMethods.val(), "GET, POST, DELETE");
+}
+
+CUSTOM_HEADER(TestHeader)
+
+TEST(header_test, macro_for_custom_headers)
+{
+    TestHeader testHeader;
+    ASSERT_TRUE(TestHeader::Name == "TestHeader");
+
+    testHeader.parse("Header Content Test");
+    ASSERT_EQ(testHeader.val(), "Header Content Test");
 }
 
 TEST(headers_test, add_new_header_test)
