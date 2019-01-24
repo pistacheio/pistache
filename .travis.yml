@@ -10,11 +10,10 @@ matrix:
       compiler: clang
       addons:
         apt:
-          packages: ['clang-3.8', 'libstdc++-6-dev']
+          packages: ['clang-5.0']
           sources:
-            - ubuntu-toolchain-r-test
             - llvm-toolchain-trusty
-      env: COMPILER='clang++-3.8' CPP14=1
+      env: COMPILER='clang++-5.0'
 
 install:
   - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
