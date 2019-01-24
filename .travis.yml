@@ -31,8 +31,6 @@ install:
 before_script:
   - export CXX=${COMPILER}
   - cd ${TRAVIS_BUILD_DIR}
-  # Regenerate single header file, so it is tested in the examples...
-  - python scripts/generateSingleHeader.py
 
     # Use Debug builds for building and running examples
   - cmake -H. -BBuild-Debug -DCMAKE_BUILD_TYPE=Debug -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_TESTS=true
