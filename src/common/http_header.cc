@@ -314,7 +314,7 @@ Date::parse(const std::string &str) {
 
 void
 Date::write(std::ostream& os) const {
-    UNUSED(os)
+	fullDate_.write(os);
 }
 
 void
