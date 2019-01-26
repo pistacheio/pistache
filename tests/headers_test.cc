@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <iostream>
 
 using namespace Pistache::Http;
 
@@ -236,6 +237,18 @@ TEST(headers_test, date_test_asctime) {
     d3.parse("Sun Nov  6 08:49:37 1994");
     auto dd3 = d3.fullDate().date();
     ASSERT_EQ(dd3, expected_time_point);
+}
+
+TEST(headers_test, date_test_ostream) {
+
+    using namespace std::chrono;
+
+    std::ostringstream os;
+
+    Header::Date d4;
+    d4.parse("Fri, 25 Jan 2019 21:04:45.000000000 UTC");
+    d4.write(os);
+    ASSERT_EQ("Fri, 25 Jan 2019 21:04:45.000000000 UTC", os.str());
 }
 
 TEST(headers_test, host) {
