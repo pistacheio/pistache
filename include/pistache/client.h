@@ -38,13 +38,7 @@ struct Connection : public std::enable_shared_from_this<Connection> {
 
     using OnDone = std::function<void()>;
 
-    Connection()
-        : fd(-1)
-        , requestEntry(nullptr) 
-    {
-        state_.store(static_cast<uint32_t>(State::Idle));
-        connectionState_.store(NotConnected);
-    }
+    Connection();
 
     struct RequestData {
 
@@ -180,7 +174,6 @@ public:
       : requestsQueue()
       , connectionsQueue()
       , connections()
-      , requests()
       , timeouts()
     { }
 
@@ -188,7 +181,6 @@ public:
       : requestsQueue()
       , connectionsQueue()
       , connections()
-      , requests()
       , timeouts()
     { }
 
@@ -254,7 +246,6 @@ private:
     PollableQueue<ConnectionEntry> connectionsQueue;
 
     std::unordered_map<Fd, ConnectionEntry> connections;
-    std::unordered_map<Fd, RequestEntry> requests;
     std::unordered_map<Fd, std::shared_ptr<Connection>> timeouts;
 
     void asyncSendRequestImpl(const RequestEntry& req, WriteStatus status = FirstTry);
