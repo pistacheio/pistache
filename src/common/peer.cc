@@ -20,12 +20,14 @@ using namespace std;
 Peer::Peer()
     : transport_(nullptr)
     , fd_(-1)
+    , ssl_(NULL)
 { }
 
 Peer::Peer(const Address& addr)
     : transport_(nullptr)
     , addr(addr)
     , fd_(-1)
+    , ssl_(NULL)
 { }
 
 Address
@@ -42,6 +44,19 @@ void
 Peer::associateFd(int fd) {
     fd_ = fd;
 }
+
+#ifdef PISTACHE_USE_SSL
+void
+Peer::associateSSL(void *ssl)
+{
+    ssl_ = ssl;
+}
+
+void *
+Peer::ssl(void) const {
+    return ssl_;
+}
+#endif /* PISTACHE_USE_SSL */
 
 int
 Peer::fd() const {

@@ -16,6 +16,12 @@
 #include <pistache/async.h>
 #include <pistache/stream.h>
 
+#ifdef PISTACHE_USE_SSL
+
+#include <openssl/ssl.h>
+
+#endif /* PISTACHE_USE_SSL */
+
 namespace Pistache {
 namespace Tcp {
 
@@ -33,6 +39,9 @@ public:
 
     void associateFd(Fd fd);
     Fd fd() const;
+
+    void associateSSL(void *ssl);
+    void *ssl(void) const;
 
     void putData(std::string name, std::shared_ptr<void> data);
 
@@ -63,6 +72,8 @@ private:
 
     std::string hostname_;
     std::unordered_map<std::string, std::shared_ptr<void>> data_;
+
+    void *ssl_;
 };
 
 std::ostream& operator<<(std::ostream& os, const Peer& peer);

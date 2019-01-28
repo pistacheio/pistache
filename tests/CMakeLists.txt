@@ -28,3 +28,14 @@ pistache_test(streaming_test)
 pistache_test(rest_server_test)
 pistache_test(string_view_test)
 pistache_test(mailbox_test)
+
+if (PISTACHE_SSL)
+
+    configure_file("certs/server.crt" "certs/server.crt" COPYONLY)
+    configure_file("certs/server.key" "certs/server.key" COPYONLY)
+    configure_file("certs/client.key" "certs/client.key" COPYONLY)
+    configure_file("certs/client.crt" "certs/client.crt" COPYONLY)
+    configure_file("certs/rootCA.crt" "certs/rootCA.crt" COPYONLY)
+
+    pistache_test(https_server_test)
+endif (PISTACHE_SSL)
