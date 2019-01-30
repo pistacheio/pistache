@@ -177,7 +177,7 @@ TEST(headers_test, content_length) {
 TEST(headers_test, connection) {
     Header::Connection connection;
 
-    constexpr struct Test {
+    struct Test {
         const char *data;
         ConnectionControl expected;
     } tests[] = {
