@@ -143,7 +143,6 @@ struct Buffer {
         size_t retainedLen = len - fromIndex;
         char *newData = new char[retainedLen];
         std::copy(data + fromIndex, data + len, newData);
-
         return Buffer(newData, retainedLen, true);
     }
 

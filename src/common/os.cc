@@ -38,20 +38,24 @@ bool make_non_blocking(int fd)
 }
 
 CpuSet::CpuSet() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     bits.reset();
 }
 
 CpuSet::CpuSet(std::initializer_list<size_t> cpus) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     set(cpus);
 }
 
 void
 CpuSet::clear() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     bits.reset();
 }
 
 CpuSet&
 CpuSet::set(size_t cpu) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     if (cpu >= Size) {
         throw std::invalid_argument("Trying to set invalid cpu number");
     }
@@ -62,6 +66,7 @@ CpuSet::set(size_t cpu) {
 
 CpuSet&
 CpuSet::unset(size_t cpu) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     if (cpu >= Size) {
         throw std::invalid_argument("Trying to unset invalid cpu number");
     }
@@ -72,18 +77,21 @@ CpuSet::unset(size_t cpu) {
 
 CpuSet&
 CpuSet::set(std::initializer_list<size_t> cpus) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     for (auto cpu: cpus) set(cpu);
     return *this;
 }
 
 CpuSet&
 CpuSet::unset(std::initializer_list<size_t> cpus) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     for (auto cpu: cpus) unset(cpu);
     return *this;
 }
 
 CpuSet&
 CpuSet::setRange(size_t begin, size_t end) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     if (begin > end) {
         throw std::range_error("Invalid range, begin > end");
     }
@@ -97,6 +105,7 @@ CpuSet::setRange(size_t begin, size_t end) {
 
 CpuSet&
 CpuSet::unsetRange(size_t begin, size_t end) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     if (begin > end) {
         throw std::range_error("Invalid range, begin > end");
     }
@@ -240,6 +249,7 @@ namespace Polling {
 
 Polling::Tag
 NotifyFd::bind(Polling::Epoll& poller) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     event_fd = TRY_RET(eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC));
     Polling::Tag tag(event_fd);
 

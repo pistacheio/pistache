@@ -41,6 +41,7 @@ FileBuffer::FileBuffer(const std::string& fileName)
 
 DynamicStreamBuf::int_type
 DynamicStreamBuf::overflow(DynamicStreamBuf::int_type ch) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     if (!traits_type::eq_int_type(ch, traits_type::eof())) {
         const auto size = data_.size();
         if (size < maxSize_) {
@@ -57,6 +58,7 @@ DynamicStreamBuf::overflow(DynamicStreamBuf::int_type ch) {
 void
 DynamicStreamBuf::reserve(size_t size)
 {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     if (size > maxSize_) size = maxSize_;
     const size_t oldSize = data_.size();
     data_.resize(size);
@@ -65,6 +67,7 @@ DynamicStreamBuf::reserve(size_t size)
 
 bool
 StreamCursor::advance(size_t count) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     if (static_cast<ssize_t>(count) > buf->in_avail())
         return false;
 
@@ -125,6 +128,7 @@ StreamCursor::remaining() const {
 
 void
 StreamCursor::reset() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     buf->reset();
 }
 

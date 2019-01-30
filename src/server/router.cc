@@ -74,6 +74,7 @@ SegmentTreeNode::SegmentTreeNode(const std::shared_ptr<char> &resourceReference)
 
 SegmentTreeNode::SegmentType
 SegmentTreeNode::getSegmentType(const std::string_view& fragment) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     auto optpos = fragment.find('?');
     if (fragment[0] == ':') {
         if (optpos != std::string_view::npos) {
@@ -328,6 +329,7 @@ RouterHandler::onRequest(
 
 Router
 Router::fromDescription(const Rest::Description& desc) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     Router router;
     router.initFromDescription(desc);
     return router;
@@ -340,11 +342,13 @@ Router::handler() const {
 
 std::shared_ptr<Private::RouterHandler>
 Router::handler(std::shared_ptr<Rest::Router> router) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
   return std::make_shared<Private::RouterHandler>(router);
 }
 
 void
 Router::initFromDescription(const Rest::Description& desc) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     auto paths = desc.rawPaths();
     for (auto it = paths.flatBegin(), end = paths.flatEnd(); it != end; ++it) {
         const auto& paths = *it;
@@ -362,36 +366,43 @@ Router::initFromDescription(const Rest::Description& desc) {
 
 void
 Router::get(const std::string& resource, Route::Handler handler) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     addRoute(Http::Method::Get, resource, std::move(handler));
 }
 
 void
 Router::post(const std::string& resource, Route::Handler handler) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     addRoute(Http::Method::Post, resource, std::move(handler));
 }
 
 void
 Router::put(const std::string& resource, Route::Handler handler) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     addRoute(Http::Method::Put, resource, std::move(handler));
 }
 
 void
 Router::patch(const std::string& resource, Route::Handler handler) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     addRoute(Http::Method::Patch, resource, std::move(handler));
 }
 
 void
 Router::del(const std::string& resource, Route::Handler handler) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     addRoute(Http::Method::Delete, resource, std::move(handler));
 }
 
 void
 Router::options(const std::string& resource, Route::Handler handler) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     addRoute(Http::Method::Options, resource, handler);
 }
 
 void
 Router::removeRoute(Http::Method method, const std::string& resource) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     if (resource.empty()) throw std::runtime_error("Invalid zero-length URL.");
     auto& r = routes[method];
     const auto sanitized = SegmentTreeNode::sanitizeResource(resource);
@@ -401,11 +412,13 @@ Router::removeRoute(Http::Method method, const std::string& resource) {
 
 void
 Router::addCustomHandler(Route::Handler handler) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     customHandlers.push_back(std::move(handler));
 }
 
 void
 Router::addNotFoundHandler(Route::Handler handler) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     notFoundHandler = std::move(handler);
 }
 
@@ -417,6 +430,7 @@ Router::invokeNotFoundHandler(const Http::Request &req, Http::ResponseWriter res
 
 Route::Status
 Router::route(const Http::Request& req, Http::ResponseWriter response) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     const auto resource = req.resource();
     if (resource.empty()) throw std::runtime_error("Invalid zero-length URL.");
 

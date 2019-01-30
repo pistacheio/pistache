@@ -32,13 +32,17 @@ Contact::Contact(
     : name(std::move(name))
     , url(std::move(url))
     , email(std::move(email))
-{ }
+{
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+}
 
 License::License(
         std::string name, std::string url)
     : name(std::move(name))
     , url(std::move(url))
-{ }
+{
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+}
 
 Info::Info(
         std::string title, std::string version, std::string description)
@@ -48,13 +52,17 @@ Info::Info(
     , termsOfService()
     , contact()
     , license()
-{ }
+{
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+}
 
 PathDecl::PathDecl(
         std::string value, Http::Method method)
     : value(std::move(value))
     , method(method)
-{ }
+{
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+}
 
 Path::Path(std::string value, Http::Method method, std::string description)
     : value(std::move(value))
@@ -65,48 +73,54 @@ Path::Path(std::string value, Http::Method method, std::string description)
     , parameters()
     , responses()
     , handler()
-{ }
+{
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+}
 
 std::string
 Path::swaggerFormat(const std::string& path) {
-    if (path.empty()) return "";
-    if (path[0] != '/') throw std::invalid_argument("Invalid path, should start with a '/'");
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  if (path.empty())
+    return "";
+  if (path[0] != '/')
+    throw std::invalid_argument("Invalid path, should start with a '/'");
 
-    /* @CodeDup: re-use the private Fragment class of Router */
-    auto isPositional = [](const std::string& fragment) {
-        if (fragment[0] == ':')
-            return std::make_pair(true, fragment.substr(1));
-        return std::make_pair(false, std::string());
-    };
+  /* @CodeDup: re-use the private Fragment class of Router */
+  auto isPositional = [](const std::string &fragment) {
+    if (fragment[0] == ':')
+      return std::make_pair(true, fragment.substr(1));
+    return std::make_pair(false, std::string());
+  };
 
-    auto isOptional = [](const std::string& fragment) {
-        auto pos = fragment.find('?');
-        // @Validation the '?' should be the last character
-        return std::make_pair(pos != std::string::npos, pos);
-    };
+  auto isOptional = [](const std::string &fragment) {
+    auto pos = fragment.find('?');
+    // @Validation the '?' should be the last character
+    return std::make_pair(pos != std::string::npos, pos);
+  };
 
-    std::ostringstream oss;
+  std::ostringstream oss;
 
-    auto processFragment = [&](std::string fragment) {
-        auto optional = isOptional(fragment);
-        if (optional.first)
-            fragment.erase(optional.second, 1);
+  auto processFragment = [&](std::string fragment) {
+    auto optional = isOptional(fragment);
+    if (optional.first)
+      fragment.erase(optional.second, 1);
 
-        auto positional = isPositional(fragment);
-        if (positional.first) {
-            oss << '{' << positional.second << '}';
-        } else {
-            oss << fragment;
-        }
-    };
+    auto positional = isPositional(fragment);
+    if (positional.first) {
+      oss << '{' << positional.second << '}';
+    } else {
+      oss << fragment;
+    }
+  };
 
-    std::istringstream iss(path);
-    std::string fragment;
+  std::istringstream iss(path);
+  std::string fragment;
 
-    std::vector<std::string> fragments;
+  std::vector<std::string> fragments;
 
-    while (std::getline(iss, fragment, '/')) {
-        fragments.push_back(std::move(fragment));
+  while (std::getline(iss, fragment, '/')) {
+    fragments.push_back(std::move(fragment));
     }
 
     for (size_t i = 0; i < fragments.size() - 1; ++i) {
@@ -127,99 +141,119 @@ Path::swaggerFormat(const std::string& path) {
 
 bool
 PathGroup::hasPath(const std::string& name, Http::Method method) const {
-    auto group = paths(name);
-    auto it = std::find_if(std::begin(group), std::end(group), [&](const Path& p) {
-        return p.method == method;
-    });
-    return it != std::end(group);
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  auto group = paths(name);
+  auto it = std::find_if(std::begin(group), std::end(group),
+                         [&](const Path &p) { return p.method == method; });
+  return it != std::end(group);
 }
 
 bool
 PathGroup::hasPath(const Path& path) const {
-    return hasPath(path.value, path.method);
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  return hasPath(path.value, path.method);
 }
 
 PathGroup::Group
 PathGroup::paths(const std::string& name) const {
-    auto it = groups_.find(name);
-    if (it == std::end(groups_))
-        return PathGroup::Group { };
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  auto it = groups_.find(name);
+  if (it == std::end(groups_))
+    return PathGroup::Group{};
 
-    return it->second;
+  return it->second;
 }
 
 Optional<Path>
 PathGroup::path(const std::string& name, Http::Method method) const {
-    auto group = paths(name);
-    auto it = std::find_if(std::begin(group), std::end(group), [&](const Path& p) {
-        return p.method == method;
-    });
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  auto group = paths(name);
+  auto it = std::find_if(std::begin(group), std::end(group),
+                         [&](const Path &p) { return p.method == method; });
 
-    if (it != std::end(group)) {
-        return Some(*it);
+  if (it != std::end(group)) {
+    return Some(*it);
     }
     return None();
 }
 
 PathGroup::group_iterator
 PathGroup::add(Path path) {
-    if (hasPath(path))
-        return PathGroup::group_iterator { };
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  if (hasPath(path))
+    return PathGroup::group_iterator{};
 
-    auto &group = groups_[path.value];
-    return group.insert(group.end(), std::move(path));
+  auto &group = groups_[path.value];
+  return group.insert(group.end(), std::move(path));
 }
 
 PathGroup::const_iterator
 PathGroup::begin() const {
-    return groups_.begin();
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  return groups_.begin();
 }
 
 PathGroup::const_iterator
 PathGroup::end() const {
-    return groups_.end();
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  return groups_.end();
 }
 
 PathGroup::flat_iterator
 PathGroup::flatBegin() const {
-    return makeFlatMapIterator(groups_, begin());
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  return makeFlatMapIterator(groups_, begin());
 }
 
 PathGroup::flat_iterator
 PathGroup::flatEnd()  const {
-    return makeFlatMapIterator(groups_, end());
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  return makeFlatMapIterator(groups_, end());
 }
 
 PathBuilder::PathBuilder(Path* path)
     : path_(path)
-{ }
+{
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+}
 
 SubPath::SubPath(
         std::string prefix, PathGroup* paths)
     : prefix(std::move(prefix))
     , parameters()
     , paths(paths)
-{ }
+{
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+}
 
 PathBuilder
 SubPath::route(std::string name, Http::Method method, std::string description) {
-    auto fullPath = prefix + name;
-    Path path(std::move(fullPath), method, std::move(description));
-    std::copy(std::begin(parameters), std::end(parameters), std::back_inserter(path.parameters));
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  auto fullPath = prefix + name;
+  Path path(std::move(fullPath), method, std::move(description));
+  std::copy(std::begin(parameters), std::end(parameters),
+            std::back_inserter(path.parameters));
 
-    auto it = paths->add(std::move(path));
+  auto it = paths->add(std::move(path));
 
-    return PathBuilder(&*it);
+  return PathBuilder(&*it);
 }
 
 PathBuilder
 SubPath::route(PathDecl fragment, std::string description) {
-    return route(std::move(fragment.value), fragment.method, std::move(description));
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  return route(std::move(fragment.value), fragment.method,
+               std::move(description));
 }
 
 SubPath
 SubPath::path(std::string prefix) {
-    return SubPath(this->prefix + prefix, paths);
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  return SubPath(this->prefix + prefix, paths);
 }
 
 Parameter::Parameter(
@@ -228,39 +262,54 @@ Parameter::Parameter(
     , description(std::move(description))
     , required(true)
     , type()
-{ }
+{
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+}
 
 Response::Response(
         Http::Code statusCode, std::string description)
     : statusCode(statusCode)
     , description(std::move(description))
-{ }
+{
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+}
 
 ResponseBuilder::ResponseBuilder(
         Http::Code statusCode, std::string description)
     : response_(statusCode, std::move(description))
-{ }
+{
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+}
 
 InfoBuilder::InfoBuilder(Info* info)
     : info_(info)
-{ }
+{
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+}
 
 InfoBuilder&
 InfoBuilder::termsOfService(std::string value) {
-    info_->termsOfService = std::move(value);
-    return *this;
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  info_->termsOfService = std::move(value);
+  return *this;
 }
 
 InfoBuilder&
 InfoBuilder::contact(std::string name, std::string url, std::string email) {
-    info_->contact = Some(Contact(std::move(name), std::move(url), std::move(email)));
-    return *this;
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  info_->contact =
+      Some(Contact(std::move(name), std::move(url), std::move(email)));
+  return *this;
 }
 
 InfoBuilder&
 InfoBuilder::license(std::string name, std::string url) {
-    info_->license = Some(License(std::move(name), std::move(url)));
-    return *this;
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  info_->license = Some(License(std::move(name), std::move(url)));
+  return *this;
 }
 
 } // namespace Schema
@@ -274,213 +323,272 @@ Description::Description(
     , pc()
     , paths_()
 {
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
 }
 
 Schema::InfoBuilder
 Description::info() {
-    Schema::InfoBuilder builder(&info_);
-    return builder;
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  Schema::InfoBuilder builder(&info_);
+  return builder;
 }
 
 Description&
 Description::host(std::string value) {
-    host_ = std::move(value);
-    return *this;
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  host_ = std::move(value);
+  return *this;
 }
 
 Description&
 Description::basePath(std::string value) {
-    basePath_ = std::move(value);
-    return *this;
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  basePath_ = std::move(value);
+  return *this;
 }
 
 Schema::PathDecl
 Description::options(std::string name) {
-    return Schema::PathDecl(std::move(name), Http::Method::Options);
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  return Schema::PathDecl(std::move(name), Http::Method::Options);
 }
 
 Schema::PathDecl
 Description::get(std::string name) {
-    return Schema::PathDecl(std::move(name), Http::Method::Get);
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  return Schema::PathDecl(std::move(name), Http::Method::Get);
 }
 
 Schema::PathDecl
 Description::post(std::string name) {
-    return Schema::PathDecl(std::move(name), Http::Method::Post);
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  return Schema::PathDecl(std::move(name), Http::Method::Post);
 }
 
 Schema::PathDecl
 Description::head(std::string name) {
-    return Schema::PathDecl(std::move(name), Http::Method::Head);
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  return Schema::PathDecl(std::move(name), Http::Method::Head);
 }
 
 Schema::PathDecl
 Description::put(std::string name) {
-    return Schema::PathDecl(std::move(name), Http::Method::Put);
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  return Schema::PathDecl(std::move(name), Http::Method::Put);
 }
 
 Schema::PathDecl
 Description::patch(std::string name) {
-    return Schema::PathDecl(std::move(name), Http::Method::Patch);
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  return Schema::PathDecl(std::move(name), Http::Method::Patch);
 }
 
 Schema::PathDecl
 Description::del(std::string name) {
-    return Schema::PathDecl(std::move(name), Http::Method::Delete);
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  return Schema::PathDecl(std::move(name), Http::Method::Delete);
 }
 
 Schema::PathDecl
 Description::trace(std::string name) {
-    return Schema::PathDecl(std::move(name), Http::Method::Trace);
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  return Schema::PathDecl(std::move(name), Http::Method::Trace);
 }
 
 Schema::PathDecl
 Description::connect(std::string name) {
-    return Schema::PathDecl(std::move(name), Http::Method::Connect);
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  return Schema::PathDecl(std::move(name), Http::Method::Connect);
 }
 
 Schema::SubPath
 Description::path(std::string name) {
-    return Schema::SubPath(std::move(name), &paths_);
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  return Schema::SubPath(std::move(name), &paths_);
 }
 
 Schema::PathBuilder
 Description::route(std::string name, Http::Method method, std::string description) {
-    auto it = paths_.emplace(std::move(name), method, std::move(description));
-    return Schema::PathBuilder(&*it);
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  auto it = paths_.emplace(std::move(name), method, std::move(description));
+  return Schema::PathBuilder(&*it);
 }
 
 Schema::PathBuilder
 Description::route(Schema::PathDecl fragment, std::string description) {
-    return route(std::move(fragment.value), fragment.method, std::move(description));
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  return route(std::move(fragment.value), fragment.method,
+               std::move(description));
 }
 
 Schema::ResponseBuilder
 Description::response(Http::Code statusCode, std::string description) {
-    Schema::ResponseBuilder builder(statusCode, std::move(description));
-    return builder;
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  Schema::ResponseBuilder builder(statusCode, std::move(description));
+  return builder;
 }
 
 Swagger&
 Swagger::uiPath(std::string path) {
-    uiPath_ = std::move(path);
-    return *this;
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  uiPath_ = std::move(path);
+  return *this;
 }
 
 Swagger&
 Swagger::uiDirectory(std::string dir) {
-    uiDirectory_ = std::move(dir);
-    return *this;
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  uiDirectory_ = std::move(dir);
+  return *this;
 }
 
 Swagger&
 Swagger::apiPath(std::string path) {
-    apiPath_ = std::move(path);
-    return *this;
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  apiPath_ = std::move(path);
+  return *this;
 }
 
 Swagger&
 Swagger::serializer(Swagger::Serializer serialize) {
-    serializer_ = std::move(serialize);
-    return *this;
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  serializer_ = std::move(serialize);
+  return *this;
 }
 
 void
 Swagger::install(Rest::Router& router) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
 
-    Route::Handler uiHandler = [=](const Rest::Request& req, Http::ResponseWriter response) {
-        auto res = req.resource();
+  Route::Handler uiHandler = [=](const Rest::Request &req,
+                                 Http::ResponseWriter response) {
+      std::cout << __PRETTY_FUNCTION__ << std::endl;
+      auto res = req.resource();
 
-        /*
-         * @Export might be useful for routing also. Make it public or merge it with the Fragment class
-         */
+      /*
+     * @Export might be useful for routing also. Make it public or merge it with
+     * the Fragment class
+     */
 
-        struct Path {
-            Path(const std::string& value)
-                : value(value)
-                , trailingSlashValue(value)
-            {
-                if (trailingSlashValue.empty() || trailingSlashValue.back() != '/')
-                    trailingSlashValue += '/';
-            }
+      struct Path
+      {
+          Path(const std::string &value) : value(value), trailingSlashValue(value)
+          {
+              if (trailingSlashValue.empty() || trailingSlashValue.back() != '/')
+                  trailingSlashValue += '/';
+          }
 
-            static bool hasTrailingSlash(const Rest::Request& req) {
-                auto res = req.resource();
-                return res.back() == '/';
-            }
+          static bool hasTrailingSlash(const Rest::Request &req)
+          {
+              auto res = req.resource();
+              return res.back() == '/';
+          }
 
-            std::string stripPrefix(const Rest::Request& req) {
-                auto res = req.resource();
-                if (!res.compare(0, value.size(), value)) {
-                    return res.substr(value.size());
-                }
-                return res;
-            }
+          std::string stripPrefix(const Rest::Request &req)
+          {
+              auto res = req.resource();
+              if (!res.compare(0, value.size(), value))
+              {
+                  return res.substr(value.size());
+              }
+              return res;
+          }
 
-            bool matches(const Rest::Request& req) const {
-                auto res = req.resource();
-                if (value == res)
-                    return true;
+          bool matches(const Rest::Request &req) const
+          {
+              auto res = req.resource();
+              if (value == res)
+                  return true;
 
-                if (res == trailingSlashValue)
-                    return true;
+              if (res == trailingSlashValue)
+                  return true;
 
-                return false;
-            }
+              return false;
+          }
 
-            bool isPrefix(const Rest::Request& req) {
-                auto res = req.resource();
-                return !res.compare(0, value.size(), value);
-            }
+          bool isPrefix(const Rest::Request &req)
+          {
+              auto res = req.resource();
+              return !res.compare(0, value.size(), value);
+          }
 
-            const std::string& withTrailingSlash() const {
-                return trailingSlashValue;
-            }
+          const std::string &withTrailingSlash() const
+          {
+              return trailingSlashValue;
+          }
 
-            std::string join(const std::string& value) const {
-                std::string val;
-                if (value[0] == '/') val = value.substr(1);
-                else val = value;
-                return trailingSlashValue + val;
-            }
+          std::string join(const std::string &value) const
+          {
+              std::string val;
+              if (value[0] == '/')
+                  val = value.substr(1);
+              else
+                  val = value;
+              return trailingSlashValue + val;
+          }
 
         private:
-            std::string value;
-            std::string trailingSlashValue;
-        };
+          std::string value;
+          std::string trailingSlashValue;
+      };
 
-        Path ui(uiPath_);
-        Path uiDir(uiDirectory_);
+      Path ui(uiPath_);
+      Path uiDir(uiDirectory_);
 
-        if (ui.matches(req)) {
-            if (!Path::hasTrailingSlash(req)) {
-                response
-                    .headers()
-                    .add<Http::Header::Location>(uiPath_ + '/');
+      if (ui.matches(req))
+      {
+          if (!Path::hasTrailingSlash(req))
+          {
+              response.headers().add<Http::Header::Location>(uiPath_ + '/');
 
-                response.send(Http::Code::Moved_Permanently);
-            } else {
-                auto index = uiDir.join("index.html");
-                Http::serveFile(response, index);
-            }
-            return Route::Result::Ok;
-        }
-        else if (ui.isPrefix(req)) {
-            auto file = ui.stripPrefix(req);
-            auto path = uiDir.join(file);
-            Http::serveFile(response, path);
-            return Route::Result::Ok;
-        }
+              response.send(Http::Code::Moved_Permanently);
+          }
+          else
+          {
+              auto index = uiDir.join("index.html");
+              Http::serveFile(response, index);
+          }
+          return Route::Result::Ok;
+      } else if (ui.isPrefix(req))
+      {
+          auto file = ui.stripPrefix(req);
+          auto path = uiDir.join(file);
+          Http::serveFile(response, path);
+          return Route::Result::Ok;
+      }
 
-        else if (res == apiPath_) {
-            response.send(Http::Code::Ok, serializer_(description_), MIME(Application, Json));
-            return Route::Result::Ok;
-        }
+      else if (res == apiPath_)
+      {
+          response.send(Http::Code::Ok, serializer_(description_),
+                        MIME(Application, Json));
+          return Route::Result::Ok;
+      }
 
-        return Route::Result::Failure;
-    };
+      return Route::Result::Failure;
+  };
 
-    router.addCustomHandler(uiHandler);
+  router.addCustomHandler(uiHandler);
 }
 
 

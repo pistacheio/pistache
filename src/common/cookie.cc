@@ -19,6 +19,7 @@ namespace {
 
     StreamCursor::Token matchValue(StreamCursor& cursor) {
         int c;
+        std::cout << __PRETTY_FUNCTION__ << std::endl;
         if ((c = cursor.current()) != StreamCursor::Eof && c != '=')
             throw std::runtime_error("Invalid cookie");
 
@@ -37,56 +38,61 @@ namespace {
     template<>
     struct AttributeMatcher<Optional<std::string>> {
         static void match(StreamCursor& cursor, Cookie* obj, Optional<std::string> Cookie::*attr) {
-            auto token = matchValue(cursor);
-            obj->*attr = Some(token.text());
+          std::cout << __PRETTY_FUNCTION__ << std::endl;
+          auto token = matchValue(cursor);
+          obj->*attr = Some(token.text());
         }
     };
 
     template<>
     struct AttributeMatcher<Optional<int>> {
         static void match(StreamCursor& cursor, Cookie* obj, Optional<int> Cookie::*attr) {
-            auto token = matchValue(cursor);
+          std::cout << __PRETTY_FUNCTION__ << std::endl;
+          auto token = matchValue(cursor);
 
-            auto strntol = [](const char *str, size_t len) {
-                int ret = 0;
-                for (size_t i = 0; i < len; ++i) {
-                    if (!isdigit(str[i]))
-                        throw std::invalid_argument("Invalid conversion");
+          auto strntol = [](const char *str, size_t len) {
+            int ret = 0;
+            for (size_t i = 0; i < len; ++i) {
+              if (!isdigit(str[i]))
+                throw std::invalid_argument("Invalid conversion");
 
-                    ret *= 10;
-                    ret += str[i] - '0';
-                };
-
-                return ret;
+              ret *= 10;
+              ret += str[i] - '0';
             };
 
-            obj->*attr = Some(strntol(token.rawText(), token.size()));
+            return ret;
+          };
+
+          obj->*attr = Some(strntol(token.rawText(), token.size()));
         }
     };
 
     template<>
     struct AttributeMatcher<bool> {
         static void match(StreamCursor& cursor, Cookie* obj, bool Cookie::*attr) {
-            UNUSED(cursor)
-            obj->*attr = true;
+          std::cout << __PRETTY_FUNCTION__ << std::endl;
+          UNUSED(cursor)
+          obj->*attr = true;
         }
     };
 
     template<>
     struct AttributeMatcher<Optional<FullDate>> {
         static void match(StreamCursor& cursor, Cookie* obj, Optional<FullDate> Cookie::*attr) {
-            auto token = matchValue(cursor);
-            obj->*attr = Some(FullDate::fromString(token.text()));
+          std::cout << __PRETTY_FUNCTION__ << std::endl;
+          auto token = matchValue(cursor);
+          obj->*attr = Some(FullDate::fromString(token.text()));
         }
     };
 
     template<typename T>
     bool match_attribute(const char* name, size_t len, StreamCursor& cursor, Cookie* obj, T Cookie::*attr) {
-        if (match_string(name, len, cursor)) {
-            AttributeMatcher<T>::match(cursor, obj, attr);
-            cursor.advance(1);
+      std::cout << __PRETTY_FUNCTION__ << std::endl;
+      if (match_string(name, len, cursor)) {
+        AttributeMatcher<T>::match(cursor, obj, attr);
+        cursor.advance(1);
 
-            return true;
+        return true;
         }
 
         return false;
@@ -104,32 +110,36 @@ Cookie::Cookie(std::string name, std::string value)
     , secure(false)
     , httpOnly(false)
     , ext()
-{ }
+{
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+}
 
 Cookie
 Cookie::fromRaw(const char* str, size_t len)
 {
-    RawStreamBuf<> buf(const_cast<char *>(str), len);
-    StreamCursor cursor(&buf);
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  RawStreamBuf<> buf(const_cast<char *>(str), len);
+  StreamCursor cursor(&buf);
 
-    StreamCursor::Token nameToken(cursor);
+  StreamCursor::Token nameToken(cursor);
 
-    if (!match_until('=', cursor))
-        throw std::runtime_error("Invalid cookie, missing value");
+  if (!match_until('=', cursor))
+    throw std::runtime_error("Invalid cookie, missing value");
 
-    auto name = nameToken.text();
+  auto name = nameToken.text();
 
-    if (!cursor.advance(1))
-        throw std::runtime_error("Invalid cookie, missing value");
+  if (!cursor.advance(1))
+    throw std::runtime_error("Invalid cookie, missing value");
 
-    StreamCursor::Token valueToken(cursor);
+  StreamCursor::Token valueToken(cursor);
 
-    match_until(';', cursor);
-    auto value = valueToken.text();
+  match_until(';', cursor);
+  auto value = valueToken.text();
 
-    Cookie cookie(std::move(name), std::move(value));
-    if (cursor.eof()) {
-        return cookie;
+  Cookie cookie(std::move(name), std::move(value));
+  if (cursor.eof()) {
+    return cookie;
     }
 
     cursor.advance(1);
@@ -168,12 +178,17 @@ Cookie::fromRaw(const char* str, size_t len)
 }
 
 Cookie
-Cookie::fromString(const std::string& str) {
+Cookie::fromString(const std::string& str)
+{
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
     return Cookie::fromRaw(str.c_str(), str.size());
 }
 
 void
-Cookie::write(std::ostream& os) const {
+Cookie::write(std::ostream& os) const
+{
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
     os << name << "=" << value;
     optionally_do(path, [&](const std::string& value) {
        os << "; ";
@@ -207,21 +222,21 @@ Cookie::write(std::ostream& os) const {
 
 }
 
-CookieJar::CookieJar()
-    : cookies()
-{ }
+CookieJar::CookieJar() : cookies() { std::cout << __PRETTY_FUNCTION__ << std::endl; }
 
 void
 CookieJar::add(const Cookie& cookie) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
 
-    std::string cookieName = cookie.name;
-    std::string cookieValue = cookie.value;
+  std::string cookieName = cookie.name;
+  std::string cookieValue = cookie.value;
 
-    Storage::iterator it = cookies.find(cookieName);
-    if(it == cookies.end()) {
-        HashMapCookies hashmapWithFirstCookie;
-        hashmapWithFirstCookie.insert(std::make_pair(cookieValue,cookie));
-        cookies.insert(std::make_pair(cookieName, hashmapWithFirstCookie));
+  Storage::iterator it = cookies.find(cookieName);
+  if (it == cookies.end()) {
+    HashMapCookies hashmapWithFirstCookie;
+    hashmapWithFirstCookie.insert(std::make_pair(cookieValue, cookie));
+    cookies.insert(std::make_pair(cookieName, hashmapWithFirstCookie));
     } else {
         it->second.insert(std::make_pair(cookieValue,cookie));
     }
@@ -230,50 +245,57 @@ CookieJar::add(const Cookie& cookie) {
 
 void 
 CookieJar::removeAllCookies() {
-	cookies.clear();
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
+    cookies.clear();
 }
 
 void
 CookieJar::addFromRaw(const char *str, size_t len) {
-    RawStreamBuf<> buf(const_cast<char *>(str), len);
-    StreamCursor cursor(&buf);
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  RawStreamBuf<> buf(const_cast<char *>(str), len);
+  StreamCursor cursor(&buf);
 
-    while (!cursor.eof()) {
-        StreamCursor::Token nameToken(cursor);
+  while (!cursor.eof()) {
+    StreamCursor::Token nameToken(cursor);
 
-        if (!match_until('=', cursor))
-            throw std::runtime_error("Invalid cookie, missing value");
+    if (!match_until('=', cursor))
+      throw std::runtime_error("Invalid cookie, missing value");
 
-        auto name = nameToken.text();
+    auto name = nameToken.text();
 
-        if (!cursor.advance(1))
-            throw std::runtime_error("Invalid cookie, missing value");
+    if (!cursor.advance(1))
+      throw std::runtime_error("Invalid cookie, missing value");
 
-        StreamCursor::Token valueToken(cursor);
+    StreamCursor::Token valueToken(cursor);
 
-        match_until(';', cursor);
-        auto value = valueToken.text();
+    match_until(';', cursor);
+    auto value = valueToken.text();
 
-        Cookie cookie(std::move(name), std::move(value));
-        add(cookie);
+    Cookie cookie(std::move(name), std::move(value));
+    add(cookie);
 
-        cursor.advance(1);
-        skip_whitespaces(cursor);
+    cursor.advance(1);
+    skip_whitespaces(cursor);
     }
 }
 
 Cookie
 CookieJar::get(const std::string& name) const {
-    Storage::const_iterator it = cookies.find(name);
-    if(it != cookies.end()) {
-        return it->second.begin()->second;  // it returns begin(), first element, could be changed.
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  Storage::const_iterator it = cookies.find(name);
+  if (it != cookies.end()) {
+    return it->second.begin()
+        ->second; // it returns begin(), first element, could be changed.
     } 
     throw std::runtime_error("Could not find requested cookie");
 }
 
 bool
 CookieJar::has(const std::string& name) const {
-    return cookies.find(name) != cookies.end();
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+  return cookies.find(name) != cookies.end();
 }
 
 } // namespace Http

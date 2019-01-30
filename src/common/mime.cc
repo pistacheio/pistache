@@ -34,16 +34,19 @@ Q::toString() const {
 
 MediaType
 MediaType::fromString(const std::string& str) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     return fromRaw(str.c_str(), str.size());
 }
 
 MediaType
 MediaType::fromString(std::string&& str) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     return fromRaw(str.c_str(), str.size());
 }
 
 MediaType
 MediaType::fromRaw(const char* str, size_t len) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     MediaType res;
 
     res.parseRaw(str, len);
@@ -53,6 +56,7 @@ MediaType::fromRaw(const char* str, size_t len) {
 MediaType
 MediaType::fromFile(const char* fileName)
 {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     const char *extensionOffset = nullptr;
     const char *p = fileName;
     while (*p) {
@@ -98,6 +102,7 @@ MediaType::fromFile(const char* fileName)
 
 void
 MediaType::parseRaw(const char* str, size_t len) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     auto raise = [&](const char* str) {
         // TODO: eventually, we should throw a more generic exception
         // that could then be catched in lower stack frames to rethrow
@@ -243,6 +248,7 @@ MediaType::parseRaw(const char* str, size_t len) {
 
 void
 MediaType::setQuality(Q quality) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     q_ = Some(quality);
 }
 
@@ -258,6 +264,7 @@ MediaType::getParam(std::string name) const {
 
 void
 MediaType::setParam(std::string name, std::string value) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     params[name] = value;
 }
 

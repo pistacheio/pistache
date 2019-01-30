@@ -74,6 +74,7 @@ public:
     friend class Private::ParserBase;
 
     Message();
+    ~Message() { std::cout << __PRETTY_FUNCTION__ << std::endl; }
 
     Message(const Message& other) = default;
     Message& operator=(const Message& other) = default;
@@ -151,6 +152,8 @@ public:
 
     Request(Request&& other) = default;
     Request& operator=(Request&& other) = default;
+
+    ~Request() { std::cout << __PRETTY_FUNCTION__ << std::endl; }
 
     Version version() const;
     Method method() const;
@@ -395,20 +398,23 @@ public:
     friend class Private::ResponseLineStep;
     friend class Private::Parser<Http::Response>;
 
-    Response()
-        : Message()
-    { }
+    Response() : Message() { std::cout << __PRETTY_FUNCTION__ << std::endl; }
 
     Response(Version version)
         : Message()
     {
         version_ = version;
+        {
+            std::cout << __PRETTY_FUNCTION__ << std::endl;
+        }
     }
 
     Response(const Response& other) = default;
     Response& operator=(const Response& other) = default;
     Response(Response&& other) = default;
     Response& operator=(Response&& other) = default;
+
+    ~Response() { std::cout << __PRETTY_FUNCTION__ << std::endl; }
 
     const Header::Collection& headers() const {
         return headers_;
@@ -464,7 +470,10 @@ public:
         , buf_(std::move(other.buf_))
         , transport_(other.transport_)
         , timeout_(std::move(other.timeout_))
-    { }
+     { std::cout << __PRETTY_FUNCTION__ << std::endl; }
+
+    ~ResponseWriter() { std::cout << __PRETTY_FUNCTION__ << std::endl; }
+
     ResponseWriter& operator=(ResponseWriter&& other) {
         Response::operator=(std::move(other));
         peer_ = std::move(other.peer_);

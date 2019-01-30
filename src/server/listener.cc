@@ -125,6 +125,7 @@ Listener::init(
 
 void
 Listener::setHandler(const std::shared_ptr<Handler>& handler) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     handler_ = handler;
 }
 
@@ -148,11 +149,13 @@ Listener::pinWorker(size_t worker, const CpuSet& set)
 
 void
 Listener::bind() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     bind(addr_);
 }
 
 void
 Listener::bind(const Address& address) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     if (!handler_)
         throw std::runtime_error("Call setHandler before calling bind()");
     addr_ = address;
@@ -236,6 +239,7 @@ Listener::getPort() const {
 
 void
 Listener::run() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     shutdownFd.bind(poller);
     reactor_.run();
 
@@ -272,17 +276,20 @@ Listener::run() {
 
 void
 Listener::runThreaded() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     acceptThread = std::thread([=]() { this->run(); });
 }
 
 void
 Listener::shutdown() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     if (shutdownFd.isBound()) shutdownFd.notify();
     reactor_.shutdown();
 }
 
 Async::Promise<Listener::Load>
 Listener::requestLoad(const Listener::Load& old) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     auto handlers = reactor_.handlers(transportKey);
 
     std::vector<Async::Promise<rusage>> loads;
@@ -344,6 +351,7 @@ Listener::options() const {
 
 void
 Listener::handleNewConnection() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     struct sockaddr_in peer_addr;
     socklen_t peer_addr_len = sizeof(peer_addr);
     int client_fd = ::accept(listen_fd, (struct sockaddr *)&peer_addr, &peer_addr_len);
@@ -364,6 +372,7 @@ Listener::handleNewConnection() {
 
 void
 Listener::dispatchPeer(const std::shared_ptr<Peer>& peer) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     auto handlers = reactor_.handlers(transportKey);
     auto idx = peer->fd() % handlers.size();
     auto transport = std::static_pointer_cast<Transport>(handlers[idx]);

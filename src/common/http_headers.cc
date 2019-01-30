@@ -55,6 +55,7 @@ Registry::~Registry()
 void
 Registry::registerHeader(const std::string& name, Registry::RegistryFunc func)
 {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     auto it = registry.find(name);
     if (it != std::end(registry)) {
         throw std::runtime_error("Header already registered");
@@ -65,6 +66,7 @@ Registry::registerHeader(const std::string& name, Registry::RegistryFunc func)
 
 std::vector<std::string>
 Registry::headersList() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     std::vector<std::string> names;
     names.reserve(registry.size());
 
@@ -77,6 +79,7 @@ Registry::headersList() {
 
 std::unique_ptr<Header>
 Registry::makeHeader(const std::string& name) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     auto it = registry.find(name);
     if (it == std::end(registry)) {
         throw std::runtime_error("Unknown header");
@@ -87,12 +90,14 @@ Registry::makeHeader(const std::string& name) {
 
 bool
 Registry::isRegistered(const std::string& name) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     auto it = registry.find(name);
     return it != std::end(registry);
 }
 
 Collection&
 Collection::add(const std::shared_ptr<Header>& header) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     headers.insert(std::make_pair(header->name(), header));
 
     return *this;
@@ -100,6 +105,7 @@ Collection::add(const std::shared_ptr<Header>& header) {
 
 Collection&
 Collection::addRaw(const Raw& raw) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     rawHeaders.insert(std::make_pair(raw.name(), raw));
     return *this;
 }
@@ -116,6 +122,7 @@ Collection::get(const std::string& name) const {
 
 std::shared_ptr<Header>
 Collection::get(const std::string& name) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     auto header = getImpl(name);
     if (!header.first) {
         throw std::runtime_error("Could not find header");
@@ -144,6 +151,7 @@ Collection::tryGet(const std::string& name) const {
 
 std::shared_ptr<Header>
 Collection::tryGet(const std::string& name) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     auto header = getImpl(name);
     if (!header.first) return nullptr;
 
@@ -178,6 +186,7 @@ Collection::list() const {
 
 bool
 Collection::remove(const std::string& name) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     auto tit = headers.find(name);
     if (tit == std::end(headers)) {
         auto rit = rawHeaders.find(name);
@@ -192,6 +201,7 @@ Collection::remove(const std::string& name) {
 
 void
 Collection::clear() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     headers.clear();
     rawHeaders.clear();
 }

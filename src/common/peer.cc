@@ -17,36 +17,41 @@ namespace Tcp {
 
 using namespace std;
 
-Peer::Peer()
-    : transport_(nullptr)
-    , fd_(-1)
-{ }
+Peer::Peer() : transport_(nullptr) , fd_(-1)
+{
+  std::cout << __PRETTY_FUNCTION__ << endl;
+}
 
-Peer::Peer(const Address& addr)
-    : transport_(nullptr)
-    , addr(addr)
-    , fd_(-1)
-{ }
+Peer::Peer(const Address& addr) : transport_(nullptr) , addr(addr) , fd_(-1)
+{
+  std::cout << __PRETTY_FUNCTION__ << endl;
+}
+
+Peer::~Peer() { std::cout << __PRETTY_FUNCTION__ << endl; }
 
 Address
 Peer::address() const {
-    return addr;
+  std::cout << __PRETTY_FUNCTION__ << endl;
+  return addr;
 }
 
 string
 Peer::hostname() const {
-    return hostname_;
+  std::cout << __PRETTY_FUNCTION__ << endl;
+  return hostname_;
 }
 
 void
 Peer::associateFd(int fd) {
-    fd_ = fd;
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  fd_ = fd;
 }
 
 int
 Peer::fd() const {
-    if (fd_ == -1) {
-        throw std::runtime_error("The peer has no associated fd");
+  std::cout << __PRETTY_FUNCTION__ << endl;
+  if (fd_ == -1) {
+    throw std::runtime_error("The peer has no associated fd");
     }
 
     return fd_;
@@ -54,19 +59,24 @@ Peer::fd() const {
 
 void
 Peer::putData(std::string name, std::shared_ptr<void> data) {
-    auto it = data_.find(name);
-    if (it != std::end(data_)) {
-        throw std::runtime_error("The data already exists");
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << endl;
+  auto it = data_.find(name);
+  
+  if (it != std::end(data_)) {
+    throw std::runtime_error("The data already exists");
     }
 
     data_.insert(std::make_pair(std::move(name), std::move(data)));
+
 }
 
 std::shared_ptr<void>
 Peer::getData(std::string name) const {
-    auto data = tryGetData(std::move(name));
-    if (data == nullptr) {
-        throw std::runtime_error("The data does not exist");
+  std::cout << __PRETTY_FUNCTION__ << endl;
+  auto data = tryGetData(std::move(name));
+  if (data == nullptr) {
+    throw std::runtime_error("The data does not exist");
     }
 
     return data;
@@ -74,6 +84,7 @@ Peer::getData(std::string name) const {
 
 std::shared_ptr<void>
 Peer::tryGetData(std::string(name)) const {
+    std::cout << __PRETTY_FUNCTION__ << endl;
     auto it = data_.find(name);
     if (it == std::end(data_)) return nullptr;
 
@@ -82,6 +93,8 @@ Peer::tryGetData(std::string(name)) const {
 
 Async::Promise<ssize_t>
 Peer::send(const Buffer& buffer, int flags) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << endl;
     return transport()->asyncWrite(fd_, buffer, flags);
 }
 
@@ -93,11 +106,14 @@ std::ostream& operator<<(std::ostream& os, const Peer& peer) {
 
 void
 Peer::associateTransport(Transport* transport) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << endl;
     transport_ = transport;
 }
 
 Transport*
 Peer::transport() const {
+    std::cout << __PRETTY_FUNCTION__ << endl;
     if (!transport_)
         throw std::logic_error("Orphaned peer");
 
