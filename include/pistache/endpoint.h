@@ -49,6 +49,71 @@ public:
 
     void shutdown();
 
+    /*!
+     * \brief Use SSL on this endpoint
+     *
+     * \param[in] cert Server certificate path
+     * \param[in] key Server key path
+     * \param[in] use_compression Wether or not use compression on the encryption
+     *
+     * Setup the SSL configuration for an endpoint. In order to do that, this
+     * function will init OpenSSL constants and load *all* algorithms. It will
+     * then load the server certificate and key, in order to use it later.
+     * *If the private key does not match the certificate, an exception will
+     * be thrown*
+     *
+     * \note use_compression is false by default to mitigate BREACH[1] and
+     *          CRIME[2] vulnerabilities
+     * \note This function will throw an exception if pistache has not been
+     *          compiled with PISTACHE_USE_SSL
+     *
+     * [1] https://en.wikipedia.org/wiki/BREACH
+     * [2] https://en.wikipedia.org/wiki/CRIME
+     */
+    void useSSL(std::string cert, std::string key, bool use_compression = false);
+
+    /*!
+     * \brief Use SSL certificate authentication on this endpoint
+     *
+     * \param[in] ca_file Certificate Authority file
+     * \param[in] ca_path Certificate Authority path
+     * \param[in] cb OpenSSL verify callback[1]
+     *
+     * Change the SSL configuration in order to only accept verified client
+     * certificates. The function 'useSSL' *should* be called before this
+     * function.
+     * Due to the way we actually doesn't expose any OpenSSL internal types, the
+     * callback function is Cpp generic. The 'real' callback will be:
+     *
+     *     int callback(int preverify_ok, X509_STORE_CTX *x509_ctx)
+     *
+     * It is up to the caller to cast the second argument to an appropriate
+     * pointer:
+     *
+     *     int store_callback(int preverify_ok, void *ctx) {
+     *         X509_STORE_CTX *x509_ctx = (X509_STORE_CTX *)ctx;
+     *
+     *         [...]
+     *
+     *         if (all_good)
+     *              return 1;
+     *         return 0;
+     *     }
+     *
+     *     [...]
+     *
+     *     endpoint->useSSLAuth(ca_file, ca_path, &store_callback);
+     *
+     * See the documentation[1] for more information about this callback.
+     *
+     * \sa useSSL
+     * \note This function will throw an exception if pistache has not been
+     *          compiled with PISTACHE_USE_SSL
+     *
+     * [1] https://www.openssl.org/docs/manmaster/man3/SSL_CTX_set_verify.html
+     */
+    void useSSLAuth(std::string ca_file, std::string ca_path = "",  int (*cb)(int, void *) = NULL);
+
     bool isBound() const {
         return listener.isBound();
     }

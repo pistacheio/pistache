@@ -348,6 +348,14 @@ Transport::handleTimeout(const std::shared_ptr<Connection>& connection) {
     connection->handleTimeout();
 }
 
+Connection::Connection()
+    : fd(-1)
+    , requestEntry(nullptr)
+{
+    state_.store(static_cast<uint32_t>(State::Idle));
+    connectionState_.store(NotConnected);
+}
+
 void
 Connection::connect(const Address& addr)
 {
@@ -799,7 +807,8 @@ Client::doRequest(
     auto conn = pool.pickConnection(s.first);
 
     if (conn == nullptr) {
-        return Async::Promise<Response>([=](Async::Resolver& resolve, Async::Rejection& reject) {
+        // TODO: C++14 - use capture move for s
+        return Async::Promise<Response>([this, s, request, timeout](Async::Resolver& resolve, Async::Rejection& reject) {
             Guard guard(queuesLock);
 
             auto data = std::make_shared<Connection::RequestData>(std::move(resolve), std::move(reject), request, timeout, nullptr);
@@ -820,7 +829,7 @@ Client::doRequest(
         }
 
         if (!conn->isConnected()) {
-            auto res = conn->asyncPerform(request, timeout, [=]() {
+            auto res = conn->asyncPerform(request, timeout, [this, conn]() {
                 pool.releaseConnection(conn);
                 processRequestQueue();
             });
@@ -828,7 +837,7 @@ Client::doRequest(
             return res;
         }
 
-        return conn->perform(request, timeout, [=]() {
+        return conn->perform(request, timeout, [this, conn]() {
             pool.releaseConnection(conn);
             processRequestQueue();
         });
@@ -860,7 +869,7 @@ Client::processRequestQueue() {
                     data->request,
                     data->timeout,
                     std::move(data->resolve), std::move(data->reject),
-                    [=]() {
+                    [this, conn]() {
                         pool.releaseConnection(conn);
                         processRequestQueue();
                     });

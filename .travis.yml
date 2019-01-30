@@ -4,7 +4,7 @@ dist: trusty
 script:
     - mkdir build
     - cd build
-    - cmake -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_TESTS=true ..
+    - cmake -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_TESTS=true -DPISTACHE_SSL=true ..
     - make all test ARGS="-V"
 compiler:
     - clang
@@ -12,7 +12,7 @@ compiler:
 before_install:
     - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
     - sudo apt-get update -qq
-    - sudo apt-get install -qq libyajl-dev libxml2-dev libxqilla-dev
+    - sudo apt-get install -qq libyajl-dev libxml2-dev libxqilla-dev libssl-dev libcurl4-openssl-dev
     - if [ "$CXX" = "clang++" ]; then sudo apt-get install -qq libstdc++-5-dev; fi
     - if [ "$CXX" = "g++" ]; then sudo apt-get install -qq g++-5; fi
     - if [ "$CXX" = "g++" ]; then export CXX="g++-5" CC="gcc-5"; fi

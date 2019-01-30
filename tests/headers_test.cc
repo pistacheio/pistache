@@ -241,8 +241,6 @@ TEST(headers_test, date_test_asctime) {
 
 TEST(headers_test, date_test_ostream) {
 
-    using namespace std::chrono;
-
     std::ostringstream os;
 
     Header::Date d4;
