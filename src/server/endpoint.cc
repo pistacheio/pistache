@@ -17,28 +17,34 @@ Endpoint::Options::Options()
     , flags_()
     , backlog_(Const::MaxBacklog)
     , maxPayload_(Const::DefaultMaxPayload)
-{ }
+{
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+}
 
 Endpoint::Options&
 Endpoint::Options::threads(int val) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     threads_ = val;
     return *this;
 }
 
 Endpoint::Options&
 Endpoint::Options::flags(Flags<Tcp::Options> flags) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     flags_ = flags;
     return *this;
 }
 
 Endpoint::Options&
 Endpoint::Options::backlog(int val) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     backlog_ = val;
     return *this;
 }
 
 Endpoint::Options&
 Endpoint::Options::maxPayload(size_t val) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     maxPayload_ = val;
     return *this;
 }
@@ -52,40 +58,47 @@ Endpoint::Endpoint(const Address& addr)
 
 void
 Endpoint::init(const Endpoint::Options& options) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     listener.init(options.threads_, options.flags_);
     ArrayStreamBuf<char>::maxSize = options.maxPayload_;
 }
 
 void
 Endpoint::setHandler(const std::shared_ptr<Handler>& handler) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     handler_ = handler;
 }
 
 void
 Endpoint::bind() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     listener.bind();
 }
 
 void
 Endpoint::bind(const Address& addr) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     listener.bind(addr);
 }
 
 void
 Endpoint::serve()
 {
-    serveImpl(&Tcp::Listener::run);
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  serveImpl(&Tcp::Listener::run);
 }
 
 void
 Endpoint::serveThreaded()
 {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     serveImpl(&Tcp::Listener::runThreaded);
 }
 
 void
 Endpoint::shutdown()
 {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     listener.shutdown();
 }
 
@@ -118,11 +131,13 @@ Endpoint::useSSLAuth(std::string ca_file, std::string ca_path, int (*cb)(int, vo
 
 Async::Promise<Tcp::Listener::Load>
 Endpoint::requestLoad(const Tcp::Listener::Load& old) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     return listener.requestLoad(old);
 }
 
 Endpoint::Options
 Endpoint::options() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     return Options();
 }
 

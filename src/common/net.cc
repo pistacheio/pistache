@@ -48,11 +48,13 @@ Ipv4::Ipv4(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
 
 Ipv4
 Ipv4::any() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     return Ipv4(0, 0, 0, 0);
 }
 
 Ipv4
 Ipv4::loopback() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     return Ipv4(127, 0, 0, 1);
 }
 
@@ -90,11 +92,13 @@ Ipv6::Ipv6(uint16_t a, uint16_t b, uint16_t c, uint16_t d, uint16_t e, uint16_t 
 
 Ipv6
 Ipv6::any() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     return Ipv6(0, 0, 0, 0, 0, 0, 0, 0);
 }
 
 Ipv6
 Ipv6::loopback() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     return Ipv6(0, 0, 0, 0, 0, 0, 0, 1);
 }
 
@@ -173,11 +177,13 @@ Address::Address(std::string host, Port port)
 
 Address::Address(std::string addr)
 {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     init(std::move(addr));
 }
 
 Address::Address(const char* addr)
 {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     init(std::string(addr));
 }
 
@@ -195,6 +201,7 @@ Address::Address(Ipv6 ip, Port port)
 
 Address
 Address::fromUnix(struct sockaddr* addr) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     if (addr->sa_family == AF_INET) { 
         struct sockaddr_in *in_addr = reinterpret_cast<struct sockaddr_in *>(addr);
         char host[INET_ADDRSTRLEN+1];
@@ -230,6 +237,7 @@ Address::family() const {
 
 void
 Address::init(const std::string& addr) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     unsigned long pos = addr.find(']');
     unsigned long s_pos = addr.find('[');
     if (pos != std::string::npos && s_pos != std::string::npos) {
@@ -284,6 +292,7 @@ Error::Error(std::string message)
 
 Error
 Error::system(const char* message) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     const char *err = strerror(errno);
 
     std::string str(message);

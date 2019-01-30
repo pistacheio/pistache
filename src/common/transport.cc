@@ -21,22 +21,24 @@ using namespace Polling;
 namespace Tcp {
 
 Transport::Transport(const std::shared_ptr<Tcp::Handler>& handler) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     init(handler);
 }
 
 void
 Transport::init(const std::shared_ptr<Tcp::Handler>& handler) {
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
     handler_ = handler;
     handler_->associateTransport(this);
 }
 
-std::shared_ptr<Aio::Handler>
-Transport::clone() const {
+std::shared_ptr<Aio::Handler> Transport::clone() const {
     return std::make_shared<Transport>(handler_->clone());
 }
 
 void
 Transport::registerPoller(Polling::Epoll& poller) {
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
     writesQueue.bind(poller);
     timersQueue.bind(poller);
     peersQueue.bind(poller);
@@ -45,6 +47,7 @@ Transport::registerPoller(Polling::Epoll& poller) {
 
 void
 Transport::handleNewPeer(const std::shared_ptr<Tcp::Peer>& peer) {
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
     auto ctx = context();
     const bool isInRightThread = std::this_thread::get_id() == ctx.thread();
     if (!isInRightThread) {
@@ -62,6 +65,7 @@ Transport::handleNewPeer(const std::shared_ptr<Tcp::Peer>& peer) {
 
 void
 Transport::onReady(const Aio::FdSet& fds) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     for (const auto& entry: fds) {
         if (entry.getTag() == writesQueue.tag()) {
             handleWriteQueue();
@@ -114,6 +118,7 @@ Transport::onReady(const Aio::FdSet& fds) {
 
 void
 Transport::disarmTimer(Fd fd) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     auto it = timers.find(fd);
     if (it == std::end(timers))
         throw std::runtime_error("Timer has not been armed");
@@ -124,6 +129,7 @@ Transport::disarmTimer(Fd fd) {
 
 void
 Transport::handleIncoming(const std::shared_ptr<Peer>& peer) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     char buffer[Const::MaxBuffer] = {0};
 
     ssize_t totalBytes = 0;
@@ -172,10 +178,11 @@ Transport::handleIncoming(const std::shared_ptr<Peer>& peer) {
 
 void
 Transport::handlePeerDisconnection(const std::shared_ptr<Peer>& peer) {
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
     handler_->onDisconnection(peer);
-
     int fd = peer->fd();
     auto it = peers.find(fd);
+    
     if (it == std::end(peers))
         throw std::runtime_error("Could not find peer to erase");
 
@@ -209,6 +216,7 @@ Transport::handlePeerDisconnection(const std::shared_ptr<Peer>& peer) {
 void
 Transport::asyncWriteImpl(Fd fd)
 {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     bool stop = false;
     while (!stop) {
         Guard guard(toWriteLock);
@@ -319,6 +327,7 @@ Transport::armTimerMs(
 
 void
 Transport::armTimerMsImpl(TimerEntry entry) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
 
     auto it = timers.find(entry.fd);
     if (it != std::end(timers)) {
@@ -352,26 +361,31 @@ Transport::armTimerMsImpl(TimerEntry entry) {
 
 void
 Transport::handleWriteQueue() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     // Let's drain the queue
     for (;;) {
+        
         auto entry = writesQueue.popSafe();
+
         if (!entry) break;
 
         auto &write = entry->data();
         auto fd = write.peerFd;
-        if (!isPeerFd(fd)) continue;
 
+        if (!isPeerFd(fd)) continue;
         {
             Guard guard(toWriteLock);
             toWrite[fd].push_back(std::move(write));
         }
 
         reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
+        
     }
 }
 
 void
 Transport::handleTimerQueue() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     for (;;) {
         auto entry = timersQueue.popSafe();
         if (!entry) break;
@@ -383,6 +397,7 @@ Transport::handleTimerQueue() {
 
 void
 Transport::handlePeerQueue() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     for (;;) {
         auto entry = peersQueue.popSafe();
         if (!entry) break;
@@ -394,6 +409,7 @@ Transport::handlePeerQueue() {
 
 void
 Transport::handlePeer(const std::shared_ptr<Peer>& peer) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     int fd = peer->fd();
     peers.insert(std::make_pair(fd, peer));
 
@@ -405,6 +421,7 @@ Transport::handlePeer(const std::shared_ptr<Peer>& peer) {
 
 void
 Transport::handleNotify() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     while (this->notifier.tryRead()) ;
 
     rusage now;
@@ -419,6 +436,7 @@ Transport::handleNotify() {
 
 void
 Transport::handleTimer(TimerEntry entry) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     if (entry.isActive()) {
         uint64_t numWakeups;
         int res = ::read(entry.fd, &numWakeups, sizeof numWakeups);
@@ -461,6 +479,7 @@ Transport::isTimerFd(Polling::Tag tag) const {
 std::shared_ptr<Peer>&
 Transport::getPeer(Fd fd)
 {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     auto it = peers.find(fd);
     if (it == std::end(peers))
     {
@@ -472,6 +491,7 @@ Transport::getPeer(Fd fd)
 std::shared_ptr<Peer>&
 Transport::getPeer(Polling::Tag tag)
 {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     return getPeer(tag.value());
 }
 

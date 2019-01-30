@@ -20,16 +20,19 @@ Handler::~Handler()
 
 void
 Handler::associateTransport(Transport* transport) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     transport_ = transport;
 }
 
 void
 Handler::onConnection(const std::shared_ptr<Tcp::Peer>& peer) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     UNUSED(peer)
 }
 
 void
 Handler::onDisconnection(const std::shared_ptr<Tcp::Peer>& peer) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     UNUSED(peer)
 }
 

@@ -33,6 +33,7 @@ public:
 
     Peer();
     Peer(const Address& addr);
+    ~Peer();
 
     Address address() const;
     std::string hostname() const;

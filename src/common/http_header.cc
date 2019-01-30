@@ -23,19 +23,20 @@ namespace Http {
 namespace Header {
 
 const char* encodingString(Encoding encoding) {
-    switch (encoding) {
-    case Encoding::Gzip:
-        return "gzip";
-    case Encoding::Compress:
-        return "compress";
-    case Encoding::Deflate:
-        return "deflate";
-    case Encoding::Identity:
-        return "identity";
-    case Encoding::Chunked:
-        return "chunked";
-    case Encoding::Unknown:
-        return "unknown";
+  std::cout << __PRETTY_FUNCTION__ << endl;
+  switch (encoding) {
+  case Encoding::Gzip:
+    return "gzip";
+  case Encoding::Compress:
+    return "compress";
+  case Encoding::Deflate:
+    return "deflate";
+  case Encoding::Identity:
+    return "identity";
+  case Encoding::Chunked:
+    return "chunked";
+  case Encoding::Unknown:
+    return "unknown";
     }
 
     unreachable();
@@ -43,22 +44,29 @@ const char* encodingString(Encoding encoding) {
 
 void
 Header::parse(const std::string& data) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << endl;
     parseRaw(data.c_str(), data.size());
 }
 
 void
 Header::parseRaw(const char *str, size_t len) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << endl;
     parse(std::string(str, len));
 }
 
 void
 Allow::parseRaw(const char* str, size_t len) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << endl;
     UNUSED(str)
     UNUSED(len)
 }
 
 void
 Allow::write(std::ostream& os) const {
+    std::cout << __PRETTY_FUNCTION__ << endl;
     /* This puts an extra ',' at the end :/
     std::copy(std::begin(methods_), std::end(methods_),
               std::ostream_iterator<Http::Method>(os, ", "));
@@ -72,27 +80,37 @@ Allow::write(std::ostream& os) const {
 
 void
 Allow::addMethod(Http::Method method) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << endl;
     methods_.push_back(method);
 }
 
 void
 Allow::addMethods(std::initializer_list<Method> methods) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << endl;
     std::copy(std::begin(methods), std::end(methods), std::back_inserter(methods_));
 }
 
 void
 Allow::addMethods(const std::vector<Http::Method>& methods)
 {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << endl;
     std::copy(std::begin(methods), std::end(methods), std::back_inserter(methods_));
 }
 
 CacheControl::CacheControl(Http::CacheDirective directive)
 {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << endl;
     directives_.push_back(directive);
 }
 
 void
 CacheControl::parseRaw(const char* str, size_t len) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << endl;
     using Http::CacheDirective;
 
     struct DirectiveValue {
@@ -178,6 +196,7 @@ CacheControl::parseRaw(const char* str, size_t len) {
 
 void
 CacheControl::write(std::ostream& os) const {
+    std::cout << __PRETTY_FUNCTION__ << endl;
     using Http::CacheDirective;
 
     auto directiveString = [](CacheDirective directive) -> const char* {
@@ -246,16 +265,22 @@ CacheControl::write(std::ostream& os) const {
 
 void
 CacheControl::addDirective(Http::CacheDirective directive) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << endl;
     directives_.push_back(directive);
 }
 
 void
 CacheControl::addDirectives(const std::vector<Http::CacheDirective>& directives) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << endl;
     std::copy(std::begin(directives), std::end(directives), std::back_inserter(directives_));
 }
 
 void
 Connection::parseRaw(const char* str, size_t len) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << endl;
     char *p = const_cast<char *>(str);
     RawStreamBuf<> buf(p, p + len);
     StreamCursor cursor(&buf);
@@ -276,6 +301,7 @@ Connection::parseRaw(const char* str, size_t len) {
 
 void
 Connection::write(std::ostream& os) const {
+    std::cout << __PRETTY_FUNCTION__ << endl;
     switch (control_) {
     case ConnectionControl::Close:
         os << "Close";
@@ -291,6 +317,8 @@ Connection::write(std::ostream& os) const {
 
 void
 ContentLength::parse(const std::string& data) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << endl;
     try {
         size_t pos;
         uint64_t val = std::stoi(data, &pos);
@@ -304,21 +332,27 @@ ContentLength::parse(const std::string& data) {
 
 void
 ContentLength::write(std::ostream& os) const {
+    std::cout << __PRETTY_FUNCTION__ << endl;
     os << value_;
 }
 
 void
 Date::parse(const std::string &str) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << endl;
     fullDate_ = FullDate::fromString(str);
 }
 
 void
 Date::write(std::ostream& os) const {
+    std::cout << __PRETTY_FUNCTION__ << endl;
 	fullDate_.write(os);
 }
 
 void
 Expect::parseRaw(const char* str, size_t len) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << endl;
     if (memcmp(str, "100-continue", len)) {
         expectation_ = Expectation::Continue;
     } else {
@@ -328,6 +362,7 @@ Expect::parseRaw(const char* str, size_t len) {
 
 void
 Expect::write(std::ostream& os) const {
+    std::cout << __PRETTY_FUNCTION__ << endl;
     if (expectation_ == Expectation::Continue) {
         os << "100-continue";
     }
@@ -337,11 +372,14 @@ Host::Host(const std::string& data)
     : host_()
     , port_(0)
 {
+    std::cout << __PRETTY_FUNCTION__ << endl;
     parse(data);
 }
 
 void
 Host::parse(const std::string& data) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << endl;
     unsigned long pos = data.find(']');
     unsigned long s_pos = data.find('[');
     if (pos != std::string::npos && s_pos != std::string::npos) {
@@ -391,6 +429,7 @@ Host::parse(const std::string& data) {
 
 void
 Host::write(std::ostream& os) const {
+    std::cout << __PRETTY_FUNCTION__ << endl;
     os << host_;
     /* @Clarity @Robustness: maybe a found a literal different than zero
        to represent a null port ?
@@ -400,111 +439,135 @@ Host::write(std::ostream& os) const {
     }
 }
 
-Location::Location(const std::string& location)
-    : location_(location)
-{ }
+Location::Location(const std::string& location) : location_(location) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << endl;
+}
 
 void
 Location::parse(const std::string& data) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << endl;
     location_ = data;
 }
 
 void
 Location::write(std::ostream& os) const {
+    std::cout << __PRETTY_FUNCTION__ << endl;
     os << location_;
 }
 
 void
 UserAgent::parse(const std::string& data) {
-    ua_ = data;
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << endl;
+  ua_ = data;
 }
 
 void
 UserAgent::write(std::ostream& os) const {
-    os << ua_;
+  std::cout << __PRETTY_FUNCTION__ << endl;
+  os << ua_;
 }
 
 void
 Accept::parseRaw(const char *str, size_t len) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << endl;
+  RawStreamBuf<char> buf(const_cast<char *>(str), len);
+  StreamCursor cursor(&buf);
 
-    RawStreamBuf<char> buf(const_cast<char *>(str), len);
-    StreamCursor cursor(&buf);
+  do {
+    int c;
+    size_t beg = cursor;
+    while ((c = cursor.next()) != StreamCursor::Eof && c != ',')
+      cursor.advance(1);
 
-    do {
-        int c;
-        size_t beg = cursor;
-        while ((c = cursor.next()) != StreamCursor::Eof && c != ',')
-            cursor.advance(1);
+    cursor.advance(1);
 
+    const size_t mimeLen = cursor.diff(beg);
+
+    mediaRange_.push_back(
+        Mime::MediaType::fromRaw(cursor.offset(beg), mimeLen));
+
+    if (!cursor.eof()) {
+      if (!cursor.advance(1))
+        throw std::runtime_error("Ill-formed Accept header");
+
+      if ((c = cursor.next()) == StreamCursor::Eof || c == ',' || c == 0)
+        throw std::runtime_error("Ill-formed Accept header");
+
+      while (!cursor.eof() && cursor.current() == ' ')
         cursor.advance(1);
-
-        const size_t mimeLen = cursor.diff(beg);
-
-        mediaRange_.push_back(Mime::MediaType::fromRaw(cursor.offset(beg), mimeLen));
-
-        if (!cursor.eof()) {
-            if (!cursor.advance(1))
-                throw std::runtime_error("Ill-formed Accept header");
-
-            if ((c = cursor.next()) == StreamCursor::Eof || c == ',' || c == 0)
-                throw std::runtime_error("Ill-formed Accept header");
-
-            while (!cursor.eof() && cursor.current() == ' ')
-                cursor.advance(1);
-        }
+    }
 
     } while (!cursor.eof());
 }
 
 void
 Accept::write(std::ostream& os) const {
-    UNUSED(os)
+  std::cout << __PRETTY_FUNCTION__ << endl;
+  UNUSED(os)
 }
 
 void
 AccessControlAllowOrigin::parse(const std::string& data) {
-  uri_ = data;
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << endl;
+    uri_ = data;
 }
 
 void
 AccessControlAllowOrigin::write(std::ostream& os) const {
-  os << uri_;
+    std::cout << __PRETTY_FUNCTION__ << endl;
+    os << uri_;
 }
 
 void
 AccessControlAllowHeaders::parse(const std::string& data) {
-  val_ = data;
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << endl;
+    val_ = data;
 }
 
 void
 AccessControlAllowHeaders::write(std::ostream& os) const {
-  os << val_;
+    std::cout << __PRETTY_FUNCTION__ << endl;
+    os << val_;
 }
 
 void
 AccessControlExposeHeaders::parse(const std::string& data) {
-  val_ = data;
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << endl;
+    val_ = data;
 }
 
 void
 AccessControlExposeHeaders::write(std::ostream& os) const {
-  os << val_;
+    std::cout << __PRETTY_FUNCTION__ << endl;
+    os << val_;
 }
 
 void
 AccessControlAllowMethods::parse(const std::string& data) {
-  val_ = data;
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+    std::cout << __PRETTY_FUNCTION__ << endl;
+    val_ = data;
 }
 
 void
 AccessControlAllowMethods::write(std::ostream& os) const {
-  os << val_;
+    std::cout << __PRETTY_FUNCTION__ << endl;
+    os << val_;
 }
 
 void
 EncodingHeader::parseRaw(const char* str, size_t len) {
-    if (!strncasecmp(str, "gzip", len)) {
-        encoding_ = Encoding::Gzip;
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << endl;
+  if (!strncasecmp(str, "gzip", len)) {
+    encoding_ = Encoding::Gzip;
     }
     else if (!strncasecmp(str, "deflate", len)) {
         encoding_ = Encoding::Deflate;
@@ -525,47 +588,58 @@ EncodingHeader::parseRaw(const char* str, size_t len) {
 
 void
 EncodingHeader::write(std::ostream& os) const {
-    os << encodingString(encoding_);
+  std::cout << __PRETTY_FUNCTION__ << endl;
+  os << encodingString(encoding_);
 }
 
 Server::Server(const std::vector<std::string>& tokens)
     : tokens_(tokens)
-{ }
+{
+  std::cout << __PRETTY_FUNCTION__ << endl;
+}
 
 Server::Server(const std::string& token)
     : tokens_()
 {
-    tokens_.push_back(token);
+  std::cout << __PRETTY_FUNCTION__ << endl;
+  tokens_.push_back(token);
 }
 
 Server::Server(const char* token)
    : tokens_()
 {
-    tokens_.emplace_back(token);
+  std::cout << __PRETTY_FUNCTION__ << endl;
+  tokens_.emplace_back(token);
 }
 
 void
 Server::parse(const std::string& data)
 {
-    UNUSED(data)
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << endl;
+  UNUSED(data)
 }
 
 void
 Server::write(std::ostream& os) const
 {
-    std::copy(std::begin(tokens_), std::end(tokens_),
-                 std::ostream_iterator<std::string>(os, " "));
+  std::cout << __PRETTY_FUNCTION__ << endl;
+  std::copy(std::begin(tokens_), std::end(tokens_),
+            std::ostream_iterator<std::string>(os, " "));
 }
 
 void
 ContentType::parseRaw(const char* str, size_t len)
 {
-    mime_.parseRaw(str, len);
+std::cout << __PRETTY_FUNCTION__ << std::endl;
+  std::cout << __PRETTY_FUNCTION__ << endl;
+  mime_.parseRaw(str, len);
 }
 
 void
 ContentType::write(std::ostream& os) const {
-    os << mime_.toString();
+  std::cout << __PRETTY_FUNCTION__ << endl;
+  os << mime_.toString();
 }
 
 } // namespace Header

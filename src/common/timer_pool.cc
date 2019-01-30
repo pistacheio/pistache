@@ -12,6 +12,7 @@ namespace Pistache {
 
 void
 TimerPool::Entry::initialize() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     if (fd == -1) {
         fd = TRY_RET(timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK));
     }
@@ -19,6 +20,7 @@ TimerPool::Entry::initialize() {
 
 void
 TimerPool::Entry::disarm() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     if (fd == -1) return;
 
     itimerspec spec;
@@ -34,6 +36,7 @@ TimerPool::Entry::disarm() {
 void
 TimerPool::Entry::armMs(std::chrono::milliseconds value)
 {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     itimerspec spec;
     spec.it_interval.tv_sec = 0;
     spec.it_interval.tv_nsec = 0;
@@ -52,6 +55,7 @@ TimerPool::Entry::armMs(std::chrono::milliseconds value)
 
 TimerPool::TimerPool(size_t initialSize)
 {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     for (size_t i = 0; i < initialSize; ++i) {
         timers.push_back(std::make_shared<TimerPool::Entry>());
     }
@@ -59,6 +63,7 @@ TimerPool::TimerPool(size_t initialSize)
 
 std::shared_ptr<TimerPool::Entry>
 TimerPool::pickTimer() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     for (auto& entry: timers) {
         auto curState = static_cast<uint32_t>(TimerPool::Entry::State::Idle);
         auto newState = static_cast<uint32_t>(TimerPool::Entry::State::Used);
@@ -73,6 +78,7 @@ TimerPool::pickTimer() {
 
 void
 TimerPool::releaseTimer(const std::shared_ptr<Entry>& timer) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     timer->state.store(static_cast<uint32_t>(TimerPool::Entry::State::Idle));
 }
 

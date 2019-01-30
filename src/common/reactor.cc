@@ -24,8 +24,7 @@ public:
 
     virtual ~Impl() = default;
 
-    virtual Reactor::Key addHandler(
-            const std::shared_ptr<Handler>& handler, bool setKey) = 0;
+    virtual Reactor::Key addHandler(const std::shared_ptr<Handler>& handler, bool setKey) = 0;
 
     virtual std::vector<std::shared_ptr<Handler>> handlers(
             const Reactor::Key& key) const = 0;
@@ -71,11 +70,12 @@ public:
         , shutdownFd()
         , poller()
     {
-        shutdownFd.bind(poller);
+      std::cout << __PRETTY_FUNCTION__ << std::endl;
+      shutdownFd.bind(poller);
     }
 
-    Reactor::Key addHandler(
-            const std::shared_ptr<Handler>& handler, bool setKey = true) override {
+    Reactor::Key addHandler(const std::shared_ptr<Handler>& handler, bool setKey = true) override {
+        std::cout << __PRETTY_FUNCTION__ << std::endl;
 
         handler->registerPoller(poller);
 
@@ -88,14 +88,16 @@ public:
     }
 
     std::shared_ptr<Handler> handler(const Reactor::Key& key) const {
-        return handlers_[key.data()];
+      std::cout << __PRETTY_FUNCTION__ << std::endl;
+      return handlers_[key.data()];
     }
 
     std::vector<std::shared_ptr<Handler>> handlers(const Reactor::Key& key) const override {
-        std::vector<std::shared_ptr<Handler>> res;
+      std::cout << __PRETTY_FUNCTION__ << std::endl;
+      std::vector<std::shared_ptr<Handler>> res;
 
-        res.push_back(handler(key));
-        return res;
+      res.push_back(handler(key));
+      return res;
     }
 
     void registerFd(
@@ -104,6 +106,7 @@ public:
             Polling::NotifyOn interest,
             Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level) override {
+        std::cout << __PRETTY_FUNCTION__ << std::endl;
 
         auto pollTag = encodeTag(key, tag);
         poller.addFd(fd, interest, pollTag, mode);
@@ -115,6 +118,7 @@ public:
             Polling::NotifyOn interest,
             Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level) override {
+        std::cout << __PRETTY_FUNCTION__ << std::endl;
 
         auto pollTag = encodeTag(key, tag);
         poller.addFdOneShot(fd, interest, pollTag, mode);
@@ -126,87 +130,100 @@ public:
             Polling::NotifyOn interest,
             Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level) override {
+        std::cout << __PRETTY_FUNCTION__ << std::endl;
 
         auto pollTag = encodeTag(key, tag);
         poller.rearmFd(fd, interest, pollTag, mode);
     }
 
     void runOnce() override {
-        if (handlers_.empty())
-            throw std::runtime_error("You need to set at least one handler");
+      std::cout << __PRETTY_FUNCTION__ << std::endl;
+      if (handlers_.empty())
+        throw std::runtime_error("You need to set at least one handler");
 
-        std::chrono::milliseconds timeout(-1);
+      std::chrono::milliseconds timeout(-1);
 
-        for (;;) {
-            std::vector<Polling::Event> events;
-            int ready_fds;
-            switch (ready_fds = poller.poll(events, 1024, timeout)) {
-                case -1: break;
-                case 0: break;
-                default:
-                    if (shutdown_) return;
+      for (;;) {
+        std::vector<Polling::Event> events;
+        int ready_fds;
+        switch (ready_fds = poller.poll(events, 1024, timeout)) {
+        case -1:
+          break;
+        case 0:
+          break;
+        default:
+          if (shutdown_)
+            return;
 
-                    handleFds(std::move(events));
+          handleFds(std::move(events));
 
-                    timeout = std::chrono::milliseconds(-1);
-            }
+          timeout = std::chrono::milliseconds(-1);
+        }
         }
     }
 
     void run() override {
-        handlers_.forEachHandler([](const std::shared_ptr<Handler> handler) {
-            handler->context_.tid = std::this_thread::get_id();
-        });
+      std::cout << __PRETTY_FUNCTION__ << std::endl;
+      handlers_.forEachHandler([](const std::shared_ptr<Handler> handler) {
+        handler->context_.tid = std::this_thread::get_id();
+      });
 
-        while (!shutdown_)
-            runOnce();
+      while (!shutdown_)
+        runOnce();
     }
 
     void shutdown() override {
-        shutdown_.store(true);
-        shutdownFd.notify();
+      std::cout << __PRETTY_FUNCTION__ << std::endl;
+      shutdown_.store(true);
+      shutdownFd.notify();
     }
 
     static constexpr size_t MaxHandlers() {
-        return HandlerList::MaxHandlers;
+      return HandlerList::MaxHandlers;
     }
 
 private:
 
     Polling::Tag encodeTag(const Reactor::Key& key, Polling::Tag tag) const {
-        uint64_t value = tag.value();
-        return HandlerList::encodeTag(key, value);
+      std::cout << __PRETTY_FUNCTION__ << std::endl;
+      uint64_t value = tag.value();
+      return HandlerList::encodeTag(key, value);
     }
 
     std::pair<size_t, uint64_t> decodeTag(const Polling::Tag& tag) const {
-        return HandlerList::decodeTag(tag);
+      std::cout << __PRETTY_FUNCTION__ << std::endl;
+      return HandlerList::decodeTag(tag);
     }
 
     void handleFds(std::vector<Polling::Event> events) const {
-        // Fast-path: if we only have one handler, do not bother scanning the fds to find
-        // the right handlers
-        if (handlers_.size() == 1)
-            handlers_[0]->onReady(FdSet(std::move(events)));
-        else {
-            std::unordered_map<std::shared_ptr<Handler>, std::vector<Polling::Event>> fdHandlers;
+      std::cout << __PRETTY_FUNCTION__ << std::endl;
+      // Fast-path: if we only have one handler, do not bother scanning the fds
+      // to find the right handlers
+      if (handlers_.size() == 1)
+        handlers_[0]->onReady(FdSet(std::move(events)));
+      else {
+        std::unordered_map<std::shared_ptr<Handler>,
+                           std::vector<Polling::Event>>
+            fdHandlers;
 
-            for (auto& event: events) {
-                size_t index;
-                uint64_t value;
+        for (auto &event : events) {
+          size_t index;
+          uint64_t value;
 
-                std::tie(index, value) = decodeTag(event.tag);
-                auto handler = handlers_[index];
-                auto& evs = fdHandlers[handler];
-                evs.push_back(std::move(event));
-            }
+          std::tie(index, value) = decodeTag(event.tag);
+          auto handler = handlers_[index];
+          auto &evs = fdHandlers[handler];
+          evs.push_back(std::move(event));
+        }
 
-            for (auto& data: fdHandlers) {
-                data.first->onReady(FdSet(std::move(data.second)));
-            }
+        for (auto &data : fdHandlers) {
+          data.first->onReady(FdSet(std::move(data.second)));
+        }
         }
     }
 
     struct HandlerList {
+        
 
         // We are using the highest 8 bits of the fd to encode the index of the handler,
         // which gives us a maximum of 2**8 - 1 handler, 255
@@ -220,7 +237,8 @@ private:
             :handlers()
             , index_()
         {
-            std::fill(std::begin(handlers), std::end(handlers), nullptr);
+          std::cout << __PRETTY_FUNCTION__ << std::endl;
+          std::fill(std::begin(handlers), std::end(handlers), nullptr);
         }
 
         HandlerList(const HandlerList& other) = delete;
@@ -230,10 +248,11 @@ private:
         HandlerList& operator=(HandlerList&& other) = default;
 
         HandlerList clone() const {
-            HandlerList list;
+          std::cout << __PRETTY_FUNCTION__ << std::endl;
+          HandlerList list;
 
-            for (size_t i = 0; i < index_; ++i) {
-                list.handlers[i] = handlers[i]->clone();
+          for (size_t i = 0; i < index_; ++i) {
+            list.handlers[i] = handlers[i]->clone();
             }
             list.index_ = index_;
 
@@ -241,56 +260,64 @@ private:
         }
 
         Reactor::Key add(const std::shared_ptr<Handler>& handler) {
-            if (index_ == MaxHandlers)
-                throw std::runtime_error("Maximum handlers reached");
+          std::cout << __PRETTY_FUNCTION__ << std::endl;
+          if (index_ == MaxHandlers)
+            throw std::runtime_error("Maximum handlers reached");
 
-            Reactor::Key key(index_);
-            handlers[index_++] = handler;
+          Reactor::Key key(index_);
+          handlers[index_++] = handler;
 
-            return key;
+          return key;
         }
 
         std::shared_ptr<Handler> operator[](size_t index) const {
-            return handlers[index];
+          std::cout << __PRETTY_FUNCTION__ << std::endl;
+          return handlers[index];
         }
 
         std::shared_ptr<Handler> at(size_t index) const {
-            if (index >= index_)
-                throw std::runtime_error("Attempting to retrieve invalid handler");
+          std::cout << __PRETTY_FUNCTION__ << std::endl;
+          if (index >= index_)
+            throw std::runtime_error("Attempting to retrieve invalid handler");
 
-            return handlers[index];
+          return handlers[index];
         }
 
         bool empty() const {
-            return index_ == 0;
+          std::cout << __PRETTY_FUNCTION__ << std::endl;
+          return index_ == 0;
         }
 
         size_t size() const {
-            return index_;
+          std::cout << __PRETTY_FUNCTION__ << std::endl;
+          return index_;
         }
 
         static Polling::Tag encodeTag(const Reactor::Key& key, uint64_t value) {
-            auto index = key.data();
-            // The reason why we are using the most significant bits to encode
-            // the index of the handler is that in the fast path, we won't need
-            // to shift the value to retrieve the fd if there is only one handler as
-            // all the bits will already be set to 0.
-            auto encodedValue = (index << HandlerShift) | value;
-            return Polling::Tag(encodedValue);
+          std::cout << __PRETTY_FUNCTION__ << std::endl;
+          auto index = key.data();
+          // The reason why we are using the most significant bits to encode
+          // the index of the handler is that in the fast path, we won't need
+          // to shift the value to retrieve the fd if there is only one handler
+          // as all the bits will already be set to 0.
+          auto encodedValue = (index << HandlerShift) | value;
+          return Polling::Tag(encodedValue);
         }
 
         static std::pair<size_t, uint64_t> decodeTag(const Polling::Tag& tag) {
-            auto value = tag.value();
-            size_t index = value >> HandlerShift;
-            uint64_t fd = value & DataMask;
+          std::cout << __PRETTY_FUNCTION__ << std::endl;
+          auto value = tag.value();
+          size_t index = value >> HandlerShift;
+          uint64_t fd = value & DataMask;
 
-            return std::make_pair(index, fd);
+          return std::make_pair(index, fd);
         }
 
         template<typename Func>
         void forEachHandler(Func func) const {
-            for (size_t i = 0; i < index_; ++i)
-                func(handlers[i]);
+          std::cout << __PRETTY_FUNCTION__ << std::endl;
+          for (size_t i = 0; i < index_; ++i)
+            func(handlers[i]);
         }
 
     private:
@@ -339,6 +366,7 @@ public:
 
     AsyncImpl(Reactor* reactor, size_t threads)
         : Reactor::Impl(reactor) {
+        std::cout << __PRETTY_FUNCTION__ << std::endl;
 
         for (size_t i = 0; i < threads; ++i) {
             std::unique_ptr<Worker> wrk(new Worker(reactor));
@@ -348,18 +376,20 @@ public:
 
     Reactor::Key addHandler(
             const std::shared_ptr<Handler>& handler, bool) override {
+        std::cout << __PRETTY_FUNCTION__ << std::endl;
 
         Reactor::Key keys[SyncImpl::MaxHandlers()];
 
         for (size_t i = 0; i < workers_.size(); ++i) {
-            auto &wrk = workers_[i];
+          std::cout << __PRETTY_FUNCTION__ << std::endl;
+          auto &wrk = workers_[i];
 
-            auto cl = handler->clone();
-            auto key = wrk->sync->addHandler(cl, false /* setKey */);
-            auto newKey = encodeKey(key, i);
-            cl->key_ = newKey;
+          auto cl = handler->clone();
+          auto key = wrk->sync->addHandler(cl, false /* setKey */);
+          auto newKey = encodeKey(key, i);
+          cl->key_ = newKey;
 
-            keys[i] = key;
+          keys[i] = key;
         }
 
         auto data = keys[0].data() << 32 | KeyMarker;
@@ -368,19 +398,20 @@ public:
     }
 
     std::vector<std::shared_ptr<Handler>> handlers(const Reactor::Key& key) const override {
+      std::cout << __PRETTY_FUNCTION__ << std::endl;
 
-        uint32_t idx;
-        uint32_t marker;
-        std::tie(idx, marker) = decodeKey(key);
-        if (marker != KeyMarker)
-            throw std::runtime_error("Invalid key");
+      uint32_t idx;
+      uint32_t marker;
+      std::tie(idx, marker) = decodeKey(key);
+      if (marker != KeyMarker)
+        throw std::runtime_error("Invalid key");
 
-        Reactor::Key originalKey(idx);
+      Reactor::Key originalKey(idx);
 
-        std::vector<std::shared_ptr<Handler>> res;
-        res.reserve(workers_.size());
-        for (auto& wrk: workers_) {
-            res.push_back(wrk->sync->handler(originalKey));
+      std::vector<std::shared_ptr<Handler>> res;
+      res.reserve(workers_.size());
+      for (auto &wrk : workers_) {
+        res.push_back(wrk->sync->handler(originalKey));
         }
 
         return res;
@@ -392,6 +423,7 @@ public:
             Polling::NotifyOn interest,
             Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level) override {
+        std::cout << __PRETTY_FUNCTION__ << std::endl;
         dispatchCall(key, &SyncImpl::registerFd, fd, interest, tag, mode);
     }
 
@@ -401,6 +433,7 @@ public:
             Polling::NotifyOn interest,
             Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level) override {
+        std::cout << __PRETTY_FUNCTION__ << std::endl;
         dispatchCall(key, &SyncImpl::registerFdOneShot, fd, interest, tag, mode);
     }
 
@@ -410,46 +443,52 @@ public:
             Polling::NotifyOn interest,
             Polling::Tag tag,
             Polling::Mode mode = Polling::Mode::Level) override {
+        std::cout << __PRETTY_FUNCTION__ << std::endl;
         dispatchCall(key, &SyncImpl::modifyFd, fd, interest, tag, mode);
     }
 
-    void runOnce() override {
-    }
+    void runOnce() override { std::cout << __PRETTY_FUNCTION__ << std::endl; }
 
     void run() override {
-        for (auto& wrk: workers_)
-            wrk->run();
+      std::cout << __PRETTY_FUNCTION__ << std::endl;
+      for (auto &wrk : workers_)
+        wrk->run();
     }
 
     void shutdown() override {
-        for (auto& wrk: workers_)
-            wrk->shutdown();
+      std::cout << __PRETTY_FUNCTION__ << std::endl;
+      for (auto &wrk : workers_)
+        wrk->shutdown();
     }
 
 private:
     Reactor::Key encodeKey(const Reactor::Key& originalKey, uint32_t value) const
     {
-        auto data = originalKey.data();
-        auto newValue = data << 32 | value;
-        return Reactor::Key(newValue);
+      std::cout << __PRETTY_FUNCTION__ << std::endl;
+      auto data = originalKey.data();
+      auto newValue = data << 32 | value;
+      return Reactor::Key(newValue);
     }
 
     std::pair<uint32_t, uint32_t> decodeKey(const Reactor::Key& encodedKey) const {
-        auto data = encodedKey.data();
-        uint32_t hi = data >> 32;
-        uint32_t lo = data & 0xFFFFFFFF;
-        return std::make_pair(hi, lo);
+      std::cout << __PRETTY_FUNCTION__ << std::endl;
+      auto data = encodedKey.data();
+      uint32_t hi = data >> 32;
+      uint32_t lo = data & 0xFFFFFFFF;
+      return std::make_pair(hi, lo);
     }
 
 #define CALL_MEMBER_FN(obj, pmf) (obj->*(pmf))
 
     template<typename Func, typename... Args>
     void dispatchCall(const Reactor::Key& key, Func func, Args&& ...args) const {
-        auto decoded = decodeKey(key);
-        auto& wrk = workers_[decoded.second];
+      std::cout << __PRETTY_FUNCTION__ << std::endl;
+      auto decoded = decodeKey(key);
+      auto &wrk = workers_[decoded.second];
 
-        Reactor::Key originalKey(decoded.first);
-        CALL_MEMBER_FN(wrk->sync.get(), func)(originalKey, std::forward<Args>(args)...);
+      Reactor::Key originalKey(decoded.first);
+      CALL_MEMBER_FN(wrk->sync.get(), func)
+      (originalKey, std::forward<Args>(args)...);
     }
 
 #undef CALL_MEMBER_FN
@@ -457,22 +496,24 @@ private:
     struct Worker {
 
         Worker(Reactor* reactor) {
-            sync.reset(new SyncImpl(reactor));
+          std::cout << __PRETTY_FUNCTION__ << std::endl;
+          sync.reset(new SyncImpl(reactor));
         }
 
         ~Worker() {
-            if (thread.joinable())
-                thread.join();
+          std::cout << __PRETTY_FUNCTION__ << std::endl;
+          if (thread.joinable())
+            thread.join();
         }
 
         void run() {
-            thread = std::thread([=]() {
-                sync->run();
-            });
+          std::cout << __PRETTY_FUNCTION__ << std::endl;
+          thread = std::thread([=]() { sync->run(); });
         }
 
         void shutdown() {
-            sync->shutdown();
+          std::cout << __PRETTY_FUNCTION__ << std::endl;
+          sync->shutdown();
         }
 
         std::thread thread;
@@ -484,12 +525,16 @@ private:
 
 Reactor::Key::Key()
     : data_(0)
-{ }
+{
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+}
 
 Reactor::Key::Key(
         uint64_t data)
     : data_(data)
-{ }
+{
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+}
 
 Reactor::Reactor() = default;
 
@@ -497,58 +542,55 @@ Reactor::~Reactor() = default;
 
 std::shared_ptr<Reactor>
 Reactor::create() {
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
     return std::make_shared<Reactor>();
 }
 
 void
 Reactor::init() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     SyncContext context;
     init(context);
 }
 
 void
 Reactor::init(const ExecutionContext& context) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     impl_.reset(context.makeImpl(this));
 }
 
 Reactor::Key
 Reactor::addHandler(const std::shared_ptr<Handler>& handler) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     return impl()->addHandler(handler, true);
 }
 
 std::vector<std::shared_ptr<Handler>>
 Reactor::handlers(const Reactor::Key& key) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     return impl()->handlers(key);
 }
 
 void
-Reactor::registerFd(
-        const Reactor::Key& key, Fd fd, Polling::NotifyOn interest, Polling::Tag tag,
-        Polling::Mode mode)
+Reactor::registerFd( const Reactor::Key& key, Fd fd, Polling::NotifyOn interest, Polling::Tag tag, Polling::Mode mode)
 {
     impl()->registerFd(key, fd, interest, tag, mode);
 }
 
 void
-Reactor::registerFdOneShot(
-        const Reactor::Key& key, Fd fd, Polling::NotifyOn interest, Polling::Tag tag,
-        Polling::Mode mode)
+Reactor::registerFdOneShot( const Reactor::Key& key, Fd fd, Polling::NotifyOn interest, Polling::Tag tag, Polling::Mode mode)
 {
     impl()->registerFdOneShot(key, fd, interest, tag, mode);
 }
 
 void
-Reactor::registerFd(
-        const Reactor::Key& key, Fd fd, Polling::NotifyOn interest,
-        Polling::Mode mode)
+Reactor::registerFd(const Reactor::Key& key, Fd fd, Polling::NotifyOn interest, Polling::Mode mode)
 {
     impl()->registerFd(key, fd, interest, Polling::Tag(fd), mode);
 }
 
 void
-Reactor::registerFdOneShot(
-        const Reactor::Key& key, Fd fd, Polling::NotifyOn interest,
-        Polling::Mode mode)
+Reactor::registerFdOneShot( const Reactor::Key& key, Fd fd, Polling::NotifyOn interest, Polling::Mode mode)
 {
     impl()->registerFdOneShot(key, fd, interest, Polling::Tag(fd), mode);
 }
@@ -562,48 +604,46 @@ Reactor::modifyFd(
 }
 
 void
-Reactor::modifyFd(
-        const Reactor::Key& key, Fd fd, Polling::NotifyOn interest,
-        Polling::Mode mode)
+Reactor::modifyFd( const Reactor::Key& key, Fd fd, Polling::NotifyOn interest, Polling::Mode mode)
 {
     impl()->modifyFd(key, fd, interest, Polling::Tag(fd), mode);
 }
 
 void
 Reactor::run() {
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
     impl()->run();
 }
 
 void
 Reactor::shutdown() {
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
     impl()->shutdown();
 }
 
 void
 Reactor::runOnce() {
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
     impl()->runOnce();
 }
 
-Reactor::Impl *
-Reactor::impl() const {
+Reactor::Impl* Reactor::impl() const {
     if (!impl_)
         throw std::runtime_error("Invalid object state, you should call init() before");
 
     return impl_.get();
 }
 
-Reactor::Impl*
-SyncContext::makeImpl(Reactor* reactor) const {
+Reactor::Impl* SyncContext::makeImpl(Reactor* reactor) const {
     return new SyncImpl(reactor);
 }
 
-Reactor::Impl*
-AsyncContext::makeImpl(Reactor* reactor) const {
+Reactor::Impl* AsyncContext::makeImpl(Reactor* reactor) const {
     return new AsyncImpl(reactor, threads_);
 }
 
-AsyncContext
-AsyncContext::singleThreaded() {
+AsyncContext AsyncContext::singleThreaded() {
+    std::cout << __PRETTY_FUNCTION__ << std::endl;
     return AsyncContext(1);
 }
 

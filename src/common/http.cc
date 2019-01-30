@@ -475,13 +475,9 @@ namespace Private {
 
 } // namespace Private
 
-Message::Message()
-    : version_(Version::Http11)
-    , code_()
-    , headers_()
-    , body_()
-    , cookies_()
-{ }
+Message::Message() : version_(Version::Http11), code_(), headers_(), body_(), cookies_() {
+  std::cout << __PRETTY_FUNCTION__ << std::endl;
+}
 
 namespace Uri {
 
@@ -615,6 +611,7 @@ ResponseStream::ResponseStream(
 
 void
 ResponseStream::flush() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     timeout_.disarm();
     auto buf = buf_.buffer();
 
@@ -626,6 +623,7 @@ ResponseStream::flush() {
 
 void
 ResponseStream::ends() {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     std::ostream os(&buf_);
     os << "0" << crlf;
     os << crlf;
@@ -640,6 +638,7 @@ ResponseStream::ends() {
 Async::Promise<ssize_t>
 ResponseWriter::putOnWire(const char* data, size_t len)
 {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     try {
         std::ostream os(&buf_);
 
@@ -760,6 +759,7 @@ serveFile(ResponseWriter& response, const std::string& fileName, const Mime::Med
 
 void
 Handler::onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer>& peer) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     auto& parser = getParser(peer);
     try {
         if (!parser.feed(buffer, len)) {
@@ -794,22 +794,26 @@ Handler::onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer
 
 void
 Handler::onConnection(const std::shared_ptr<Tcp::Peer>& peer) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     peer->putData(ParserData, std::make_shared<Private::Parser<Http::Request>>());
 }
 
 void
 Handler::onDisconnection(const shared_ptr<Tcp::Peer>& peer) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     UNUSED(peer)
 }
 
 void
 Handler::onTimeout(const Request& request, ResponseWriter response) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     UNUSED(request)
     UNUSED(response)
 }
 
 void
 Timeout::onTimeout(uint64_t numWakeup) {
+std::cout << __PRETTY_FUNCTION__ << std::endl;
     UNUSED(numWakeup)
     if (!peer.lock()) return;
 
