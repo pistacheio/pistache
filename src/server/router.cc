@@ -121,7 +121,7 @@ SegmentTreeNode::addRoute(const std::string_view& path,
           std::string_view {nullptr, 0} :
           path.substr(segment_delimiter + 1);
 
-      std::unordered_map<std::string_view, std::shared_ptr<SegmentTreeNode>> *collection;
+      std::unordered_map<std::string_view, std::shared_ptr<SegmentTreeNode>> *collection = nullptr;
       const auto fragmentType = getSegmentType(current_segment);
       switch (fragmentType) {
         case SegmentType::Fixed:
@@ -171,7 +171,7 @@ bool Pistache::Rest::SegmentTreeNode::removeRoute(const std::string_view& path) 
                                 std::string_view {nullptr, 0} :
                                 path.substr(segment_delimiter + 1);
 
-        std::unordered_map<std::string_view, std::shared_ptr<SegmentTreeNode>> *collection;
+        std::unordered_map<std::string_view, std::shared_ptr<SegmentTreeNode>> *collection = nullptr;
         auto fragmentType = getSegmentType(current_segment);
         switch (fragmentType) {
             case SegmentType::Fixed:
