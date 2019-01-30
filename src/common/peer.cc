@@ -47,6 +47,19 @@ std::cout << __PRETTY_FUNCTION__ << std::endl;
   fd_ = fd;
 }
 
+#ifdef PISTACHE_USE_SSL
+void
+Peer::associateSSL(void *ssl)
+{
+    ssl_ = ssl;
+}
+
+void *
+Peer::ssl(void) const {
+    return ssl_;
+}
+#endif /* PISTACHE_USE_SSL */
+
 int
 Peer::fd() const {
   std::cout << __PRETTY_FUNCTION__ << endl;

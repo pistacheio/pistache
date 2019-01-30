@@ -136,7 +136,20 @@ std::cout << __PRETTY_FUNCTION__ << std::endl;
     int fd = peer->fd();
 
     for (;;) {
-        ssize_t bytes = recv(fd, buffer + totalBytes, Const::MaxBuffer - totalBytes, 0);
+
+        ssize_t bytes;
+
+#ifdef PISTACHE_USE_SSL
+        if (peer->ssl() != NULL) {
+            bytes = SSL_read((SSL *)peer->ssl(), buffer + totalBytes,
+                Const::MaxBuffer - totalBytes);
+        } else {
+#endif /* PISTACHE_USE_SSL */
+            bytes = recv(fd, buffer + totalBytes, Const::MaxBuffer - totalBytes, 0);
+#ifdef PISTACHE_USE_SSL
+        }
+#endif /* PISTACHE_USE_SSL */
+
         if (bytes == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if (totalBytes > 0) {
@@ -172,7 +185,13 @@ Transport::handlePeerDisconnection(const std::shared_ptr<Peer>& peer) {
     
     if (it == std::end(peers))
         throw std::runtime_error("Could not find peer to erase");
-    
+
+#ifdef PISTACHE_USE_SSL
+    if (peer->ssl() != NULL) {
+        SSL_free((SSL *)peer->ssl());
+    }
+#endif /* PISTACHE_USE_SSL */
+
     peers.erase(it);
 
     {
@@ -233,10 +252,25 @@ std::cout << __PRETTY_FUNCTION__ << std::endl;
         for (;;) {
             ssize_t bytesWritten = 0;
             auto len = buffer.size() - totalWritten;
+
             if (buffer.isRaw()) {
                 auto raw = buffer.raw();
                 auto ptr = raw.data + totalWritten;
-                bytesWritten = ::send(fd, ptr, len, flags | MSG_NOSIGNAL);
+
+#ifdef PISTACHE_USE_SSL
+                auto it = peers.find(fd);
+
+                if (it == std::end(peers))
+                    throw std::runtime_error("No peer found for fd: " + std::to_string(fd));
+
+                if (it->second->ssl() != NULL) {
+                    bytesWritten = SSL_write((SSL *)it->second->ssl(), ptr, len);
+                } else {
+#endif /* PISTACHE_USE_SSL */
+                    bytesWritten = ::send(fd, ptr, len, flags);
+#ifdef PISTACHE_USE_SSL
+                }
+#endif /* PISTACHE_USE_SSL */
             } else {
                 auto file = buffer.fd();
                 off_t offset = totalWritten;
