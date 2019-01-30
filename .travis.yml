@@ -6,15 +6,21 @@ branches:
 
 matrix:
   include:
+    # Linux clang builds
     - os: linux
       compiler: clang
       addons:
         apt:
           packages: ['cmake', 'clang-3.8', 'libstdc++-6-dev']
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-trusty
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty']
       env: COMPILER='clang++-3.8'
+    - os: linux
+      compiler: clang
+      addons:
+        apt:
+          packages: ['cmake', 'clang-3.9', 'libstdc++-6-dev']
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty']
+      env: COMPILER='clang++-3.9'
 
 install:
   - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
