@@ -337,7 +337,7 @@ CUSTOM_HEADER(TestHeader)
 TEST(header_test, macro_for_custom_headers)
 {
     TestHeader testHeader;
-    ASSERT_TRUE(TestHeader::Name == "TestHeader");
+    ASSERT_TRUE( strcmp(TestHeader::Name,"TestHeader") == 0);
 
     testHeader.parse("Header Content Test");
     ASSERT_EQ(testHeader.val(), "Header Content Test");
