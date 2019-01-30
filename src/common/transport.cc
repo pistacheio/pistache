@@ -185,7 +185,7 @@ Transport::handlePeerDisconnection(const std::shared_ptr<Peer>& peer) {
     }
 #endif /* PISTACHE_USE_SSL */
 
-    peers.erase(it);
+    peers.erase(it->first);
 
     {
         // Clean up buffers
