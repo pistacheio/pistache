@@ -166,7 +166,7 @@ Transport::handlePeerDisconnection(const std::shared_ptr<Peer>& peer) {
     if (it == std::end(peers))
         throw std::runtime_error("Could not find peer to erase");
 
-    peers.erase(it);
+    peers.erase(it->first);
 
     {
         // Clean up buffers
