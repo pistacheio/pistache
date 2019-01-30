@@ -85,7 +85,7 @@ Transport::onReady(const Aio::FdSet& fds) {
                 auto it = timers.find(tag.value());
                 auto& entry = it->second;
                 handleTimer(std::move(entry));
-                timers.erase(it);
+                timers.erase(it->first);
             }
             else {
                 throw std::runtime_error("Unknown fd");
