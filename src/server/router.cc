@@ -122,7 +122,7 @@ SegmentTreeNode::addRoute(const std::string_view& path,
           std::string_view {nullptr, 0} :
           path.substr(segment_delimiter + 1);
 
-      std::unordered_map<std::string_view, std::shared_ptr<SegmentTreeNode>> *collection;
+      std::unordered_map<std::string_view, std::shared_ptr<SegmentTreeNode>> *collection = nullptr;
       const auto fragmentType = getSegmentType(current_segment);
       switch (fragmentType) {
         case SegmentType::Fixed:
@@ -168,11 +168,9 @@ bool Pistache::Rest::SegmentTreeNode::removeRoute(const std::string_view& path) 
         auto current_segment = path.substr(0, segment_delimiter);
         // complete child path (path without this segment)
         // if no '/' was found, it means that it is a leaf resource
-        const auto lower_path = (segment_delimiter == std::string_view::npos) ?
-                                std::string_view {nullptr, 0} :
-                                path.substr(segment_delimiter + 1);
+        const auto lower_path = (segment_delimiter == std::string_view::npos) ? std::string_view {nullptr, 0} : path.substr(segment_delimiter + 1);
 
-        std::unordered_map<std::string_view, std::shared_ptr<SegmentTreeNode>> *collection;
+        std::unordered_map<std::string_view, std::shared_ptr<SegmentTreeNode>> *collection = nullptr;
         auto fragmentType = getSegmentType(current_segment);
         switch (fragmentType) {
             case SegmentType::Fixed:
