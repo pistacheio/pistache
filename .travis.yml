@@ -11,16 +11,23 @@ matrix:
       compiler: clang
       addons:
         apt:
-          packages: ['cmake', 'clang-3.8', 'libstdc++-6-dev']
-          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty']
-      env: COMPILER='clang++-3.8'
+          packages: ['cmake', 'clang-4.0', 'libstdc++-6-dev']
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-4.0']
+      env: COMPILER='clang++-4.0'
     - os: linux
       compiler: clang
       addons:
         apt:
-          packages: ['cmake', 'clang-3.9', 'libstdc++-6-dev']
-          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty']
-      env: COMPILER='clang++-3.9'
+          packages: ['cmake', 'clang-5.0', 'libstdc++-6-dev']
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-5.0']
+      env: COMPILER='clang++-5.0'
+    - os: linux
+      compiler: clang
+      addons:
+        apt:
+          packages: ['cmake', 'clang-6.0', 'libstdc++-6-dev']
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
+      env: COMPILER='clang++-6.0'
 
 install:
   - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
