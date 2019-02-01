@@ -266,36 +266,34 @@ void
 Transport::handleRequestsQueue() {
     // Let's drain the queue
     for (;;) {
-        auto entry = requestsQueue.popSafe();
-        if (!entry) break;
+        auto req = requestsQueue.popSafe();
+        if (!req) break;
 
-        auto &req = entry->data();
-        asyncSendRequestImpl(req);
+        asyncSendRequestImpl(*req);
     }
 }
 
 void
 Transport::handleConnectionQueue() {
     for (;;) {
-        auto entry = connectionsQueue.popSafe();
-        if (!entry) break;
+        auto data = connectionsQueue.popSafe();
+        if (!data) break;
 
-        auto &data = entry->data();
-        auto conn = data.connection.lock();
+        auto conn = data->connection.lock();
         if (!conn) {
             throw std::runtime_error("Connection error");
         }
-        int res = ::connect(conn->fd, data.addr, data.addr_len);
+        int res = ::connect(conn->fd, data->addr, data->addr_len);
         if (res == -1) {
             if (errno == EINPROGRESS) {
                 reactor()->registerFdOneShot(key(), conn->fd, NotifyOn::Write | NotifyOn::Hangup | NotifyOn::Shutdown);
             }
             else {
-                data.reject(Error::system("Failed to connect"));
+                data->reject(Error::system("Failed to connect"));
                 continue;
             }
         }
-        connections.insert(std::make_pair(conn->fd, std::move(data)));
+        connections.insert(std::make_pair(conn->fd, std::move(*data)));
     }
 }
 
@@ -552,13 +550,12 @@ Connection::performImpl(
 void
 Connection::processRequestQueue() {
     for (;;) {
-        auto entry = requestsQueue.popSafe();
-        if (!entry) break;
+        auto req = requestsQueue.popSafe();
+        if (!req) break;
 
-        auto &req = entry->data();
         performImpl(
-                req.request,
-                req.timeout, std::move(req.resolve), std::move(req.reject), std::move(req.onDone));
+                req->request,
+                req->timeout, std::move(req->resolve), std::move(req->reject), std::move(req->onDone));
     }
 
 }
