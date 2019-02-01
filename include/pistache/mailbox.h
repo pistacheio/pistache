@@ -227,14 +227,16 @@ public:
     }
 
     std::unique_ptr<T> popSafe() {
-        std::unique_ptr<Entry> entry(pop());
+        std::unique_ptr<T> object;
 
+        std::unique_ptr<Entry> entry(pop());
         if (entry)
         {
-            return std::unique_ptr<T>(new T(std::move(entry->data())));
+            object.reset(new T(std::move(entry->data())));
+            entry->data().~T();
         }
 
-        return std::unique_ptr<T>();
+        return object;
     }
 
 private:
