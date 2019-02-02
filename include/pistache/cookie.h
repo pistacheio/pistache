@@ -20,6 +20,8 @@ namespace Pistache {
 namespace Http {
 
 struct Cookie {
+    friend std::ostream& operator<<(std::ostream& os, const Cookie& cookie);
+
     Cookie(std::string name, std::string value);
 
     std::string name;
@@ -38,8 +40,11 @@ struct Cookie {
     static Cookie fromRaw(const char* str, size_t len);
     static Cookie fromString(const std::string& str);
 
+private:
     void write(std::ostream& os) const;
 };
+
+std::ostream& operator<<(std::ostream& os, const Cookie& cookie);
 
 class CookieJar {
 public:
