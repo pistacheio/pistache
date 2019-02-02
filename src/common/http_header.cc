@@ -350,7 +350,7 @@ Host::parse(const std::string& data) {
         try {
             in6_addr addr6;
             char buff6[INET6_ADDRSTRLEN + 1] = {0, };
-            memcpy(buff6, host_.c_str(), host_.size());
+            std::copy(&host_[0], &host_[0] + host_.size(), buff6);
             inet_pton(AF_INET6, buff6, &(addr6.s6_addr16));
         } catch (std::runtime_error) {
             throw std::invalid_argument("Invalid IPv6 address");
@@ -370,7 +370,7 @@ Host::parse(const std::string& data) {
         try {
             in_addr addr;
             char buff[INET_ADDRSTRLEN + 1] = {0, };
-            memcpy(buff, host_.c_str(), host_.size());
+            std::copy(&host_[0], &host_[0] + host_.size(), buff);
             inet_pton(AF_INET, buff, &(addr));
         } catch (std::runtime_error) {
             throw std::invalid_argument("Invalid IPv4 address");
