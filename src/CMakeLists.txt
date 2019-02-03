@@ -70,6 +70,7 @@ if (PISTACHE_INSTALL)
         "${Pistache_CONFIG_FILE}.in"
         "${CMAKE_CURRENT_BINARY_DIR}/${Pistache_CONFIG_FILE}"
         INSTALL_DESTINATION ${Pistache_CMAKE_INSTALL_PATH}
+        PATH_VARS include_install_dir lib_install_dir
     )
     install(
         FILES "${CMAKE_CURRENT_BINARY_DIR}/${Pistache_CONFIG_FILE}"
