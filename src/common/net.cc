@@ -195,6 +195,11 @@ Address::Address(std::string addr, bool resolved)
     init(std::move(addr), resolved);
 }
 
+Address::Address(const char* addr, bool resolved)
+{
+    init(std::string(addr), resolved);
+}
+
 Address::Address(Ipv4 ip, Port port)
     : host_(ip.toString())
     , port_(port)

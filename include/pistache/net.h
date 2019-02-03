@@ -127,6 +127,7 @@ public:
     Address();
     Address(std::string host, Port port, bool resolved = true);
     Address(std::string addr, bool resolved = true);
+    Address(const char* addr, bool resolved = true);
     Address(Ipv4 ip, Port port);
     Address(Ipv6 ip, Port port);
 
