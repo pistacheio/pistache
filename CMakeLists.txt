@@ -8,6 +8,11 @@ option(PISTACHE_BUILD_EXAMPLES "build examples alongside the project" OFF)
 option(PISTACHE_INSTALL "add pistache as install target (recommended)" ON)
 option(PISTACHE_SSL "add support for SSL server" OFF)
 
+find_program(CTEST_MEMORYCHECK_COMMAND NAMES valgrind)
+INCLUDE(Dart)
+
+add_custom_target(test_memcheck COMMAND ${CMAKE_CTEST_COMMAND}  --force-new-ctest-process --test-action memcheck)
+
 # CMAKE version less than 3.8 does not understand the CMAKE_CXX_FLAGS
 # set to 17, so a manual check if performed on older version
 if(${CMAKE_VERSION} VERSION_LESS "3.8.0")

@@ -90,7 +90,7 @@ namespace {
         std::ostream os(&buf);
         for (const auto& cookie: cookies) {
             OUT(os << "Set-Cookie: ");
-            OUT(cookie.write(os));
+            OUT(os << cookie);
             OUT(os << crlf);
         }
 
