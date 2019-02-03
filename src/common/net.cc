@@ -238,7 +238,7 @@ Address::init(const std::string& addr) {
         family_ = AF_INET6;
         try {
             in6_addr addr6;
-            char buff6[INET6_ADDRSTRLEN + 1];
+            char buff6[INET6_ADDRSTRLEN + 1] = {0, };
             std::copy(&host_[0], &host_[0] + host_.size(), buff6);
             inet_pton(AF_INET6, buff6, &(addr6.s6_addr16));
         } catch (std::runtime_error) {
@@ -257,7 +257,7 @@ Address::init(const std::string& addr) {
         }
         try {
             in_addr addr;
-            char buff[INET_ADDRSTRLEN + 1];
+            char buff[INET_ADDRSTRLEN + 1] = {0, };
             std::copy(&host_[0], &host_[0] + host_.size(), buff);
             inet_pton(AF_INET, buff, &(addr));
         } catch (std::runtime_error) {
