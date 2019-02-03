@@ -270,8 +270,12 @@ Transport::asyncWriteImpl(Fd fd)
             }
             if (bytesWritten < 0) {
                 if (errno == EAGAIN || errno == EWOULDBLOCK) {
+
+                    auto bufferHolder = buffer.detach(totalWritten);
+
+                    // pop_front kills buffer - so we cannot continue loop or use buffer after this point
                     wq.pop_front();
-                    wq.push_front(WriteEntry(std::move(deferred), buffer.detach(totalWritten), flags));
+                    wq.push_front(WriteEntry(std::move(deferred), bufferHolder, flags));
                     reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
                 }
                 else {
