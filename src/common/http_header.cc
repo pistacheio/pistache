@@ -4,19 +4,17 @@
    Implementation of common HTTP headers described by the RFC
 */
 
+#include <pistache/http_header.h>
+#include <pistache/common.h>
+#include <pistache/http.h>
+#include <pistache/stream.h>
+
 #include <stdexcept>
 #include <iterator>
 #include <limits>
 #include <cstring>
 #include <iostream>
 
-#include <pistache/http_header.h>
-#include <pistache/common.h>
-#include <pistache/http.h>
-#include <pistache/stream.h>
-#include <arpa/inet.h>
-
-using namespace std;
 
 namespace Pistache {
 namespace Http {
@@ -342,51 +340,9 @@ Host::Host(const std::string& data)
 
 void
 Host::parse(const std::string& data) {
-    unsigned long pos = data.find(']');
-    unsigned long s_pos = data.find('[');
-    if (pos != std::string::npos && s_pos != std::string::npos) {
-        //IPv6 address
-        host_ = data.substr(s_pos, pos + 1);
-        try {
-            in6_addr addr6;
-            char buff6[INET6_ADDRSTRLEN + 1] = {0, };
-            std::copy(&host_[0], &host_[0] + host_.size(), buff6);
-            inet_pton(AF_INET6, buff6, &(addr6.s6_addr16));
-        } catch (std::runtime_error) {
-            throw std::invalid_argument("Invalid IPv6 address");
-        }
-        pos++;
-    } else {
-        //IPv4 address
-        pos = data.find(':');
-        if (pos == std::string::npos) {
-            host_ = data;
-            port_ = HTTP_STANDARD_PORT;
-        }
-        host_ = data.substr(0, pos);
-        if (host_ == "*") {
-            host_ = "0.0.0.0";
-        }
-        try {
-            in_addr addr;
-            char buff[INET_ADDRSTRLEN + 1] = {0, };
-            std::copy(&host_[0], &host_[0] + host_.size(), buff);
-            inet_pton(AF_INET, buff, &(addr));
-        } catch (std::runtime_error) {
-            throw std::invalid_argument("Invalid IPv4 address");
-        }
-    }
-    char *end;
-    const std::string portPart = data.substr(pos + 1);
-    long port;
-    if (pos != std::string::npos) {
-        port = strtol(portPart.c_str(), &end, 10);
-        if (port < std::numeric_limits<uint16_t>::min()|| port > std::numeric_limits<uint16_t>::max())
-            throw std::invalid_argument("Invalid port");
-        port_ = static_cast<uint16_t>(port);
-    } else {
-        port_ = HTTP_STANDARD_PORT;
-    }
+    Address address(data, false);
+    host_ = address.host();
+    port_ = address.port();
 }
 
 void

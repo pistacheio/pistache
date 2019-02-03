@@ -256,13 +256,13 @@ TEST(headers_test, host) {
     ASSERT_EQ(host.host(), "www.w3.org");
     ASSERT_EQ(host.port(), 80);
 
+    host.parse("www.example.com:8080");
+    ASSERT_EQ(host.host(), "www.example.com");
+    ASSERT_EQ(host.port(), 8080);
+
     host.parse("localhost:8080");
     ASSERT_EQ(host.host(), "localhost");
     ASSERT_EQ(host.port(), 8080);
-
-/* Due to an error in GLIBC these tests don't fail as expected, further research needed */
-//     ASSERT_THROW( host.parse("256.256.256.256:8080");, std::invalid_argument);
-//     ASSERT_THROW( host.parse("1.0.0.256:8080");, std::invalid_argument);
 
     host.parse("[::1]:8080");
     ASSERT_EQ(host.host(), "[::1]");
@@ -271,10 +271,6 @@ TEST(headers_test, host) {
     host.parse("[2001:0DB8:AABB:CCDD:EEFF:0011:2233:4455]:8080");
     ASSERT_EQ(host.host(), "[2001:0DB8:AABB:CCDD:EEFF:0011:2233:4455]");
     ASSERT_EQ(host.port(), 8080);
-
-/* Due to an error in GLIBC these tests don't fail as expected, further research needed */
-//     ASSERT_THROW( host.parse("[GGGG:GGGG:GGGG:GGGG:GGGG:GGGG:GGGG:GGGG]:8080");, std::invalid_argument);
-//     ASSERT_THROW( host.parse("[::GGGG]:8080");, std::invalid_argument);
 }
 
 TEST(headers_test, user_agent) {

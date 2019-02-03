@@ -118,8 +118,6 @@ namespace Http {
     CHARSET(Utf32-LE, "utf-32le") \
     CHARSET(Unicode-11, "unicode-1-1")
 
-const uint16_t HTTP_STANDARD_PORT = 80;
-
 enum class Method {
 #define METHOD(m, _) m,
     HTTP_METHODS
