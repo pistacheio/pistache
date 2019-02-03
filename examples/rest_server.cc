@@ -155,7 +155,7 @@ int main(int argc, char *argv[]) {
     int thr = 2;
 
     if (argc >= 2) {
-        port = std::stol(argv[1]);
+        port = Port(std::stol(argv[1]));
 
         if (argc == 3)
             thr = std::stol(argv[2]);

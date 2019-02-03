@@ -81,18 +81,24 @@ TEST(net_test, address_creation)
     Address address13(Ipv6::loopback(), Port(8080));
     ASSERT_EQ(address13.host(), "::1");
     ASSERT_EQ(address13.port(), 8080);
+
+    Address address14("localhost", Port(8080));
+    ASSERT_EQ(address14.host(), "127.0.0.1");
+    ASSERT_EQ(address14.port(), 8080);
+
+    Address address15("127.0.0.1");
+    ASSERT_EQ(address15.host(), "127.0.0.1");
+    ASSERT_EQ(address15.port(), 80);
 }
 
 TEST(net_test, invalid_address)
 {
-    ASSERT_THROW(Address("127.0.0.1"), std::invalid_argument);
     ASSERT_THROW(Address("127.0.0.1:9999999"), std::invalid_argument);
     ASSERT_THROW(Address("127.0.0.1:"), std::invalid_argument);
     ASSERT_THROW(Address("127.0.0.1:-10"), std::invalid_argument);
 
-    /* Due to an error in GLIBC these tests don't fail as expected, further research needed */
-//     ASSERT_THROW(Address("[GGGG:GGGG:GGGG:GGGG:GGGG:GGGG:GGGG:GGGG]:8080");, std::invalid_argument);
-//     ASSERT_THROW(Address("[::GGGG]:8080");, std::invalid_argument);
-//     ASSERT_THROW(Address("256.256.256.256:8080");, std::invalid_argument);
-//     ASSERT_THROW(Address("1.0.0.256:8080");, std::invalid_argument);
+    ASSERT_THROW(Address("[GGGG:GGGG:GGGG:GGGG:GGGG:GGGG:GGGG:GGGG]:8080");, std::invalid_argument);
+    ASSERT_THROW(Address("[::GGGG]:8080");, std::invalid_argument);
+    ASSERT_THROW(Address("256.256.256.256:8080");, std::invalid_argument);
+    ASSERT_THROW(Address("1.0.0.256:8080");, std::invalid_argument);
 }

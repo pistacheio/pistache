@@ -3,21 +3,40 @@
    
 */
 
+#include <pistache/common.h>
+#include <pistache/net.h>
+
 #include <stdexcept>
 #include <limits>
+#include <iostream>
 #include <cstring>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <ifaddrs.h>
-#include <iostream>
 
-#include <pistache/net.h>
-#include <pistache/common.h>
-
-using namespace std;
 
 namespace Pistache {
+
+const uint16_t HTTP_STANDARD_PORT = 80;
+
+namespace {
+    bool IsIPv4HostName(const std::string& host) {
+        in_addr addr;
+        char buff[INET_ADDRSTRLEN + 1] = {0, };
+        std::copy(host.begin(), host.end(), buff);
+        int res = inet_pton(AF_INET, buff, &addr);
+        return res;
+    }
+
+    bool IsIPv6HostName(const std::string& host) {
+        in6_addr addr6;
+        char buff6[INET6_ADDRSTRLEN + 1] = {0, };
+        std::copy(host.begin(), host.end(), buff6);
+        int res = inet_pton(AF_INET6, buff6, &(addr6.s6_addr16));
+        return res;
+    }
+}
 
 Port::Port(uint16_t port)
     : port(port)
@@ -162,23 +181,18 @@ Address::Address()
     , port_(0)
 { }
 
-Address::Address(std::string host, Port port)
+Address::Address(std::string host, Port port, bool resolved)
 {   
     std::string addr = host;
     addr.append(":");
     addr.append(port.toString());
-    init(std::move(addr));
+    init(std::move(addr), resolved);
 }
 
 
-Address::Address(std::string addr)
+Address::Address(std::string addr, bool resolved)
 {
-    init(std::move(addr));
-}
-
-Address::Address(const char* addr)
-{
-    init(std::string(addr));
+    init(std::move(addr), resolved);
 }
 
 Address::Address(Ipv4 ip, Port port)
@@ -229,49 +243,50 @@ Address::family() const {
 }
 
 void
-Address::init(const std::string& addr) {
+Address::init(const std::string& addr, bool resolved) {
     unsigned long pos = addr.find(']');
     unsigned long s_pos = addr.find('[');
     if (pos != std::string::npos && s_pos != std::string::npos) {
         //IPv6 address
-        host_ = addr.substr(s_pos+1, pos-1);
-        family_ = AF_INET6;
-        try {
-            in6_addr addr6;
-            char buff6[INET6_ADDRSTRLEN + 1] = {0, };
-            std::copy(host_.begin(), host_.end(), buff6);
-            inet_pton(AF_INET6, buff6, &(addr6.s6_addr16));
-        } catch (std::runtime_error) {
-            throw std::invalid_argument("Invalid IPv6 address");
+        if (resolved) {
+            host_ = addr.substr(s_pos + 1, pos - 1);
+            if (!IsIPv6HostName(host_)) {
+                throw std::invalid_argument("Invalid IPv6 address");
+            }
+        } else {
+            host_ = addr.substr(s_pos, pos + 1);
         }
+        family_ = AF_INET6;
         pos++;
     } else {
         //IPv4 address
         pos = addr.find(':');
-        if (pos == std::string::npos)
-            throw std::invalid_argument("Invalid address");
-        host_ = addr.substr(0, pos);
         family_ = AF_INET;
-        if (host_ == "*") {
-            host_ = "0.0.0.0";
-        }
-        try {
-            in_addr addr;
-            char buff[INET_ADDRSTRLEN + 1] = {0, };
-            std::copy(host_.begin(), host_.end(), buff);
-            inet_pton(AF_INET, buff, &(addr));
-        } catch (std::runtime_error) {
-            throw std::invalid_argument("Invalid IPv4 address");
+        host_ = addr.substr(0, pos);
+        if (resolved) {
+            if (host_ == "*") {
+                host_ = "0.0.0.0";
+            } else if (host_ == "localhost") {
+                host_ = "127.0.0.1";
+            }
+            if (!IsIPv4HostName(host_)) {
+                throw std::invalid_argument("Invalid IPv4 address: " + host_);
+            }
         }
     }
-    char *end;
-    const std::string portPart = addr.substr(pos + 1);
-    if (portPart.empty())
-        throw std::invalid_argument("Invalid port");
-    long port = strtol(portPart.c_str(), &end, 10);
-    if (*end != 0 || port < Port::min() || port > Port::max())
-        throw std::invalid_argument("Invalid port");
-    port_ = static_cast<uint16_t>(port);
+
+    if (pos != std::string::npos) {
+        const std::string portPart = addr.substr(pos + 1);
+        if (portPart.empty())
+            throw std::invalid_argument("Invalid port");
+        char *end = 0;
+        long port = strtol(portPart.c_str(), &end, 10);
+        if (*end != 0 || port < Port::min() || port > Port::max())
+            throw std::invalid_argument("Invalid port");
+        port_ = Port(port);
+    } else {
+        port_ = Port(HTTP_STANDARD_PORT);
+    }
 }
 
 Error::Error(const char* message)

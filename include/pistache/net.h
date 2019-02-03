@@ -12,8 +12,7 @@
 #include <limits>
 
 #include <sys/socket.h>
-
-#include <pistache/common.h>
+#include <netdb.h>
 
 #ifndef _KERNEL_FASTOPEN
 #define _KERNEL_FASTOPEN
@@ -64,7 +63,7 @@ private:
 
 class Port {
 public:
-    Port(uint16_t port = 0);
+    explicit Port(uint16_t port = 0);
 
     operator uint16_t() const { return port; }
 
@@ -126,9 +125,8 @@ private:
 class Address {
 public:
     Address();
-    Address(std::string host, Port port);
-    Address(std::string addr);
-    Address(const char* addr);
+    Address(std::string host, Port port, bool resolved = true);
+    explicit Address(std::string addr, bool resolved = true);
     Address(Ipv4 ip, Port port);
     Address(Ipv6 ip, Port port);
 
@@ -145,7 +143,7 @@ public:
     int family() const;
 
 private:
-    void init(const std::string& addr);
+    void init(const std::string& addr, bool resolved);
     std::string host_;
     Port port_;
     int family_ = AF_INET;
