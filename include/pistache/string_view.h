@@ -25,15 +25,12 @@
 #include <stdexcept>
 #include <cstring>
 
-using size_type = std::size_t ;
-
 namespace std {
 
     class string_view {
-    private:
-        const char *data_;
-        size_type size_;
     public:
+        using size_type = std::size_t ;
+
         static constexpr size_type npos = size_type(-1);
 
         constexpr string_view() noexcept: data_(nullptr), size_(0) { }
@@ -157,6 +154,9 @@ namespace std {
         constexpr bool empty() const noexcept {
             return size_ == 0;
         }
+    private:
+      const char *data_;
+      size_type size_;
     };
 
     template<>
@@ -200,7 +200,7 @@ namespace std {
         }
 
     public:
-        size_type
+        string_view::size_type
         operator()(const string_view &str) const {
             const size_t len = str.length();
             const uint8_t *data = reinterpret_cast<const uint8_t *>(str.data());

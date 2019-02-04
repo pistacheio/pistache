@@ -314,7 +314,7 @@ Date::parse(const std::string &str) {
 
 void
 Date::write(std::ostream& os) const {
-    UNUSED(os)
+	fullDate_.write(os);
 }
 
 void
@@ -346,11 +346,11 @@ Host::parse(const std::string& data) {
     unsigned long s_pos = data.find('[');
     if (pos != std::string::npos && s_pos != std::string::npos) {
         //IPv6 address
-        host_ = data.substr(s_pos, pos+1);
+        host_ = data.substr(s_pos, pos + 1);
         try {
             in6_addr addr6;
-            char buff6[INET6_ADDRSTRLEN+1];
-            memcpy(buff6, host_.c_str(), INET6_ADDRSTRLEN);
+            char buff6[INET6_ADDRSTRLEN + 1] = {0, };
+            std::copy(&host_[0], &host_[0] + host_.size(), buff6);
             inet_pton(AF_INET6, buff6, &(addr6.s6_addr16));
         } catch (std::runtime_error) {
             throw std::invalid_argument("Invalid IPv6 address");
@@ -369,8 +369,8 @@ Host::parse(const std::string& data) {
         }
         try {
             in_addr addr;
-            char buff[INET_ADDRSTRLEN+1];
-            memcpy(buff, host_.c_str(), INET_ADDRSTRLEN);
+            char buff[INET_ADDRSTRLEN + 1] = {0, };
+            std::copy(&host_[0], &host_[0] + host_.size(), buff);
             inet_pton(AF_INET, buff, &(addr));
         } catch (std::runtime_error) {
             throw std::invalid_argument("Invalid IPv4 address");

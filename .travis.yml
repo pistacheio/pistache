@@ -1,5 +1,8 @@
 language: cpp
 
+dist: trusty
+sudo: required
+
 branches:
   only:
     - master
@@ -81,10 +84,10 @@ before_script:
   - cd ${TRAVIS_BUILD_DIR}
 
     # Use Debug builds for building and running examples
-  - cmake -H. -BBuild-Debug -DCMAKE_BUILD_TYPE=Debug -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_TESTS=true
+  - cmake -H. -BBuild-Debug -DCMAKE_BUILD_TYPE=Debug -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_TESTS=true -DPISTACHE_SSL=true 
 
     # Release build
-  - cmake -H. -BBuild-Release -DCMAKE_BUILD_TYPE=Release
+  - cmake -H. -BBuild-Release -DCMAKE_BUILD_TYPE=Release -DPISTACHE_SSL=true 
 
 script:
   - # Go to debug build

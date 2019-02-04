@@ -20,12 +20,14 @@ using namespace std;
 Peer::Peer()
     : transport_(nullptr)
     , fd_(-1)
+    , ssl_(NULL)
 { }
 
 Peer::Peer(const Address& addr)
     : transport_(nullptr)
     , addr(addr)
     , fd_(-1)
+    , ssl_(NULL)
 { }
 
 Address
@@ -43,6 +45,19 @@ Peer::associateFd(int fd) {
     fd_ = fd;
 }
 
+#ifdef PISTACHE_USE_SSL
+void
+Peer::associateSSL(void *ssl)
+{
+    ssl_ = ssl;
+}
+
+void *
+Peer::ssl(void) const {
+    return ssl_;
+}
+#endif /* PISTACHE_USE_SSL */
+
 int
 Peer::fd() const {
     if (fd_ == -1) {
@@ -53,7 +68,7 @@ Peer::fd() const {
 }
 
 void
-Peer::putData(std::string name, std::shared_ptr<void> data) {
+Peer::putData(std::string name, std::shared_ptr<Pistache::Http::Private::ParserBase> data) {
     auto it = data_.find(name);
     if (it != std::end(data_)) {
         throw std::runtime_error("The data already exists");
@@ -62,7 +77,7 @@ Peer::putData(std::string name, std::shared_ptr<void> data) {
     data_.insert(std::make_pair(std::move(name), std::move(data)));
 }
 
-std::shared_ptr<void>
+std::shared_ptr<Pistache::Http::Private::ParserBase>
 Peer::getData(std::string name) const {
     auto data = tryGetData(std::move(name));
     if (data == nullptr) {
@@ -72,7 +87,7 @@ Peer::getData(std::string name) const {
     return data;
 }
 
-std::shared_ptr<void>
+std::shared_ptr<Pistache::Http::Private::ParserBase>
 Peer::tryGetData(std::string(name)) const {
     auto it = data_.find(name);
     if (it == std::end(data_)) return nullptr;

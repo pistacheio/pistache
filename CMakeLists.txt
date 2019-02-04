@@ -6,6 +6,12 @@ set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -pedantic -Wextra -Wno-missing-fi
 option(PISTACHE_BUILD_TESTS "build tests alongside the project" OFF)
 option(PISTACHE_BUILD_EXAMPLES "build examples alongside the project" OFF)
 option(PISTACHE_INSTALL "add pistache as install target (recommended)" ON)
+option(PISTACHE_SSL "add support for SSL server" OFF)
+
+find_program(CTEST_MEMORYCHECK_COMMAND NAMES valgrind)
+INCLUDE(Dart)
+
+add_custom_target(test_memcheck COMMAND ${CMAKE_CTEST_COMMAND}  --force-new-ctest-process --test-action memcheck)
 
 # CMAKE version less than 3.8 does not understand the CMAKE_CXX_FLAGS
 # set to 17, so a manual check if performed on older version
@@ -36,6 +42,11 @@ endif()
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+if (PISTACHE_SSL)
+    add_definitions(-DPISTACHE_USE_SSL)
+    link_libraries(-lssl -lcrypto)
+endif (PISTACHE_SSL)
 
 include_directories (${CMAKE_CURRENT_SOURCE_DIR}/include)
 # Set version...

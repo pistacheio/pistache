@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <iostream>
 
 using namespace Pistache::Http;
 
@@ -238,6 +239,16 @@ TEST(headers_test, date_test_asctime) {
     ASSERT_EQ(dd3, expected_time_point);
 }
 
+TEST(headers_test, date_test_ostream) {
+
+    std::ostringstream os;
+
+    Header::Date d4;
+    d4.parse("Fri, 25 Jan 2019 21:04:45.000000000 UTC");
+    d4.write(os);
+    ASSERT_EQ("Fri, 25 Jan 2019 21:04:45.000000000 UTC", os.str());
+}
+
 TEST(headers_test, host) {
     Header::Host host;
 
@@ -326,7 +337,7 @@ CUSTOM_HEADER(TestHeader)
 TEST(header_test, macro_for_custom_headers)
 {
     TestHeader testHeader;
-    ASSERT_TRUE(TestHeader::Name == "TestHeader");
+    ASSERT_TRUE( strcmp(TestHeader::Name,"TestHeader") == 0);
 
     testHeader.parse("Header Content Test");
     ASSERT_EQ(testHeader.val(), "Header Content Test");

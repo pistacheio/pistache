@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <pistache/typeid.h>
+
 #include <type_traits>
 #include <functional>
 #include <memory>
@@ -14,10 +16,9 @@
 #include <vector>
 #include <mutex>
 #include <condition_variable>
+#include <stdexcept>
+#include <typeinfo>
 
-#include <pistache/optional.h>
-#include <pistache/typeid.h>
-#include <pistache/common.h>
 
 namespace Pistache {
 namespace Async {
@@ -170,13 +171,15 @@ namespace Async {
 
         struct Core {
             Core(State _state, TypeId _id)
-                : state(_state)
+                : allocated(false)
+                , state(_state)
                 , exc()
                 , mtx()
                 , requests()
                 , id(_id)
             { }
 
+            bool allocated;
             State state;
             std::exception_ptr exc;
 
@@ -209,11 +212,18 @@ namespace Async {
                 }
 
                 void *mem = memory();
+
+                if (allocated) {
+                    reinterpret_cast<T*>(mem)->~T();
+                    allocated = false;
+                }
+
                 new (mem) T(std::forward<Args>(args)...);
+                allocated = true;
                 state = State::Fulfilled;
             }
 
-            virtual ~Core() { }
+            virtual ~Core() {}
         };
 
         template<typename T>
@@ -223,13 +233,17 @@ namespace Async {
                 , storage()
             { }
 
+            ~CoreT() {
+                if (allocated) {
+                    reinterpret_cast<T*>(&storage)->~T();
+                    allocated = false;
+                }
+            }
+            
             template<class Other>
             struct Rebind {
                 typedef CoreT<Other> Type;
             };
-
-            typedef typename std::aligned_storage<sizeof(T), alignof(T)>::type Storage;
-            Storage storage;
 
             T& value() {
                 if (state != State::Fulfilled)
@@ -240,9 +254,14 @@ namespace Async {
 
             bool isVoid() const override { return false; }
 
+        protected:
             void *memory() override {
                 return &storage;
             }
+
+        private:
+            typedef typename std::aligned_storage<sizeof(T), alignof(T)>::type Storage;
+            Storage storage;
         };
 
         template<>
@@ -253,6 +272,7 @@ namespace Async {
 
             bool isVoid() const override { return true; }
 
+        protected:
             void *memory() override {
                 return nullptr;
             }
@@ -396,8 +416,7 @@ namespace Async {
                 static_assert(sizeof...(Args) == 0,
                         "Can not attach a non-void continuation to a void-Promise");
 
-                void doResolve(const std::shared_ptr<CoreT<void>>& core) {
-                    UNUSED(core)
+                void doResolve(const std::shared_ptr<CoreT<void>>& /*core*/) {
                     finishResolve(resolve_());
                 }
 
@@ -474,8 +493,7 @@ namespace Async {
                 static_assert(sizeof...(Args) == 0,
                         "Can not attach a non-void continuation to a void-Promise");
 
-                void doResolve(const std::shared_ptr<CoreT<void>>& core) {
-                    UNUSED(core)
+                void doResolve(const std::shared_ptr<CoreT<void>>& /*core*/) {
                     resolve_();
                 }
 
@@ -582,8 +600,7 @@ namespace Async {
                     , reject_(reject)
                 { }
 
-                void doResolve(const std::shared_ptr<CoreT<void>>& core) {
-                    UNUSED(core)
+                void doResolve(const std::shared_ptr<CoreT<void>>& /*core*/) {
                     auto promise = resolve_();
                     finishResolve(promise);
                 }
