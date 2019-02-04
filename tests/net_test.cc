@@ -90,9 +90,24 @@ TEST(net_test, invalid_address)
     ASSERT_THROW(Address("127.0.0.1:"), std::invalid_argument);
     ASSERT_THROW(Address("127.0.0.1:-10"), std::invalid_argument);
 
-    /* Due to an error in GLIBC these tests don't fail as expected, further research needed */
-//     ASSERT_THROW(Address("[GGGG:GGGG:GGGG:GGGG:GGGG:GGGG:GGGG:GGGG]:8080");, std::invalid_argument);
-//     ASSERT_THROW(Address("[::GGGG]:8080");, std::invalid_argument);
-//     ASSERT_THROW(Address("256.256.256.256:8080");, std::invalid_argument);
-//     ASSERT_THROW(Address("1.0.0.256:8080");, std::invalid_argument);
+    ASSERT_THROW(Address("[GGGG:GGGG:GGGG:GGGG:GGGG:GGGG:GGGG:GGGG]:8080");, std::invalid_argument);
+    ASSERT_THROW(Address("[::GGGG]:8080");, std::invalid_argument);
+    ASSERT_THROW(Address("256.256.256.256:8080");, std::invalid_argument);
+    ASSERT_THROW(Address("1.0.0.256:8080");, std::invalid_argument);
+}
+
+TEST(net_test, address_parser)
+{
+    AddressParser ap1("127.0.0.1:80");
+    ASSERT_EQ(ap1.rawHost(), "127.0.0.1");
+    ASSERT_EQ(ap1.rawPort(), "80");
+    ASSERT_EQ(ap1.family(), AF_INET);
+
+    AddressParser ap2("[2001:0DB8:AABB:CCDD:EEFF:0011:2233:4455]:8080");
+    ASSERT_EQ(ap2.rawHost(), "[2001:0DB8:AABB:CCDD:EEFF:0011:2233:4455]");
+    ASSERT_EQ(ap2.rawPort(), "8080");
+    ASSERT_EQ(ap2.family(), AF_INET6);
+
+    ASSERT_THROW(AddressParser("127.0.0.1:");, std::invalid_argument);
+    ASSERT_THROW(AddressParser("[::]:");, std::invalid_argument);
 }
