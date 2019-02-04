@@ -168,7 +168,7 @@ public:
     Optional<T> &operator=(Optional<T> &&other)
       noexcept(types::is_nothrow_move_constructible<T>::value)
     {
-        if (other.data()) {
+        if (!other.isEmpty()) {
             move_helper(std::move(other), types::is_move_constructible<T>());
             other.none_flag = NoneMarker;
         }

@@ -7,6 +7,7 @@
 #include <pistache/client.h>
 #include <pistache/http.h>
 #include <pistache/stream.h>
+#include <pistache/net.h>
 
 #include <sys/sendfile.h>
 #include <netdb.h>
@@ -266,36 +267,34 @@ void
 Transport::handleRequestsQueue() {
     // Let's drain the queue
     for (;;) {
-        auto entry = requestsQueue.popSafe();
-        if (!entry) break;
+        auto req = requestsQueue.popSafe();
+        if (!req) break;
 
-        auto &req = entry->data();
-        asyncSendRequestImpl(req);
+        asyncSendRequestImpl(*req);
     }
 }
 
 void
 Transport::handleConnectionQueue() {
     for (;;) {
-        auto entry = connectionsQueue.popSafe();
-        if (!entry) break;
+        auto data = connectionsQueue.popSafe();
+        if (!data) break;
 
-        auto &data = entry->data();
-        auto conn = data.connection.lock();
+        auto conn = data->connection.lock();
         if (!conn) {
             throw std::runtime_error("Connection error");
         }
-        int res = ::connect(conn->fd, data.addr, data.addr_len);
+        int res = ::connect(conn->fd, data->getAddr(), data->addr_len);
         if (res == -1) {
             if (errno == EINPROGRESS) {
                 reactor()->registerFdOneShot(key(), conn->fd, NotifyOn::Write | NotifyOn::Hangup | NotifyOn::Shutdown);
             }
             else {
-                data.reject(Error::system("Failed to connect"));
+                data->reject(Error::system("Failed to connect"));
                 continue;
             }
         }
-        connections.insert(std::make_pair(conn->fd, std::move(data)));
+        connections.insert(std::make_pair(conn->fd, std::move(*data)));
     }
 }
 
@@ -360,7 +359,6 @@ void
 Connection::connect(const Address& addr)
 {
     struct addrinfo hints;
-    struct addrinfo *addrs;
     memset(&hints, 0, sizeof(struct addrinfo));
     hints.ai_family = addr.family();
     hints.ai_socktype = SOCK_STREAM; /* Stream socket */
@@ -369,11 +367,15 @@ Connection::connect(const Address& addr)
 
     const auto& host = addr.host();
     const auto& port = addr.port().toString();
-    TRY(::getaddrinfo(host.c_str(), port.c_str(), &hints, &addrs));
 
+    AddrInfo addressInfo;
+    
+    TRY(addressInfo.invoke(host.c_str(), port.c_str(), &hints));
+    const addrinfo *addrs = addressInfo.get_info_ptr();
+    
     int sfd = -1;
 
-    for (struct addrinfo *addr = addrs; addr; addr = addr->ai_next) {
+    for (const addrinfo *addr = addrs; addr; addr = addr->ai_next) {
         sfd = ::socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
         if (sfd < 0) continue;
 
@@ -552,13 +554,12 @@ Connection::performImpl(
 void
 Connection::processRequestQueue() {
     for (;;) {
-        auto entry = requestsQueue.popSafe();
-        if (!entry) break;
+        auto req = requestsQueue.popSafe();
+        if (!req) break;
 
-        auto &req = entry->data();
         performImpl(
-                req.request,
-                req.timeout, std::move(req.resolve), std::move(req.reject), std::move(req.onDone));
+                req->request,
+                req->timeout, std::move(req->resolve), std::move(req->reject), std::move(req->onDone));
     }
 
 }

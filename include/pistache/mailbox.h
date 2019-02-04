@@ -169,8 +169,6 @@ public:
             new (&storage) T(std::forward<U>(u));
         }
 
-        ~Entry() = default;
-
         const T& data() const {
             return *reinterpret_cast<const T*>(&storage);
         }
@@ -228,8 +226,17 @@ public:
         return head == tail;
     }
 
-    std::unique_ptr<Entry> popSafe() {
-        return std::unique_ptr<Entry>(pop());
+    std::unique_ptr<T> popSafe() {
+        std::unique_ptr<T> object;
+
+        std::unique_ptr<Entry> entry(pop());
+        if (entry)
+        {
+            object.reset(new T(std::move(entry->data())));
+            entry->data().~T();
+        }
+
+        return object;
     }
 
 private:

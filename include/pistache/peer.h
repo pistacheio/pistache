@@ -20,9 +20,14 @@
 
 #include <openssl/ssl.h>
 
+
 #endif /* PISTACHE_USE_SSL */
 
+
+
+
 namespace Pistache {
+    namespace Http { namespace Private { class ParserBase; } }
 namespace Tcp {
 
 class Transport;
@@ -33,7 +38,8 @@ public:
 
     Peer();
     Peer(const Address& addr);
-
+    ~Peer() {}
+    
     Address address() const;
     std::string hostname() const;
 
@@ -43,22 +49,9 @@ public:
     void associateSSL(void *ssl);
     void *ssl(void) const;
 
-    void putData(std::string name, std::shared_ptr<void> data);
-
-    std::shared_ptr<void> getData(std::string name) const;
-    template<typename T>
-    std::shared_ptr<T> getData(std::string name) const {
-        return std::static_pointer_cast<T>(getData(std::move(name)));
-    }
-
-    std::shared_ptr<void> tryGetData(std::string name) const;
-    template<typename T>
-    std::shared_ptr<T> tryGetData(std::string name) const {
-        auto data = tryGetData(std::move(name));
-        if (data == nullptr) return nullptr;
-
-        return std::static_pointer_cast<T>(data);
-    }
+    void putData(std::string name, std::shared_ptr<Pistache::Http::Private::ParserBase> data);
+    std::shared_ptr<Pistache::Http::Private::ParserBase> getData(std::string name) const;
+    std::shared_ptr<Pistache::Http::Private::ParserBase> tryGetData(std::string name) const;
 
     Async::Promise<ssize_t> send(const Buffer& buffer, int flags = 0);
 
@@ -71,7 +64,7 @@ private:
     Fd fd_;
 
     std::string hostname_;
-    std::unordered_map<std::string, std::shared_ptr<void>> data_;
+    std::unordered_map<std::string, std::shared_ptr<Pistache::Http::Private::ParserBase>> data_;
 
     void *ssl_;
 };

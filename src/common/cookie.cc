@@ -207,6 +207,12 @@ Cookie::write(std::ostream& os) const {
 
 }
 
+std::ostream& operator<<(std::ostream& os, const Cookie& cookie)
+{
+    cookie.write(os);
+    return os;
+}
+
 CookieJar::CookieJar()
     : cookies()
 { }

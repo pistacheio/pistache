@@ -238,9 +238,7 @@ Address::init(const std::string& addr) {
         family_ = AF_INET6;
         try {
             in6_addr addr6;
-            char buff6[INET6_ADDRSTRLEN+1];
-            memcpy(buff6, host_.c_str(), INET6_ADDRSTRLEN);
-            inet_pton(AF_INET6, buff6, &(addr6.s6_addr16));
+            inet_pton(AF_INET6, host_.c_str(), &(addr6.s6_addr16));
         } catch (std::runtime_error) {
             throw std::invalid_argument("Invalid IPv6 address");
         }
@@ -257,9 +255,7 @@ Address::init(const std::string& addr) {
         }
         try {
             in_addr addr;
-            char buff[INET_ADDRSTRLEN+1];
-            memcpy(buff, host_.c_str(), INET_ADDRSTRLEN);
-            inet_pton(AF_INET, buff, &(addr));
+            inet_pton(AF_INET, host_.c_str(), &(addr));
         } catch (std::runtime_error) {
             throw std::invalid_argument("Invalid IPv4 address");
         }

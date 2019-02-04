@@ -270,8 +270,12 @@ Transport::asyncWriteImpl(Fd fd)
             }
             if (bytesWritten < 0) {
                 if (errno == EAGAIN || errno == EWOULDBLOCK) {
+
+                    auto bufferHolder = buffer.detach(totalWritten);
+
+                    // pop_front kills buffer - so we cannot continue loop or use buffer after this point
                     wq.pop_front();
-                    wq.push_front(WriteEntry(std::move(deferred), buffer.detach(totalWritten), flags));
+                    wq.push_front(WriteEntry(std::move(deferred), bufferHolder, flags));
                     reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
                 }
                 else {
@@ -354,16 +358,15 @@ void
 Transport::handleWriteQueue() {
     // Let's drain the queue
     for (;;) {
-        auto entry = writesQueue.popSafe();
-        if (!entry) break;
+        auto write = writesQueue.popSafe();
+        if (!write) break;
 
-        auto &write = entry->data();
-        auto fd = write.peerFd;
+        auto fd = write->peerFd;
         if (!isPeerFd(fd)) continue;
 
         {
             Guard guard(toWriteLock);
-            toWrite[fd].push_back(std::move(write));
+            toWrite[fd].push_back(std::move(*write));
         }
 
         reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
@@ -373,22 +376,20 @@ Transport::handleWriteQueue() {
 void
 Transport::handleTimerQueue() {
     for (;;) {
-        auto entry = timersQueue.popSafe();
-        if (!entry) break;
+        auto timer = timersQueue.popSafe();
+        if (!timer) break;
 
-        auto &timer = entry->data();
-        armTimerMsImpl(std::move(timer));
+        armTimerMsImpl(std::move(*timer));
     }
 }
 
 void
 Transport::handlePeerQueue() {
     for (;;) {
-        auto entry = peersQueue.popSafe();
-        if (!entry) break;
+        auto data = peersQueue.popSafe();
+        if (!data) break;
 
-        const auto &data = entry->data();
-        handlePeer(data.peer);
+        handlePeer(data->peer);
     }
 }
 

@@ -205,18 +205,21 @@ private:
     struct ConnectionEntry {
         ConnectionEntry(
                 Async::Resolver resolve, Async::Rejection reject,
-                std::shared_ptr<Connection> connection, const struct sockaddr* addr, socklen_t addr_len)
+                std::shared_ptr<Connection> connection, const struct sockaddr* _addr, socklen_t _addr_len)
             : resolve(std::move(resolve))
             , reject(std::move(reject))
             , connection(connection)
-            , addr(addr)
-            , addr_len(addr_len)
-        { }
+        {
+            addr_len = _addr_len;
+            memcpy(&addr, _addr, addr_len);
+        }
+
+        const sockaddr *getAddr() { return reinterpret_cast<const sockaddr *>(&addr); }
 
         Async::Resolver resolve;
         Async::Rejection reject;
         std::weak_ptr<Connection> connection;
-        const struct sockaddr* addr;
+        sockaddr_storage addr;
         socklen_t addr_len;
     };
 

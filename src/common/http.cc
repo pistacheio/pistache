@@ -26,12 +26,12 @@ using namespace std;
 namespace Pistache {
 namespace Http {
 
-template<typename H, typename Stream, typename... Args>
-typename std::enable_if<Header::IsHeader<H>::value, Stream&>::type
-writeHeader(Stream& stream, Args&& ...args) {
-    H header(std::forward<Args>(args)...);
-
-    stream << H::Name << ": ";
+    template<typename H, typename Stream, typename... Args>
+    typename std::enable_if<Header::IsHeader<H>::value, Stream&>::type
+    writeHeader(Stream& stream, Args&& ...args) {
+        H header(std::forward<Args>(args)...);
+        
+        stream << H::Name << ": ";
     header.write(stream);
 
     stream << crlf;
@@ -90,7 +90,7 @@ namespace {
         std::ostream os(&buf);
         for (const auto& cookie: cookies) {
             OUT(os << "Set-Cookie: ");
-            OUT(cookie.write(os));
+            OUT(os << cookie);
             OUT(os << crlf);
         }
 
@@ -822,7 +822,7 @@ Timeout::onTimeout(uint64_t numWakeup) {
 
 Private::Parser<Http::Request>&
 Handler::getParser(const std::shared_ptr<Tcp::Peer>& peer) const {
-    return *peer->getData<Private::Parser<Http::Request>>(ParserData);
+    return static_cast<Private::Parser<Http::Request>&>(*peer->getData(ParserData));
 }
 
 

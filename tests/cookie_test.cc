@@ -97,7 +97,7 @@ TEST(cookie_test, write_test) {
     c1.domain = Some(std::string("example.com"));
 
     std::ostringstream oss;
-    c1.write(oss);
+    oss << c1;
 
     ASSERT_EQ(oss.str(), "lang=fr-FR; Path=/; Domain=example.com");
 
@@ -110,13 +110,13 @@ TEST(cookie_test, write_test) {
     c2.expires = Some(FullDate(expires));
 
     oss.str("");
-    c2.write(oss);
+    oss << c2;
 
     Cookie c3("lang", "en-US");
     c3.secure = true;
     c3.ext.insert(std::make_pair("Scope", "Private"));
     oss.str("");
-    c3.write(oss);
+    oss << c3;
 
     ASSERT_EQ(oss.str(), "lang=en-US; Secure; Scope=Private");
 }

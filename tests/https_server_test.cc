@@ -21,7 +21,7 @@ static size_t write_cb(void *contents, size_t size, size_t nmemb, void *userp)
 struct HelloHandler : public Http::Handler {
     HTTP_PROTOTYPE(HelloHandler)
 
-    void onRequest(const Http::Request&, Http::ResponseWriter writer) {
+    void onRequest(const Http::Request&, Http::ResponseWriter writer) override {
         writer.send(Http::Code::Ok, "Hello, World!");
     }
 };
