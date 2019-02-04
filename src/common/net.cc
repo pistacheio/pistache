@@ -3,6 +3,9 @@
    
 */
 
+#include <pistache/net.h>
+#include <pistache/common.h>
+
 #include <stdexcept>
 #include <limits>
 #include <cstring>
@@ -12,16 +15,42 @@
 #include <ifaddrs.h>
 #include <iostream>
 
-#include <pistache/net.h>
-#include <pistache/common.h>
-
-using namespace std;
-
 namespace Pistache {
+
+namespace {
+    bool IsIPv4HostName(const std::string& host)
+    {
+        in_addr addr;
+        char buff[INET_ADDRSTRLEN + 1] = {0, };
+        std::copy(host.begin(), host.end(), buff);
+        int res = inet_pton(AF_INET, buff, &addr);
+        return res;
+    }
+
+    bool IsIPv6HostName(const std::string& host)
+    {
+        in6_addr addr6;
+        char buff6[INET6_ADDRSTRLEN + 1] = {0, };
+        std::copy(host.begin(), host.end(), buff6);
+        int res = inet_pton(AF_INET6, buff6, &(addr6.s6_addr16));
+        return res;
+    }
+}
 
 Port::Port(uint16_t port)
     : port(port)
-{ }
+{}
+
+Port::Port(const std::string& data)
+{
+    if (data.empty())
+        throw std::invalid_argument("Invalid port: empty port");
+    char *end = 0;
+    long port_num = strtol(data.c_str(), &end, 10);
+    if (*end != 0 || port_num < Port::min() || port_num > Port::max())
+        throw std::invalid_argument("Invalid port: " + data);
+    port = static_cast<uint16_t>(port_num);
+}
 
 bool
 Port::isReserved() const {
@@ -157,6 +186,48 @@ bool Ipv6::supported() {
     return supportsIpv6;
 }
 
+AddressParser::AddressParser(const std::string& data)
+{
+    std::size_t end_pos = data.find(']');
+    std::size_t start_pos = data.find('[');
+    if (start_pos != std::string::npos &&
+        end_pos != std::string::npos &&
+        start_pos < end_pos)
+    {
+        host_ = data.substr(start_pos, end_pos + 1);
+        family_ = AF_INET6;
+        ++end_pos;
+    }
+    else
+    {
+        end_pos = data.find(':');
+        host_ = data.substr(0, end_pos);
+        family_ = AF_INET;
+    }
+    
+    if (end_pos != std::string::npos)
+    {
+        port_ = data.substr(end_pos + 1);
+        if (port_.empty())
+            throw std::invalid_argument("Invalid port");
+    }
+}
+
+const std::string& AddressParser::rawHost() const
+{
+    return host_;
+}
+
+const std::string& AddressParser::rawPort() const
+{
+    return port_;
+}
+
+int AddressParser::family() const
+{
+    return family_;
+}
+
 Address::Address()
     : host_("")
     , port_(0)
@@ -228,46 +299,49 @@ Address::family() const {
     return family_;
 }
 
-void
-Address::init(const std::string& addr) {
-    unsigned long pos = addr.find(']');
-    unsigned long s_pos = addr.find('[');
-    if (pos != std::string::npos && s_pos != std::string::npos) {
-        //IPv6 address
-        host_ = addr.substr(s_pos+1, pos-1);
-        family_ = AF_INET6;
-        try {
-            in6_addr addr6;
-            inet_pton(AF_INET6, host_.c_str(), &(addr6.s6_addr16));
-        } catch (std::runtime_error) {
+void Address::init(const std::string& addr)
+{
+    AddressParser parser(addr);
+    family_ = parser.family();
+    if (family_ == AF_INET6)
+    {
+        const std::string& raw_host = parser.rawHost();
+        assert(raw_host.size() > 2);
+        host_ = addr.substr(1, raw_host.size() - 2);
+
+        if (!IsIPv6HostName(host_))
+        {
             throw std::invalid_argument("Invalid IPv6 address");
         }
-        pos++;
-    } else {
-        //IPv4 address
-        pos = addr.find(':');
-        if (pos == std::string::npos)
-            throw std::invalid_argument("Invalid address");
-        host_ = addr.substr(0, pos);
-        family_ = AF_INET;
-        if (host_ == "*") {
+    }
+    else if (family_ == AF_INET)
+    {
+        host_ = parser.rawHost();
+        if (host_ == "*")
+        {
             host_ = "0.0.0.0";
         }
-        try {
-            in_addr addr;
-            inet_pton(AF_INET, host_.c_str(), &(addr));
-        } catch (std::runtime_error) {
+        else if (host_ == "localhost")
+        {
+            host_ = "127.0.0.1";
+        }
+
+        if (!IsIPv4HostName(host_))
+        {
             throw std::invalid_argument("Invalid IPv4 address");
         }
     }
-    char *end;
-    const std::string portPart = addr.substr(pos + 1);
+    else
+    { assert(false); }
+
+    const std::string& portPart = parser.rawPort();
     if (portPart.empty())
-        throw std::invalid_argument("Invalid port");
+            throw std::invalid_argument("Invalid port");
+    char *end = 0;
     long port = strtol(portPart.c_str(), &end, 10);
     if (*end != 0 || port < Port::min() || port > Port::max())
         throw std::invalid_argument("Invalid port");
-    port_ = static_cast<uint16_t>(port);
+    port_ = Port(port);
 }
 
 Error::Error(const char* message)

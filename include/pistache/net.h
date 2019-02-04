@@ -12,8 +12,7 @@
 #include <limits>
 
 #include <sys/socket.h>
-
-#include <pistache/common.h>
+#include <netdb.h>
 
 #ifndef _KERNEL_FASTOPEN
 #define _KERNEL_FASTOPEN
@@ -65,6 +64,7 @@ private:
 class Port {
 public:
     Port(uint16_t port = 0);
+    explicit Port(const std::string& data);
 
     operator uint16_t() const { return port; }
 
@@ -121,6 +121,18 @@ private:
     uint16_t f;
     uint16_t g;
     uint16_t h;
+};
+
+class AddressParser {
+public:
+    explicit AddressParser(const std::string& data);
+    const std::string& rawHost() const;
+    const std::string& rawPort() const;
+    int family() const;
+private:
+    std::string host_;
+    std::string port_;
+    int family_;
 };
 
 class Address {

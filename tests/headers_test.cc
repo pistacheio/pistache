@@ -256,6 +256,10 @@ TEST(headers_test, host) {
     ASSERT_EQ(host.host(), "www.w3.org");
     ASSERT_EQ(host.port(), 80);
 
+    host.parse("www.example.com:8080");
+    ASSERT_EQ(host.host(), "www.example.com");
+    ASSERT_EQ(host.port(), 8080);
+
     host.parse("localhost:8080");
     ASSERT_EQ(host.host(), "localhost");
     ASSERT_EQ(host.port(), 8080);
