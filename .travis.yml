@@ -102,11 +102,11 @@ before_script:
   - cd ${TRAVIS_BUILD_DIR}
 
     # Use Debug builds for building and running examples
-  - cmake -H. -BBuild-Debug \
-    -DCMAKE_BUILD_TYPE=Debug \
-    -DPISTACHE_BUILD_EXAMPLES=true \
-    -DPISTACHE_BUILD_TESTS=true \
-    -DPISTACHE_SSL=true 
+  - cmake -H. -BBuild-Debug
+    -DCMAKE_BUILD_TYPE=Debug
+    -DPISTACHE_BUILD_EXAMPLES=true
+    -DPISTACHE_BUILD_TESTS=true
+    -DPISTACHE_SSL=true
 
     # Release build
   - cmake -H. -BBuild-Release -DCMAKE_BUILD_TYPE=Release -DPISTACHE_SSL=true 
