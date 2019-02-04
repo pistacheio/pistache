@@ -15,24 +15,42 @@ matrix:
     env: COMPILER=clang++-4.0
     addons:
       apt:
-        packages: ['cmake', 'clang-4.0', 'libstdc++-6-dev']
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-4.0']
+        packages: [
+          'cmake',
+          'clang-4.0',
+          'libstdc++-6-dev',
+          'libssl-dev',
+          'libcurl4-openssl-dev'
+        ]
 
   - os: linux
     compiler: clang
     env: COMPILER=clang++-5.0
     addons:
       apt:
-        packages: ['cmake', 'clang-5.0', 'libstdc++-6-dev']
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-5.0']
+        packages: [
+          'cmake',
+          'clang-5.0',
+          'libstdc++-6-dev',
+          'libssl-dev',
+          'libcurl4-openssl-dev'
+        ]
 
   - os: linux
     compiler: clang
     env: COMPILER=clang++-6.0
     addons:
       apt:
-        packages: ['cmake', 'clang-6.0', 'libstdc++-6-dev']
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
+        packages: [
+          'cmake',
+          'clang-6.0',
+          'libstdc++-6-dev',
+          'libssl-dev',
+          'libcurl4-openssl-dev'
+        ]
 
   # Linux GCC builds
   - os: linux
@@ -41,7 +59,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-4.9']
+        packages: ['g++-4.9', 'libssl-dev', 'libcurl4-openssl-dev']
 
   - os: linux
     compiler: gcc
@@ -49,7 +67,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-5']
+        packages: ['g++-5', 'libssl-dev', 'libcurl4-openssl-dev']
 
   - os: linux
     compiler: gcc
@@ -57,7 +75,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-6']
+        packages: ['g++-6', 'libssl-dev', 'libcurl4-openssl-dev']
 
   - os: linux
     compiler: gcc
@@ -65,7 +83,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-7']
+        packages: ['g++-7', 'libssl-dev', 'libcurl4-openssl-dev']
 
   - os: linux
     compiler: gcc
@@ -73,7 +91,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-8']
+        packages: ['g++-8', 'libssl-dev', 'libcurl4-openssl-dev']
 
 install:
   - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
@@ -84,7 +102,11 @@ before_script:
   - cd ${TRAVIS_BUILD_DIR}
 
     # Use Debug builds for building and running examples
-  - cmake -H. -BBuild-Debug -DCMAKE_BUILD_TYPE=Debug -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_TESTS=true -DPISTACHE_SSL=true 
+  - cmake -H. -BBuild-Debug \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DPISTACHE_BUILD_EXAMPLES=true \
+    -DPISTACHE_BUILD_TESTS=true \
+    -DPISTACHE_SSL=true 
 
     # Release build
   - cmake -H. -BBuild-Release -DCMAKE_BUILD_TYPE=Release -DPISTACHE_SSL=true 
@@ -93,6 +115,7 @@ script:
   - # Go to debug build
   - cd Build-Debug
   - make -j 2 all test ARGS="-V"
+
   - # Go to release build
   - cd ../Build-Release
   - make -j 2
