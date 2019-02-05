@@ -60,7 +60,6 @@ public:
         const CharT* gptr = this->gptr();
         return *(gptr + 1);
     }
-
 };
 
 template<typename CharT = char>
@@ -74,7 +73,6 @@ public:
     RawStreamBuf(char* begin, size_t len) {
         Base::setg(begin, begin, begin + len);
     }
-
 };
 
 // Make the buffer dynamic
@@ -123,33 +121,70 @@ private:
 template<typename CharT>
 size_t ArrayStreamBuf<CharT>::maxSize = Const::DefaultMaxPayload;
 
+// struct Buffer {
+//     Buffer()
+//         : data(nullptr)
+//         , len(0)
+//         , isOwned(false)
+//         , isDetached(false)
+//     { }
+
+//     Buffer(char * _data, size_t _len, bool _own = false, bool _detached = false)
+//         : data(_data)
+//         , len(_len)
+//         , isOwned(_own)
+//         , isDetached(_detached)
+//     { }
+
+//     virtual ~Buffer() {
+//         if (isOwned != false && data != nullptr) {
+//             delete[] data;
+//         }
+//     }
+
+//     Buffer detach(size_t fromIndex = 0) const {
+//         if (fromIndex > len)
+//             throw std::invalid_argument("Invalid index (> len)");
+
+//         size_t retainedLen = len - fromIndex;
+//         char *newData = new char[retainedLen+1]();
+//         std::copy(data + fromIndex, data + len, newData);
+//         return Buffer(newData, retainedLen, true, true);
+//     }
+
+//     char* data = nullptr;
+//     const size_t len = 0;
+//     const bool isOwned = false;
+//     const bool isDetached = false;
+// };
+
 struct Buffer {
-    Buffer()
-        : data(nullptr)
-        , len(0)
-        , isOwned(false)
-    { }
 
-    Buffer(const char * const _data, size_t _len, bool _own = false)
-        : data(_data)
-        , len(_len)
-        , isOwned(_own)
-    { }
+  Buffer() : data(nullptr), length(0), isDetached(false) {}
+  Buffer(std::shared_ptr<char[]> _data, int _length, bool _isDetached = false) : data(_data), length(_length), isDetached(_isDetached) {}
+  Buffer(const char * _data, int _length, bool _isDetached = false) : data(nullptr), length(_length), isDetached(_isDetached) {
+    data = std::shared_ptr<char[]>(new char[_length+1]());
+    std::copy(_data, _data + _length + 1, data.get());
+  }
 
-    Buffer detach(size_t fromIndex = 0) const {
-        if (fromIndex > len)
-            throw std::invalid_argument("Invalid index (> len)");
+  Buffer detach(int fromIndex){
 
-        size_t retainedLen = len - fromIndex;
-        char *newData = new char[retainedLen];
-        std::copy(data + fromIndex, data + len, newData);
+      if (!data) Buffer();
+      if (length < fromIndex)
+        throw std::range_error("Trying to detach buffer from an index bigger than lengthght.");
 
-        return Buffer(newData, retainedLen, true);
-    }
+      auto newDatalength = length - fromIndex;
+      auto newData = std::shared_ptr<char[]>(new char[newDatalength + 1]());
+      std::copy(data.get() + fromIndex, data.get() + length, newData.get());
 
-    const char* const data;
-    const size_t len;
-    const bool isOwned;
+      return Buffer(newData, newDatalength, true);
+
+  }
+
+  std::shared_ptr<char[]> data;
+  int length;
+  int isDetached;
+  
 };
 
 struct FileBuffer {
@@ -165,7 +200,7 @@ struct FileBuffer {
     Fd fd() const { return fd_; }
     size_t size() const { return size_; }
 
-private:
+  private:
     std::string fileName_;
     Fd fd_;
     size_t size_;
@@ -206,7 +241,7 @@ public:
     }
 
     Buffer buffer() const {
-        return Buffer(data_.data(), pptr() - &data_[0]);
+        return Buffer((char*) data_.data(), pptr() - &data_[0]);
     }
 
     void clear() {
@@ -214,7 +249,7 @@ public:
         this->setp(&data_[0], &data_[0] + data_.capacity());
     }
 
-protected:
+  protected:
     int_type overflow(int_type ch);
 
 private:
@@ -261,7 +296,7 @@ public:
             return gptr;
         }
 
-    private:
+      private:
         StreamCursor& cursor;
         size_t position;
         char *eback;

@@ -79,15 +79,18 @@ private:
     struct BufferHolder {
         enum Type { Raw, File };
 
+        // explicit BufferHolder(const BufferHolder &buffer, off_t offset = 0)
+        //     : u(buffer), size_(buffer.len), offset_(offset), type(Raw) {}
+
         explicit BufferHolder(const Buffer& buffer, off_t offset = 0)
-            : u(buffer)
-            , size_(buffer.len)
+            : _raw(buffer)
+            , size_(buffer.length)
             , offset_(offset)
             , type(Raw)
         { }
 
         explicit BufferHolder(const FileBuffer& buffer, off_t offset = 0)
-            : u(buffer.fd())
+            : _fd(buffer.fd())
             , size_(buffer.size())
             , offset_(offset)
             , type(File)
@@ -101,44 +104,51 @@ private:
         Fd fd() const {
             if (!isFile())
                 throw std::runtime_error("Tried to retrieve fd of a non-filebuffer");
-
-            return u.fd;
-
+            return _fd;
         }
 
         Buffer raw() const {
             if (!isRaw())
                 throw std::runtime_error("Tried to retrieve raw data of a non-buffer");
-
-            return u.raw;
+            return _raw;
         }
 
-        BufferHolder detach(size_t offset = 0) const {
+        BufferHolder detach(size_t offset = 0) {
             if (!isRaw())
-                return BufferHolder(u.fd, size_, offset);
+                return BufferHolder(_fd, size_, offset);
 
-            if (u.raw.isOwned)
-                return BufferHolder(u.raw, offset);
+            if (_raw.isDetached)
+                return BufferHolder(_raw, offset);
 
-            auto detached = u.raw.detach(offset);
+            auto detached = _raw.detach(offset);
             return BufferHolder(detached);
+
         }
 
-    private:
+        // virtual ~BufferHolder() {}
+
+      private:
         BufferHolder(Fd fd, size_t size, off_t offset = 0)
-         : u(fd)
+         : _fd(fd)
          , size_(size)
          , offset_(offset)
          , type(File)
         { }
 
-        union U {
-            Buffer raw;
-            Fd fd;
+        Buffer _raw;
+        Fd _fd;
 
-            U(Buffer buffer) : raw(buffer) { }
-            U(Fd fd_) : fd(fd_) { }
-        } u;
+        // union U {
+
+        //     Buffer raw;
+        //     Fd fd;
+
+        //     U(Buffer buffer) : raw(buffer) { }
+        //     U(Fd fd_) : fd(fd_) { }
+        //     ~U() {
+        //         if (this.isRaw()) {}
+        //     }
+        // } u;
         size_t size_= 0;
         off_t offset_ = 0;
         Type type;
@@ -225,9 +235,11 @@ private:
     std::shared_ptr<Peer>& getPeer(Polling::Tag tag);
 
     void
-    armTimerMs(Fd fd,
-              std::chrono::milliseconds value,
-              Async::Deferred<uint64_t> deferred);
+    armTimerMs(
+        Fd fd,
+        std::chrono::milliseconds value,
+        Async::Deferred<uint64_t> deferred
+    );
 
     void armTimerMsImpl(TimerEntry entry);
 
