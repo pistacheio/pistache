@@ -26,22 +26,25 @@ namespace Http {
 
 static constexpr const char* UA = "pistache/0.1";
 
-std::pair<StringView, StringView>
-splitUrl(const std::string& url) {
-    RawStreamBuf<char> buf(const_cast<char *>(&url[0]), url.size());
-    StreamCursor cursor(&buf);
+namespace
+{
+    std::pair<StringView, StringView> splitUrl(const std::string& url)
+    {
+        RawStreamBuf<char> buf(const_cast<char *>(&url[0]), url.size());
+        StreamCursor cursor(&buf);
 
-    match_string("http://", std::strlen("http://"), cursor);
-    match_string("www", std::strlen("www"), cursor);
-    match_literal('.', cursor);
+        match_string("http://", std::strlen("http://"), cursor);
+        match_string("www", std::strlen("www"), cursor);
+        match_literal('.', cursor);
 
-    StreamCursor::Token hostToken(cursor);
-    match_until({ '?', '/' }, cursor);
+        StreamCursor::Token hostToken(cursor);
+        match_until({ '?', '/' }, cursor);
 
-    StringView host(hostToken.rawText(), hostToken.size());
-    StringView page(cursor.offset(), buf.endptr());
+        StringView host(hostToken.rawText(), hostToken.size());
+        StringView page(cursor.offset(), buf.endptr());
 
-    return std::make_pair(std::move(host), std::move(page));
+        return std::make_pair(std::move(host), std::move(page));
+    }
 }
 
 struct ExceptionPrinter {
@@ -174,7 +177,7 @@ Transport::onReady(const Aio::FdSet& fds) {
                     // We are connected, we can start reading data now
                     auto connection = connIt->second.connection.lock();
                     if (connection) {
-                        reactor()->modifyFd(key(), connection->fd, NotifyOn::Read);
+                        reactor()->modifyFd(key(), connection->fd(), NotifyOn::Read);
                     } else {
                         throw std::runtime_error("Connection error");
                     }
@@ -228,7 +231,7 @@ Transport::asyncSendRequestImpl(
     if (!conn)
         throw std::runtime_error("Send request error");
 
-    auto fd = conn->fd;
+    auto fd = conn->fd();
 
     ssize_t totalWritten = 0;
     for (;;) {
@@ -284,17 +287,17 @@ Transport::handleConnectionQueue() {
         if (!conn) {
             throw std::runtime_error("Connection error");
         }
-        int res = ::connect(conn->fd, data->getAddr(), data->addr_len);
+        int res = ::connect(conn->fd(), data->getAddr(), data->addr_len);
         if (res == -1) {
             if (errno == EINPROGRESS) {
-                reactor()->registerFdOneShot(key(), conn->fd, NotifyOn::Write | NotifyOn::Hangup | NotifyOn::Shutdown);
+                reactor()->registerFdOneShot(key(), conn->fd(), NotifyOn::Write | NotifyOn::Hangup | NotifyOn::Shutdown);
             }
             else {
                 data->reject(Error::system("Failed to connect"));
                 continue;
             }
         }
-        connections.insert(std::make_pair(conn->fd, std::move(*data)));
+        connections.insert(std::make_pair(conn->fd(), std::move(*data)));
     }
 }
 
@@ -305,7 +308,7 @@ Transport::handleIncoming(std::shared_ptr<Connection> connection) {
     ssize_t totalBytes = 0;
 
     for (;;) {
-        ssize_t bytes = recv(connection->fd, buffer + totalBytes, Const::MaxBuffer - totalBytes, 0);
+        ssize_t bytes = recv(connection->fd(), buffer + totalBytes, Const::MaxBuffer - totalBytes, 0);
         if (bytes == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if (totalBytes > 0) {
@@ -322,7 +325,7 @@ Transport::handleIncoming(std::shared_ptr<Connection> connection) {
             } else {
                 connection->handleError("Remote closed connection");
             }
-            connections.erase(connection->fd);
+            connections.erase(connection->fd());
             connection->close();
             break;
         }
@@ -348,7 +351,7 @@ Transport::handleTimeout(const std::shared_ptr<Connection>& connection) {
 }
 
 Connection::Connection()
-    : fd(-1)
+    : fd_(-1)
     , requestEntry(nullptr)
 {
     state_.store(static_cast<uint32_t>(State::Idle));
@@ -382,7 +385,7 @@ Connection::connect(const Address& addr)
         make_non_blocking(sfd);
 
         connectionState_.store(Connecting);
-        fd = sfd;
+        fd_ = sfd;
 
         transport_->asyncConnect(shared_from_this(), addr->ai_addr, addr->ai_addrlen)
             .then([=]() {
@@ -402,7 +405,7 @@ Connection::connect(const Address& addr)
 std::string
 Connection::dump() const {
     std::ostringstream oss;
-    oss << "Connection(fd = " << fd << ", src_port = ";
+    oss << "Connection(fd = " << fd_ << ", src_port = ";
     oss << ntohs(saddr.sin_port) << ")";
     return oss.str();
 }
@@ -420,7 +423,7 @@ Connection::isConnected() const {
 void
 Connection::close() {
     connectionState_.store(NotConnected);
-    ::close(fd);
+    ::close(fd_);
 }
 
 void
@@ -434,6 +437,12 @@ Connection::associateTransport(const std::shared_ptr<Transport>& transport) {
 bool
 Connection::hasTransport() const {
     return transport_ != nullptr;
+}
+
+Fd Connection::fd() const
+{
+    assert(fd_ != -1);
+    return fd_;
 }
 
 void

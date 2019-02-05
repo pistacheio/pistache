@@ -40,8 +40,8 @@ public:
     Peer(const Address& addr);
     ~Peer() {}
     
-    Address address() const;
-    std::string hostname() const;
+    const Address& address() const;
+    const std::string& hostname() const;
 
     void associateFd(Fd fd);
     Fd fd() const;
