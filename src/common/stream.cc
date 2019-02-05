@@ -17,39 +17,38 @@
 namespace Pistache {
 
 Buffer::Buffer()
-    : data(nullptr)
+    : data()
     , length(0)
     , isDetached(false)
 { }
 
-Buffer::Buffer(std::shared_ptr<char> _data, int _length, bool _isDetached)
-    : data(_data)
+Buffer::Buffer(std::string _data, int _length, bool _isDetached)
+    : data(std::move(_data))
     , length(_length)
     , isDetached(_isDetached)
 { }
 
 Buffer::Buffer(const char * _data, int _length, bool _isDetached)
-    : data(nullptr)
+    : data()
     , length(_length)
     , isDetached(_isDetached)
 {
-    data = std::shared_ptr<char>(new char[_length+1](), std::default_delete<char[]>());
-    std::copy(_data, _data + _length + 1, data.get());
+    data.resize(_length + 1);
+    data.assign(_data, _length + 1);
 }
 
 Buffer Buffer::detach(size_t fromIndex)
 {
-    if (!data)
+    if (data.empty())
         return Buffer();
 
     if (length < fromIndex)
         throw std::range_error("Trying to detach buffer from an index bigger than lengthght.");
 
     auto newDatalength = length - fromIndex;
-    auto newData = std::shared_ptr<char>(new char[newDatalength + 1](), std::default_delete<char[]>());
-    std::copy(data.get() + fromIndex, data.get() + length, newData.get());
+    std::string newData = data.substr(fromIndex, newDatalength);
 
-    return Buffer(newData, newDatalength, true);
+    return Buffer(std::move(newData), newDatalength, true);
   }
 
 FileBuffer::FileBuffer(const std::string& fileName)

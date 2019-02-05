@@ -124,12 +124,12 @@ size_t ArrayStreamBuf<CharT>::maxSize = Const::DefaultMaxPayload;
 struct Buffer
 {
     Buffer();
-    Buffer(std::shared_ptr<char> _data, int _length, bool _isDetached = false);
+    Buffer(std::string _data, int _length, bool _isDetached = false);
     Buffer(const char * _data, int _length, bool _isDetached = false);
 
     Buffer detach(size_t fromIndex);
 
-    std::shared_ptr<char> data;
+    std::string data;
     size_t length;
     int isDetached;
 };

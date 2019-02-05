@@ -237,7 +237,7 @@ Transport::asyncWriteImpl(Fd fd)
 
             if (buffer.isRaw()) {
                 auto raw = buffer.raw();
-                auto ptr = raw.data.get() + totalWritten;
+                auto ptr = raw.data.c_str() + totalWritten;
 
 #ifdef PISTACHE_USE_SSL
                 auto it = peers.find(fd);
