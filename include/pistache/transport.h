@@ -79,9 +79,6 @@ private:
     struct BufferHolder {
         enum Type { Raw, File };
 
-        // explicit BufferHolder(const BufferHolder &buffer, off_t offset = 0)
-        //     : u(buffer), size_(buffer.len), offset_(offset), type(Raw) {}
-
         explicit BufferHolder(const Buffer& buffer, off_t offset = 0)
             : _raw(buffer)
             , size_(buffer.length)
@@ -125,8 +122,6 @@ private:
 
         }
 
-        // virtual ~BufferHolder() {}
-
       private:
         BufferHolder(Fd fd, size_t size, off_t offset = 0)
          : _fd(fd)
@@ -138,17 +133,6 @@ private:
         Buffer _raw;
         Fd _fd;
 
-        // union U {
-
-        //     Buffer raw;
-        //     Fd fd;
-
-        //     U(Buffer buffer) : raw(buffer) { }
-        //     U(Fd fd_) : fd(fd_) { }
-        //     ~U() {
-        //         if (this.isRaw()) {}
-        //     }
-        // } u;
         size_t size_= 0;
         off_t offset_ = 0;
         Type type;

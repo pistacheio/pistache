@@ -121,49 +121,12 @@ private:
 template<typename CharT>
 size_t ArrayStreamBuf<CharT>::maxSize = Const::DefaultMaxPayload;
 
-// struct Buffer {
-//     Buffer()
-//         : data(nullptr)
-//         , len(0)
-//         , isOwned(false)
-//         , isDetached(false)
-//     { }
-
-//     Buffer(char * _data, size_t _len, bool _own = false, bool _detached = false)
-//         : data(_data)
-//         , len(_len)
-//         , isOwned(_own)
-//         , isDetached(_detached)
-//     { }
-
-//     virtual ~Buffer() {
-//         if (isOwned != false && data != nullptr) {
-//             delete[] data;
-//         }
-//     }
-
-//     Buffer detach(size_t fromIndex = 0) const {
-//         if (fromIndex > len)
-//             throw std::invalid_argument("Invalid index (> len)");
-
-//         size_t retainedLen = len - fromIndex;
-//         char *newData = new char[retainedLen+1]();
-//         std::copy(data + fromIndex, data + len, newData);
-//         return Buffer(newData, retainedLen, true, true);
-//     }
-
-//     char* data = nullptr;
-//     const size_t len = 0;
-//     const bool isOwned = false;
-//     const bool isDetached = false;
-// };
-
 struct Buffer {
 
   Buffer() : data(nullptr), length(0), isDetached(false) {}
-  Buffer(std::shared_ptr<char[]> _data, int _length, bool _isDetached = false) : data(_data), length(_length), isDetached(_isDetached) {}
+  Buffer(std::shared_ptr<char> _data, int _length, bool _isDetached = false) : data(_data), length(_length), isDetached(_isDetached) {}
   Buffer(const char * _data, int _length, bool _isDetached = false) : data(nullptr), length(_length), isDetached(_isDetached) {
-    data = std::shared_ptr<char[]>(new char[_length+1]());
+    data = std::shared_ptr<char>(new char[_length+1](), std::default_delete<char[]>());
     std::copy(_data, _data + _length + 1, data.get());
   }
 
@@ -174,17 +137,17 @@ struct Buffer {
         throw std::range_error("Trying to detach buffer from an index bigger than lengthght.");
 
       auto newDatalength = length - fromIndex;
-      auto newData = std::shared_ptr<char[]>(new char[newDatalength + 1]());
+      auto newData = std::shared_ptr<char>(new char[newDatalength + 1](), std::default_delete<char[]>());
       std::copy(data.get() + fromIndex, data.get() + length, newData.get());
 
       return Buffer(newData, newDatalength, true);
 
   }
 
-  std::shared_ptr<char[]> data;
+  std::shared_ptr<char> data;
   int length;
   int isDetached;
-  
+
 };
 
 struct FileBuffer {
