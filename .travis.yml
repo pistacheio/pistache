@@ -21,7 +21,8 @@ matrix:
           'clang-4.0',
           'libstdc++-6-dev',
           'libssl-dev',
-          'libcurl4-openssl-dev'
+          'libcurl4-openssl-dev',
+          'gdb'
         ]
 
   - os: linux
@@ -35,7 +36,8 @@ matrix:
           'clang-5.0',
           'libstdc++-6-dev',
           'libssl-dev',
-          'libcurl4-openssl-dev'
+          'libcurl4-openssl-dev',
+          'gdb'
         ]
 
   - os: linux
@@ -49,7 +51,8 @@ matrix:
           'clang-6.0',
           'libstdc++-6-dev',
           'libssl-dev',
-          'libcurl4-openssl-dev'
+          'libcurl4-openssl-dev',
+          'gdb'
         ]
 
   # Linux GCC builds
@@ -59,7 +62,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-4.9', 'libssl-dev', 'libcurl4-openssl-dev']
+        packages: ['g++-4.9', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb']
 
   - os: linux
     compiler: gcc
@@ -67,7 +70,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-5', 'libssl-dev', 'libcurl4-openssl-dev']
+        packages: ['g++-5', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb']
 
   - os: linux
     compiler: gcc
@@ -75,7 +78,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-6', 'libssl-dev', 'libcurl4-openssl-dev']
+        packages: ['g++-6', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb']
 
   - os: linux
     compiler: gcc
@@ -83,7 +86,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-7', 'libssl-dev', 'libcurl4-openssl-dev']
+        packages: ['g++-7', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb']
 
   - os: linux
     compiler: gcc
@@ -91,7 +94,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-8', 'libssl-dev', 'libcurl4-openssl-dev']
+        packages: ['g++-8', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb']
 
 install:
   - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
@@ -101,21 +104,28 @@ before_script:
   - export CXX=${COMPILER}
   - cd ${TRAVIS_BUILD_DIR}
 
-    # Use Debug builds for building and running examples
+  # Debug build
   - cmake -H. -BBuild-Debug
     -DCMAKE_BUILD_TYPE=Debug
     -DPISTACHE_BUILD_EXAMPLES=true
     -DPISTACHE_BUILD_TESTS=true
     -DPISTACHE_SSL=true
 
-    # Release build
-  - cmake -H. -BBuild-Release -DCMAKE_BUILD_TYPE=Release -DPISTACHE_SSL=true 
+  # Enable core dumps
+  - ulimit -c unlimited -S
+
+  # Release build
+  - cmake -H. -BBuild-Release -DCMAKE_BUILD_TYPE=Release -DPISTACHE_SSL=true
 
 script:
-  - # Go to debug build
+  - # Debug build
   - cd Build-Debug
   - make -j 2 all test ARGS="-V"
 
-  - # Go to release build
+  - # Release build
   - cd ../Build-Release
   - make -j 2
+
+after_failure:
+  - COREFILE=$(find . -maxdepth 1 -name "core*" | head -n 1) # find core file
+  - if [[ -f "$COREFILE" ]]; then gdb -c "$COREFILE" example -ex "thread apply all bt" -ex "set pagination 0" -batch; fi
