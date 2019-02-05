@@ -30,8 +30,6 @@ namespace Http {
 class ConnectionPool;
 class Transport;
 
-std::pair<StringView, StringView> splitUrl(const std::string& url);
-
 struct Connection : public std::enable_shared_from_this<Connection> {
 
     friend class ConnectionPool;
@@ -96,8 +94,7 @@ struct Connection : public std::enable_shared_from_this<Connection> {
             Async::Rejection reject,
             OnDone onDone);
 
-    Fd fd;
-
+    Fd fd() const;
     void handleResponsePacket(const char* buffer, size_t totalBytes);
     void handleError(const char* error);
     void handleTimeout();
@@ -123,6 +120,8 @@ private:
         std::shared_ptr<TimerPool::Entry> timer;
         OnDone onDone;
     };
+
+    Fd fd_;
 
     struct sockaddr_in saddr;
     std::unique_ptr<RequestEntry> requestEntry;
