@@ -29,3 +29,7 @@ build
 *.exe
 *.out
 *.app
+
+# IDE FIles
+\.idea/
+\.vscode/
