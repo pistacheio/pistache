@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <pistache/os.h>
+
 #include <cstddef>
 #include <stdexcept>
 #include <cstring>
@@ -15,7 +17,6 @@
 #include <iostream>
 #include <string>
 
-#include <pistache/os.h>
 
 namespace Pistache {
 
@@ -124,8 +125,8 @@ size_t ArrayStreamBuf<CharT>::maxSize = Const::DefaultMaxPayload;
 struct Buffer
 {
     Buffer();
-    Buffer(std::string _data, int _length, bool _isDetached = false);
-    Buffer(const char * _data, int _length, bool _isDetached = false);
+    Buffer(std::string data, int length, bool isDetached = false);
+    Buffer(const char * data, int length, bool isDetached = false);
 
     Buffer detach(size_t fromIndex);
 

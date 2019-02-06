@@ -3,6 +3,8 @@
 
 */
 
+#include <pistache/stream.h>
+
 #include <iostream>
 #include <algorithm>
 #include <string>
@@ -12,7 +14,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#include <pistache/stream.h>
 
 namespace Pistache {
 
@@ -22,19 +23,19 @@ Buffer::Buffer()
     , isDetached(false)
 { }
 
-Buffer::Buffer(std::string _data, int _length, bool _isDetached)
-    : data(std::move(_data))
-    , length(_length)
-    , isDetached(_isDetached)
+Buffer::Buffer(std::string data, int length, bool isDetached)
+    : data(std::move(data))
+    , length(length)
+    , isDetached(isDetached)
 { }
 
-Buffer::Buffer(const char * _data, int _length, bool _isDetached)
+Buffer::Buffer(const char* data, int length, bool isDetached)
     : data()
-    , length(_length)
-    , isDetached(_isDetached)
+    , length(length)
+    , isDetached(isDetached)
 {
-    data.resize(_length + 1);
-    data.assign(_data, _length + 1);
+    this->data.resize(length + 1);
+    this->data.assign(data, length + 1);
 }
 
 Buffer Buffer::detach(size_t fromIndex)
