@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <pistache/os.h>
+
 #include <cstddef>
 #include <stdexcept>
 #include <cstring>
@@ -15,7 +17,6 @@
 #include <iostream>
 #include <string>
 
-#include <pistache/os.h>
 
 namespace Pistache {
 
@@ -121,33 +122,17 @@ private:
 template<typename CharT>
 size_t ArrayStreamBuf<CharT>::maxSize = Const::DefaultMaxPayload;
 
-struct Buffer {
+struct Buffer
+{
+    Buffer();
+    Buffer(std::string data, int length, bool isDetached = false);
+    Buffer(const char * data, int length, bool isDetached = false);
 
-  Buffer() : data(nullptr), length(0), isDetached(false) {}
-  Buffer(std::shared_ptr<char> _data, int _length, bool _isDetached = false) : data(_data), length(_length), isDetached(_isDetached) {}
-  Buffer(const char * _data, int _length, bool _isDetached = false) : data(nullptr), length(_length), isDetached(_isDetached) {
-    data = std::shared_ptr<char>(new char[_length+1](), std::default_delete<char[]>());
-    std::copy(_data, _data + _length + 1, data.get());
-  }
+    Buffer detach(size_t fromIndex);
 
-  Buffer detach(int fromIndex){
-
-      if (!data) Buffer();
-      if (length < fromIndex)
-        throw std::range_error("Trying to detach buffer from an index bigger than lengthght.");
-
-      auto newDatalength = length - fromIndex;
-      auto newData = std::shared_ptr<char>(new char[newDatalength + 1](), std::default_delete<char[]>());
-      std::copy(data.get() + fromIndex, data.get() + length, newData.get());
-
-      return Buffer(newData, newDatalength, true);
-
-  }
-
-  std::shared_ptr<char> data;
-  int length;
-  int isDetached;
-
+    std::string data;
+    size_t length;
+    int isDetached;
 };
 
 struct FileBuffer {

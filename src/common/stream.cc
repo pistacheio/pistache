@@ -3,6 +3,8 @@
 
 */
 
+#include <pistache/stream.h>
+
 #include <iostream>
 #include <algorithm>
 #include <string>
@@ -12,10 +14,43 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#include <pistache/stream.h>
 
 namespace Pistache {
 
+Buffer::Buffer()
+    : data()
+    , length(0)
+    , isDetached(false)
+{ }
+
+Buffer::Buffer(std::string data, int length, bool isDetached)
+    : data(std::move(data))
+    , length(length)
+    , isDetached(isDetached)
+{ }
+
+Buffer::Buffer(const char* data, int length, bool isDetached)
+    : data()
+    , length(length)
+    , isDetached(isDetached)
+{
+    this->data.resize(length + 1);
+    this->data.assign(data, length + 1);
+}
+
+Buffer Buffer::detach(size_t fromIndex)
+{
+    if (data.empty())
+        return Buffer();
+
+    if (length < fromIndex)
+        throw std::range_error("Trying to detach buffer from an index bigger than lengthght.");
+
+    auto newDatalength = length - fromIndex;
+    std::string newData = data.substr(fromIndex, newDatalength);
+
+    return Buffer(std::move(newData), newDatalength, true);
+  }
 
 FileBuffer::FileBuffer(const std::string& fileName)
     : fileName_(fileName)

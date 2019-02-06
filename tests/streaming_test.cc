@@ -46,7 +46,7 @@ void dumpData(const Rest::Request&req, Http::ResponseWriter response) {
     stream.ends();
 }
 
-TEST(stream, from_description)
+TEST(streaming, from_description)
 {
     Address addr(Ipv4::any(), Port(0));
     const size_t threads = 20;
