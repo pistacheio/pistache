@@ -30,13 +30,13 @@ Peer::Peer(const Address& addr)
     , ssl_(NULL)
 { }
 
-Address
-Peer::address() const {
+const Address& Peer::address() const
+{
     return addr;
 }
 
-string
-Peer::hostname() const {
+const std::string& Peer::hostname() const
+{
     return hostname_;
 }
 

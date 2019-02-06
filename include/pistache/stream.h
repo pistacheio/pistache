@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <pistache/os.h>
+
 #include <cstddef>
 #include <stdexcept>
 #include <cstring>
@@ -15,7 +17,6 @@
 #include <iostream>
 #include <string>
 
-#include <pistache/os.h>
 
 namespace Pistache {
 
@@ -60,7 +61,6 @@ public:
         const CharT* gptr = this->gptr();
         return *(gptr + 1);
     }
-
 };
 
 template<typename CharT = char>
@@ -74,7 +74,6 @@ public:
     RawStreamBuf(char* begin, size_t len) {
         Base::setg(begin, begin, begin + len);
     }
-
 };
 
 // Make the buffer dynamic
@@ -123,33 +122,17 @@ private:
 template<typename CharT>
 size_t ArrayStreamBuf<CharT>::maxSize = Const::DefaultMaxPayload;
 
-struct Buffer {
-    Buffer()
-        : data(nullptr)
-        , len(0)
-        , isOwned(false)
-    { }
+struct Buffer
+{
+    Buffer();
+    Buffer(std::string data, int length, bool isDetached = false);
+    Buffer(const char * data, int length, bool isDetached = false);
 
-    Buffer(const char * const _data, size_t _len, bool _own = false)
-        : data(_data)
-        , len(_len)
-        , isOwned(_own)
-    { }
+    Buffer detach(size_t fromIndex);
 
-    Buffer detach(size_t fromIndex = 0) const {
-        if (fromIndex > len)
-            throw std::invalid_argument("Invalid index (> len)");
-
-        size_t retainedLen = len - fromIndex;
-        char *newData = new char[retainedLen];
-        std::copy(data + fromIndex, data + len, newData);
-
-        return Buffer(newData, retainedLen, true);
-    }
-
-    const char* const data;
-    const size_t len;
-    const bool isOwned;
+    std::string data;
+    size_t length;
+    int isDetached;
 };
 
 struct FileBuffer {
@@ -165,7 +148,7 @@ struct FileBuffer {
     Fd fd() const { return fd_; }
     size_t size() const { return size_; }
 
-private:
+  private:
     std::string fileName_;
     Fd fd_;
     size_t size_;
@@ -206,7 +189,7 @@ public:
     }
 
     Buffer buffer() const {
-        return Buffer(data_.data(), pptr() - &data_[0]);
+        return Buffer((char*) data_.data(), pptr() - &data_[0]);
     }
 
     void clear() {
@@ -214,7 +197,7 @@ public:
         this->setp(&data_[0], &data_[0] + data_.capacity());
     }
 
-protected:
+  protected:
     int_type overflow(int_type ch);
 
 private:
@@ -261,7 +244,7 @@ public:
             return gptr;
         }
 
-    private:
+      private:
         StreamCursor& cursor;
         size_t position;
         char *eback;

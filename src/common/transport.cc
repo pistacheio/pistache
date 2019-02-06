@@ -192,12 +192,6 @@ Transport::handlePeerDisconnection(const std::shared_ptr<Peer>& peer) {
         Guard guard(toWriteLock);
         auto & wq = toWrite[fd];
         while (wq.size() > 0) {
-            auto & entry = wq.front();
-            const BufferHolder & buffer = entry.buffer;
-            if (buffer.isRaw()) {
-                auto raw = buffer.raw();
-                if (raw.isOwned) delete[] raw.data;
-            }
             wq.pop_front();
         }
         toWrite.erase(fd);
@@ -224,14 +218,10 @@ Transport::asyncWriteImpl(Fd fd)
 
         auto & entry = wq.front();
         int flags    = entry.flags;
-        const BufferHolder &buffer = entry.buffer;
+        BufferHolder &buffer = entry.buffer;
         Async::Deferred<ssize_t> deferred = std::move(entry.deferred);
 
         auto cleanUp = [&]() {
-            if (buffer.isRaw()) {
-                auto raw = buffer.raw();
-                if (raw.isOwned) delete[] raw.data;
-            }
             wq.pop_front();
             if (wq.size() == 0) {
                 toWrite.erase(fd);
@@ -247,7 +237,7 @@ Transport::asyncWriteImpl(Fd fd)
 
             if (buffer.isRaw()) {
                 auto raw = buffer.raw();
-                auto ptr = raw.data + totalWritten;
+                auto ptr = raw.data.c_str() + totalWritten;
 
 #ifdef PISTACHE_USE_SSL
                 auto it = peers.find(fd);
