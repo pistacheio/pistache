@@ -8,258 +8,65 @@ matrix:
     include:
     # works on Precise and Trusty
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-4.9
-            - lcov
-            - valgrind
-            - cmake-data
-            - cmake
-            - libyajl-dev
-            - libxml2-dev
-            - libxqilla-dev
-            - libssl-dev
-            - libcurl4-openssl-dev
-            - libgtest-dev
       env:
          - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
       compiler: gcc
 
     # works on Precise and Trusty
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-5
-            - lcov
-            - valgrind
-            - cmake-data
-            - cmake
-            - libyajl-dev
-            - libxml2-dev
-            - libxqilla-dev
-            - libssl-dev
-            - libcurl4-openssl-dev
-            - libgtest-dev
       env:
          - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
       compiler: gcc
 
     # works on Precise and Trusty
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-6
-            - lcov
-            - valgrind
-            - cmake-data
-            - cmake
-            - libyajl-dev
-            - libxml2-dev
-            - libxqilla-dev
-            - libssl-dev
-            - libcurl4-openssl-dev
-            - libgtest-dev
       env:
         - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
       compiler: gcc
 
     # works on Precise and Trusty
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-7
-            - lcov
-            - valgrind
-            - cmake-data
-            - cmake
-            - libyajl-dev
-            - libxml2-dev
-            - libxqilla-dev
-            - libssl-dev
-            - libcurl4-openssl-dev
-            - libgtest-dev
       env:
         - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
       compiler: gcc
 
     # works on Precise and Trusty
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-          packages:
-            - g++-8
-            - lcov
-            - valgrind
-            - cmake-data
-            - cmake
-            - libyajl-dev
-            - libxml2-dev
-            - libxqilla-dev
-            - libssl-dev
-            - libcurl4-openssl-dev
-            - libgtest-dev
       env:
         - MATRIX_EVAL="CC=gcc-8 && CXX=g++-8"
       compiler: gcc
 
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-            - llvm-toolchain-precise-3.6
-          packages:
-            - clang-3.6
-            - lcov
-            - valgrind
-            - cmake-data
-            - cmake
-            - libyajl-dev
-            - libxml2-dev
-            - libxqilla-dev
-            - libssl-dev
-            - libgtest-dev
-            - libcurl4-openssl-dev
-            - libc++-dev
       env:
         - MATRIX_EVAL="CC=clang-3.6 && CXX=clang++-3.6"
       compiler: clang
 
     # works on Precise and Trusty
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-            - llvm-toolchain-precise-3.7
-          packages:
-            - clang-3.7
-            - lcov
-            - valgrind
-            - cmake-data
-            - cmake
-            - libyajl-dev
-            - libxml2-dev
-            - libxqilla-dev
-            - libssl-dev
-            - libgtest-dev
-            - libcurl4-openssl-dev
-            - libc++-dev
       env:
         - MATRIX_EVAL="CC=clang-3.7 && CXX=clang++-3.7"
       compiler: clang
 
     # works on Precise and Trusty
     - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
-            - llvm-toolchain-precise-3.8
-          packages:
-            - clang-3.8
-            - lcov
-            - valgrind
-            - cmake-data
-            - cmake
-            - libyajl-dev
-            - libxml2-dev
-            - libxqilla-dev
-            - libssl-dev
-            - libgtest-dev
-            - libcurl4-openssl-dev
-            - libc++-dev
       env:
         - MATRIX_EVAL="CC=clang-3.8 && CXX=clang++-3.8"
       compiler: clang
 
     # works on Trusty
     - os: linux
-      addons:
-        apt:
-          sources:
-            - llvm-toolchain-trusty-3.9
-          packages:
-            - clang-3.9
-            - lcov
-            - valgrind
-            - cmake-data
-            - cmake
-            - libyajl-dev
-            - libxml2-dev
-            - libxqilla-dev
-            - libssl-dev
-            - libcurl4-openssl-dev
-            - libc++-dev
-            - libgtest-dev
       env:
         - MATRIX_EVAL="CC=clang-3.9 && CXX=clang++-3.9"
       compiler: clang
 
     # works on Trusty
     - os: linux
-      addons:
-        apt:
-          sources:
-            - llvm-toolchain-trusty-4.0
-          packages:
-            - clang-4.0
-            - lcov
-            - valgrind
-            - cmake-data
-            - cmake
-            - libyajl-dev
-            - libxml2-dev
-            - libxqilla-dev
-            - libssl-dev
-            - libcurl4-openssl-dev
-            - libc++-dev
-            - libgtest-dev
       env:
         - MATRIX_EVAL="CC=clang-4.0 && CXX=clang++-4.0"
       compiler: clang
 
     # works on Trusty
     - os: linux
-      addons:
-        apt:
-          sources:
-            - llvm-toolchain-trusty-5.0
-          packages:
-            - clang-5.0
-            - lcov
-            - valgrind
-            - cmake-data
-            - cmake
-            - libyajl-dev
-            - libxml2-dev
-            - libxqilla-dev
-            - libssl-dev
-            - libcurl4-openssl-dev
-            - libc++-dev
-            - libgtest-dev
       env:
         - MATRIX_EVAL="CC=clang-5.0 && CXX=clang++-5.0"
       compiler: clang
@@ -267,32 +74,12 @@ matrix:
     # It is definitely not prepared to OSX
     - os: osx
       osx_image: xcode8
-      addons:
-        homebrew:
-          packages:
-            - lcov
-            - valgrind 
-            - libyajl-dev 
-            - libxml2-dev 
-            - libxqilla-dev 
-            - libssl-dev 
-            - libcurl4-openssl-dev            
       env:
         - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
       compiler: gcc
 
     - os: osx
       osx_image: xcode8
-      addons:
-        homebrew:
-          packages:
-            - lcov
-            - valgrind 
-            - libyajl-dev 
-            - libxml2-dev 
-            - libxqilla-dev 
-            - libssl-dev 
-            - libcurl4-openssl-dev            
       env:
         - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
       compiler: gcc
@@ -304,53 +91,25 @@ matrix:
 
     - os: osx
       osx_image: xcode8
-      addons:
-        homebrew:
-          packages:
-            - lcov
-            - valgrind
-            - libyajl-dev
-            - libxml2-dev
-            - libxqilla-dev
-            - libssl-dev
-            - libcurl4-openssl-dev
       env:
         - MATRIX_EVAL="CXX=g++-7 && CC=gcc-7"
       compiler: gcc
 
     - os: osx
       osx_image: xcode10.1
-      addons:
-        homebrew:
-          packages:
-            - lcov
-            - valgrind
-            - libyajl-dev
-            - libxml2-dev
-            - libxqilla-dev
-            - libssl-dev
-            - libcurl4-openssl-dev
       env:
         - MATRIX_EVAL=""
       compiler: clang
     
     - os: osx
       osx_image: xcode9.4
-      addons:
-        homebrew:
-          packages:
-            - lcov
-            - valgrind 
-            - libyajl-dev 
-            - libxml2-dev 
-            - libxqilla-dev 
-            - libssl-dev 
-            - libcurl4-openssl-dev            
       env:
         - MATRIX_EVAL=""
       compiler: clang
 
 before_install:
+    - ./cpp-toolchain.bash
+    - apt-get install -y $CC $CXX
     - eval "${MATRIX_EVAL}"
 
 script:
