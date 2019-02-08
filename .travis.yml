@@ -1,14 +1,17 @@
 language: cpp
 sudo: required
 dist: trusty
+
 script:
     - mkdir build
     - cd build
-    - cmake -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_TESTS=true -DPISTACHE_SSL=true ..
-    - make all test ARGS="-V"
+    - cmake -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_TESTS=true -DPISTACHE_SSL=true -DCMAKE_BUILD_TYPE=Debug ..
+    - make all test test_memcheck test_coverage ARGS="-V"
+
 compiler:
     - clang
     - gcc-5
+
 before_install:
     - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
     - sudo apt-get update -qq
@@ -16,7 +19,18 @@ before_install:
     - if [ "$CXX" = "clang++" ]; then sudo apt-get install -qq libstdc++-5-dev; fi
     - if [ "$CXX" = "g++" ]; then sudo apt-get install -qq g++-5; fi
     - if [ "$CXX" = "g++" ]; then export CXX="g++-5" CC="gcc-5"; fi
+
 branches:
     only:
         - master
+addons:
+  apt:
+    packages: lcov
 
+after_success:
+# Create lcov report
+- lcov --capture --directory . --output-file coverage.info
+- lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
+- lcov --list coverage.info # debug info
+# Uploading report to CodeCov
+- bash <(curl -s https://codecov.io/bash) -f coverage.info -t "d9025f96-b6f5-4b1c-9284-07eae3e59148" || echo "Codecov did not collect coverage reports"
