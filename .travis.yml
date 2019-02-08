@@ -108,8 +108,8 @@ matrix:
       compiler: clang
 
 before_install:
-    - ./cpp-toolchain.bash
-    - apt-get install -y $CC $CXX
+    - sudo ./cpp-toolchain.bash
+    - sudo apt-get install -y $CC $CXX
     - eval "${MATRIX_EVAL}"
 
 script:
