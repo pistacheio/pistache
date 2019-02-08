@@ -24,6 +24,7 @@ matrix:
             - libxqilla-dev
             - libssl-dev
             - libcurl4-openssl-dev
+            - libgtest-dev
       env:
          - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
       compiler: gcc
@@ -46,6 +47,7 @@ matrix:
             - libxqilla-dev
             - libssl-dev
             - libcurl4-openssl-dev
+            - libgtest-dev
       env:
          - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
       compiler: gcc
@@ -68,6 +70,7 @@ matrix:
             - libxqilla-dev
             - libssl-dev
             - libcurl4-openssl-dev
+            - libgtest-dev
       env:
         - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
       compiler: gcc
@@ -90,6 +93,7 @@ matrix:
             - libxqilla-dev
             - libssl-dev
             - libcurl4-openssl-dev
+            - libgtest-dev
       env:
         - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
       compiler: gcc
@@ -112,6 +116,7 @@ matrix:
             - libxqilla-dev
             - libssl-dev
             - libcurl4-openssl-dev
+            - libgtest-dev
       env:
         - MATRIX_EVAL="CC=gcc-8 && CXX=g++-8"
       compiler: gcc
@@ -133,6 +138,7 @@ matrix:
             - libxml2-dev
             - libxqilla-dev
             - libssl-dev
+            - libgtest-dev
             - libcurl4-openssl-dev
             - libc++-dev
       env:
@@ -157,6 +163,7 @@ matrix:
             - libxml2-dev
             - libxqilla-dev
             - libssl-dev
+            - libgtest-dev
             - libcurl4-openssl-dev
             - libc++-dev
       env:
@@ -181,6 +188,7 @@ matrix:
             - libxml2-dev
             - libxqilla-dev
             - libssl-dev
+            - libgtest-dev
             - libcurl4-openssl-dev
             - libc++-dev
       env:
@@ -205,6 +213,7 @@ matrix:
             - libssl-dev
             - libcurl4-openssl-dev
             - libc++-dev
+            - libgtest-dev
       env:
         - MATRIX_EVAL="CC=clang-3.9 && CXX=clang++-3.9"
       compiler: clang
@@ -227,6 +236,7 @@ matrix:
             - libssl-dev
             - libcurl4-openssl-dev
             - libc++-dev
+            - libgtest-dev
       env:
         - MATRIX_EVAL="CC=clang-4.0 && CXX=clang++-4.0"
       compiler: clang
@@ -249,6 +259,7 @@ matrix:
             - libssl-dev
             - libcurl4-openssl-dev
             - libc++-dev
+            - libgtest-dev
       env:
         - MATRIX_EVAL="CC=clang-5.0 && CXX=clang++-5.0"
       compiler: clang
