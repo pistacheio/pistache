@@ -33,4 +33,5 @@ after_success:
 - lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
 - lcov --list coverage.info # debug info
 # Uploading report to CodeCov
+
 - bash <(curl -s https://codecov.io/bash) -f coverage.info -t "d9025f96-b6f5-4b1c-9284-07eae3e59148" || echo "Codecov did not collect coverage reports"
