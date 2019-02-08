@@ -353,10 +353,8 @@ matrix:
 before_install:
     - eval "${MATRIX_EVAL}"
 
-before_script:
-    - mkdir -p build && cd build && cmake -DPISTACHE_BUILD_TESTS=true -DPISTACHE_SSL=yes -DCMAKE_BUILD_TYPE=Debug ..
-
 script:
+    - mkdir -p build && cd build && cmake -DPISTACHE_BUILD_TESTS=true -DPISTACHE_SSL=yes -DCMAKE_BUILD_TYPE=Debug ..
     - make VERBOSE=1 all
     - make VERBOSE=1 test
 
