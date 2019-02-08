@@ -109,8 +109,8 @@ matrix:
 
 before_install:
     - sudo ./cpp-toolchain.bash
-    - sudo apt-get install -y $CC $CXX
     - eval "${MATRIX_EVAL}"
+    - sudo apt-get install -y $CC $CXX
 
 script:
     - mkdir -p build && cd build && cmake -DPISTACHE_BUILD_TESTS=true -DPISTACHE_SSL=yes -DCMAKE_BUILD_TYPE=Debug ..
