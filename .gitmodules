@@ -1,0 +1,4 @@
+[submodule "gtest"]
+    path = third-party/gtest
+    url = https://github.com/google/googletest
+    branch = release-1.8.1
