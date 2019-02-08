@@ -355,8 +355,8 @@ before_install:
 
 script:
     - mkdir -p build && cd build && cmake -DPISTACHE_BUILD_TESTS=true -DPISTACHE_SSL=yes -DCMAKE_BUILD_TYPE=Debug ..
-    - make VERBOSE=1 all
-    - make VERBOSE=1 test
+    - make all VERBOSE=1
+    - make test ARGS=-V
 
 branches:
     only:
@@ -364,6 +364,6 @@ branches:
 
 after_success:
 - lcov --capture --directory . --output-file coverage.info
-- lcov --remove coverage.info '/usr/*' $TRAVIS_BUILD_DIR/thid-party/* --output-file coverage.info # filter system-files
+- lcov --remove coverage.info '/usr/*' '*third-party/*'' 'tests/* --output-file coverage.info # filter system-files
 - lcov --list coverage.info # debug info
 - bash <(curl -s https://codecov.io/bash) -f coverage.info -t "d9025f96-b6f5-4b1c-9284-07eae3e59148" || echo "Codecov did not collect coverage reports"
