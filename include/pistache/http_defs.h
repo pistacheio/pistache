@@ -31,6 +31,7 @@ namespace Http {
     CODE(100, Continue, "Continue") \
     CODE(101, Switching_Protocols, "Switching Protocols") \
     CODE(102, Processing, "Processing") \
+    CODE(103, Early_Hints, "Early Hints") \
     CODE(200, Ok, "OK") \
     CODE(201, Created, "Created") \
     CODE(202, Accepted, "Accepted") \

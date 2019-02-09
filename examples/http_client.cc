@@ -1,6 +1,6 @@
-/* 
+/*
    Mathieu Stefani, 07 février 2016
-   
+
  * Http client example
 */
 
