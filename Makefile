@@ -12,7 +12,7 @@ debug:
 
 install:
 	cd build/ && \
-		make install
+		make install && \
 		ldconfig
 
 clean:
