@@ -1,7 +1,7 @@
 language: cpp
 
 dist: trusty
-sudo: required
+sudo: true
 
 branches:
   only:
@@ -104,15 +104,23 @@ before_script:
   - export CXX=${COMPILER}
   - cd ${TRAVIS_BUILD_DIR}
 
+  # Enable core dumps
+  - ulimit -c
+  - ulimit -a -S
+  - ulimit -a -H
+
+  # Print debug system information
+  - cat /proc/sys/kernel/core_pattern
+  - cat /etc/default/apport
+  - service --status-all || true
+  - initctl list || true
+
   # Debug build
   - cmake -H. -BBuild-Debug
     -DCMAKE_BUILD_TYPE=Debug
     -DPISTACHE_BUILD_EXAMPLES=true
     -DPISTACHE_BUILD_TESTS=true
     -DPISTACHE_SSL=true
-
-  # Enable core dumps
-  - ulimit -c unlimited -S
 
   # Release build
   - cmake -H. -BBuild-Release -DCMAKE_BUILD_TYPE=Release -DPISTACHE_SSL=true
@@ -127,5 +135,8 @@ script:
   - make -j 2
 
 after_failure:
-  - COREFILE=$(find . -maxdepth 1 -name "core*" | head -n 1) # find core file
-  - if [[ -f "$COREFILE" ]]; then gdb -c "$COREFILE" example -ex "thread apply all bt" -ex "set pagination 0" -batch; fi
+  # find and print core file
+  - COREFILE=$(find ./ -maxdepth 1 -name "core*" -print | head -n 1) 
+  - if [[ -f "$COREFILE" ]]; then
+    gdb -c "$COREFILE" -ex "thread apply all bt" -ex "set pagination 0" -batch;
+    fi
