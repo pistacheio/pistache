@@ -1,6 +1,6 @@
-/* 
+/*
    Mathieu Stefani, 07 février 2016
-   
+
    Example of a REST endpoint with routing
 */
 

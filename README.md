@@ -69,14 +69,13 @@ Some other CMAKE defines:
 using namespace Pistache;
 
 struct HelloHandler : public Http::Handler {
-    HTTP_PROTOTYPE(HelloHandler)
-
-    void onRequest(const Http::Request& request, Http::ResponseWriter writer) {
-        writer.send(Http::Code::Ok, "Hello, World!");
-    }
+  HTTP_PROTOTYPE(HelloHandler)
+  void onRequest(const Http::Request&, Http::ResponseWriter writer) override{
+    writer.send(Http::Code::Ok, "Hello, World!");
+  }
 };
 
 int main() {
-    Http::listenAndServe<HelloHandler>("*:9080");
+  Http::listenAndServe<HelloHandler>("*:9080");
 }
 ```
