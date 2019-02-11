@@ -16,14 +16,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-4.0']
-        packages: [
-          'cmake',
-          'clang-4.0',
-          'libstdc++-6-dev',
-          'libssl-dev',
-          'libcurl4-openssl-dev',
-          'gdb'
-        ]
+        packages: [ 'cmake', 'clang-4.0', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov' ]
 
   - os: linux
     compiler: clang
@@ -31,14 +24,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-5.0']
-        packages: [
-          'cmake',
-          'clang-5.0',
-          'libstdc++-6-dev',
-          'libssl-dev',
-          'libcurl4-openssl-dev',
-          'gdb'
-        ]
+        packages: [ 'cmake', 'clang-5.0', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov' ]
 
   - os: linux
     compiler: clang
@@ -46,14 +32,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
-        packages: [
-          'cmake',
-          'clang-6.0',
-          'libstdc++-6-dev',
-          'libssl-dev',
-          'libcurl4-openssl-dev',
-          'gdb'
-        ]
+        packages: [ 'cmake', 'clang-6.0', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov' ]
 
   # Linux GCC builds
   - os: linux
@@ -62,7 +41,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-4.9', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb']
+        packages: ['g++-4.9', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov']
 
   - os: linux
     compiler: gcc
@@ -70,7 +49,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-5', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb']
+        packages: ['g++-5', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov']
 
   - os: linux
     compiler: gcc
@@ -78,7 +57,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-6', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb']
+        packages: ['g++-6', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov']
 
   - os: linux
     compiler: gcc
@@ -86,7 +65,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-7', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb']
+        packages: ['g++-7', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov']
 
   - os: linux
     compiler: gcc
@@ -94,7 +73,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-8', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb']
+        packages: ['g++-8', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov']
 
 install:
   - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
