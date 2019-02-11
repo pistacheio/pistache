@@ -16,14 +16,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-4.0']
-        packages: [
-          'cmake',
-          'clang-4.0',
-          'libstdc++-6-dev',
-          'libssl-dev',
-          'libcurl4-openssl-dev',
-          'gdb'
-        ]
+        packages: [ 'cmake', 'clang-4.0', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov' ]
 
   - os: linux
     compiler: clang
@@ -31,14 +24,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-5.0']
-        packages: [
-          'cmake',
-          'clang-5.0',
-          'libstdc++-6-dev',
-          'libssl-dev',
-          'libcurl4-openssl-dev',
-          'gdb'
-        ]
+        packages: [ 'cmake', 'clang-5.0', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov' ]
 
   - os: linux
     compiler: clang
@@ -46,14 +32,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
-        packages: [
-          'cmake',
-          'clang-6.0',
-          'libstdc++-6-dev',
-          'libssl-dev',
-          'libcurl4-openssl-dev',
-          'gdb'
-        ]
+        packages: [ 'cmake', 'clang-6.0', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov' ]
 
   # Linux GCC builds
   - os: linux
@@ -62,7 +41,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-4.9', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb']
+        packages: ['g++-4.9', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov']
 
   - os: linux
     compiler: gcc
@@ -70,7 +49,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-5', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb']
+        packages: ['g++-5', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov']
 
   - os: linux
     compiler: gcc
@@ -78,7 +57,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-6', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb']
+        packages: ['g++-6', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov']
 
   - os: linux
     compiler: gcc
@@ -86,7 +65,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-7', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb']
+        packages: ['g++-7', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov']
 
   - os: linux
     compiler: gcc
@@ -94,7 +73,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-8', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb']
+        packages: ['g++-8', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov']
 
 install:
   - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
@@ -116,14 +95,18 @@ before_script:
   - initctl list || true
 
   # Debug build
-  - cmake -H. -BBuild-Debug
+  - cmake -H.
+    -BBuild-Debug
     -DCMAKE_BUILD_TYPE=Debug
     -DPISTACHE_BUILD_EXAMPLES=true
     -DPISTACHE_BUILD_TESTS=true
     -DPISTACHE_SSL=true
 
   # Release build
-  - cmake -H. -BBuild-Release -DCMAKE_BUILD_TYPE=Release -DPISTACHE_SSL=true
+  - cmake -H.
+    -BBuild-Release
+    -DCMAKE_BUILD_TYPE=Release
+    -DPISTACHE_SSL=true
 
 script:
   - # Debug build
@@ -135,9 +118,17 @@ script:
   - make -j 2
 
 after_failure:
-  # find and print core file
   - ls -lta /var/crash
   - COREFILE=$(find ./ -maxdepth 1 -name "core*" -print | head -n 1) 
   - if [[ -f "$COREFILE" ]]; then
     gdb -c "$COREFILE" -ex "thread apply all bt" -ex "set pagination 0" -batch;
     fi
+
+
+after_success:
+- cd ../Build-Debug
+- export PISTACHE_SRC_ROOT=$(realpath $(pwd)/..)
+- lcov --capture --directory . --output-file coverage.info
+- lcov --remove coverage.info '/usr/*' "$PISTACHE_SRC_ROOT/test/*" "$PISTACHE_SRC_ROOT/googletest-release-1.7.0" --output-file coverage.info
+- lcov --list coverage.info
+- bash <(curl -s https://codecov.io/bash) -f coverage.info -t 1db5f955-be83-4bb5-8a8a-eeb4ad07ce11 || echo "Codecov did not collect coverage reports"
