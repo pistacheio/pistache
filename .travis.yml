@@ -129,6 +129,6 @@ after_success:
 - cd ../Build-Debug
 - export PISTACHE_SRC_ROOT=$(realpath $(pwd)/..)
 - lcov --capture --directory . --output-file coverage.info
-- lcov --remove coverage.info '/usr/*' $PISTACHE_SRC_ROOT/test $PISTACHE_SRC_ROOT/googletest-release-1.7.0 --output-file coverage.info
+- lcov --remove coverage.info '/usr/*' "$PISTACHE_SRC_ROOT/test/*" "$PISTACHE_SRC_ROOT/googletest-release-1.7.0" --output-file coverage.info
 - lcov --list coverage.info
 - bash <(curl -s https://codecov.io/bash) -f coverage.info -t 1db5f955-be83-4bb5-8a8a-eeb4ad07ce11 || echo "Codecov did not collect coverage reports"
