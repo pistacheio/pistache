@@ -135,9 +135,16 @@ script:
   - make -j 2
 
 after_failure:
-  # find and print core file
   - ls -lta /var/crash
   - COREFILE=$(find ./ -maxdepth 1 -name "core*" -print | head -n 1) 
   - if [[ -f "$COREFILE" ]]; then
     gdb -c "$COREFILE" -ex "thread apply all bt" -ex "set pagination 0" -batch;
     fi
+
+
+after_success:
+- export PISTACHE_SRC_ROOT=$(realpath $(pwd)/..)
+- lcov --capture --directory . --output-file coverage.info
+- lcov --remove coverage.info '/usr/*' $PISTACHE_SRC_ROOT/test $PISTACHE_SRC_ROOT/googletest-release-1.7.0 --output-file coverage.info
+- lcov --list coverage.info
+- bash <(curl -s https://codecov.io/bash) -f coverage.info -t d9025f96-b6f5-4b1c-9284-07eae3e59148 || echo "Codecov did not collect coverage reports"
