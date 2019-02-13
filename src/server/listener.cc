@@ -216,10 +216,10 @@ Listener::bind(const Address& address) {
     listen_fd = fd;
     g_listen_fd = fd;
 
-    transport_ = std::make_shared<Transport>(handler_);
+    auto transport = std::make_shared<Transport>(handler_);
 
     reactor_.init(Aio::AsyncContext(workers_));
-    transportKey = reactor_.addHandler(transport_);
+    transportKey = reactor_.addHandler(transport);
 }
 
 bool

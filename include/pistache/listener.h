@@ -85,7 +85,6 @@ private:
     std::thread acceptThread;
 
     size_t workers_;
-    std::shared_ptr<Transport> transport_;
     std::shared_ptr<Handler> handler_;
 
     Aio::Reactor reactor_;
