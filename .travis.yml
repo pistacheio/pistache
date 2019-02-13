@@ -12,7 +12,9 @@ matrix:
   # Linux clang builds
   - os: linux
     compiler: clang
-    env: COMPILER=clang++-4.0
+    env:
+      - COMPILER=clang++-4.0
+      - COV_TOOL=llvm-cov-4.0
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-4.0']
@@ -20,7 +22,10 @@ matrix:
 
   - os: linux
     compiler: clang
-    env: COMPILER=clang++-5.0
+    env:
+      - COMPILER=clang++-5.0
+      - COV_TOOL=llvm-cov-4.0
+      - COV_TOOL_ARGS=gcov
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-5.0']
@@ -28,7 +33,10 @@ matrix:
 
   - os: linux
     compiler: clang
-    env: COMPILER=clang++-6.0
+    env:
+      - COMPILER=clang++-6.0
+      - COV_TOOL=llvm-cov-6.0
+      - COV_TOOL_ARGS=gcov
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
@@ -37,7 +45,10 @@ matrix:
   # Linux GCC builds
   - os: linux
     compiler: gcc
-    env: COMPILER=g++-4.9
+    env:
+      - COMPILER=g++-4.9
+      - COV_TOOL=llvm-cov-4.0
+      - COV_TOOL_ARGS=gcov
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
@@ -46,6 +57,8 @@ matrix:
   - os: linux
     compiler: gcc
     env: COMPILER=g++-5
+      - COV_TOOL=gcov-5
+      - COV_TOOL_ARGS=
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
@@ -54,6 +67,8 @@ matrix:
   - os: linux
     compiler: gcc
     env: COMPILER=g++-6
+      - COV_TOOL=gcov-6
+      - COV_TOOL_ARGS=
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
@@ -62,6 +77,8 @@ matrix:
   - os: linux
     compiler: gcc
     env: COMPILER=g++-7
+      - COV_TOOL=gcov-7
+      - COV_TOOL_ARGS=
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
@@ -70,6 +87,8 @@ matrix:
   - os: linux
     compiler: gcc
     env: COMPILER=g++-8
+      - COV_TOOL=gcov-8
+      - COV_TOOL_ARGS=
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
@@ -127,7 +146,11 @@ after_failure:
 
 after_success:
 - cd ../Build-Debug
-- lcov --capture --directory . --output-file coverage.info
-- lcov --remove coverage.info '/usr/*' "*test/*" "*googletest-release-1.7.0/*" -p ($pwd) --output-file coverage.info
+- cat << EOF > /usr/local/bin/cov-tool
+\#!/bin/bash
+$COV_TOOL $COV_TOOL_ARGS $@
+EOF
+- lcov --capture --gcov-tool cov-tool --directory . --output-file coverage.info
+- lcov --remove coverage.info '/usr/*' '*tests/*' '*googletest-release-1.7.0/*' --output-file coverage.info
 - lcov --list coverage.info
 - bash <(curl -s https://codecov.io/bash) -f coverage.info -t 1db5f955-be83-4bb5-8a8a-eeb4ad07ce11 || echo "Codecov did not collect coverage reports"
