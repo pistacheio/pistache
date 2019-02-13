@@ -48,7 +48,7 @@ matrix:
     compiler: gcc
     env:
       - COMPILER=g++-4.9
-      - COV_TOOL=gcov
+      - COV_TOOL=gcov-4.9
       - COV_TOOL_ARGS=
     addons:
       apt:
