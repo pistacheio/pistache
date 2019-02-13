@@ -19,7 +19,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-4.0']
-        packages: [ 'cmake', 'clang-4.0', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov' ]
+        packages: [ 'cmake', 'clang-4.0', 'llvm-4.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov' ]
 
   - os: linux
     compiler: clang
@@ -30,7 +30,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-5.0']
-        packages: [ 'cmake', 'clang-5.0', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov' ]
+        packages: [ 'cmake', 'clang-5.0', 'llvm-5.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov' ]
 
   - os: linux
     compiler: clang
@@ -41,7 +41,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
-        packages: [ 'cmake', 'clang-6.0', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov' ]
+        packages: [ 'cmake', 'clang-6.0', 'llvm-6.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov' ]
 
   # Linux GCC builds
   - os: linux
