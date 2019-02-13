@@ -146,11 +146,8 @@ after_failure:
 
 after_success:
 - cd ../Build-Debug
-- cat << EOF > /usr/local/bin/cov-tool
-\#!/bin/bash
-$COV_TOOL $COV_TOOL_ARGS $@
-EOF
+- echo '$COV_TOOL $COV_TOOL_ARGS \$@' > /usr/local/bin/cov-tool && chmod +x /usr/local/bin/cov-tool
 - lcov --capture --gcov-tool cov-tool --directory . --output-file coverage.info
 - lcov --remove coverage.info '/usr/*' '*tests/*' '*googletest-release-1.7.0/*' --output-file coverage.info
 - lcov --list coverage.info
-- bash <(curl -s https://codecov.io/bash) -f coverage.info -t 1db5f955-be83-4bb5-8a8a-eeb4ad07ce11 || echo "Codecov did not collect coverage reports"
+- bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
