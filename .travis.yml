@@ -1,6 +1,4 @@
 language: cpp
-
-dist: trusty
 sudo: true
 
 branches:
@@ -9,95 +7,380 @@ branches:
 
 matrix:
   include:
-  # Linux clang builds
+
   - os: linux
+    dist: trusty
     compiler: clang
     env:
-      - COMPILER=clang++-4.0
+      - C_COMPILER_PACKAGE=clang-3.6
+      - C_COMPILER_BIN=clang-3.6
+      - CPP_COMPILER_PACKAGE=clang-3.6
+      - CPP_COMPILER_BIN=clang++-3.6
+      - COV_TOOL=llvm-cov-3.6
+      - COV_TOOL_ARGS=gcov
+    addons:
+      apt:
+        packages:
+          - 'cmake3'
+          - 'clang-3.6'
+          - 'libssl-dev'
+          - 'libcurl4-openssl-dev'
+          - 'gdb'
+          - 'valgrind'
+          - 'lcov'
+          - 'llvm-3.6-tools'
+
+  - os: linux
+    dist: trusty
+    compiler: clang
+    env:
+      - C_COMPILER_PACKAGE=clang-3.8
+      - C_COMPILER_BIN=clang-3.8
+      - CPP_COMPILER_PACKAGE=clang-3.8
+      - CPP_COMPILER_BIN=clang++-3.8
+      - COV_TOOL=llvm-cov-3.8
+      - COV_TOOL_ARGS=gcov
+    addons:
+      apt:
+        packages:
+          - 'cmake3'
+          - 'clang-3.8'
+          - 'libssl-dev'
+          - 'libcurl4-openssl-dev'
+          - 'gdb'
+          - 'valgrind'
+          - 'lcov'
+          - 'llvm-3.8-tools'
+
+  - os: linux
+    dist: trusty
+    compiler: clang
+    env:
+      - C_COMPILER_PACKAGE=clang-3.9
+      - C_COMPILER_BIN=clang-3.9
+      - CPP_COMPILER_PACKAGE=clang-3.9
+      - CPP_COMPILER_BIN=clang++-3.9
+      - COV_TOOL=llvm-cov-3.9
+      - COV_TOOL_ARGS=gcov
+    addons:
+      apt:
+        packages:
+          - 'cmake3'
+          - 'clang-3.9'
+          - 'libssl-dev'
+          - 'libcurl4-openssl-dev'
+          - 'gdb'
+          - 'valgrind'
+          - 'lcov'
+          - 'llvm-3.9-tools'
+
+  - os: linux
+    dist: trusty
+    compiler: gcc
+    env:
+      - C_COMPILER_PACKAGE=gcc-4.4
+      - C_COMPILER_BIN=gcc-4.4
+      - CPP_COMPILER_PACKAGE=g++-4.4
+      - CPP_COMPILER_BIN=g++-4.4
+      - COV_TOOL=gcov-4.4
+      - COV_TOOL_ARGS=
+    addons:
+      apt:
+        packages:
+          - 'cmake3'
+          - 'gcc-4.4'
+          - 'g++-4.4'
+          - 'libssl-dev'
+          - 'libcurl4-openssl-dev'
+          - 'gdb'
+          - 'valgrind'
+          - 'lcov'
+
+  - os: linux
+    dist: trusty
+    compiler: gcc
+    env:
+      - C_COMPILER_PACKAGE=gcc-4.6
+      - C_COMPILER_BIN=gcc-4.6
+      - CPP_COMPILER_PACKAGE=g++-4.6
+      - CPP_COMPILER_BIN=g++-4.6
+      - COV_TOOL=gcov-4.6
+      - COV_TOOL_ARGS=
+    addons:
+      apt:
+        packages:
+          - 'cmake3'
+          - 'gcc-4.6'
+          - 'g++-4.6'
+          - 'libssl-dev'
+          - 'libcurl4-openssl-dev'
+          - 'gdb'
+          - 'valgrind'
+          - 'lcov'
+
+  - os: linux
+    dist: trusty
+    compiler: gcc
+    env:
+      - C_COMPILER_PACKAGE=gcc-4.7
+      - C_COMPILER_BIN=gcc-4.7
+      - CPP_COMPILER_PACKAGE=g++-4.7
+      - CPP_COMPILER_BIN=g++-4.7
+      - COV_TOOL=gcov-4.7
+      - COV_TOOL_ARGS=
+    addons:
+      apt:
+        packages:
+          - 'cmake3'
+          - 'gcc-4.7'
+          - 'g++-4.7'
+          - 'libssl-dev'
+          - 'libcurl4-openssl-dev'
+          - 'gdb'
+          - 'valgrind'
+          - 'lcov'
+
+  - os: linux
+    dist: trusty
+    compiler: gcc
+    env:
+      - C_COMPILER_PACKAGE=gcc-4.8
+      - C_COMPILER_BIN=gcc-4.8
+      - CPP_COMPILER_PACKAGE=g++-4.8
+      - CPP_COMPILER_BIN=g++-4.8
+      - COV_TOOL=gcov-4.8
+      - COV_TOOL_ARGS=
+    addons:
+      apt:
+        packages:
+          - 'cmake3'
+          - 'gcc-4.8'
+          - 'g++-4.8'
+          - 'libssl-dev'
+          - 'libcurl4-openssl-dev'
+          - 'gdb'
+          - 'valgrind'
+          - 'lcov'
+
+  - os: linux
+    dist: xenial
+    compiler: clang
+    env:
+      - C_COMPILER_PACKAGE=clang-3.5
+      - C_COMPILER_BIN=clang-3.5
+      - CPP_COMPILER_PACKAGE=clang-3.5
+      - CPP_COMPILER_BIN=clang++-3.5
+      - COV_TOOL=llvm-cov-3.5
+      - COV_TOOL_ARGS=gcov
+    addons:
+      apt:
+        packages:
+          - 'cmake'
+          - 'clang-3.5'
+          - 'libssl-dev'
+          - 'libcurl4-openssl-dev'
+          - 'gdb'
+          - 'valgrind'
+          - 'lcov'
+          - 'llvm-3.5-tools'
+
+  - os: linux
+    dist: xenial
+    compiler: clang
+    env:
+      - C_COMPILER_PACKAGE=clang-3.6
+      - C_COMPILER_BIN=clang-3.6
+      - CPP_COMPILER_PACKAGE=clang-3.6
+      - CPP_COMPILER_BIN=clang++-3.6
+      - COV_TOOL=llvm-cov-3.6
+      - COV_TOOL_ARGS=gcov
+    addons:
+      apt:
+        packages:
+          - 'cmake'
+          - 'clang-3.6'
+          - 'libssl-dev'
+          - 'libcurl4-openssl-dev'
+          - 'gdb'
+          - 'valgrind'
+          - 'lcov'
+          - 'llvm-3.6-tools'
+
+  - os: linux
+    dist: xenial
+    compiler: clang
+    env:
+      - C_COMPILER_PACKAGE=clang-3.7
+      - C_COMPILER_BIN=clang-3.7
+      - CPP_COMPILER_PACKAGE=clang-3.7
+      - CPP_COMPILER_BIN=clang++-3.7
+      - COV_TOOL=llvm-cov-3.7
+      - COV_TOOL_ARGS=gcov
+    addons:
+      apt:
+        packages:
+          - 'cmake'
+          - 'clang-3.7'
+          - 'libssl-dev'
+          - 'libcurl4-openssl-dev'
+          - 'gdb'
+          - 'valgrind'
+          - 'lcov'
+          - 'llvm-3.7-tools'
+
+  - os: linux
+    dist: xenial
+    compiler: clang
+    env:
+      - C_COMPILER_PACKAGE=clang-3.8
+      - C_COMPILER_BIN=clang-3.8
+      - CPP_COMPILER_PACKAGE=clang-3.8
+      - CPP_COMPILER_BIN=clang++-3.8
+      - COV_TOOL=llvm-cov-3.8
+      - COV_TOOL_ARGS=gcov
+    addons:
+      apt:
+        packages:
+          - 'cmake'
+          - 'clang-3.8'
+          - 'libssl-dev'
+          - 'libcurl4-openssl-dev'
+          - 'gdb'
+          - 'valgrind'
+          - 'lcov'
+          - 'llvm-3.8-tools'
+
+  - os: linux
+    dist: xenial
+    compiler: clang
+    env:
+      - C_COMPILER_PACKAGE=clang-4.0
+      - C_COMPILER_BIN=clang-4.0
+      - CPP_COMPILER_PACKAGE=clang-4.0
+      - CPP_COMPILER_BIN=clang++-4.0
       - COV_TOOL=llvm-cov-4.0
       - COV_TOOL_ARGS=gcov
     addons:
       apt:
-        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-4.0']
-        packages: [ 'cmake', 'clang-4.0', 'llvm-4.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov' ]
+        packages:
+          - 'cmake'
+          - 'clang-4.0'
+          - 'libssl-dev'
+          - 'libcurl4-openssl-dev'
+          - 'gdb'
+          - 'valgrind'
+          - 'lcov'
+          - 'llvm-4.0-tools'
 
   - os: linux
+    dist: xenial
     compiler: clang
     env:
-      - COMPILER=clang++-5.0
+      - C_COMPILER_PACKAGE=clang-5.0
+      - C_COMPILER_BIN=clang-5.0
+      - CPP_COMPILER_PACKAGE=clang-5.0
+      - CPP_COMPILER_BIN=clang++-5.0
       - COV_TOOL=llvm-cov-5.0
       - COV_TOOL_ARGS=gcov
     addons:
       apt:
-        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-5.0']
-        packages: [ 'cmake', 'clang-5.0', 'llvm-5.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov' ]
+        packages:
+          - 'cmake'
+          - 'clang-5.0'
+          - 'libssl-dev'
+          - 'libcurl4-openssl-dev'
+          - 'gdb'
+          - 'valgrind'
+          - 'lcov'
+          - 'llvm-5.0-tools'
 
   - os: linux
+    dist: xenial
     compiler: clang
     env:
-      - COMPILER=clang++-6.0
+      - C_COMPILER_PACKAGE=clang-6.0
+      - C_COMPILER_BIN=clang-6.0
+      - CPP_COMPILER_PACKAGE=clang-6.0
+      - CPP_COMPILER_BIN=clang++-6.0
       - COV_TOOL=llvm-cov-6.0
       - COV_TOOL_ARGS=gcov
     addons:
       apt:
-        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
-        packages: [ 'cmake', 'clang-6.0', 'llvm-6.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov' ]
+        packages:
+          - 'cmake'
+          - 'clang-6.0'
+          - 'libssl-dev'
+          - 'libcurl4-openssl-dev'
+          - 'gdb'
+          - 'valgrind'
+          - 'lcov'
+          - 'llvm-6.0-tools'
 
-  # Linux GCC builds
   - os: linux
+    dist: xenial
     compiler: gcc
     env:
-      - COMPILER=g++-4.9
+      - C_COMPILER_PACKAGE=gcc-4.7
+      - C_COMPILER_BIN=gcc-4.7
+      - CPP_COMPILER_PACKAGE=g++-4.7
+      - CPP_COMPILER_BIN=g++-4.7
+      - COV_TOOL=gcov-4.7
+      - COV_TOOL_ARGS=
+    addons:
+      apt:
+        packages:
+          - 'cmake'
+          - 'gcc-4.7'
+          - 'g++-4.7'
+          - 'libssl-dev'
+          - 'libcurl4-openssl-dev'
+          - 'gdb'
+          - 'valgrind'
+          - 'lcov'
+
+  - os: linux
+    dist: xenial
+    compiler: gcc
+    env:
+      - C_COMPILER_PACKAGE=gcc-4.8
+      - C_COMPILER_BIN=gcc-4.8
+      - CPP_COMPILER_PACKAGE=g++-4.8
+      - CPP_COMPILER_BIN=g++-4.8
+      - COV_TOOL=gcov-4.8
+      - COV_TOOL_ARGS=
+    addons:
+      apt:
+        packages:
+          - 'cmake'
+          - 'gcc-4.8'
+          - 'g++-4.8'
+          - 'libssl-dev'
+          - 'libcurl4-openssl-dev'
+          - 'gdb'
+          - 'valgrind'
+          - 'lcov'
+
+  - os: linux
+    dist: xenial
+    compiler: gcc
+    env:
+      - C_COMPILER_PACKAGE=gcc-4.9
+      - C_COMPILER_BIN=gcc-4.9
+      - CPP_COMPILER_PACKAGE=g++-4.9
+      - CPP_COMPILER_BIN=g++-4.9
       - COV_TOOL=gcov-4.9
       - COV_TOOL_ARGS=
     addons:
       apt:
-        sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-4.9', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov']
-
-  - os: linux
-    compiler: gcc
-    env:
-      - COMPILER=g++-5
-      - COV_TOOL=gcov-5
-      - COV_TOOL_ARGS=
-    addons:
-      apt:
-        sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-5', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov']
-
-  - os: linux
-    compiler: gcc
-    env:
-      - COMPILER=g++-6
-      - COV_TOOL=gcov-6
-      - COV_TOOL_ARGS=
-    addons:
-      apt:
-        sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-6', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov']
-
-  - os: linux
-    compiler: gcc
-    env:
-      - COMPILER=g++-7
-      - COV_TOOL=gcov-7
-      - COV_TOOL_ARGS=
-    addons:
-      apt:
-        sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-7', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov']
-
-  - os: linux
-    compiler: gcc
-    env:
-      - COMPILER=g++-8
-      - COV_TOOL=gcov-8
-      - COV_TOOL_ARGS=
-    addons:
-      apt:
-        sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-8', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov']
+        packages:
+          - 'cmake'
+          - 'gcc-4.9'
+          - 'g++-4.9'
+          - 'libssl-dev'
+          - 'libcurl4-openssl-dev'
+          - 'gdb'
+          - 'valgrind'
+          - 'lcov'
 
 install:
   - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
