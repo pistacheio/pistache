@@ -189,7 +189,7 @@ public:
     }
 
     Buffer buffer() const {
-        return Buffer((char*) data_.data(), pptr() - &data_[0]);
+        return Buffer((const char*) data_.data(), pptr() - &data_[0]);
     }
 
     void clear() {
