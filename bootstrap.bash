@@ -1,17 +1,14 @@
 #!/bin/bash -ve
 
-cd $DIR
+cd $PROJECT_DIR
 
 sudo apt-get update
-
 sudo apt-get install -y coreutils apparmor-profiles libssl-dev libcurl4-openssl-dev gdb valgrind lcov python-pip python3-pip git $C_COMPILER_PACKAGE $CPP_COMPILER_PACKAGE $CPP_STDLIB_PACKAGE
 
 sudo python -m pip install --upgrade pip
 sudo python3 -m pip install --upgrade pip
 
 sudo pip3 install cmake
-
-git submodule update --init --recursive
 
 # Enable core dumps
 ulimit -c
