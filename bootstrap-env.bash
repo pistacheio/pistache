@@ -25,4 +25,4 @@ fi
 
 export CC=$C_COMPILER_BIN
 export CXX=$CPP_COMPILER_BIN
-export DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+export PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"

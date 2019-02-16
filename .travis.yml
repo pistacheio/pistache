@@ -1,5 +1,4 @@
 language: cpp
-sudo: true
 
 branches:
   only:
@@ -126,10 +125,6 @@ matrix:
     env:
       - COMPILER_NAME=gcc
       - COMPILER_VERSION=4.9
-
-# install:
-#   - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
-#   - mkdir -p ${DEPS_DIR} && cd ${DEPS_DIR}
 
 before_script:
   # Bootraping environment and required packages

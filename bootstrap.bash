@@ -2,14 +2,14 @@
 
 cd $DIR
 
-apt-get update
+sudo apt-get update
 
-apt-get install -y coreutils apparmor-profiles libssl-dev libcurl4-openssl-dev gdb valgrind lcov python-pip python3-pip git $C_COMPILER_PACKAGE $CPP_COMPILER_PACKAGE $CPP_STDLIB_PACKAGE
+sudo apt-get install -y coreutils apparmor-profiles libssl-dev libcurl4-openssl-dev gdb valgrind lcov python-pip python3-pip git $C_COMPILER_PACKAGE $CPP_COMPILER_PACKAGE $CPP_STDLIB_PACKAGE
 
-python -m pip install --upgrade pip
-python3 -m pip install --upgrade pip
+sudo python -m pip install --upgrade pip
+sudo python3 -m pip install --upgrade pip
 
-pip3 install cmake
+sudo pip3 install cmake
 
 git submodule update --init --recursive
 
@@ -25,7 +25,7 @@ service --status-all || true
 initctl list || true
 
 # Debug build
-cmake -B$DIR/build/debug \
+cmake -B$PROJECT_DIR/build/debug \
     -DCMAKE_BUILD_TYPE=debug \
     -DPISTACHE_BUILD_EXAMPLES=true \
     -DPISTACHE_BUILD_TESTS=true \
@@ -34,7 +34,7 @@ cmake -B$DIR/build/debug \
     -DCMAKE_CXX_COMPILER=$CXX
 
 # Release build
-cmake -B$DIR/build/release \
+cmake -B$PROJECT_DIR/build/release \
     -DCMAKE_BUILD_TYPE=Release \
     -DPISTACHE_SSL=true \
     -DCMAKE_C_COMPILER=$CC \
