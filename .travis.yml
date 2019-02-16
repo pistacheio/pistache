@@ -434,7 +434,6 @@ after_failure:
     gdb -c "$COREFILE" -ex "thread apply all bt" -ex "set pagination 0" -batch;
     fi
 
-
 after_success:
 - cd ../Build-Debug
 - sudo su -c "echo 'if [ \"\$1\" = \"-v\" ] ; then $COV_TOOL --version ; else $COV_TOOL $COV_TOOL_ARGS \$@ ; fi' > /usr/local/bin/cov-tool" && sudo chmod +x /usr/local/bin/cov-tool
