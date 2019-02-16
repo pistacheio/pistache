@@ -28,11 +28,11 @@ cmake -B$PROJECT_DIR/build/debug \
     -DPISTACHE_BUILD_TESTS=true \
     -DPISTACHE_SSL=true \
     -DCMAKE_C_COMPILER=$CC \
-    -DCMAKE_CXX_COMPILER=$CXX
+    -DCMAKE_CXX_COMPILER=$CXX .
 
 # Release build
 cmake -B$PROJECT_DIR/build/release \
     -DCMAKE_BUILD_TYPE=Release \
     -DPISTACHE_SSL=true \
     -DCMAKE_C_COMPILER=$CC \
-    -DCMAKE_CXX_COMPILER=$CXX
+    -DCMAKE_CXX_COMPILER=$CXX .
