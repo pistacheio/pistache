@@ -40,6 +40,7 @@ else()
     # This gives an error on date.h external library.
     # Following workaround forces Clang to compile at best with C++14
     if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -stdlib=libc++")
         set(CMAKE_CXX_STANDARD 14)
     elseif (CMAKE_COMPILER_IS_GNUCC)
         if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
