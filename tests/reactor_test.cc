@@ -70,10 +70,9 @@ TEST(reactor_test, reactor_creation)
     reactor->run();
 
     auto handlers = reactor->handlers(key);
-    ASSERT_EQ(handlers.size(), NUM_THREADS);
 
     const size_t NUM_VALUES = 4;
-    int values[NUM_THREADS][NUM_VALUES] = { {1, 2, 3, 4}, {5, 6, 7, 8} };
+    const int values[NUM_THREADS][NUM_VALUES] = { {1, 2, 3, 4}, {5, 6, 7, 8} };
 
     for(size_t i = 0; i < handlers.size(); ++i)
     {
@@ -87,6 +86,8 @@ TEST(reactor_test, reactor_creation)
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
     reactor->shutdown();
+
+    ASSERT_EQ(handlers.size(), NUM_THREADS);
 
     for(size_t i = 0; i < handlers.size(); ++i)
     {
