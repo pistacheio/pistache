@@ -50,7 +50,7 @@ matrix:
           - 'gdb'
           - 'valgrind'
           - 'lcov'
-          - 'llvm-3.8-tools'
+          - 'llvm-3.8'
 
   - os: linux
     dist: trusty
@@ -387,7 +387,8 @@ install:
   - mkdir -p ${DEPS_DIR} && cd ${DEPS_DIR}
 
 before_script:
-  - export CXX=${COMPILER}
+  - export CXX=${CPP_COMPILER_BIN}
+  - export C=${C_COMPILER_BIN}
   - cd ${TRAVIS_BUILD_DIR}
 
   # Enable core dumps
@@ -408,6 +409,8 @@ before_script:
     -DPISTACHE_BUILD_EXAMPLES=true
     -DPISTACHE_BUILD_TESTS=true
     -DPISTACHE_SSL=true
+    -DCMAKE_C_COMPILER=$C_COMPILER_BIN
+    -DCMAKE_CXX_COMPILER=$CPP_COMPILER_BIN
 
   # Release build
   - cmake -H.
