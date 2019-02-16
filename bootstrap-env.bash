@@ -1,6 +1,6 @@
 #!/bin/bash -ve
 
-apt-get update
+sudo apt-get update
 
 if [[ "$COMPILER_NAME" = "clang" ]]; then
     export C_COMPILER_PACKAGE=clang-$COMPILER_VERSION
@@ -8,8 +8,8 @@ if [[ "$COMPILER_NAME" = "clang" ]]; then
     export CPP_COMPILER_PACKAGE=
     export CPP_COMPILER_BIN=clang++-$COMPILER_VERSION
     export COV_TOOL_BIN=llvm-cov-$COMPILER_VERSION
-    if [ ! -z "$(apt-cache search llvm-$COMPILER_VERSION-tools)" ]; then export COV_TOOL_PACKAGE=$COV_TOOL_PACKAGE llvm-$COMPILER_VERSION-tools; fi
-    if [ ! -z "$(apt-cache search llvm-$COMPILER_VERSION)" ]; then export COV_TOOL_PACKAGE=$COV_TOOL_PACKAGE llvm-$COMPILER_VERSION-tools; fi
+    if [ ! -z "$(sudo apt-cache search llvm-$COMPILER_VERSION-tools)" ]; then export COV_TOOL_PACKAGE=$COV_TOOL_PACKAGE llvm-$COMPILER_VERSION-tools; fi
+    if [ ! -z "$(sudo apt-cache search llvm-$COMPILER_VERSION)" ]; then export COV_TOOL_PACKAGE=$COV_TOOL_PACKAGE llvm-$COMPILER_VERSION-tools; fi
     export COV_TOOL_ARGS=gcov
     export CPP_STDLIB_PACKAGE=libc++-dev
 elif [[ "$COMPILER_NAME" = "gcc" ]]; then
