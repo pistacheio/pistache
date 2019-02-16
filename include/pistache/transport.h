@@ -79,9 +79,9 @@ private:
     struct BufferHolder {
         enum Type { Raw, File };
 
-        explicit BufferHolder(const Buffer& buffer, off_t offset = 0)
+        explicit BufferHolder(const RawBuffer& buffer, off_t offset = 0)
             : _raw(buffer)
-            , size_(buffer.length)
+            , size_(buffer.size())
             , offset_(offset)
             , type(Raw)
         { }
@@ -104,7 +104,7 @@ private:
             return _fd;
         }
 
-        Buffer raw() const {
+        RawBuffer raw() const {
             if (!isRaw())
                 throw std::runtime_error("Tried to retrieve raw data of a non-buffer");
             return _raw;
@@ -114,7 +114,7 @@ private:
             if (!isRaw())
                 return BufferHolder(_fd, size_, offset);
 
-            if (_raw.isDetached)
+            if (_raw.isDetached())
                 return BufferHolder(_raw, offset);
 
             auto detached = _raw.detach(offset);
@@ -130,7 +130,7 @@ private:
          , type(File)
         { }
 
-        Buffer _raw;
+        RawBuffer _raw;
         Fd _fd;
 
         size_t size_= 0;
