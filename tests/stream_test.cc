@@ -35,7 +35,7 @@ TEST(stream, test_buffer)
 
 TEST(stream, test_file_buffer)
 {
-    char fileName[PATH_MAX] = "/tmp/tmpfileXXXXXX";
+    char fileName[PATH_MAX] = "/tmp/pistacheioXXXXXX";
     mkstemp(fileName);
     std::cout << "Temporary file name: " << fileName << '\n';
 
@@ -49,4 +49,6 @@ TEST(stream, test_file_buffer)
 
     ASSERT_NE(fileBuffer.fd(), -1);
     ASSERT_EQ(fileBuffer.size(), dataToWrite.size());
+
+    unlink(fileName);
 }
