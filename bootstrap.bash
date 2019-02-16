@@ -22,17 +22,17 @@ service --status-all || true
 initctl list || true
 
 # Debug build
-cmake -B$PROJECT_DIR/build/debug \
+cmake -Bbuild/debug \
     -DCMAKE_BUILD_TYPE=debug \
     -DPISTACHE_BUILD_EXAMPLES=true \
     -DPISTACHE_BUILD_TESTS=true \
     -DPISTACHE_SSL=true \
     -DCMAKE_C_COMPILER=$CC \
-    -DCMAKE_CXX_COMPILER=$CXX .
+    -DCMAKE_CXX_COMPILER=$CXX $PROJECT_DIR
 
 # Release build
-cmake -B$PROJECT_DIR/build/release \
+cmake -Bbuild/release \
     -DCMAKE_BUILD_TYPE=Release \
     -DPISTACHE_SSL=true \
     -DCMAKE_C_COMPILER=$CC \
-    -DCMAKE_CXX_COMPILER=$CXX .
+    -DCMAKE_CXX_COMPILER=$CXX $PROJECT_DIR
