@@ -29,6 +29,7 @@ pistache_test(rest_server_test)
 pistache_test(string_view_test)
 pistache_test(mailbox_test)
 pistache_test(stream_test)
+pistache_test(reactor_test)
 
 if (PISTACHE_SSL)
 
