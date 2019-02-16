@@ -421,7 +421,7 @@ before_script:
 script:
   - # Debug build
   - cd Build-Debug
-  - make -j 2 all test ARGS="-V"
+  - make -j 2 all test ARGS="-V" VERBOSE=1
 
   - # Release build
   - cd ../Build-Release
