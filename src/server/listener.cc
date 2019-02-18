@@ -384,7 +384,7 @@ void Listener::handleNewConnection()
             ERR_print_errors_fp(stderr);
             SSL_free(ssl);
             close(client_fd);
-            throw std::runtime_error("Cannot create SSL connection");
+            throw std::runtime_error("Problem with SSL handshake");
         }
         peer->associateSSL(ssl);
     }
