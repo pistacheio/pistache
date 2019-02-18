@@ -360,9 +360,41 @@ Listener::options() const {
     return options_;
 }
 
-void
-Listener::handleNewConnection() {
+void Listener::handleNewConnection()
+{
     struct sockaddr_in peer_addr;
+
+    int client_fd = acceptConnection(peer_addr);
+
+    auto peer = std::make_shared<Peer>(Address::fromUnix((struct sockaddr *)&peer_addr));
+    peer->associateFd(client_fd);
+
+#ifdef PISTACHE_USE_SSL
+    if (useSSL_)
+    {
+        SSL *ssl = SSL_new((SSL_CTX *)ssl_ctx_);
+        if (!ssl)
+            throw std::runtime_error("Cannot create SSL connection");
+
+        SSL_set_fd(ssl, client_fd);
+        SSL_set_accept_state(ssl);
+
+        if (SSL_accept(ssl) <= 0)
+        {
+            ERR_print_errors_fp(stderr);
+            SSL_free(ssl);
+            close(client_fd);
+            throw std::runtime_error("Cannot create SSL connection");
+        }
+        peer->associateSSL(ssl);
+    }
+#endif /* PISTACHE_USE_SSL */
+
+    dispatchPeer(peer);
+}
+
+int Listener::acceptConnection(struct sockaddr_in& peer_addr) const
+{
     socklen_t peer_addr_len = sizeof(peer_addr);
     int client_fd = ::accept(listen_fd, (struct sockaddr *)&peer_addr, &peer_addr_len);
     if (client_fd < 0) {
@@ -371,39 +403,9 @@ Listener::handleNewConnection() {
         else
             throw SocketError(strerror(errno));
     }
-
-#ifdef PISTACHE_USE_SSL
-    SSL *ssl;
-
-    if (this->useSSL_) {
-
-        ssl = SSL_new((SSL_CTX *)this->ssl_ctx_);
-        if (ssl == NULL)
-            throw std::runtime_error("Cannot create SSL connection");
-
-        SSL_set_fd(ssl, client_fd);
-        SSL_set_accept_state(ssl);
-
-        if (SSL_accept(ssl) <= 0) {
-            ERR_print_errors_fp(stderr);
-            SSL_free(ssl);
-            close(client_fd);
-            return ;
-        }
-    }
-#endif /* PISTACHE_USE_SSL */
-
     make_non_blocking(client_fd);
 
-    auto peer = std::make_shared<Peer>(Address::fromUnix((struct sockaddr *)&peer_addr));
-    peer->associateFd(client_fd);
-
-#ifdef PISTACHE_USE_SSL
-    if (this->useSSL_)
-        peer->associateSSL(ssl);
-#endif /* PISTACHE_USE_SSL */
-
-    dispatchPeer(peer);
+    return client_fd;
 }
 
 void

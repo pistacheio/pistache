@@ -91,6 +91,7 @@ private:
     Aio::Reactor::Key transportKey;
 
     void handleNewConnection();
+    int acceptConnection(struct sockaddr_in& peer_addr) const;
     void dispatchPeer(const std::shared_ptr<Peer>& peer);
 
     bool useSSL_;
