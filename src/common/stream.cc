@@ -17,43 +17,60 @@
 
 namespace Pistache {
 
-Buffer::Buffer()
-    : data()
-    , length(0)
-    , isDetached(false)
+RawBuffer::RawBuffer()
+    : data_()
+    , length_(0)
+    , isDetached_(false)
 { }
 
-Buffer::Buffer(std::string data, int length, bool isDetached)
-    : data(std::move(data))
-    , length(length)
-    , isDetached(isDetached)
+RawBuffer::RawBuffer(std::string data, size_t length, bool isDetached)
+    : data_(std::move(data))
+    , length_(length)
+    , isDetached_(isDetached)
 { }
 
-Buffer::Buffer(const char* data, int length, bool isDetached)
-    : data()
-    , length(length)
-    , isDetached(isDetached)
+RawBuffer::RawBuffer(const char* data, size_t length, bool isDetached)
+    : data_()
+    , length_(length)
+    , isDetached_(isDetached)
 {
-    this->data.resize(length + 1);
-    this->data.assign(data, length + 1);
+    data_.resize(length_ + 1);
+    data_.assign(data, length_ + 1);
 }
 
-Buffer Buffer::detach(size_t fromIndex)
+RawBuffer RawBuffer::detach(size_t fromIndex)
 {
-    if (data.empty())
-        return Buffer();
+    if (data_.empty())
+        return RawBuffer();
 
-    if (length < fromIndex)
+    if (length_ < fromIndex)
         throw std::range_error("Trying to detach buffer from an index bigger than lengthght.");
 
-    auto newDatalength = length - fromIndex;
-    std::string newData = data.substr(fromIndex, newDatalength);
+    auto newDatalength = length_ - fromIndex;
+    std::string newData = data_.substr(fromIndex, newDatalength);
 
-    return Buffer(std::move(newData), newDatalength, true);
-  }
+    return RawBuffer(std::move(newData), newDatalength, true);
+}
+
+const std::string& RawBuffer::data() const
+{
+    return data_;
+}
+
+size_t RawBuffer::size() const
+{
+    return length_;
+}
+
+bool RawBuffer::isDetached() const
+{
+    return isDetached_;
+}
 
 FileBuffer::FileBuffer(const std::string& fileName)
     : fileName_(fileName)
+    , fd_(-1)
+    , size_(0)
 {
     if (fileName.empty()) {
         throw std::runtime_error("Empty fileName");
@@ -72,6 +89,16 @@ FileBuffer::FileBuffer(const std::string& fileName)
 
     fd_ = fd;
     size_ = sb.st_size;
+}
+
+Fd FileBuffer::fd() const
+{
+    return fd_;
+}
+
+size_t FileBuffer::size() const
+{
+    return size_;
 }
 
 DynamicStreamBuf::int_type

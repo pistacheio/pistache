@@ -53,7 +53,7 @@ public:
     std::shared_ptr<Pistache::Http::Private::ParserBase> getData(std::string name) const;
     std::shared_ptr<Pistache::Http::Private::ParserBase> tryGetData(std::string name) const;
 
-    Async::Promise<ssize_t> send(const Buffer& buffer, int flags = 0);
+    Async::Promise<ssize_t> send(const RawBuffer& buffer, int flags = 0);
 
 private:
     void associateTransport(Transport* transport);

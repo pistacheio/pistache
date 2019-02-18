@@ -96,7 +96,7 @@ Peer::tryGetData(std::string(name)) const {
 }
 
 Async::Promise<ssize_t>
-Peer::send(const Buffer& buffer, int flags) {
+Peer::send(const RawBuffer& buffer, int flags) {
     return transport()->asyncWrite(fd_, buffer, flags);
 }
 

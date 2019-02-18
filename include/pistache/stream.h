@@ -122,33 +122,30 @@ private:
 template<typename CharT>
 size_t ArrayStreamBuf<CharT>::maxSize = Const::DefaultMaxPayload;
 
-struct Buffer
+struct RawBuffer
 {
-    Buffer();
-    Buffer(std::string data, int length, bool isDetached = false);
-    Buffer(const char * data, int length, bool isDetached = false);
+    RawBuffer();
+    RawBuffer(std::string data, size_t length, bool isDetached = false);
+    RawBuffer(const char* data, size_t length, bool isDetached = false);
 
-    Buffer detach(size_t fromIndex);
-
-    std::string data;
-    size_t length;
-    int isDetached;
+    RawBuffer detach(size_t fromIndex);
+    const std::string& data() const;
+    size_t size() const;
+    bool isDetached() const;
+private:
+    std::string data_;
+    size_t length_;
+    bool isDetached_;
 };
 
-struct FileBuffer {
-    FileBuffer()
-        : fileName_()
-        , fd_()
-        , size_()
-    { }
+struct FileBuffer
+{
+    explicit FileBuffer(const std::string& fileName);
 
-    FileBuffer(const std::string& fileName);
+    Fd fd() const;
+    size_t size() const;
 
-    std::string fileName() const { return fileName_; }
-    Fd fd() const { return fd_; }
-    size_t size() const { return size_; }
-
-  private:
+private:
     std::string fileName_;
     Fd fd_;
     size_t size_;
@@ -188,8 +185,8 @@ public:
         return *this;
     }
 
-    Buffer buffer() const {
-        return Buffer((char*) data_.data(), pptr() - &data_[0]);
+    RawBuffer buffer() const {
+        return RawBuffer((const char*) data_.data(), pptr() - &data_[0]);
     }
 
     void clear() {

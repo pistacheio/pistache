@@ -1,3 +1,4 @@
+#include <pistache/async.h>
 #include <pistache/http.h>
 #include <pistache/client.h>
 #include <pistache/endpoint.h>
@@ -6,6 +7,8 @@
 
 #include <chrono>
 #include <future>
+#include <fstream>
+#include <string>
 
 using namespace Pistache;
 
@@ -44,8 +47,29 @@ struct SlowHandlerOnSpecialPage : public Http::Handler {
     int delay_;
 };
 
+struct FileHandler : public Http::Handler
+{
+    HTTP_PROTOTYPE(FileHandler)
 
-int clientLogicFunc(int response_size, const std::string& server_page, int wait_seconds) {
+    explicit FileHandler(const std::string& fileName)
+        : fileName_(fileName)
+    { }
+
+    void onRequest(const Http::Request& /*request*/, Http::ResponseWriter writer) override
+    {
+        Http::serveFile(writer, fileName_).then([this](ssize_t bytes)
+        {
+            std::cout << "Sent " << bytes << " bytes from " << fileName_ << " file" << std::endl;
+        },
+        Async::IgnoreException);
+    }
+
+private:
+    std::string fileName_;
+};
+
+int clientLogicFunc(int response_size, const std::string& server_page, int wait_seconds)
+{
     Http::Client client;
     client.init();
 
@@ -55,10 +79,15 @@ int clientLogicFunc(int response_size, const std::string& server_page, int wait_
     for (int i = 0; i < response_size; ++i)
     {
         auto response = rb.send();
-        response.then([&](Http::Response rsp) {
-            if (rsp.code() == Http::Code::Ok)
-                ++counter;
-            }, Async::IgnoreException);
+        response.then([&counter](Http::Response resp)
+                      {
+                          std::cout << "Response code is " << resp.code() << std::endl;
+                          if (resp.code() == Http::Code::Ok)
+                          {
+                              ++counter;
+                          }
+                      },
+                      Async::IgnoreException);
         responses.push_back(std::move(response));
     }
 
@@ -189,4 +218,56 @@ TEST(http_server_test, multiple_client_with_different_requests_to_multithreaded_
     {
         ASSERT_TRUE(true);
     }
+}
+
+TEST(http_server_test, server_with_static_file)
+{
+    const std::string data("Hello, World!");
+    char fileName[PATH_MAX] = "/tmp/pistacheioXXXXXX";
+    mkstemp(fileName);
+    std::cout << "Creating temporary file: " << fileName << '\n';
+
+    std::ofstream tmpFile;
+    tmpFile.open(fileName);
+    tmpFile << data;
+    tmpFile.close();
+
+    const Pistache::Address address("localhost", Pistache::Port(0));
+
+    Http::Endpoint server(address);
+    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto server_opts = Http::Endpoint::options().flags(flags);
+    server.init(server_opts);
+    server.setHandler(Http::make_handler<FileHandler>(fileName));
+    server.serveThreaded();
+
+    const std::string server_address = "localhost:" + server.getPort().toString();
+    std::cout << "Server address: " << server_address << "\n";
+
+    Http::Client client;
+    client.init();
+    auto rb = client.get(server_address);
+    auto response = rb.send();
+    std::string resultData;
+    response.then([&resultData](Http::Response resp)
+                  {
+                      std::cout << "Response code is " << resp.code() << std::endl;
+                      if (resp.code() == Http::Code::Ok)
+                      {
+                          resultData = resp.body();
+                      }
+                  },
+                  Async::Throw);
+
+    const int WAIT_TIME = 2;
+    Async::Barrier<Http::Response> barrier(response);
+    barrier.wait_for(std::chrono::seconds(WAIT_TIME));
+
+    client.shutdown();
+    server.shutdown();
+
+    std::cout << "Deleting file " << fileName << std::endl;
+    unlink(fileName);
+
+    ASSERT_EQ(data, resultData);
 }
