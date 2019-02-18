@@ -390,6 +390,8 @@ void Listener::handleNewConnection()
     }
 #endif /* PISTACHE_USE_SSL */
 
+    make_non_blocking(client_fd);
+
     dispatchPeer(peer);
 }
 
@@ -403,7 +405,6 @@ int Listener::acceptConnection(struct sockaddr_in& peer_addr) const
         else
             throw SocketError(strerror(errno));
     }
-    make_non_blocking(client_fd);
 
     return client_fd;
 }
