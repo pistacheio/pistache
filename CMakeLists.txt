@@ -9,9 +9,7 @@ endif()
 
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
     set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage")
-    set(CMAKE_CXX_CPPCHECK "cppcheck")
 endif()
-
 
 option(PISTACHE_BUILD_TESTS "build tests alongside the project" OFF)
 option(PISTACHE_BUILD_EXAMPLES "build examples alongside the project" OFF)
@@ -20,6 +18,16 @@ option(PISTACHE_SSL "add support for SSL server" OFF)
 
 find_program(CTEST_MEMORYCHECK_COMMAND NAMES valgrind)
 find_program(CTEST_COVERAGE_COMMAND NAMES gcov)
+find_program(CMAKE_CXX_CPPCHECK NAMES cppcheck)
+
+if (CMAKE_CXX_CPPCHECK)
+    list(
+        APPEND CMAKE_CXX_CPPCHECK 
+            "--enable=all"
+            "--suppress=*:${PROJECT_SOURCE_DIR}/googletest*"
+            "--suppress=*:${PROJECT_SOURCE_DIR}/tests/*"
+    )
+endif()
 
 INCLUDE(Dart)
 
