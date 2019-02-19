@@ -27,6 +27,8 @@ if (CMAKE_CXX_CPPCHECK)
             "--suppress=*:${PROJECT_SOURCE_DIR}/googletest*"
             "--suppress=*:${PROJECT_SOURCE_DIR}/tests/*"
     )
+else()
+    set(CMAKE_CXX_CPPCHECK "")
 endif()
 
 INCLUDE(Dart)
