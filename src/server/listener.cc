@@ -360,17 +360,10 @@ Listener::options() const {
     return options_;
 }
 
-void
-Listener::handleNewConnection() {
+void Listener::handleNewConnection()
+{
     struct sockaddr_in peer_addr;
-    socklen_t peer_addr_len = sizeof(peer_addr);
-    int client_fd = ::accept(listen_fd, (struct sockaddr *)&peer_addr, &peer_addr_len);
-    if (client_fd < 0) {
-        if (errno == EBADF || errno == ENOTSOCK)
-            throw ServerError(strerror(errno));
-        else
-            throw SocketError(strerror(errno));
-    }
+    int client_fd = acceptConnection(peer_addr);
 
 #ifdef PISTACHE_USE_SSL
     SSL *ssl;
@@ -404,6 +397,19 @@ Listener::handleNewConnection() {
 #endif /* PISTACHE_USE_SSL */
 
     dispatchPeer(peer);
+}
+
+int Listener::acceptConnection(struct sockaddr_in& peer_addr) const
+{
+    socklen_t peer_addr_len = sizeof(peer_addr);
+    int client_fd = ::accept(listen_fd, (struct sockaddr *)&peer_addr, &peer_addr_len);
+    if (client_fd < 0) {
+        if (errno == EBADF || errno == ENOTSOCK)
+            throw ServerError(strerror(errno));
+        else
+            throw SocketError(strerror(errno));
+    }
+    return client_fd;
 }
 
 void
