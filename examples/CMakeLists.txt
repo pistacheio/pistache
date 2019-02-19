@@ -6,6 +6,7 @@ function(pistache_example example_name)
     target_link_libraries(${EXAMPLE_EXECUTABLE} pistache_static)
 endfunction()
 
+pistache_example(hello_server)
 pistache_example(http_server)
 pistache_example(http_client)
 pistache_example(rest_server)
