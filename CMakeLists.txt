@@ -25,7 +25,7 @@ if (CMAKE_CXX_CPPCHECK)
     list(
         APPEND CMAKE_CXX_CPPCHECK 
             "--enable=all"
-            "--suppress=*:${PROJECT_SOURCE_DIR}/googletest*"
+            "--suppress=*:${PROJECT_SOURCE_DIR}/third-party*"
             "--suppress=*:${PROJECT_SOURCE_DIR}/tests/*"
     )
 else()
@@ -146,7 +146,7 @@ if (PISTACHE_BUILD_TESTS)
     if (GTEST_FOUND)
         include_directories(${GTEST_INCLUDE_DIRS})
     else()
-        ADD_SUBDIRECTORY (googletest-release-1.7.0)
+        ADD_SUBDIRECTORY (third-party/googletest)
         include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
     endif()
 
