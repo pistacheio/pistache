@@ -683,7 +683,18 @@ ResponseWriter::putOnWire(const char* data, size_t len)
                          std::function<void(std::exception_ptr&)>
                  >
                  (
-                         [=](int l) { return Async::Promise<ssize_t>([=](Async::Deferred<ssize_t> deferred) mutable { close(peer()->fd()); }); },
+                         [=](int l) {
+                             return Async::Promise<ssize_t>([=](Async::Deferred<ssize_t> deferred) mutable {
+                                 auto connection = this->headers().tryGet<Header::Connection>();
+                                 if (connection) {
+                                     if (connection->control() == ConnectionControl::KeepAlive ) return;
+                                 }
+
+                                 close(peer()->fd());
+                                return;
+                             });
+                         },
+
                          [=](std::exception_ptr& eptr){}
                  );
 
