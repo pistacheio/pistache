@@ -85,10 +85,13 @@ protected:
     Version version_;
     Code code_;
 
-    Header::Collection headers_;
+
     std::string body_;
 
     CookieJar cookies_;
+    Header::Collection headers_;
+public:
+
 };
 
 namespace Uri {

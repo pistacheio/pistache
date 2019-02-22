@@ -48,7 +48,7 @@ TEST(http_client_test, one_client_with_one_request)
     client.init();
 
     auto rb = client.get(server_address);
-    auto response = rb.send();
+    auto response = rb.header<Http::Header::Connection>(Http::ConnectionControl::KeepAlive).send();
     bool done = false;
     response.then([&](Http::Response rsp)
                   {
@@ -87,7 +87,7 @@ TEST(http_client_test, one_client_with_multiple_requests) {
 
     auto rb = client.get(server_address);
     for (int i = 0; i < RESPONSE_SIZE; ++i) {
-        auto response = rb.send();
+        auto response = rb.header<Http::Header::Connection>(Http::ConnectionControl::KeepAlive).send();
         response.then([&](Http::Response rsp) {
             if (rsp.code() == Http::Code::Ok)
                 ++response_counter;
@@ -131,21 +131,21 @@ TEST(http_client_test, multiple_clients_with_one_request) {
     std::atomic<int> response_counter(0);
 
     auto rb1 = client1.get(server_address);
-    auto response1 = rb1.send();
+    auto response1 = rb1.header<Http::Header::Connection>(Http::ConnectionControl::KeepAlive).send();
     response1.then([&](Http::Response rsp) {
             if (rsp.code() == Http::Code::Ok)
                 ++response_counter;
         }, Async::IgnoreException);
     responses.push_back(std::move(response1));
     auto rb2 = client2.get(server_address);
-    auto response2 = rb2.send();
+    auto response2 = rb2.header<Http::Header::Connection>(Http::ConnectionControl::KeepAlive).send();
     response2.then([&](Http::Response rsp) {
             if (rsp.code() == Http::Code::Ok)
                 ++response_counter;
         }, Async::IgnoreException);
     responses.push_back(std::move(response2));
     auto rb3 = client3.get(server_address);
-    auto response3 = rb3.send();
+    auto response3 = rb3.header<Http::Header::Connection>(Http::ConnectionControl::KeepAlive).send();
     response3.then([&](Http::Response rsp) {
             if (rsp.code() == Http::Code::Ok)
                 ++response_counter;
@@ -183,7 +183,7 @@ TEST(http_client_test, timeout_reject)
     client.init();
 
     auto rb = client.get(server_address).timeout(std::chrono::milliseconds(1000));
-    auto response = rb.send();
+    auto response = rb.header<Http::Header::Connection>(Http::ConnectionControl::KeepAlive).send();
     bool is_reject = false;
     response.then([&is_reject](Http::Response /*rsp*/)
                   {
@@ -228,7 +228,7 @@ TEST(http_client_test, one_client_with_multiple_requests_and_one_connection_per_
     auto rb = client.get(server_address);
     for (int i = 0; i < RESPONSE_SIZE; ++i)
     {
-        auto response = rb.send();
+        auto response = rb.header<Http::Header::Connection>(Http::ConnectionControl::KeepAlive).send();
         response.then([&](Http::Response rsp)
                       {
                           if (rsp.code() == Http::Code::Ok)
@@ -274,7 +274,7 @@ TEST(http_client_test, one_client_with_multiple_requests_and_two_connections_per
     auto rb = client.get(server_address);
     for (int i = 0; i < RESPONSE_SIZE; ++i)
     {
-        auto response = rb.send();
+        auto response = rb.header<Http::Header::Connection>(Http::ConnectionControl::KeepAlive).send();
         response.then([&](Http::Response rsp)
                       {
                           if (rsp.code() == Http::Code::Ok)

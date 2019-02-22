@@ -655,6 +655,8 @@ ResponseWriter::putOnWire(const char* data, size_t len)
         OUT(writeHeaders(headers_, buf_));
         OUT(writeCookies(cookies_, buf_));
 
+        auto headers__ = headers_;
+
         /* @Todo @Major:
          * Correctly handle non-keep alive requests
          * Do not put Keep-Alive if version == Http::11 and request.keepAlive == true
@@ -684,13 +686,26 @@ ResponseWriter::putOnWire(const char* data, size_t len)
                  >
                  (
                          [=](int l) {
+
                              return Async::Promise<ssize_t>([=](Async::Deferred<ssize_t> deferred) mutable {
-                                 auto connection = this->headers().tryGet<Header::Connection>();
-                                 if (connection) {
-                                     if (connection->control() == ConnectionControl::KeepAlive ) return;
+
+                                 try {
+
+                                     auto connection = headers__.tryGet<Header::Connection>();
+
+                                     if (connection) {
+                                         auto control = connection->control();
+                                         if (control == ConnectionControl::KeepAlive) return ;
+                                     }
+
+                                 } catch (std::exception& e) {
+                                     std::cout << e.what() << std::endl;
                                  }
 
-                                 close(peer()->fd());
+                                 if (fd) {
+                                     close(fd);
+                                 }
+
                                 return;
                              });
                          },
