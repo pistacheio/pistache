@@ -32,9 +32,9 @@ public:
        : events_()
     {
         events_.reserve(events.size());
-        for (auto &&event: events) {
-            events_.push_back(std::move(event));
-        }
+        events_.insert(events_.end(),
+                       std::make_move_iterator(events.begin()),
+                       std::make_move_iterator(events.end()));
     }
 
     struct Entry : private Polling::Event {
