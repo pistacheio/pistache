@@ -40,7 +40,7 @@ TEST(http_parsing_test, succ_response_line_step)
     Http::Private::ResponseLineStep step(&response);
 
     std::string line("HTTP/1.1 200 OK\r\n");
-    RawStreamBuf buf(&line[0], line.size());
+    RawStreamBuf<> buf(&line[0], line.size());
     StreamCursor cursor(&buf);
 
     Http::Private::State state = step.apply(cursor);
@@ -59,7 +59,7 @@ TEST(http_parsing_test, error_response_line_step)
         Http::Response response;
         Http::Private::ResponseLineStep step(&response);
 
-        RawStreamBuf buf(&line[0], line.size());
+        RawStreamBuf<> buf(&line[0], line.size());
         StreamCursor cursor(&buf);
 
         ASSERT_THROW(step.apply(cursor), Http::HttpError);
