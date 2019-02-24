@@ -229,10 +229,10 @@ namespace Private {
 
         auto *response = static_cast<Response *>(message);
 
-        if (match_raw("HTTP/1.1", sizeof("HTTP/1.1") - 1, cursor)) {
+        if (match_raw("HTTP/1.1", strlen("HTTP/1.1"), cursor)) {
             //response->version = Version::Http11;
         }
-        else if (match_raw("HTTP/1.0", sizeof("HTTP/1.0") - 1, cursor)) {
+        else if (match_raw("HTTP/1.0", strlen("HTTP/1.0"), cursor)) {
         }
         else {
             raise("Encountered invalid HTTP version");
