@@ -1,5 +1,6 @@
 #include "gtest/gtest.h"
 #include <pistache/http.h>
+#include <pistache/stream.h>
 
 using namespace Pistache;
 
@@ -9,7 +10,7 @@ TEST(http_parsing_test, should_parse_http_request_in_two_packets_issue_160)
 {
     Http::Private::Parser<Http::Request> parser;
 
-    auto feed = [&](const char* data)
+    auto feed = [&parser](const char* data)
     {
         parser.feed(data, std::strlen(data));
     };
@@ -31,4 +32,36 @@ TEST(http_parsing_test, should_parse_http_request_in_two_packets_issue_160)
     // Finally, we finish the body
     feed("HELLO");
     ASSERT_EQ(parser.parse(), Http::Private::State::Done);
+}
+
+TEST(http_parsing_test, succ_response_line_step)
+{
+    Http::Response response;
+    Http::Private::ResponseLineStep step(&response);
+
+    std::string line("HTTP/1.1 200 OK\r\n");
+    RawStreamBuf<> buf(&line[0], line.size());
+    StreamCursor cursor(&buf);
+
+    Http::Private::State state = step.apply(cursor);
+
+    ASSERT_EQ(state, Http::Private::State::Next);
+    ASSERT_EQ(response.code(), Http::Code::Ok);
+}
+
+TEST(http_parsing_test, error_response_line_step)
+{
+    std::vector<std::string> lines = {"HTTP/ABC.DEF 200 OK\r\n",
+                                      "HTTP/1.1200 OK\r\n",
+                                      "HTTP/ABC.DEF 200\r\n"};
+    for (auto& line: lines)
+    {
+        Http::Response response;
+        Http::Private::ResponseLineStep step(&response);
+
+        RawStreamBuf<> buf(&line[0], line.size());
+        StreamCursor cursor(&buf);
+
+        ASSERT_THROW(step.apply(cursor), Http::HttpError);
+    }
 }
