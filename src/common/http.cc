@@ -655,7 +655,12 @@ ResponseWriter::putOnWire(const char* data, size_t len)
         OUT(writeHeaders(headers_, buf_));
         OUT(writeCookies(cookies_, buf_));
 
-        auto headers__ = headers_;
+
+        auto connection = headers_.tryGet<Header::Connection>();
+        auto control = ConnectionControl::Close;
+
+        if (connection)
+            control = connection->control();
 
         /* @Todo @Major:
          * Correctly handle non-keep alive requests
@@ -687,30 +692,20 @@ ResponseWriter::putOnWire(const char* data, size_t len)
                  (
                          [=](int l) {
 
-                             return Async::Promise<ssize_t>([=](Async::Deferred<ssize_t> deferred) mutable {
+                             return Async::Promise<ssize_t>( [=](Async::Deferred<ssize_t> deferred) mutable {
 
-                                 try {
+                                 if (control == ConnectionControl::KeepAlive) return ;
 
-                                     auto connection = headers__.tryGet<Header::Connection>();
-
-                                     if (connection) {
-                                         auto control = connection->control();
-                                         if (control == ConnectionControl::KeepAlive) return ;
-                                     }
-
-                                 } catch (std::exception& e) {
-                                     std::cout << e.what() << std::endl;
-                                 }
-
-                                 if (fd) {
+                                 if (fd)
                                      close(fd);
-                                 }
 
-                                return;
-                             });
+                                return ;
+                             } );
                          },
 
-                         [=](std::exception_ptr& eptr){}
+                         [=](std::exception_ptr& eptr){
+                             return Async::Promise<ssize_t>::rejected(eptr);
+                         }
                  );
 
     } catch (const std::runtime_error& e) {

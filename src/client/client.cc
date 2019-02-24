@@ -810,6 +810,7 @@ Client::doRequest(
         Http::Request request,
         std::chrono::milliseconds timeout)
 {
+    //request.headers_.add<Header::Connection>(ConnectionControl::KeepAlive);
     request.headers_.remove<Header::UserAgent>();
     auto resource = request.resource();
 
