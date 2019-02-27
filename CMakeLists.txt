@@ -14,6 +14,7 @@ endif()
 
 option(PISTACHE_BUILD_TESTS "build tests alongside the project" OFF)
 option(PISTACHE_BUILD_EXAMPLES "build examples alongside the project" OFF)
+option(PISTACHE_BUILD_DOCS "build docs alongside the project" OFF)
 option(PISTACHE_INSTALL "add pistache as install target (recommended)" ON)
 option(PISTACHE_SSL "add support for SSL server" OFF)
 
@@ -27,7 +28,7 @@ if (CMAKE_CXX_CPPCHECK)
         APPEND CMAKE_CXX_CPPCHECK 
             "--enable=all"
             "--suppress=*:${PROJECT_SOURCE_DIR}/third-party*"
-            "--suppress=*:${PROJECT_SOURCE_DIR}/tests/*"
+            "--suppress=*:${PROJECT_SOURCE_DIR}/tests*"
     )
 else()
     message("-- Cppcheck not found")
@@ -152,4 +153,31 @@ if (PISTACHE_BUILD_TESTS)
 
     enable_testing()
     add_subdirectory(tests)
+endif()
+
+if (PISTACHE_BUILD_DOCS)
+
+    find_package(Doxygen
+            REQUIRED dot
+            OPTIONAL_COMPONENTS mscgen dia)
+
+    if (DOXYGEN_FOUND)
+
+        set(DOXYGEN_IN ${CMAKE_SOURCE_DIR}/docs/Doxyfile.in)
+        set(DOXYGEN_OUT ${CMAKE_CURRENT_BINARY_DIR}/docs/Doxyfile)
+
+        configure_file(${DOXYGEN_IN} ${DOXYGEN_OUT} @ONLY)
+
+        add_custom_target(docs
+            COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_OUT}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/docs
+            COMMENT "Generating doxygen documentation"
+            VERBATIM)
+
+        message("-- Adding doxygen documentation done")
+
+    else(DOXYGEN_FOUND)
+        message(FATAL_ERROR "Doxygen need to be installed to generate the doxygen documentation")
+    endif(DOXYGEN_FOUND)
+
 endif()
