@@ -85,10 +85,13 @@ protected:
     Version version_;
     Code code_;
 
-    Header::Collection headers_;
+
     std::string body_;
 
     CookieJar cookies_;
+    Header::Collection headers_;
+public:
+
 };
 
 namespace Uri {
@@ -630,7 +633,7 @@ namespace Private {
             : Step(request)
         { }
 
-        State apply(StreamCursor& cursor);
+        State apply(StreamCursor& cursor) override;
     };
 
     class ResponseLineStep : public Step {
@@ -639,7 +642,7 @@ namespace Private {
             : Step(response)
         { }
 
-        State apply(StreamCursor& cursor);
+        State apply(StreamCursor& cursor) override;
     };
 
     class HeadersStep : public Step {
@@ -648,7 +651,7 @@ namespace Private {
             : Step(request)
         { }
 
-        State apply(StreamCursor& cursor);
+        State apply(StreamCursor& cursor) override;
     };
 
     class BodyStep : public Step {
@@ -659,7 +662,7 @@ namespace Private {
             , bytesRead(0)
         { }
 
-        State apply(StreamCursor& cursor);
+        State apply(StreamCursor& cursor) override;
 
     private:
         struct Chunk {

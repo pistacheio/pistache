@@ -229,10 +229,10 @@ namespace Private {
 
         auto *response = static_cast<Response *>(message);
 
-        if (match_raw("HTTP/1.1", sizeof("HTTP/1.1") - 1, cursor)) {
+        if (match_raw("HTTP/1.1", strlen("HTTP/1.1"), cursor)) {
             //response->version = Version::Http11;
         }
-        else if (match_raw("HTTP/1.0", sizeof("HTTP/1.0") - 1, cursor)) {
+        else if (match_raw("HTTP/1.0", strlen("HTTP/1.0"), cursor)) {
         }
         else {
             raise("Encountered invalid HTTP version");
@@ -605,8 +605,8 @@ ResponseStream::ResponseStream(
          * Correctly handle non-keep alive requests
          * Do not put Keep-Alive if version == Http::11 and request.keepAlive == true
         */
-        writeHeader<Header::Connection>(os, ConnectionControl::KeepAlive);
-        if (!os) throw Error("Response exceeded buffer size");
+        // writeHeader<Header::Connection>(os, ConnectionControl::KeepAlive);
+        // if (!os) throw Error("Response exceeded buffer size");
         writeHeader<Header::TransferEncoding>(os, Header::Encoding::Chunked);
         if (!os) throw Error("Response exceeded buffer size");
         os << crlf;
@@ -655,11 +655,18 @@ ResponseWriter::putOnWire(const char* data, size_t len)
         OUT(writeHeaders(headers_, buf_));
         OUT(writeCookies(cookies_, buf_));
 
+
+        auto connection = headers_.tryGet<Header::Connection>();
+        auto control = ConnectionControl::Close;
+
+        if (connection)
+            control = connection->control();
+
         /* @Todo @Major:
          * Correctly handle non-keep alive requests
          * Do not put Keep-Alive if version == Http::11 and request.keepAlive == true
         */
-        OUT(writeHeader<Header::Connection>(os, ConnectionControl::KeepAlive));
+        //OUT(writeHeader<Header::Connection>(os, ConnectionControl::KeepAlive));
         OUT(writeHeader<Header::ContentLength>(os, len));
 
         OUT(os << crlf);
@@ -675,7 +682,31 @@ ResponseWriter::putOnWire(const char* data, size_t len)
 #undef OUT
 
         auto fd = peer()->fd();
-        return transport_->asyncWrite(fd, buffer);
+
+        return transport_->asyncWrite(fd, buffer)
+         .then
+                 <
+                         std::function< Async::Promise<ssize_t>(int)>,
+                         std::function<void(std::exception_ptr&)>
+                 >
+                 (
+                         [=](int l) {
+
+                             return Async::Promise<ssize_t>( [=](Async::Deferred<ssize_t> deferred) mutable {
+
+                                 if (control == ConnectionControl::KeepAlive) return ;
+
+                                 if (fd)
+                                     close(fd);
+
+                                return ;
+                             } );
+                         },
+
+                         [=](std::exception_ptr& eptr){
+                             return Async::Promise<ssize_t>::rejected(eptr);
+                         }
+                 );
 
     } catch (const std::runtime_error& e) {
         return Async::Promise<ssize_t>::rejected(e);
@@ -768,6 +799,7 @@ Handler::onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer
         }
 
         auto state = parser.parse();
+
         if (state == Private::State::Done) {
             ResponseWriter response(transport(), parser.request, this);
             response.associatePeer(peer);
@@ -775,15 +807,29 @@ Handler::onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
             parser.request.associatePeer(peer);
 #endif
-            onRequest(parser.request, std::move(response));
+
+            auto request = parser.request;
+            auto connection = request.headers().tryGet<Header::Connection>();
+
+            if (connection) {
+                response.headers()
+                    .add<Header::Connection>(connection->control());
+            } else {
+                response.headers()
+                        .add<Header::Connection>(ConnectionControl::Close);
+            }
+
+            onRequest(request, std::move(response));
             parser.reset();
         }
+
     } catch (const HttpError &err) {
         ResponseWriter response(transport(), parser.request, this);
         response.associatePeer(peer);
         response.send(static_cast<Code>(err.code()), err.reason());
         parser.reset();
     }
+
     catch (const std::exception& e) {
         ResponseWriter response(transport(), parser.request, this);
         response.associatePeer(peer);

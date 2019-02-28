@@ -29,3 +29,8 @@ build
 *.exe
 *.out
 *.app
+
+# Ignoring IDE files
+
+.vscode
+.idea
