@@ -50,11 +50,12 @@ TEST(http_client_test, one_client_with_one_request)
     auto rb = client.get(server_address);
     auto response = rb.header<Http::Header::Connection>(Http::ConnectionControl::KeepAlive).send();
     bool done = false;
-    response.then([&](Http::Response rsp)
+    response.then([&done](Http::Response rsp)
                   {
                       if (rsp.code() == Http::Code::Ok)
                           done = true;
-                  }, Async::IgnoreException);
+                  },
+                  Async::IgnoreException);
 
     Async::Barrier<Http::Response> barrier(response);
     barrier.wait_for(std::chrono::seconds(5));
@@ -65,7 +66,8 @@ TEST(http_client_test, one_client_with_one_request)
     ASSERT_TRUE(done);
 }
 
-TEST(http_client_test, one_client_with_multiple_requests) {
+TEST(http_client_test, one_client_with_multiple_requests)
+{
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
@@ -86,12 +88,15 @@ TEST(http_client_test, one_client_with_multiple_requests) {
     int response_counter = 0;
 
     auto rb = client.get(server_address);
-    for (int i = 0; i < RESPONSE_SIZE; ++i) {
-        auto response = rb.header<Http::Header::Connection>(Http::ConnectionControl::KeepAlive).send();
-        response.then([&](Http::Response rsp) {
-            if (rsp.code() == Http::Code::Ok)
-                ++response_counter;
-        }, Async::IgnoreException);
+    for (int i = 0; i < RESPONSE_SIZE; ++i)
+    {
+        auto response = rb.send();
+        response.then([&response_counter](Http::Response rsp)
+                      {
+                          if (rsp.code() == Http::Code::Ok)
+                              ++response_counter;
+                      },
+                      Async::IgnoreException);
         responses.push_back(std::move(response));
     }
 
@@ -131,25 +136,31 @@ TEST(http_client_test, multiple_clients_with_one_request) {
     std::atomic<int> response_counter(0);
 
     auto rb1 = client1.get(server_address);
-    auto response1 = rb1.header<Http::Header::Connection>(Http::ConnectionControl::KeepAlive).send();
-    response1.then([&](Http::Response rsp) {
-            if (rsp.code() == Http::Code::Ok)
-                ++response_counter;
-        }, Async::IgnoreException);
+    auto response1 = rb1.send();
+    response1.then([&response_counter](Http::Response rsp)
+                   {
+                       if (rsp.code() == Http::Code::Ok)
+                           ++response_counter;
+                   },
+                   Async::IgnoreException);
     responses.push_back(std::move(response1));
     auto rb2 = client2.get(server_address);
-    auto response2 = rb2.header<Http::Header::Connection>(Http::ConnectionControl::KeepAlive).send();
-    response2.then([&](Http::Response rsp) {
-            if (rsp.code() == Http::Code::Ok)
-                ++response_counter;
-        }, Async::IgnoreException);
+    auto response2 = rb2.send();
+    response2.then([&response_counter](Http::Response rsp)
+                   {
+                       if (rsp.code() == Http::Code::Ok)
+                           ++response_counter;
+                   },
+                   Async::IgnoreException);
     responses.push_back(std::move(response2));
     auto rb3 = client3.get(server_address);
-    auto response3 = rb3.header<Http::Header::Connection>(Http::ConnectionControl::KeepAlive).send();
-    response3.then([&](Http::Response rsp) {
-            if (rsp.code() == Http::Code::Ok)
-                ++response_counter;
-        }, Async::IgnoreException);
+    auto response3 = rb3.send();
+    response3.then([&response_counter](Http::Response rsp)
+                   {
+                       if (rsp.code() == Http::Code::Ok)
+                           ++response_counter;
+                   },
+                   Async::IgnoreException);
     responses.push_back(std::move(response3));
 
     auto sync = Async::whenAll(responses.begin(), responses.end());
