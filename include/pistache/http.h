@@ -149,6 +149,8 @@ public:
     // @Todo: try to remove the need for friend-ness here
     friend class Client;
 
+    Request();
+
     Request(const Request& other) = default;
     Request& operator=(const Request& other) = default;
 
@@ -179,8 +181,6 @@ public:
 #endif
 
 private:
-    Request();
-
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
     void associatePeer(const std::shared_ptr<Tcp::Peer>& peer) {
         if (peer_.use_count() > 0)
@@ -398,11 +398,9 @@ public:
     friend class Private::ResponseLineStep;
     friend class Private::Parser<Http::Response>;
 
-    Response()
-        : Message()
-    { }
+    Response() = default;
 
-    Response(Version version)
+    explicit Response(Version version)
         : Message()
     {
         version_ = version;
