@@ -526,12 +526,7 @@ namespace Uri {
 
 } // namespace Uri
 
-Request::Request()
-    : Message()
-    , method_()
-    , resource_()
-    , query_()
-{ }
+Request::Request() = default;
 
 Version
 Request::version() const {

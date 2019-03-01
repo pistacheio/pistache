@@ -2,6 +2,10 @@
 #include <pistache/http.h>
 #include <pistache/stream.h>
 
+#include <tuple>
+#include <vector>
+#include <string>
+
 using namespace Pistache;
 
 // @Todo: Add an easy to use fixture to inject data for parsing tests.
@@ -47,6 +51,7 @@ TEST(http_parsing_test, succ_response_line_step)
 
     ASSERT_EQ(state, Http::Private::State::Next);
     ASSERT_EQ(response.code(), Http::Code::Ok);
+    ASSERT_EQ(response.version(), Http::Version::Http11);
 }
 
 TEST(http_parsing_test, error_response_line_step)
@@ -63,5 +68,77 @@ TEST(http_parsing_test, error_response_line_step)
         StreamCursor cursor(&buf);
 
         ASSERT_THROW(step.apply(cursor), Http::HttpError);
+    }
+}
+
+TEST(http_parsing_test, succ_request_line_step)
+{
+    Http::Request request;
+    Http::Private::RequestLineStep step(&request);
+
+    std::string line("GET example.com HTTP/1.1\r\n");
+    RawStreamBuf<> buf(&line[0], line.size());
+    StreamCursor cursor(&buf);
+
+    Http::Private::State state = step.apply(cursor);
+
+    ASSERT_EQ(state, Http::Private::State::Next);
+    ASSERT_EQ(request.method(), Http::Method::Get);
+    ASSERT_EQ(request.resource(), "example.com");
+    ASSERT_EQ(request.version(), Http::Version::Http11);
+}
+
+TEST(http_parsing_test, error_request_line_step)
+{
+    std::vector<std::string> lines = {"example.comHTTP/1.1\r\n",
+                                      "GETHTTP/1.1\r\n",
+                                      "GET example.com HTTP/ABC.DEF\r\n"};
+    for (auto& line: lines)
+    {
+        Http::Request request;
+        Http::Private::RequestLineStep step(&request);
+
+        RawStreamBuf<> buf(&line[0], line.size());
+        StreamCursor cursor(&buf);
+
+        ASSERT_THROW(step.apply(cursor), Http::HttpError);
+    }
+}
+
+TEST(http_parsing_test, succ_method_parse_request)
+{
+    enum class ResultType
+    {
+        Pass,
+        Fail
+    };
+
+    using TestDataHolder = std::vector<std::tuple<std::string, Http::Method, ResultType>>;
+    TestDataHolder holder;
+    holder.emplace_back("GET /resource HTTP/1.1\r\n", Http::Method::Get, ResultType::Pass);
+    holder.emplace_back("HEAD /resources HTTP/1.1\r\n", Http::Method::Head, ResultType::Pass);
+    holder.emplace_back("POST /resources HTTP/1.1\r\n", Http::Method::Post, ResultType::Pass);
+    holder.emplace_back("DELETE /resources HTTP/1.1\r\n", Http::Method::Delete, ResultType::Pass);
+    holder.emplace_back("REVERT /resources HTTP/1.1\r\n", Http::Method::Put, ResultType::Fail);
+
+    for (auto& item: holder)
+    {
+        Http::Request request;
+        Http::Private::RequestLineStep step(&request);
+
+        std::string reqestString = std::get<0>(item);
+        RawStreamBuf<> buf(&reqestString[0], reqestString.size());
+        StreamCursor cursor(&buf);
+
+        if (std::get<2>(item) == ResultType::Pass)
+        {
+            Http::Private::State state = step.apply(cursor);
+            ASSERT_EQ(state, Http::Private::State::Next);
+            ASSERT_EQ(request.method(), std::get<1>(item));
+        }
+        else
+        {
+            ASSERT_THROW(step.apply(cursor), Http::HttpError);
+        }
     }
 }
