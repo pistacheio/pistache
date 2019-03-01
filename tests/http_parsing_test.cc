@@ -114,13 +114,12 @@ TEST(http_parsing_test, succ_method_parse_request)
     };
 
     using TestDataHolder = std::vector<std::tuple<std::string, Http::Method, ResultType>>;
-    TestDataHolder holder = {
-                               {"GET /resource HTTP/1.1\r\n", Http::Method::Get, ResultType::Pass},
-                               {"HEAD /resources HTTP/1.1\r\n", Http::Method::Head, ResultType::Pass},
-                               {"POST /resources HTTP/1.1\r\n", Http::Method::Post, ResultType::Pass},
-                               {"DELETE /resources HTTP/1.1\r\n", Http::Method::Delete, ResultType::Pass},
-                               {"REVERT /resources HTTP/1.1\r\n", Http::Method::Put, ResultType::Fail}
-                            };
+    TestDataHolder holder;
+    holder.emplace_back("GET /resource HTTP/1.1\r\n", Http::Method::Get, ResultType::Pass);
+    holder.emplace_back("HEAD /resources HTTP/1.1\r\n", Http::Method::Head, ResultType::Pass);
+    holder.emplace_back("POST /resources HTTP/1.1\r\n", Http::Method::Post, ResultType::Pass);
+    holder.emplace_back("DELETE /resources HTTP/1.1\r\n", Http::Method::Delete, ResultType::Pass);
+    holder.emplace_back("REVERT /resources HTTP/1.1\r\n", Http::Method::Put, ResultType::Fail);
 
     for (auto& item: holder)
     {
