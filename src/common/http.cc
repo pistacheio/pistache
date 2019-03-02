@@ -256,7 +256,10 @@ namespace Private {
 
         if (!cursor.advance(1)) return State::Again;
 
-        while (!cursor.eol()) cursor.advance(1);
+        while (!cursor.eol() && !cursor.eof())
+        {
+            cursor.advance(1);
+        }
 
         if (!cursor.advance(2)) return State::Again;
 
