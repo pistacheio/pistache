@@ -562,18 +562,6 @@ Request::cookies() const {
     return cookies_;
 }
 
-#ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
-std::shared_ptr<Tcp::Peer>
-Request::peer() const {
-    auto p = peer_.lock();
-
-    if (!p) throw std::runtime_error("Failed to retrieve peer: Broken pipe");
-
-    return p;
-}
-#endif
-
-
 ResponseStream::ResponseStream(
         Message&& other,
         std::weak_ptr<Tcp::Peer> peer,
@@ -797,10 +785,6 @@ Handler::onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer
         if (state == Private::State::Done) {
             ResponseWriter response(transport(), parser.request, this);
             response.associatePeer(peer);
-
-#ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
-            parser.request.associatePeer(peer);
-#endif
 
             auto request = parser.request;
             auto connection = request.headers().tryGet<Header::Connection>();

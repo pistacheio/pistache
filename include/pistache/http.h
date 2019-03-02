@@ -90,8 +90,6 @@ protected:
 
     CookieJar cookies_;
     Header::Collection headers_;
-public:
-
 };
 
 namespace Uri {
@@ -168,35 +166,10 @@ public:
 
     const CookieJar& cookies() const;
 
-    /* @Investigate: this is disabled because of a lock in the shared_ptr / weak_ptr
-        implementation of libstdc++. Under contention, we experience a performance
-        drop of 5x with that lock
-
-        If this turns out to be a problem, we might be able to replace the weak_ptr
-        trick to detect peer disconnection by a plain old "observer" pointer to a
-        tcp connection with a "stale" state
-    */
-#ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
-    std::shared_ptr<Tcp::Peer> peer() const;
-#endif
-
 private:
-#ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
-    void associatePeer(const std::shared_ptr<Tcp::Peer>& peer) {
-        if (peer_.use_count() > 0)
-            throw std::runtime_error("A peer was already associated to the response");
-
-        peer_ = peer;
-    }
-#endif
-
     Method method_;
     std::string resource_;
     Uri::Query query_;
-
-#ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
-    std::weak_ptr<Tcp::Peer> peer_;
-#endif
 };
 
 class Handler;
