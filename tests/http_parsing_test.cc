@@ -108,9 +108,8 @@ TEST(http_parsing_test, succ_request_line_step)
 
 TEST(http_parsing_test, error_request_line_step)
 {
-    std::vector<std::string> lines = {"example.comHTTP/1.1\r\n",
-                                      "GETHTTP/1.1\r\n",
-                                      "GET example.com HTTP/ABC.DEF\r\n"};
+    std::vector<std::string> lines = {"FOO example.com HTTP/1.1\r\n",
+                                      "BAR example.com HTTP/1.1\r\n"};
     for (auto& line: lines)
     {
         Http::Request request;
@@ -120,6 +119,24 @@ TEST(http_parsing_test, error_request_line_step)
         StreamCursor cursor(&buf);
 
         ASSERT_THROW(step.apply(cursor), Http::HttpError);
+    }
+}
+
+TEST(http_parsing_test, again_request_line_step)
+{
+    std::vector<std::string> lines = {"",
+                                      "FOO"};
+    for (auto& line: lines)
+    {
+        Http::Request request;
+        Http::Private::RequestLineStep step(&request);
+
+        RawStreamBuf<> buf(&line[0], line.size());
+        StreamCursor cursor(&buf);
+
+        Http::Private::State state = step.apply(cursor);
+
+        ASSERT_EQ(state, Http::Private::State::Again);
     }
 }
 
