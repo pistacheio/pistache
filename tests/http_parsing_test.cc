@@ -71,6 +71,24 @@ TEST(http_parsing_test, error_response_line_step)
     }
 }
 
+TEST(http_parsing_test, again_response_line_step)
+{
+    std::vector<std::string> lines = {"HTTP/1.1 200 OK\r",
+                                      "HTTP/1.1 200 OK"};
+    for (auto& line: lines)
+    {
+        Http::Response response;
+        Http::Private::ResponseLineStep step(&response);
+
+        RawStreamBuf<> buf(&line[0], line.size());
+        StreamCursor cursor(&buf);
+
+        Http::Private::State state = step.apply(cursor);
+
+        ASSERT_EQ(state, Http::Private::State::Again);
+    }
+}
+
 TEST(http_parsing_test, succ_request_line_step)
 {
     Http::Request request;
