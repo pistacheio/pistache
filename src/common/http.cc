@@ -4,22 +4,24 @@
    Http layer implementation
 */
 
+#include <pistache/common.h>
+#include <pistache/http.h>
+#include <pistache/net.h>
+#include <pistache/peer.h>
+#include <pistache/transport.h>
+
 #include <cstring>
 #include <iostream>
 #include <stdexcept>
 #include <ctime>
 #include <iomanip>
+#include <unordered_map>
 
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
 
-#include <pistache/common.h>
-#include <pistache/http.h>
-#include <pistache/net.h>
-#include <pistache/peer.h>
-#include <pistache/transport.h>
 
 using namespace std;
 
@@ -99,6 +101,15 @@ namespace {
         #undef OUT
     }
 
+    using HttpMethods = std::unordered_map<std::string, Method>;
+
+    const HttpMethods httpMethods = {
+    #define METHOD(repr, str) \
+        { str, Method::repr },
+        HTTP_METHODS
+    #undef METHOD
+    };
+
 }
 
 static constexpr const char* ParserData = "__Parser";
@@ -114,34 +125,19 @@ namespace Private {
     RequestLineStep::apply(StreamCursor& cursor) {
         StreamCursor::Revert revert(cursor);
 
-        // Method
-        //
-        struct MethodValue {
-            const char* const str;
-            const size_t len;
-
-            Method repr;
-        };
-
-        static constexpr MethodValue Methods[] = {
-        #define METHOD(repr, str) \
-            { str, sizeof(str) - 1, Method::repr },
-            HTTP_METHODS
-        #undef METHOD
-        };
-
         auto request = static_cast<Request *>(message);
 
-        bool found = false;
-        for (const auto& method: Methods) {
-            if (match_raw(method.str, method.len, cursor)) {
-                request->method_ = method.repr;
-                found = true;
-                break;
-            }
-        }
+        StreamCursor::Token methodToken(cursor);
+        if (!match_until(' ', cursor))
+            return State::Again;
 
-        if (!found) {
+        auto it = httpMethods.find(methodToken.text());
+        if (it != httpMethods.end())
+        {
+            request->method_ = it->second;
+        }
+        else
+        {
             raise("Unknown HTTP request method");
         }
 
@@ -256,7 +252,10 @@ namespace Private {
 
         if (!cursor.advance(1)) return State::Again;
 
-        while (!cursor.eol()) cursor.advance(1);
+        while (!cursor.eol() && !cursor.eof())
+        {
+            cursor.advance(1);
+        }
 
         if (!cursor.advance(2)) return State::Again;
 
@@ -526,12 +525,7 @@ namespace Uri {
 
 } // namespace Uri
 
-Request::Request()
-    : Message()
-    , method_()
-    , resource_()
-    , query_()
-{ }
+Request::Request() = default;
 
 Version
 Request::version() const {

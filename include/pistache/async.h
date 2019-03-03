@@ -1370,16 +1370,16 @@ namespace Async {
                  typename T,
                  typename Results
                 >
-        struct WhenAllRange {
-
+        struct WhenAllRange
+        {
             WhenAllRange(Resolver _resolve, Rejection _reject)
                 : resolve(std::move(_resolve))
                 , reject(std::move(_reject))
             { }
 
             template<typename Iterator>
-            void operator()(Iterator first, Iterator last) {
-
+            void operator()(Iterator first, Iterator last)
+            {
                 auto data = std::make_shared<DataT<T>>(
                    static_cast<size_t>(std::distance(first, last)),
                    std::move(resolve),
@@ -1392,9 +1392,11 @@ namespace Async {
                     WhenContinuation<T> cont(data, index);
 
                     it->then(std::move(cont), [=](std::exception_ptr ptr) {
+                        std::lock_guard<std::mutex> guard(data->mtx);
+
                         if (data->rejected) return;
 
-                        data->rejected.store(true);
+                        data->rejected = true;
                         data->reject(std::move(ptr));
                     });
 
@@ -1403,22 +1405,24 @@ namespace Async {
             }
 
         private:
-            struct Data {
+            struct Data
+            {
                 Data(size_t _total, Resolver _resolver, Rejection _rejection)
                     : total(_total)
                     , resolved(0)
                     , rejected(false)
+                    , mtx()
                     , resolve(std::move(_resolver))
                     , reject(std::move(_rejection))
                 { }
 
                 const size_t total;
-                std::atomic<size_t> resolved;
-                std::atomic<bool> rejected;
+                size_t resolved;
+                bool rejected;
+                std::mutex mtx;
 
                 Resolver resolve;
                 Rejection reject;
-
             };
 
             /* Ok so apparently I can not fully specialize a template structure
@@ -1446,22 +1450,25 @@ namespace Async {
             };
 
             template<typename ValueType, typename Dummy = void>
-            struct WhenContinuation {
-
-                typedef std::shared_ptr<DataT<ValueType>> D;
+            struct WhenContinuation
+            {
+                using D = std::shared_ptr<DataT<ValueType>>;
 
                 WhenContinuation(const D& _data, size_t _index)
                     : data(_data)
                     , index(_index)
                 { }
 
-                void operator()(const ValueType& val) const {
+                void operator()(const ValueType& val) const
+                {
+                    std::lock_guard<std::mutex> guard(data->mtx);
+
                     if (data->rejected) return;
 
                     data->results[index] = val;
-                    data->resolved.fetch_add(1);
-
-                    if (data->resolved == data->total) {
+                    data->resolved++;
+                    if (data->resolved == data->total)
+                    {
                         data->resolve(data->results);
                     }
                 }
@@ -1471,20 +1478,23 @@ namespace Async {
             };
 
             template<typename Dummy>
-            struct WhenContinuation<void, Dummy> {
-
-                typedef std::shared_ptr<DataT<void>> D;
+            struct WhenContinuation<void, Dummy>
+            {
+                using D = std::shared_ptr<DataT<void>>;
 
                 WhenContinuation(const D& _data, size_t)
                     : data(_data)
                 { }
 
-                void operator()() const {
+                void operator()() const
+                {
+                    std::lock_guard<std::mutex> guard(data->mtx);
+
                     if (data->rejected) return;
 
-                    data->resolved.fetch_add(1);
-
-                    if (data->resolved == data->total) {
+                    data->resolved++;
+                    if (data->resolved == data->total)
+                    {
                         data->resolve();
                     }
                 }
