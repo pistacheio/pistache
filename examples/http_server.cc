@@ -186,6 +186,6 @@ int main(int argc, char *argv[]) {
     server->setHandler(Http::make_handler<MyHandler>());
     server->serve();
 
-    std::cout << "Shutdowning server" << std::endl;
+    std::cout << "Shutting down server" << std::endl;
     server->shutdown();
 }
