@@ -85,12 +85,10 @@ protected:
     Version version_;
     Code code_;
 
-
     std::string body_;
 
     CookieJar cookies_;
     Header::Collection headers_;
-public:
 
 };
 
