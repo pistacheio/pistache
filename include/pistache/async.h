@@ -18,7 +18,6 @@
 #include <condition_variable>
 #include <stdexcept>
 #include <typeinfo>
-#include <iostream>
 
 
 namespace Pistache {
