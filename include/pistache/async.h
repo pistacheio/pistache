@@ -18,6 +18,7 @@
 #include <condition_variable>
 #include <stdexcept>
 #include <typeinfo>
+#include <iostream>
 
 
 namespace Pistache {
@@ -180,7 +181,7 @@ namespace Async {
             { }
 
             bool allocated;
-            State state;
+            std::atomic<State> state;
             std::exception_ptr exc;
 
             /*
@@ -1173,13 +1174,15 @@ namespace Async {
                     : total(_total)
                     , resolved(0)
                     , rejected(false)
+                    , mtx()
                     , resolve(std::move(_resolver))
                     , reject(std::move(_rejection))
                 { }
 
                 const size_t total;
-                std::atomic<size_t> resolved;
-                std::atomic<bool> rejected;
+                size_t resolved;
+                bool rejected;
+                std::mutex mtx;
 
                 Resolver resolve;
                 Rejection reject;
@@ -1187,11 +1190,13 @@ namespace Async {
 
             template<size_t Index, typename T, typename Data>
             static void resolveT(const T& val, Data& data) {
+                std::lock_guard<std::mutex> guard(data->mtx);
+
                 if (data->rejected) return;
 
                 // @Check thread-safety of std::get ?
                 std::get<Index>(data->results) = val;
-                data->resolved.fetch_add(1, std::memory_order_relaxed);
+                data->resolved++;
 
                 if (data->resolved == data->total) {
                     data->resolve(data->results);
@@ -1200,9 +1205,11 @@ namespace Async {
 
             template<typename Data>
             static void resolveVoid(Data& data) {
+                std::lock_guard<std::mutex> guard(data->mtx);
+
                 if (data->rejected) return;
 
-                data->resolved.fetch_add(1, std::memory_order_relaxed);
+                data->resolved++;
 
                 if (data->resolved == data->total) {
                     data->resolve(data->results);
@@ -1211,7 +1218,9 @@ namespace Async {
 
             template<typename Data>
             static void reject(std::exception_ptr exc, Data& data) {
-                data->rejected.store(true);
+                std::lock_guard<std::mutex> guard(data->mtx);
+
+                data->rejected = true;
                 data->reject(exc);
             }
         };
@@ -1221,11 +1230,13 @@ namespace Async {
             struct Data {
                 Data(size_t, Resolver resolver, Rejection rejection)
                     : done(false)
+                    , mtx()
                     , resolve(std::move(resolver))
                     , reject(std::move(rejection))
                 { }
 
-                std::atomic<bool> done;
+                bool done;
+                std::mutex mtx;
 
                 Resolver resolve;
                 Rejection reject;
@@ -1233,30 +1244,36 @@ namespace Async {
 
             template<size_t Index, typename T, typename Data>
             static void resolveT(const T& val, Data& data) {
+                std::lock_guard<std::mutex> guard(data->mtx);
+
                 if (data->done) return;
 
                 // Instead of allocating a new core, ideally we could share the same core as
                 // the relevant promise but we do not have access to the promise here is so meh
                 auto core = std::make_shared<Private::CoreT<T>>();
                 core->template construct<T>(val);
-                data->resolve(Async::Any(std::move(core)));
+                data->resolve(Async::Any(core));
 
                 data->done = true;
             }
 
             template<typename Data>
             static void resolveVoid(Data& data) {
+                std::lock_guard<std::mutex> guard(data->mtx);
+
                 if (data->done) return;
 
                 auto core = std::make_shared<Private::CoreT<void>>();
-                data->resolve(Async::Any(std::move(core)));
+                data->resolve(Async::Any(core));
 
                 data->done = true;
             }
 
             template<typename Data>
             static void reject(std::exception_ptr exc, Data& data) {
-                data->done.store(true);
+                std::lock_guard<std::mutex> guard(data->mtx);
+
+                data->done = true;
                 data->reject(exc);
             }
         };
