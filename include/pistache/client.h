@@ -248,7 +248,7 @@ private:
     PollableQueue<ConnectionEntry> connectionsQueue;
 
     std::unordered_map<Fd, ConnectionEntry> connections;
-    std::unordered_map<Fd, std::shared_ptr<Connection>> timeouts;
+    std::unordered_map<Fd, std::weak_ptr<Connection>> timeouts;
 
     void asyncSendRequestImpl(const RequestEntry& req, WriteStatus status = FirstTry);
 
