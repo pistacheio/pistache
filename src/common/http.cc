@@ -477,9 +477,9 @@ namespace Private {
 Message::Message()
     : version_(Version::Http11)
     , code_()
-    , headers_()
     , body_()
     , cookies_()
+    , headers_()
 { }
 
 namespace Uri {
