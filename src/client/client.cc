@@ -158,8 +158,19 @@ Transport::onReady(const Aio::FdSet& fds) {
             else {
                 auto timerIt = timeouts.find(fd);
                 if (timerIt != std::end(timeouts))
-                    handleTimeout(timerIt->second);
-                else {
+                {
+                    auto connection = timerIt->second.lock();
+                    if (connection)
+                    {
+                        handleTimeout(connection);
+                    }
+                    else
+                    {
+                        throw std::runtime_error("Connection error: problem with handling timeout");
+                    }
+                }
+                else
+                {
                     throw std::runtime_error("Unknown fd");
                 }
             }
