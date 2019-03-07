@@ -166,7 +166,7 @@ Transport::onReady(const Aio::FdSet& fds) {
                     }
                     else
                     {
-                        throw std::runtime_error("Connection error");
+                        throw std::runtime_error("Connection error: problem with handling timeout");
                     }
                 }
                 else
