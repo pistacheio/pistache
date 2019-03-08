@@ -156,6 +156,7 @@ Transport::onReady(const Aio::FdSet& fds) {
                 }
             }
             else {
+                Guard guard(timeoutsLock);
                 auto timerIt = timeouts.find(fd);
                 if (timerIt != std::end(timeouts))
                 {
@@ -163,15 +164,12 @@ Transport::onReady(const Aio::FdSet& fds) {
                     if (connection)
                     {
                         handleTimeout(connection);
+                        timeouts.erase(fd);
                     }
                     else
                     {
                         throw std::runtime_error("Connection error: problem with handling timeout");
                     }
-                }
-                else
-                {
-                    throw std::runtime_error("Unknown fd");
                 }
             }
         }
@@ -223,7 +221,7 @@ Transport::asyncSendRequest(
 
     return Async::Promise<ssize_t>([&](Async::Resolver& resolve, Async::Rejection& reject) {
         auto ctx = context();
-        RequestEntry req(std::move(resolve), std::move(reject), connection, std::move(timer), std::move(buffer));
+        RequestEntry req(std::move(resolve), std::move(reject), connection, timer, std::move(buffer));
         if (std::this_thread::get_id() != ctx.thread()) {
             requestsQueue.push(std::move(req));
         } else {
@@ -266,6 +264,7 @@ Transport::asyncSendRequestImpl(
             totalWritten += bytesWritten;
             if (totalWritten == len) {
                 if (req.timer) {
+                    Guard guard(timeoutsLock);
                     timeouts.insert(
                           std::make_pair(req.timer->fd, conn));
                     req.timer->registerReactor(key(), reactor());

@@ -231,7 +231,7 @@ private:
             : resolve(std::move(resolve))
             , reject(std::move(reject))
             , connection(connection)
-            , timer(std::move(timer))
+            , timer(timer)
             , buffer(std::move(buf))
         {
         }
@@ -248,7 +248,11 @@ private:
     PollableQueue<ConnectionEntry> connectionsQueue;
 
     std::unordered_map<Fd, ConnectionEntry> connections;
+
     std::unordered_map<Fd, std::weak_ptr<Connection>> timeouts;
+    using Lock = std::mutex;
+    using Guard = std::lock_guard<Lock>;
+    Lock timeoutsLock;
 
     void asyncSendRequestImpl(const RequestEntry& req, WriteStatus status = FirstTry);
 
