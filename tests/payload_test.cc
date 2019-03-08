@@ -8,6 +8,8 @@
 using namespace std;
 using namespace Pistache;
 
+const int wait_time = 3;
+
 struct TestSet {
     TestSet()
         : bytes(0)
@@ -35,7 +37,7 @@ void testPayloads(Http::Client & client, std::string url, PayloadTestSets & test
     std::vector<Async::Promise<Http::Response> > responses;
     for (auto & t : testPayloads) {
         std::string payload(t.bytes, 'A');
-        auto response = client.post(url).body(payload).send();
+        auto response = client.post(url).body(payload).timeout(std::chrono::seconds(wait_time)).send();
         response.then([t,&test_results,&resultsetMutex](Http::Response rsp) {
                 TestSet res(t);
                 res.actualCode = rsp.code();
@@ -49,7 +51,7 @@ void testPayloads(Http::Client & client, std::string url, PayloadTestSets & test
 
     auto sync = Async::whenAll(responses.begin(), responses.end());
     Async::Barrier<std::vector<Http::Response>> barrier(sync);
-    barrier.wait_for(std::chrono::milliseconds(500));
+    barrier.wait_for(std::chrono::seconds(2*wait_time));
 
     for (auto & result : test_results) {
         ASSERT_EQ(result.expectedCode, result.actualCode);
