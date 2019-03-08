@@ -23,6 +23,7 @@ find_program(CTEST_COVERAGE_COMMAND NAMES gcov)
 find_program(CMAKE_CXX_CPPCHECK NAMES cppcheck)
 
 if (CMAKE_CXX_CPPCHECK)
+    message("-- Cppcheck found " ${CMAKE_CXX_CPPCHECK})
     list(
         APPEND CMAKE_CXX_CPPCHECK 
             "--enable=all"
@@ -30,9 +31,8 @@ if (CMAKE_CXX_CPPCHECK)
             "--suppress=*:${PROJECT_SOURCE_DIR}/tests*"
     )
 else()
+    message("-- Cppcheck not found")
     set(CMAKE_CXX_CPPCHECK "")
-
-
 endif()
 
 INCLUDE(Dart)
