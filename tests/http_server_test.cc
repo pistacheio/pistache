@@ -2,6 +2,7 @@
 #include <pistache/http.h>
 #include <pistache/client.h>
 #include <pistache/endpoint.h>
+#include <pistache/common.h>
 
 #include "gtest/gtest.h"
 
@@ -100,8 +101,11 @@ int clientLogicFunc(int response_size,
                               ++resolver_counter;
                           }
                       },
-                      [&reject_counter](std::exception_ptr)
+                      [&reject_counter](std::exception_ptr exc)
                       {
+                          PrintException excPrinter;
+                          std::cout << "Reject with reason: ";
+                          excPrinter(exc);
                           ++reject_counter;
                       });
         responses.push_back(std::move(response));

@@ -11,6 +11,7 @@
 #include <cassert>
 #include <cstring>
 #include <stdexcept>
+#include <iostream>
 
 #include <netdb.h>
 #include <sys/types.h>
@@ -48,6 +49,16 @@
         return ret; \
     }(); \
     (void) 0
+
+struct PrintException {
+    void operator()(std::exception_ptr exc) const {
+        try {
+            std::rethrow_exception(exc);
+        } catch (const std::exception& e) {
+            std::cerr << "An exception occured: " << e.what() << std::endl;
+        }
+    }
+};
 
 #define unreachable() __builtin_unreachable()
 
