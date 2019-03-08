@@ -93,6 +93,14 @@ TEST(headers_test, allow) {
     a4.addMethods({ Method::Get, Method::Options });
     a4.write(os);
     ASSERT_EQ(os.str(), "HEAD, GET, OPTIONS");
+    os.str("");
+
+    Header::Allow a5(Method::Head);
+    std::vector<Method> methods;
+    methods.push_back(Method::Get);
+    a5.addMethods(methods);
+    a5.write(os);
+    ASSERT_EQ(os.str(), "HEAD, GET");
 }
 
 TEST(headers_test, cache_control) {
@@ -358,4 +366,43 @@ TEST(headers_test, add_new_header_test)
     const auto& headersList = Header::Registry::instance().headersList();
     const bool isFound = std::find(headersList.begin(), headersList.end(), headerName) != headersList.end();
     ASSERT_TRUE(isFound);
+}
+
+
+//throw std::runtime_error("Header already registered");
+//throw std::runtime_error("Unknown header");
+//throw std::runtime_error("Could not find header");
+//    Collection::get(const std::string& name) const
+//    Collection::get(const std::string& name)
+//    Collection::getRaw(const std::string& name) const
+
+using namespace Pistache::Http::Header;
+
+TEST(headers_test, header_already_registered)
+{
+    std::string what;
+
+    try {
+        RegisterHeader(Accept);
+    } catch (std::exception& e) {
+        what = e.what();
+    }
+
+    ASSERT_TRUE(strcmp(what.c_str(),"Header already registered") == 0);
+
+}
+
+TEST(headers_test, unknown_header)
+{
+
+    std::string what;
+
+    try {
+        auto h = Pistache::Http::Header::Registry::instance().makeHeader("UnknownHeader");
+    } catch (std::exception& e) {
+        what = e.what();
+    }
+
+    ASSERT_TRUE(std::strcmp(what.c_str(),"Unknown header") == 0);
+
 }
