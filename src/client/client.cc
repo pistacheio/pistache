@@ -152,7 +152,7 @@ Transport::onReady(const Aio::FdSet& fds) {
                     handleIncoming(connection);
                 }
                 else {
-                    throw std::runtime_error("Connection error");
+                    throw std::runtime_error("Connection error: problem with reading data from server");
                 }
             }
             else {
@@ -296,7 +296,7 @@ Transport::handleConnectionQueue() {
 
         auto conn = data->connection.lock();
         if (!conn) {
-            throw std::runtime_error("Connection error");
+            throw std::runtime_error("Connection error: problem with establishing connection to server");
         }
         int res = ::connect(conn->fd(), data->getAddr(), data->addr_len);
         if (res == -1) {

@@ -2,6 +2,7 @@
 #include <pistache/http.h>
 #include <pistache/client.h>
 #include <pistache/endpoint.h>
+#include <pistache/common.h>
 
 #include "gtest/gtest.h"
 
@@ -27,21 +28,30 @@ struct HelloHandlerWithDelay : public Http::Handler {
     int delay_;
 };
 
-constexpr char SPECIAL_PAGE[] = "/specialpage";
+constexpr char SLOW_PAGE[] = "/slowpage";
 
-struct SlowHandlerOnSpecialPage : public Http::Handler {
-    HTTP_PROTOTYPE(SlowHandlerOnSpecialPage)
+struct HandlerWithSlowPage : public Http::Handler {
+    HTTP_PROTOTYPE(HandlerWithSlowPage)
 
-    explicit SlowHandlerOnSpecialPage(int delay = 0) : delay_(delay)
+    explicit HandlerWithSlowPage(int delay = 0)
+        : delay_(delay)
     { }
 
     void onRequest(const Http::Request& request, Http::ResponseWriter writer) override
     {
-        if (request.resource() == SPECIAL_PAGE)
+        std::string message;
+        if (request.resource() == SLOW_PAGE)
         {
             std::this_thread::sleep_for(std::chrono::seconds(delay_));
+            message = "Slow page content!\n";
         }
-        writer.send(Http::Code::Ok, "Hello, World!");
+        else
+        {
+            message = "Hello, World!\n";
+        }
+        
+        writer.send(Http::Code::Ok, message);
+        std::cout << "[server] Sent: " << message;
     }
 
     int delay_;
@@ -68,26 +78,36 @@ private:
     std::string fileName_;
 };
 
-int clientLogicFunc(int response_size, const std::string& server_page, int wait_seconds)
+int clientLogicFunc(int response_size,
+                    const std::string& server_page,
+                    int timeout_seconds,
+                    int wait_seconds)
 {
     Http::Client client;
     client.init();
 
-    std::vector<Async::Promise<Http::Response>> responses;
-    auto rb = client.get(server_page);
-    int counter = 0;
+    std::vector<Async::Promise<Http::Response>> responses; 
+    auto rb = client.get(server_page).timeout(std::chrono::seconds(timeout_seconds));
+    int resolver_counter = 0;
+    int reject_counter = 0;
     for (int i = 0; i < response_size; ++i)
     {
         auto response = rb.send();
-        response.then([&counter](Http::Response resp)
+        response.then([&resolver_counter](Http::Response resp)
                       {
                           std::cout << "Response code is " << resp.code() << std::endl;
                           if (resp.code() == Http::Code::Ok)
                           {
-                              ++counter;
+                              ++resolver_counter;
                           }
                       },
-                      Async::IgnoreException);
+                      [&reject_counter](std::exception_ptr exc)
+                      {
+                          PrintException excPrinter;
+                          std::cout << "Reject with reason: ";
+                          excPrinter(exc);
+                          ++reject_counter;
+                      });
         responses.push_back(std::move(response));
     }
 
@@ -97,7 +117,13 @@ int clientLogicFunc(int response_size, const std::string& server_page, int wait_
 
     client.shutdown();
 
-    return counter;
+    std::cout << "resolves: " << resolver_counter
+              << ", rejects: " << reject_counter
+              << ", timeout: " << timeout_seconds
+              << ", wait: " << wait_seconds
+              << "\n";
+
+    return resolver_counter;
 }
 
 TEST(http_server_test, client_disconnection_on_timeout_from_single_threaded_server) {
@@ -107,6 +133,7 @@ TEST(http_server_test, client_disconnection_on_timeout_from_single_threaded_serv
     auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
     auto server_opts = Http::Endpoint::options().flags(flags);
     server.init(server_opts);
+    const int ONE_SECOND_TIMEOUT = 1;
     const int SIX_SECONDS_DELAY = 6;
     server.setHandler(Http::make_handler<HelloHandlerWithDelay>(SIX_SECONDS_DELAY));
     server.serveThreaded();
@@ -115,7 +142,7 @@ TEST(http_server_test, client_disconnection_on_timeout_from_single_threaded_serv
     std::cout << "Server address: " << server_address << "\n";
 
     const int CLIENT_REQUEST_SIZE = 1;
-    int counter = clientLogicFunc(CLIENT_REQUEST_SIZE, server_address, SIX_SECONDS_DELAY);
+    int counter = clientLogicFunc(CLIENT_REQUEST_SIZE, server_address, ONE_SECOND_TIMEOUT, SIX_SECONDS_DELAY);
 
     server.shutdown();
 
@@ -130,6 +157,7 @@ TEST(http_server_test, client_multiple_requests_disconnection_on_timeout_from_si
     auto server_opts = Http::Endpoint::options().flags(flags);
     server.init(server_opts);
 
+    const int ONE_SECOND_TIMEOUT = 1;
     const int SIX_SECONDS_DELAY = 6;
     server.setHandler(Http::make_handler<HelloHandlerWithDelay>(SIX_SECONDS_DELAY));
     server.serveThreaded();
@@ -138,7 +166,7 @@ TEST(http_server_test, client_multiple_requests_disconnection_on_timeout_from_si
     std::cout << "Server address: " << server_address << "\n";
 
     const int CLIENT_REQUEST_SIZE = 3;
-    int counter = clientLogicFunc(CLIENT_REQUEST_SIZE, server_address, SIX_SECONDS_DELAY);
+    int counter = clientLogicFunc(CLIENT_REQUEST_SIZE, server_address, ONE_SECOND_TIMEOUT, SIX_SECONDS_DELAY);
 
     server.shutdown();
 
@@ -158,16 +186,19 @@ TEST(http_server_test, multiple_client_with_requests_to_multithreaded_server) {
     const std::string server_address = "localhost:" + server.getPort().toString();
     std::cout << "Server address: " << server_address << "\n";
 
+    const int NO_TIMEOUT = 0;
     const int SIX_SECONDS_TIMOUT = 6;
     const int FIRST_CLIENT_REQUEST_SIZE = 4;
     std::future<int> result1(std::async(clientLogicFunc,
                                         FIRST_CLIENT_REQUEST_SIZE,
                                         server_address,
+                                        NO_TIMEOUT,
                                         SIX_SECONDS_TIMOUT));
     const int SECOND_CLIENT_REQUEST_SIZE = 5;
     std::future<int> result2(std::async(clientLogicFunc,
                                         SECOND_CLIENT_REQUEST_SIZE,
                                         server_address,
+                                        NO_TIMEOUT,
                                         SIX_SECONDS_TIMOUT));
 
     int res1 = result1.get();
@@ -184,25 +215,29 @@ TEST(http_server_test, multiple_client_with_different_requests_to_multithreaded_
 
     Http::Endpoint server(address);
     auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
-    auto server_opts = Http::Endpoint::options().flags(flags).threads(3);
+    auto server_opts = Http::Endpoint::options().flags(flags).threads(4);
     server.init(server_opts);
     const int SIX_SECONDS_DELAY = 6;
-    server.setHandler(Http::make_handler<SlowHandlerOnSpecialPage>(SIX_SECONDS_DELAY));
+    server.setHandler(Http::make_handler<HandlerWithSlowPage>(SIX_SECONDS_DELAY));
     server.serveThreaded();
 
     const std::string server_address = "localhost:" + server.getPort().toString();
     std::cout << "Server address: " << server_address << "\n";
 
     const int FIRST_CLIENT_REQUEST_SIZE = 1;
+    const int FIRST_CLIENT_TIMEOUT = SIX_SECONDS_DELAY / 2;
     std::future<int> result1(std::async(clientLogicFunc,
                                         FIRST_CLIENT_REQUEST_SIZE,
-                                        server_address + SPECIAL_PAGE,
-                                        SIX_SECONDS_DELAY / 2));
+                                        server_address + SLOW_PAGE,
+                                        FIRST_CLIENT_TIMEOUT,
+                                        SIX_SECONDS_DELAY));
     const int SECOND_CLIENT_REQUEST_SIZE = 2;
+    const int SECOND_CLIENT_TIMEOUT = SIX_SECONDS_DELAY * 2;
     std::future<int> result2(std::async(clientLogicFunc,
                                         SECOND_CLIENT_REQUEST_SIZE,
                                         server_address,
-                                        SIX_SECONDS_DELAY * 2));
+                                        SECOND_CLIENT_TIMEOUT,
+                                        2 * SIX_SECONDS_DELAY));
 
     int res1 = result1.get();
     int res2 = result2.get();
