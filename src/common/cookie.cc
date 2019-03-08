@@ -4,13 +4,13 @@
    Cookie implementation
 */
 
+#include <pistache/cookie.h>
+#include <pistache/config.h>
+#include <pistache/stream.h>
+
 #include <iterator>
 #include <unordered_map>
 
-#include <pistache/cookie.h>
-#include <pistache/stream.h>
-
-using namespace std;
 
 namespace Pistache {
 namespace Http {

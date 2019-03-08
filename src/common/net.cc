@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <limits>
 #include <cstring>
+#include <cassert>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>

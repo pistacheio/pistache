@@ -33,7 +33,6 @@
 
 #endif /* PISTACHE_USE_SSL */
 
-using namespace std;
 
 namespace Pistache {
 namespace Tcp {
