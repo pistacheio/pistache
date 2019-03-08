@@ -15,8 +15,6 @@
 namespace Pistache {
 namespace Tcp {
 
-using namespace std;
-
 Peer::Peer()
     : transport_(nullptr)
     , fd_(-1)

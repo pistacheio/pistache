@@ -6,18 +6,20 @@
 
 #pragma once
 
-#include <vector>
-#include <memory>
-#include <thread>
-
-#include <sys/resource.h>
-
 #include <pistache/tcp.h>
 #include <pistache/net.h>
 #include <pistache/os.h>
 #include <pistache/flags.h>
 #include <pistache/async.h>
 #include <pistache/reactor.h>
+#include <pistache/config.h>
+
+#include <sys/resource.h>
+
+#include <vector>
+#include <memory>
+#include <thread>
+
 
 #ifdef PISTACHE_USE_SSL
 #include <openssl/ssl.h>

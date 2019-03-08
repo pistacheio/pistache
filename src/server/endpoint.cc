@@ -4,7 +4,7 @@
    Implementation of the http endpoint
 */
 
-
+#include <pistache/config.h>
 #include <pistache/endpoint.h>
 #include <pistache/tcp.h>
 #include <pistache/peer.h>

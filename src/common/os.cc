@@ -3,20 +3,20 @@
 
 */
 
-#include <fstream>
-#include <iterator>
-#include <algorithm>
-#include <thread>
+#include <pistache/common.h>
+#include <pistache/config.h>
+#include <pistache/os.h>
 
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 
-#include <pistache/os.h>
-#include <pistache/common.h>
+#include <algorithm>
+#include <fstream>
+#include <iterator>
+#include <thread>
 
-using namespace std;
 
 namespace Pistache {
 
@@ -137,6 +137,12 @@ CpuSet::toPosix() const {
 
 namespace Polling {
 
+    Event::Event(Tag _tag)
+        : flags()
+        , fd(-1)
+        , tag(_tag)
+    { }
+
     Epoll::Epoll(size_t max) {
        epoll_fd = TRY_RET(epoll_create(max));
     }
@@ -237,6 +243,10 @@ namespace Polling {
     }
 
 } // namespace Poller
+
+NotifyFd::NotifyFd()
+    : event_fd(-1)
+{ }
 
 Polling::Tag
 NotifyFd::bind(Polling::Epoll& poller) {

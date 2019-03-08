@@ -7,17 +7,14 @@
 #pragma once
 
 #include <sstream>
-#include <cstdio>
-#include <cassert>
-#include <cstring>
 #include <stdexcept>
 #include <iostream>
+
+#include <cstring>
 
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-
-#define unsafe
 
 #define TRY(...) \
     do { \
@@ -65,17 +62,3 @@ struct PrintException {
 // Until we require C++17 compiler with [[maybe_unused]]
 #define UNUSED(x) (void)(x);
 
-// Allow compile-time overload
-namespace Pistache {
-namespace Const {
-
-    static constexpr size_t MaxBacklog = 128;
-    static constexpr size_t MaxEvents  = 1024;
-    static constexpr size_t MaxBuffer  = 4096;
-    static constexpr size_t DefaultWorkers = 1;
-
-    // Defined from CMakeLists.txt in project root
-    static constexpr size_t DefaultMaxPayload = 4096;
-    static constexpr size_t ChunkSize  = 1024;
-} // namespace Const
-} // namespace Pistache
