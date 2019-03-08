@@ -74,7 +74,7 @@ int clientLogicFunc(int response_size, const std::string& server_page, int wait_
     client.init();
 
     std::vector<Async::Promise<Http::Response>> responses;
-    auto rb = client.get(server_page);
+    auto rb = client.get(server_page).timeout(std::chrono::seconds(wait_seconds));
     int counter = 0;
     for (int i = 0; i < response_size; ++i)
     {
@@ -93,7 +93,7 @@ int clientLogicFunc(int response_size, const std::string& server_page, int wait_
 
     auto sync = Async::whenAll(responses.begin(), responses.end());
     Async::Barrier<std::vector<Http::Response>> barrier(sync);
-    barrier.wait_for(std::chrono::seconds(wait_seconds));
+    barrier.wait_for(std::chrono::seconds(2 * wait_seconds));
 
     client.shutdown();
 
