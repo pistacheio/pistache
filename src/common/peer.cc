@@ -28,6 +28,14 @@ Peer::Peer(const Address& addr)
     , ssl_(NULL)
 { }
 
+Peer::~Peer()
+{
+#ifdef PISTACHE_USE_SSL
+    if (ssl_)
+        SSL_free((SSL *)ssl_);
+#endif /* PISTACHE_USE_SSL */
+}
+
 const Address& Peer::address() const
 {
     return addr;

@@ -182,6 +182,7 @@ Transport::handlePeerDisconnection(const std::shared_ptr<Peer>& peer) {
 #ifdef PISTACHE_USE_SSL
     if (peer->ssl() != NULL) {
         SSL_free((SSL *)peer->ssl());
+        peer->associateSSL(NULL);
     }
 #endif /* PISTACHE_USE_SSL */
 
