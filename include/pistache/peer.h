@@ -38,7 +38,7 @@ public:
 
     Peer();
     Peer(const Address& addr);
-    ~Peer() {}
+    ~Peer();
     
     const Address& address() const;
     const std::string& hostname() const;
