@@ -256,7 +256,7 @@ Transport::asyncSendRequestImpl(
                 reactor()->modifyFd(key(), fd, NotifyOn::Write, Polling::Mode::Edge);
             }
             else {
-                req.reject(Error::system("Could not send request"));
+                conn->handleError("Could not send request");
             }
             break;
         }
@@ -562,12 +562,8 @@ Connection::performImpl(
         timer->arm(timeout);
     }
 
-    auto rejectClone = reject.clone();
-
     requestEntry.reset(new RequestEntry(std::move(resolve), std::move(reject), timer, std::move(onDone)));
-    transport_->asyncSendRequest(shared_from_this(), timer, std::move(buffer)).then(
-        [](size_t /*bytes*/) {},
-        [&](std::exception_ptr e) { rejectClone(e); });
+    transport_->asyncSendRequest(shared_from_this(), timer, std::move(buffer));
 }
 
 void
