@@ -4,22 +4,45 @@
    Implementation of the timer pool
 */
 
-#include <sys/timerfd.h>
-
+#include <pistache/os.h>
 #include <pistache/timer_pool.h>
+
+#include <cassert>
+
+#include <sys/timerfd.h>
 
 namespace Pistache {
 
-void
-TimerPool::Entry::initialize() {
-    if (fd == -1) {
-        fd = TRY_RET(timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK));
-    }
+TimerPool::Entry::Entry()
+    : fd_(-1)
+    , registered(false)
+{
+    state.store(static_cast<uint32_t>(State::Idle));
+}
+
+TimerPool::Entry::~Entry()
+{
+    if (fd_ != -1)
+        close(fd_);
+}
+
+Fd TimerPool::Entry::fd() const
+{
+    assert(fd_ != -1);
+
+    return fd_;
 }
 
 void
-TimerPool::Entry::disarm() {
-    if (fd == -1) return;
+TimerPool::Entry::initialize() {
+    if (fd_ == -1) {
+        fd_ = TRY_RET(timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK));
+    }
+}
+
+void TimerPool::Entry::disarm()
+{
+    assert(fd_ != -1);
 
     itimerspec spec;
     spec.it_interval.tv_sec = 0;
@@ -28,7 +51,16 @@ TimerPool::Entry::disarm() {
     spec.it_value.tv_sec = 0;
     spec.it_value.tv_nsec = 0;
 
-    TRY(timerfd_settime(fd, 0, &spec, 0));
+    TRY(timerfd_settime(fd_, 0, &spec, 0));
+}
+
+void TimerPool::Entry::registerReactor(const Aio::Reactor::Key& key, Aio::Reactor* reactor)
+{
+    if (!registered)
+    {
+        reactor->registerFd(key, fd_, Polling::NotifyOn::Read);
+        registered = true;
+    }
 }
 
 void
@@ -47,7 +79,7 @@ TimerPool::Entry::armMs(std::chrono::milliseconds value)
             = std::chrono::duration_cast<std::chrono::seconds>(value).count();
         spec.it_value.tv_nsec = 0;
     }
-    TRY(timerfd_settime(fd, 0, &spec, 0));
+    TRY(timerfd_settime(fd_, 0, &spec, 0));
 }
 
 TimerPool::TimerPool(size_t initialSize)
