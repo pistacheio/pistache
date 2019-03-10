@@ -5,6 +5,7 @@
 */
 
 #include <pistache/client.h>
+#include <pistache/common.h>
 #include <pistache/http.h>
 #include <pistache/stream.h>
 #include <pistache/net.h>
@@ -46,16 +47,6 @@ namespace
         return std::make_pair(std::move(host), std::move(page));
     }
 }
-
-struct ExceptionPrinter {
-    void operator()(std::exception_ptr exc) const {
-        try {
-            std::rethrow_exception(exc);
-        } catch (const std::exception& e) {
-            std::cout << "Got exception: " << e.what() << std::endl;
-        }
-    }
-};
 
 namespace {
     template<typename H, typename... Args>
@@ -266,7 +257,7 @@ Transport::asyncSendRequestImpl(
                 if (req.timer) {
                     Guard guard(timeoutsLock);
                     timeouts.insert(
-                          std::make_pair(req.timer->fd, conn));
+                          std::make_pair(req.timer->fd(), conn));
                     req.timer->registerReactor(key(), reactor());
                 }
                 req.resolve(totalWritten);
@@ -403,7 +394,7 @@ Connection::connect(const Address& addr)
                 getsockname(sfd, (struct sockaddr *)&saddr, &len);
                 connectionState_.store(Connected);
                 processRequestQueue();
-            }, ExceptionPrinter());
+            }, PrintException());
         break;
 
     }
