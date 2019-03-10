@@ -1,10 +1,11 @@
 # Pistache
 
 [![Travis Build Status](https://travis-ci.org/oktal/pistache.svg?branch=master)](https://travis-ci.org/oktal/pistache)
+[![Coverage Stagus](https://codecov.io/gh/oktal/pistache/branch/master/graph/badge.svg)](https://codecov.io/gh/oktal/pistache)
 
 Pistache is a modern and elegant HTTP and REST framework for C++.
 
-It is entirely written in pure-C++11 and provides a clear and pleasant API
+It is entirely written in pure-C++14 and provides a clear and pleasant API
 
 Full documentation is located at [http://pistache.io](http://pistache.io).
 
@@ -58,6 +59,7 @@ Some other CMAKE defines:
 |---------------------------|-------------|-------------------------------------------------------------|
 | PISTACHE_BUILD_EXAMPLES   | False       | Build all of the example apps                               |
 | PISTACHE_BUILD_TESTS      | False       | Build all of the unit tests                                 |
+| PISTACHE_BUILD_DOCS       | False       | Build all doxygen documentation                             |
 
 # Example
 
