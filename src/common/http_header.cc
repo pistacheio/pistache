@@ -19,6 +19,22 @@ namespace Pistache {
 namespace Http {
 namespace Header {
 
+void
+Header::parse(const std::string & str) {
+    parseRaw(str.c_str(), str.length());
+}
+
+void
+Header::parseRaw(const char *str, size_t len) {
+    parse(std::string(str, len));
+}
+
+void
+Allow::parseRaw(const char* str, size_t len) {
+    UNUSED(str)
+    UNUSED(len)
+}
+
 const char* encodingString(Encoding encoding) {
     switch (encoding) {
     case Encoding::Gzip:
@@ -32,26 +48,9 @@ const char* encodingString(Encoding encoding) {
     case Encoding::Chunked:
         return "chunked";
     case Encoding::Unknown:
+    default:
         return "unknown";
     }
-
-    unreachable();
-}
-
-void
-Header::parse(const std::string& data) {
-    parseRaw(data.c_str(), data.size());
-}
-
-void
-Header::parseRaw(const char *str, size_t len) {
-    parse(std::string(str, len));
-}
-
-void
-Allow::parseRaw(const char* str, size_t len) {
-    UNUSED(str)
-    UNUSED(len)
 }
 
 void
@@ -204,7 +203,6 @@ CacheControl::write(std::ostream& os) const {
             case CacheDirective::SMaxAge:
                 return "s-maxage";
             case CacheDirective::Ext:
-                return "";
             default:
                 return "";
         }
@@ -316,7 +314,7 @@ Date::write(std::ostream& os) const {
 
 void
 Expect::parseRaw(const char* str, size_t len) {
-    if (memcmp(str, "100-continue", len)) {
+    if (std::strcmp(str, "100-continue") == 0) {
         expectation_ = Expectation::Continue;
     } else {
         expectation_ = Expectation::Ext;
@@ -508,16 +506,21 @@ Server::Server(const char* token)
 }
 
 void
-Server::parse(const std::string& data)
+Server::parse(const std::string& token)
 {
-    UNUSED(data)
+    tokens_.push_back(token);
 }
 
 void
 Server::write(std::ostream& os) const
 {
-    std::copy(std::begin(tokens_), std::end(tokens_),
-                 std::ostream_iterator<std::string>(os, " "));
+    for (int i = 0; i < tokens_.size(); i++) {
+        auto & token = tokens_[i];
+        os << token;
+        if ( i < tokens_.size() - 1 ) {
+            os << " ";
+        }
+    }
 }
 
 void

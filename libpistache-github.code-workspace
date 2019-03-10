@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"coverage-gutters.showLineCoverage": true,
+		"coverage-gutters.coverageReportFileName": "build/index.html"
+	}
+}
