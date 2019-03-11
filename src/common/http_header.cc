@@ -48,8 +48,7 @@ const char* encodingString(Encoding encoding) {
     case Encoding::Chunked:
         return "chunked";
     case Encoding::Unknown:
-    default:
-        return "unknown";
+    	return "unknown";
     }
 }
 
@@ -203,6 +202,7 @@ CacheControl::write(std::ostream& os) const {
             case CacheDirective::SMaxAge:
                 return "s-maxage";
             case CacheDirective::Ext:
+	    	return "";
             default:
                 return "";
         }
