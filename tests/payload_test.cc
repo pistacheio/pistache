@@ -16,11 +16,22 @@ using namespace Pistache;
 
 const int wait_time = 3;
 
-struct TestSet
-{
-    size_t      bytes = 0;
-    Http::Code  expectedCode = Http::Code::Ok;
-    Http::Code  actualCode = Http::Code::Ok;
+struct TestSet {
+    TestSet()
+        : bytes(0)
+          , expectedCode(Http::Code::Ok)
+          , actualCode(Http::Code::Ok)
+    { }
+
+    TestSet(size_t b, Http::Code c)
+        : bytes(b)
+          , expectedCode(c)
+          , actualCode(Http::Code::Ok)
+    { }
+
+    size_t      bytes;
+    Http::Code  expectedCode;
+    Http::Code  actualCode;
 };
 
 using PayloadTestSets = std::vector<TestSet>;
