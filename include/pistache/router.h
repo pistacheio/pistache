@@ -225,6 +225,7 @@ public:
     void patch(const std::string& resource, Route::Handler handler);
     void del(const std::string& resource, Route::Handler handler);
     void options(const std::string& resource, Route::Handler handler);
+    void addRoute(Http::Method method, const std::string& resource, Route::Handler handler);
     void removeRoute(Http::Method method, const std::string& resource);
 
     void addCustomHandler(Route::Handler handler);
@@ -242,9 +243,6 @@ public:
     { }
 
 private:
-
-    void addRoute(Http::Method method, const std::string& resource,
-                  Route::Handler handler);
 
     std::unordered_map<Http::Method, SegmentTreeNode> routes;
 
