@@ -449,8 +449,7 @@ Router::route(const Http::Request& req, Http::ResponseWriter response) {
     return Route::Status::NotFound;
 }
 
-void Router::addRoute(Http::Method method,
-    const std::string& resource, Route::Handler handler) {
+void Router::addRoute(Http::Method method, const std::string& resource, Route::Handler handler) {
     if (resource.empty()) throw std::runtime_error("Invalid zero-length URL.");
     auto& r = routes[method];
     const auto sanitized = SegmentTreeNode::sanitizeResource(resource);

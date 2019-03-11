@@ -157,10 +157,6 @@ Transport::onReady(const Aio::FdSet& fds) {
                         handleTimeout(connection);
                         timeouts.erase(fd);
                     }
-                    else
-                    {
-                        throw std::runtime_error("Connection error: problem with handling timeout");
-                    }
                 }
             }
         }
@@ -286,8 +282,10 @@ Transport::handleConnectionQueue() {
 
         auto conn = data->connection.lock();
         if (!conn) {
-            throw std::runtime_error("Connection error: problem with establishing connection to server");
+            data->reject(Error::system("Failed to connect"));
+            continue;
         }
+
         int res = ::connect(conn->fd(), data->getAddr(), data->addr_len);
         if (res == -1) {
             if (errno == EINPROGRESS) {
@@ -837,17 +835,27 @@ Client::doRequest(
         }
 
         if (!conn->isConnected()) {
-            auto res = conn->asyncPerform(request, timeout, [this, conn]() {
-                pool.releaseConnection(conn);
-                processRequestQueue();
+            std::weak_ptr<Connection> weakConn = conn;
+            auto res = conn->asyncPerform(request, timeout, [this, weakConn]() {
+                auto conn = weakConn.lock();
+                if (conn)
+                {
+                    pool.releaseConnection(conn);
+                    processRequestQueue();
+                }
             });
             conn->connect(helpers::httpAddr(s.first));
             return res;
         }
 
-        return conn->perform(request, timeout, [this, conn]() {
-            pool.releaseConnection(conn);
-            processRequestQueue();
+        std::weak_ptr<Connection> weakConn = conn;
+        return conn->perform(request, timeout, [this, weakConn]() {
+            auto conn = weakConn.lock();
+            if (conn)
+            {
+                pool.releaseConnection(conn);
+                processRequestQueue();
+            }
         });
     }
 }
