@@ -282,8 +282,10 @@ Transport::handleConnectionQueue() {
 
         auto conn = data->connection.lock();
         if (!conn) {
-            throw std::runtime_error("Connection error: problem with establishing connection to server");
+            data->reject(Error::system("Failed to connect"));
+            continue;
         }
+
         int res = ::connect(conn->fd(), data->getAddr(), data->addr_len);
         if (res == -1) {
             if (errno == EINPROGRESS) {
