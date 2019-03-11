@@ -682,9 +682,9 @@ ResponseWriter::putOnWire(const char* data, size_t len)
                          std::function<void(std::exception_ptr&)>
                  >
                  (
-                         [=](int l) {
+                         [=](int /*l*/) {
 
-                             return Async::Promise<ssize_t>( [=](Async::Deferred<ssize_t> deferred) mutable {
+                             return Async::Promise<ssize_t>( [=](Async::Deferred<ssize_t> /*deferred*/) mutable {
 
                                  if (control == ConnectionControl::KeepAlive) return ;
 

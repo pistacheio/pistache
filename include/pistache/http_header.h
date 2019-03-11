@@ -338,7 +338,7 @@ public:
     }
 
 protected:
-    EncodingHeader(Encoding encoding)
+    explicit EncodingHeader(Encoding encoding)
         : encoding_(encoding)
     { }
 
