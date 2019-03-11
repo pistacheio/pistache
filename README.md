@@ -5,7 +5,7 @@
 
 Pistache is a modern and elegant HTTP and REST framework for C++.
 
-It is entirely written in pure-C++14 and provides a clear and pleasant API
+It is entirely written in pure-C++11 (Moving to C++17 soon) and provides a clear and pleasant API.
 
 Full documentation is located at [http://pistache.io](http://pistache.io).
 
