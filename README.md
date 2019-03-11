@@ -1,7 +1,7 @@
 # Pistache
 
 [![Travis Build Status](https://travis-ci.org/oktal/pistache.svg?branch=master)](https://travis-ci.org/oktal/pistache)
-[![Coverage Stagus](https://codecov.io/gh/oktal/pistache/branch/master/graph/badge.svg)](https://codecov.io/gh/oktal/pistache)
+[![Coverage Status](https://codecov.io/gh/oktal/pistache/branch/master/graph/badge.svg)](https://codecov.io/gh/oktal/pistache)
 
 Pistache is a modern and elegant HTTP and REST framework for C++.
 
