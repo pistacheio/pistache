@@ -1,11 +1,17 @@
-#include "gtest/gtest.h"
-
+#include <pistache/async.h>
 #include <pistache/http.h>
 #include <pistache/description.h>
 #include <pistache/client.h>
 #include <pistache/endpoint.h>
 
-using namespace std;
+#include "gtest/gtest.h"
+
+#include <chrono>
+#include <memory>
+#include <string>
+#include <vector>
+
+
 using namespace Pistache;
 
 const int wait_time = 3;
@@ -28,13 +34,13 @@ struct TestSet {
     Http::Code  actualCode;
 };
 
-typedef std::vector<TestSet> PayloadTestSets;
+using PayloadTestSets = std::vector<TestSet>;
 
-void testPayloads(Http::Client & client, std::string url, PayloadTestSets & testPayloads) {
+void testPayloads(Http::Client& client, const std::string& url, const PayloadTestSets& testPayloads) {
    // Client tests to make sure the payload is enforced
     std::mutex resultsetMutex;
     PayloadTestSets test_results;
-    std::vector<Async::Promise<Http::Response> > responses;
+    std::vector<Async::Promise<Http::Response>> responses;
     for (auto & t : testPayloads) {
         std::string payload(t.bytes, 'A');
         auto response = client.post(url).body(payload).timeout(std::chrono::seconds(wait_time)).send();
@@ -58,8 +64,7 @@ void testPayloads(Http::Client & client, std::string url, PayloadTestSets & test
     }
 }
 
-void handleEcho(const Rest::Request&req, Http::ResponseWriter response) {
-    UNUSED(req);
+void handleEcho(const Rest::Request& /*request*/, Http::ResponseWriter response) {
     response.send(Http::Code::Ok, "", MIME(Text, Plain));
 }
 
@@ -120,10 +125,9 @@ TEST(payload, manual_construction) {
         HTTP_PROTOTYPE(MyHandler)
 
         void onRequest(
-                const Http::Request& req,
+                const Http::Request& /*request*/,
                 Http::ResponseWriter response) override
         {
-            UNUSED(req);
             response.send(Http::Code::Ok, "All good");
         }
     private:
