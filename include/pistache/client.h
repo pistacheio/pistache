@@ -174,6 +174,7 @@ public:
       , connectionsQueue()
       , connections()
       , timeouts()
+      , timeoutsLock()
     { }
 
     Transport(const Transport &)
@@ -181,6 +182,7 @@ public:
       , connectionsQueue()
       , connections()
       , timeouts()
+      , timeoutsLock()
     { }
 
     void onReady(const Aio::FdSet& fds) override;
@@ -208,12 +210,12 @@ private:
             : resolve(std::move(resolve))
             , reject(std::move(reject))
             , connection(connection)
+            , addr_len(_addr_len)
         {
-            addr_len = _addr_len;
             memcpy(&addr, _addr, addr_len);
         }
 
-        const sockaddr *getAddr() { return reinterpret_cast<const sockaddr *>(&addr); }
+        const sockaddr *getAddr() const { return reinterpret_cast<const sockaddr *>(&addr); }
 
         Async::Resolver resolve;
         Async::Rejection reject;

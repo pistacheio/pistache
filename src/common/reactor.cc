@@ -64,7 +64,7 @@ public:
  */
 class SyncImpl : public Reactor::Impl {
 public:
-    SyncImpl(Reactor* reactor)
+    explicit SyncImpl(Reactor* reactor)
         : Reactor::Impl(reactor)
         , handlers_()
         , shutdown_()
@@ -456,7 +456,7 @@ private:
 
     struct Worker {
 
-        Worker(Reactor* reactor) {
+        explicit Worker(Reactor* reactor) {
             sync.reset(new SyncImpl(reactor));
         }
 

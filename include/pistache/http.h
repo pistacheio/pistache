@@ -610,7 +610,7 @@ namespace Private {
     enum class State { Again, Next, Done };
 
     struct Step {
-        Step(Message* request)
+        explicit Step(Message* request)
             : message(request)
         { }
 
@@ -625,7 +625,7 @@ namespace Private {
 
     class RequestLineStep : public Step {
     public:
-        RequestLineStep(Request* request)
+        explicit RequestLineStep(Request* request)
             : Step(request)
         { }
 
@@ -634,7 +634,7 @@ namespace Private {
 
     class ResponseLineStep : public Step {
     public:
-        ResponseLineStep(Response* response)
+        explicit ResponseLineStep(Response* response)
             : Step(response)
         { }
 
@@ -643,7 +643,7 @@ namespace Private {
 
     class HeadersStep : public Step {
     public:
-        HeadersStep(Message* request)
+        explicit HeadersStep(Message* request)
             : Step(request)
         { }
 
@@ -652,7 +652,7 @@ namespace Private {
 
     class BodyStep : public Step {
     public:
-        BodyStep(Message* message_)
+        explicit BodyStep(Message* message_)
             : Step(message_)
             , chunk(message_)
             , bytesRead(0)
@@ -664,7 +664,7 @@ namespace Private {
         struct Chunk {
             enum Result { Complete, Incomplete, Final };
 
-            Chunk(Message* message_)
+            explicit Chunk(Message* message_)
               : message(message_)
               , bytesRead(0)
               , size(-1)
