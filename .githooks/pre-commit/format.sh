@@ -13,8 +13,6 @@ fi
 #finding root directory
 ROOT_DIRECTORY=${ROOT_DIRECTORY:-$(realpath $(git rev-parse --show-cdup))}
 
-echo "selecting $ROOT_DIRECTORY to be formatted"
-
 # formatting all code
 clang-format -i -style=Mozilla $(find $ROOT_DIRECTORY -type d -name third-party* -prune -o -print | grep -E '.*\.(h|hpp|cc|cpp|cxx)$')
 
