@@ -37,6 +37,7 @@ Now, compile the sources:
     cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ..
     make
     sudo make install
+    
 
 If you want the examples built, then change change the cmake above to:
 
