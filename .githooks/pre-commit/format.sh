@@ -11,7 +11,7 @@ if [ ! -x $CLANG_FORMAT ]; then
 fi
 
 #finding root directory
-ROOT_DIRECTORY=${ROOT_DIRECTORY:-$(realpath $(pwd))}
+ROOT_DIRECTORY=${ROOT_DIRECTORY:-$(realpath $(git rev-parse --show-cdup))}
 
 echo "selecting $ROOT_DIRECTORY to be formatted"
 
