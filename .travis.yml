@@ -19,7 +19,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-4.0']
-        packages: ['git', 'wget', 'python3', 'python3-pip',  'cmake', 'clang-4.0', 'llvm-4.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck', 'valgrind', 'doxygen' ]
+        packages: ['git', 'wget', 'python3', 'python3-pip', 'clang-4.0', 'llvm-4.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck', 'valgrind', 'doxygen' ]
 
   - os: linux
     compiler: clang
@@ -30,7 +30,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-5.0']
-        packages: ['git', 'wget', 'python3', 'python3-pip',  'cmake', 'clang-5.0', 'llvm-5.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck', 'valgrind', 'doxygen' ]
+        packages: ['git', 'wget', 'python3', 'python3-pip', 'clang-5.0', 'llvm-5.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck', 'valgrind', 'doxygen' ]
 
   - os: linux
     compiler: clang
@@ -41,7 +41,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
-        packages: ['git', 'wget', 'python3', 'python3-pip',  'cmake', 'clang-6.0', 'llvm-6.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck', 'valgrind', 'doxygen' ]
+        packages: ['git', 'wget', 'python3', 'python3-pip', 'clang-6.0', 'llvm-6.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck', 'valgrind', 'doxygen' ]
 
   # Linux GCC builds
   - os: linux
@@ -111,6 +111,8 @@ before_script:
 
   - sudo python3 -m pip install --upgrade pip
   - sudo pip3 install cmake
+  - sudo which cmake
+  - sudo cmake --version
 
   - export CXX=${COMPILER}
   - cd ${TRAVIS_BUILD_DIR}
@@ -127,7 +129,7 @@ before_script:
   - initctl list || true
 
   # Debug build
-  - cmake -H.
+  - /usr/local/bin/cmake -H.
     -BBuild-Debug
     -DCMAKE_BUILD_TYPE=Debug
     -DPISTACHE_BUILD_EXAMPLES=true
@@ -135,7 +137,7 @@ before_script:
     -DPISTACHE_SSL=true
 
   # Release build
-  - cmake -H.
+  - /usr/local/bin/cmake -H.
     -BBuild-Release
     -DCMAKE_BUILD_TYPE=Release
     -DPISTACHE_SSL=true
