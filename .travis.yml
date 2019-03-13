@@ -19,7 +19,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-4.0']
-        packages: [ 'cmake', 'clang-4.0', 'llvm-4.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck' ]
+        packages: [ 'cmake', 'clang-4.0', 'llvm-4.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck', 'valgrind', 'clang-format' ]
 
   - os: linux
     compiler: clang
@@ -30,7 +30,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-5.0']
-        packages: [ 'cmake', 'clang-5.0', 'llvm-5.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck' ]
+        packages: [ 'cmake', 'clang-5.0', 'llvm-5.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck', 'valgrind', 'clang-format' ]
 
   - os: linux
     compiler: clang
@@ -41,7 +41,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
-        packages: [ 'cmake', 'clang-6.0', 'llvm-6.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck' ]
+        packages: [ 'cmake', 'clang-6.0', 'llvm-6.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck', 'valgrind', 'clang-format' ]
 
   # Linux GCC builds
   - os: linux
@@ -53,7 +53,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-4.9', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck']
+        packages: ['g++-4.9', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck', 'valgrind', 'clang-format']
 
   - os: linux
     compiler: gcc
@@ -64,7 +64,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-5', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck']
+        packages: ['g++-5', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck', 'valgrind', 'clang-format']
 
   - os: linux
     compiler: gcc
@@ -75,7 +75,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-6', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck']
+        packages: ['g++-6', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck', 'valgrind', 'clang-format']
 
   - os: linux
     compiler: gcc
@@ -86,7 +86,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-7', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck']
+        packages: ['g++-7', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck', 'valgrind', 'clang-format']
 
   - os: linux
     compiler: gcc
@@ -97,7 +97,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-8', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck']
+        packages: ['g++-8', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck', 'valgrind', 'clang-format']
 
 install:
   - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
