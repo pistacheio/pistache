@@ -1,6 +1,8 @@
 cmake_minimum_required (VERSION 3.1.3)
 project (pistache)
 
+INCLUDE(Dart)
+
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -pedantic -Wextra -Wno-missing-field-initializers")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/CMakeModules)
 
@@ -17,28 +19,65 @@ option(PISTACHE_BUILD_EXAMPLES "build examples alongside the project" OFF)
 option(PISTACHE_BUILD_DOCS "build docs alongside the project" OFF)
 option(PISTACHE_INSTALL "add pistache as install target (recommended)" ON)
 option(PISTACHE_SSL "add support for SSL server" OFF)
+option(PISTACHE_CREATE_OSS_CONTRIB_TARGETS "Create custom target format code to OSS contrib" OFF)
 
-find_program(CTEST_MEMORYCHECK_COMMAND NAMES valgrind)
-find_program(CTEST_COVERAGE_COMMAND NAMES gcov)
-find_program(CMAKE_CXX_CPPCHECK NAMES cppcheck)
-
-if (CMAKE_CXX_CPPCHECK)
-    message("-- Cppcheck found " ${CMAKE_CXX_CPPCHECK})
-    list(
-        APPEND CMAKE_CXX_CPPCHECK 
-            "--enable=all"
-            "--suppress=*:${PROJECT_SOURCE_DIR}/third-party*"
-            "--suppress=*:${PROJECT_SOURCE_DIR}/tests*"
-    )
-else()
-    message("-- Cppcheck not found")
-    set(CMAKE_CXX_CPPCHECK "")
+if(CMAKE_BUILD_TYPE MATCHES "Debug")
+    set(PISTACHE_CREATE_OSS_CONTRIB_TARGETS ON)
+    set(PISTACHE_BUILD_TESTS ON)
+    set(PISTACHE_BUILD_DOCS ON)
 endif()
 
-INCLUDE(Dart)
+if (PISTACHE_CREATE_OSS_CONTRIB_TARGETS)
 
-add_custom_target(test_memcheck COMMAND ${CMAKE_CTEST_COMMAND}  --force-new-ctest-process --test-action memcheck)
-add_custom_target(coverage COMMAND ${CMAKE_CTEST_COMMAND}  --force-new-ctest-process --test-action coverage)
+    find_program(CMAKE_CXX_CLANG_FORMAT NAMES clang-format)
+    if (CMAKE_CXX_CLANG_FORMAT)
+        message("-- Cppcheck found at " ${CMAKE_CXX_CLANG_FORMAT})
+        FILE (GLOB_RECURSE SOURCES_SRC ${PROJECT_SOURCE_DIR}/src/*.cc)
+        FILE (GLOB_RECURSE SOURCES_EXAMPLES ${PROJECT_SOURCE_DIR}/examples/*.cc)
+        FILE (GLOB_RECURSE SOURCES_TESTS ${PROJECT_SOURCE_DIR}/tests/*.cc)
+        FILE (GLOB_RECURSE SOURCES_HEADERS ${PROJECT_SOURCE_DIR}/include/*.h)
+        set(FORMAT_TARGETS ${SOURCES_SRC} ${SOURCES_EXAMPLES} ${SOURCES_TESTS} ${SOURCES_HEADERS})
+        add_custom_target(format COMMAND ${CMAKE_CXX_CLANG_FORMAT} -i -style=Mozilla ${FORMAT_TARGETS})
+    else()
+        message(FATAL_ERROR "-- Cppcheck not found")
+    endif()
+
+    find_program(CMAKE_CXX_CPPCHECK NAMES cppcheck)
+
+    if (CMAKE_CXX_CPPCHECK)
+        message("-- cppcheck found at " ${CMAKE_CXX_CPPCHECK})
+        list(
+            APPEND CMAKE_CXX_CPPCHECK 
+                "--enable=all"
+                "--suppress=*:${PROJECT_SOURCE_DIR}/third-party*"
+                "--suppress=*:${PROJECT_SOURCE_DIR}/tests*"
+        )
+    else()
+        message(FATAL_ERROR "-- cppcheck not found")
+        set(CMAKE_CXX_CPPCHECK "")
+    endif()
+
+    find_program(CTEST_COVERAGE_COMMAND NAMES gcov)
+
+    if (CTEST_COVERAGE_COMMAND)
+        message("-- gcov found at " ${CTEST_COVERAGE_COMMAND})
+        add_custom_target(coverage COMMAND ${CMAKE_CTEST_COMMAND}  --force-new-ctest-process --test-action coverage)
+    else()
+        message(FATAL_ERROR "-- gcov not found")
+        set(CTEST_COVERAGE_COMMAND "")
+    endif()
+
+    find_program(CTEST_MEMORYCHECK_COMMAND NAMES valgrind)
+
+    if (CTEST_MEMORYCHECK_COMMAND)
+        message("-- valgrind found at " ${CTEST_MEMORYCHECK_COMMAND})
+        add_custom_target(memcheck COMMAND ${CMAKE_CTEST_COMMAND}  --force-new-ctest-process --test-action memcheck)
+    else()
+        message(FATAL_ERROR "-- valgrind not found")
+        set(CTEST_MEMORYCHECK_COMMAND "")
+    endif()
+
+endif()
 
 # CMAKE version less than 3.8 does not understand the CMAKE_CXX_FLAGS
 # set to 17, so a manual check if performed on older version

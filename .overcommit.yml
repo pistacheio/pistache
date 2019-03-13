@@ -35,5 +35,5 @@
 PreCommit:
  Format:
    enabled: true
-   on_warn: fail
+   quiet: false
    command: [".githooks/pre-commit/format.sh"]
