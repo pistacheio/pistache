@@ -106,6 +106,7 @@ install:
 before_script:
   - sudo wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
   - sudo apt-add-repository 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty main'
+  - sudo apt-get install -y clang-format
 
   - export CXX=${COMPILER}
   - cd ${TRAVIS_BUILD_DIR}
