@@ -128,11 +128,13 @@ public:
     explicit AddressParser(const std::string& data);
     const std::string& rawHost() const;
     const std::string& rawPort() const;
+    bool hasColon() const;
     int family() const;
 private:
     std::string host_;
     std::string port_;
-    int family_;
+    bool hasColon_ = false;
+    int family_ = 0;
 };
 
 class Address {

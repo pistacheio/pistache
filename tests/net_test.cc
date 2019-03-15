@@ -81,11 +81,18 @@ TEST(net_test, address_creation)
     Address address13(Ipv6::loopback(), Port(8080));
     ASSERT_EQ(address13.host(), "::1");
     ASSERT_EQ(address13.port(), 8080);
+
+    Address address14("127.0.0.1");
+    ASSERT_EQ(address14.host(), "127.0.0.1");
+    ASSERT_EQ(address14.port(), 80);
+
+    Address address15("www.example.com");
+    ASSERT_EQ(address15.host(), "93.184.216.34");
+    ASSERT_EQ(address15.port(), 80);
 }
 
 TEST(net_test, invalid_address)
 {
-    ASSERT_THROW(Address("127.0.0.1"), std::invalid_argument);
     ASSERT_THROW(Address("127.0.0.1:9999999"), std::invalid_argument);
     ASSERT_THROW(Address("127.0.0.1:"), std::invalid_argument);
     ASSERT_THROW(Address("127.0.0.1:-10"), std::invalid_argument);
@@ -102,11 +109,18 @@ TEST(net_test, address_parser)
     ASSERT_EQ(ap1.rawHost(), "127.0.0.1");
     ASSERT_EQ(ap1.rawPort(), "80");
     ASSERT_EQ(ap1.family(), AF_INET);
+    ASSERT_EQ(ap1.hasColon(), true);
 
-    AddressParser ap2("[2001:0DB8:AABB:CCDD:EEFF:0011:2233:4455]:8080");
-    ASSERT_EQ(ap2.rawHost(), "[2001:0DB8:AABB:CCDD:EEFF:0011:2233:4455]");
-    ASSERT_EQ(ap2.rawPort(), "8080");
-    ASSERT_EQ(ap2.family(), AF_INET6);
+    AddressParser ap2("example.com");
+    ASSERT_EQ(ap2.rawHost(), "example.com");
+    ASSERT_EQ(ap2.rawPort(), "");
+    ASSERT_EQ(ap2.family(), AF_INET);
+    ASSERT_EQ(ap2.hasColon(), false);
+
+    AddressParser ap3("[2001:0DB8:AABB:CCDD:EEFF:0011:2233:4455]:8080");
+    ASSERT_EQ(ap3.rawHost(), "[2001:0DB8:AABB:CCDD:EEFF:0011:2233:4455]");
+    ASSERT_EQ(ap3.rawPort(), "8080");
+    ASSERT_EQ(ap3.family(), AF_INET6);
 
     ASSERT_THROW(AddressParser("127.0.0.1:");, std::invalid_argument);
     ASSERT_THROW(AddressParser("[::]:");, std::invalid_argument);
