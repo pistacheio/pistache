@@ -87,7 +87,7 @@ TEST(net_test, address_creation)
     ASSERT_EQ(address14.port(), 80);
 
     Address address15("www.example.com");
-    ASSERT_EQ(address15.host(), "www.example.com");
+    ASSERT_EQ(address15.host(), "93.184.216.34");
     ASSERT_EQ(address15.port(), 80);
 }
 
