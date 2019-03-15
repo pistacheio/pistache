@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 
 // Allow compile-time overload
 namespace Pistache
@@ -17,5 +18,7 @@ namespace Const
     // Defined from CMakeLists.txt in project root
     static constexpr size_t DefaultMaxPayload = 4096;
     static constexpr size_t ChunkSize  = 1024;
+
+    static constexpr uint16_t HTTP_STANDARD_PORT = 80;
 } // namespace Const
 } // namespace Pistache

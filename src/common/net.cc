@@ -5,6 +5,7 @@
 
 #include <pistache/net.h>
 #include <pistache/common.h>
+#include <pistache/config.h>
 
 #include <stdexcept>
 #include <limits>
@@ -195,13 +196,23 @@ AddressParser::AddressParser(const std::string& data)
         end_pos != std::string::npos &&
         start_pos < end_pos)
     {
+        std::size_t colon_pos = data.find_first_of(':', end_pos);
+        if (colon_pos != std::string::npos)
+        {
+            hasColon_ = true;
+        }
         host_ = data.substr(start_pos, end_pos + 1);
         family_ = AF_INET6;
         ++end_pos;
     }
     else
     {
-        end_pos = data.find(':');
+        std::size_t colon_pos = data.find(':');
+        if (colon_pos != std::string::npos)
+        {
+            hasColon_ = true;
+        }
+        end_pos = colon_pos;
         host_ = data.substr(0, end_pos);
         family_ = AF_INET;
     }
@@ -222,6 +233,11 @@ const std::string& AddressParser::rawHost() const
 const std::string& AddressParser::rawPort() const
 {
     return port_;
+}
+
+bool AddressParser::hasColon() const
+{
+    return hasColon_;
 }
 
 int AddressParser::family() const
@@ -327,6 +343,19 @@ void Address::init(const std::string& addr)
             host_ = "127.0.0.1";
         }
 
+        struct hostent *hp = ::gethostbyname(host_.c_str());
+        if (hp)
+        {
+            struct in_addr **addr_list;
+            addr_list = (struct in_addr **)hp->h_addr_list;
+            for(int i = 0; addr_list[i] != NULL; i++)
+            {
+                // Just take the first IP address
+                host_ = std::string(inet_ntoa(*addr_list[i]));
+                break;
+            }
+        }
+
         if (!IsIPv4HostName(host_))
         {
             throw std::invalid_argument("Invalid IPv4 address");
@@ -337,12 +366,26 @@ void Address::init(const std::string& addr)
 
     const std::string& portPart = parser.rawPort();
     if (portPart.empty())
+    {
+        if (parser.hasColon())
+        {
+            // "www.example.com:" or "127.0.0.1:" cases
             throw std::invalid_argument("Invalid port");
-    char *end = 0;
-    long port = strtol(portPart.c_str(), &end, 10);
-    if (*end != 0 || port < Port::min() || port > Port::max())
-        throw std::invalid_argument("Invalid port");
-    port_ = Port(port);
+        }
+        else
+        {
+            // "www.example.com" or "127.0.0.1" cases
+            port_ = Const::HTTP_STANDARD_PORT;
+        }
+    }
+    else
+    {
+        char *end = 0;
+        long port = strtol(portPart.c_str(), &end, 10);
+        if (*end != 0 || port < Port::min() || port > Port::max())
+            throw std::invalid_argument("Invalid port");
+        port_ = Port(port);
+    }
 }
 
 Error::Error(const char* message)

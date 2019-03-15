@@ -6,6 +6,7 @@
 
 #include <pistache/http_header.h>
 #include <pistache/common.h>
+#include <pistache/config.h>
 #include <pistache/http.h>
 #include <pistache/stream.h>
 
@@ -342,7 +343,7 @@ void Host::parse(const std::string& data)
     const std::string& port = parser.rawPort();
     if (port.empty())
     {
-        port_ = HTTP_STANDARD_PORT;
+        port_ = Const::HTTP_STANDARD_PORT;
     }
     else
     {
