@@ -50,8 +50,6 @@ const char* encodingString(Encoding encoding) {
         return "chunked";
     case Encoding::Unknown:
     	return "unknown";
-    default:
-        return "unknown";
     }
     return "unknown";
 }
