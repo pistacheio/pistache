@@ -51,9 +51,8 @@ const char* encodingString(Encoding encoding) {
     case Encoding::Unknown:
     	return "unknown";
     default:
-        assert(false && "Invalid encoding");
+        return "unknown";
     }
-    assert(false && "Invalid encoding");
     return "unknown";
 }
 
