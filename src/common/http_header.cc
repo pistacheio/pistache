@@ -51,6 +51,7 @@ const char* encodingString(Encoding encoding) {
     case Encoding::Unknown:
     	return "unknown";
     }
+    return "unknown";
 }
 
 void
@@ -314,7 +315,7 @@ Date::write(std::ostream& os) const {
 }
 
 void
-Expect::parseRaw(const char* str, size_t len) {
+Expect::parseRaw(const char* str, size_t /*len*/) {
     if (std::strcmp(str, "100-continue") == 0) {
         expectation_ = Expectation::Continue;
     } else {
@@ -515,7 +516,7 @@ Server::parse(const std::string& token)
 void
 Server::write(std::ostream& os) const
 {
-    for (int i = 0; i < tokens_.size(); i++) {
+    for (size_t i = 0; i < tokens_.size(); i++) {
         auto & token = tokens_[i];
         os << token;
         if ( i < tokens_.size() - 1 ) {
