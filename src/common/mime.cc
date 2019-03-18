@@ -246,7 +246,7 @@ MediaType::setQuality(Q quality) {
 }
 
 Optional<std::string>
-MediaType::getParam(std::string name) const {
+MediaType::getParam(const std::string& name) const {
     auto it = params.find(name);
     if (it == std::end(params)) {
         return None();
@@ -256,8 +256,8 @@ MediaType::getParam(std::string name) const {
 }
 
 void
-MediaType::setParam(std::string name, std::string value) {
-    params[name] = value;
+MediaType::setParam(const std::string& name, std::string value) {
+    params[name] = std::move(value);
 }
 
 std::string

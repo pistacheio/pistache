@@ -146,13 +146,12 @@ Ipv6::toString() const {
 void Ipv6::toNetwork(in6_addr *addr6) const {
     uint16_t temp_ip6[8] = {a, b, c, d, e, f, g, h};
     uint16_t remap_ip6[8] = {0};
-    uint16_t x, y;
     
      // If native endianness is little-endian swap the bytes, otherwise just copy them into the new array
     if ( htonl(1) != 1 ) {
         for (uint16_t i = 0; i<8; i++) {
-            x = temp_ip6[i];
-            y = htons(x);
+            uint16_t x = temp_ip6[i];
+            uint16_t y = htons(x);
             remap_ip6[i] = y;
         }
     } else {
@@ -252,7 +251,7 @@ Address::Address()
 
 Address::Address(std::string host, Port port)
 {   
-    std::string addr = host;
+    std::string addr = std::move(host);
     addr.append(":");
     addr.append(port.toString());
     init(std::move(addr));

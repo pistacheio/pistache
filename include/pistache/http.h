@@ -618,7 +618,7 @@ namespace Private {
 
         virtual State apply(StreamCursor& cursor) = 0;
 
-        void raise(const char* msg, Code code = Code::Bad_Request);
+        static void raise(const char* msg, Code code = Code::Bad_Request);
 
         Message *message;
     };

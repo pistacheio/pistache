@@ -31,7 +31,7 @@ public:
         Options();
     };
     Endpoint();
-    Endpoint(const Address& addr);
+    explicit Endpoint(const Address& addr);
 
     template<typename... Args>
     void initArgs(Args&& ...args) {
