@@ -173,12 +173,12 @@ public:
 
 private:
 
-    Polling::Tag encodeTag(const Reactor::Key& key, Polling::Tag tag) const {
+    static Polling::Tag encodeTag(const Reactor::Key& key, Polling::Tag tag) {
         uint64_t value = tag.value();
         return HandlerList::encodeTag(key, value);
     }
 
-    std::pair<size_t, uint64_t> decodeTag(const Polling::Tag& tag) const {
+    static std::pair<size_t, uint64_t> decodeTag(const Polling::Tag& tag) {
         return HandlerList::decodeTag(tag);
     }
 
@@ -427,14 +427,15 @@ public:
     }
 
 private:
-    Reactor::Key encodeKey(const Reactor::Key& originalKey, uint32_t value) const
+    static Reactor::Key encodeKey(const Reactor::Key& originalKey, uint32_t value)
     {
         auto data = originalKey.data();
         auto newValue = data << 32 | value;
         return Reactor::Key(newValue);
     }
 
-    std::pair<uint32_t, uint32_t> decodeKey(const Reactor::Key& encodedKey) const {
+    static std::pair<uint32_t, uint32_t> decodeKey(const Reactor::Key& encodedKey)
+    {
         auto data = encodedKey.data();
         uint32_t hi = data >> 32;
         uint32_t lo = data & 0xFFFFFFFF;

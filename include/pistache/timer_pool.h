@@ -60,7 +60,7 @@ public:
     };
 
     std::shared_ptr<Entry> pickTimer();
-    void releaseTimer(const std::shared_ptr<Entry>& timer);
+    static void releaseTimer(const std::shared_ptr<Entry>& timer);
 
 private:
     std::vector<std::shared_ptr<Entry>> timers;
