@@ -165,17 +165,17 @@ Transport::onReady(const Aio::FdSet& fds) {
             auto fd = tag.value();
             auto connIt = connections.find(fd);
             if (connIt != std::end(connections)) {
-                auto& conn = connIt->second;
+                auto& connectionEntry = connIt->second;
                 if (entry.isHangup())
-                    conn.reject(Error::system("Could not connect"));
+                    connectionEntry.reject(Error::system("Could not connect"));
                 else {
-                    conn.resolve();
-                    // We are connected, we can start reading data now
                     auto connection = connIt->second.connection.lock();
                     if (connection) {
+                        connectionEntry.resolve();
+                        // We are connected, we can start reading data now
                         reactor()->modifyFd(key(), connection->fd(), NotifyOn::Read);
                     } else {
-                        throw std::runtime_error("Connection error");
+                       connectionEntry.reject(Error::system("Connection lost"));
                     }
                 }
             } else {
@@ -490,6 +490,7 @@ Connection::handleError(const char* error) {
 void
 Connection::handleTimeout() {
     if (requestEntry) {
+        requestEntry->timer->disarm();
         timerPool_.releaseTimer(requestEntry->timer);
 
         auto onDone = requestEntry->onDone;
