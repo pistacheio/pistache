@@ -346,13 +346,13 @@ TEST(http_client_test, test_client_timeout)
     std::vector<Async::Promise<Http::Response>> responses;
     const int RESPONSE_SIZE = 4;
     int rejects_counter = 0;
-    const std::vector<int> delays = {0, 1000, 4500, 1000};
+    const std::vector<int> timeouts = {0, 1000, 4500, 1000};
 
     std::map<int, std::string> res;
     for (int i = 0; i < RESPONSE_SIZE; ++i)
     {
         const std::string page = server_address + "/" + std::to_string(i);
-        auto rb = client.get(page).timeout(std::chrono::milliseconds(delays[i]));
+        auto rb = client.get(page).timeout(std::chrono::milliseconds(timeouts[i]));
         auto response = rb.send();
         response.then([&res, num = i](Http::Response rsp)
                       {
