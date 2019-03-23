@@ -30,6 +30,26 @@ struct DelayHandler : public Http::Handler
     }
 };
 
+struct FastEvenPagesHandler : public Http::Handler
+{
+    HTTP_PROTOTYPE(FastEvenPagesHandler)
+
+    void onRequest(const Http::Request& request, Http::ResponseWriter writer) override
+    {
+        std::string page = request.resource().erase(0, 1);
+        int num = std::stoi(page);
+        if (num % 2 != 0)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(2500));
+            writer.send(Http::Code::Ok, std::to_string(num));
+        }
+        else
+        {
+            writer.send(Http::Code::Ok, std::to_string(num));
+        }
+    }
+};
+
 TEST(http_client_test, one_client_with_one_request)
 {
     const Pistache::Address address("localhost", Pistache::Port(0));
@@ -304,4 +324,68 @@ TEST(http_client_test, one_client_with_multiple_requests_and_two_connections_per
     client.shutdown();
 
     ASSERT_TRUE(response_counter == RESPONSE_SIZE);
+}
+
+TEST(http_client_test, test_client_timeout)
+{
+    const Pistache::Address address("localhost", Pistache::Port(0));
+
+    Http::Endpoint server(address);
+    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto server_opts = Http::Endpoint::options().flags(flags).threads(4);
+    server.init(server_opts);
+    server.setHandler(Http::make_handler<FastEvenPagesHandler>());
+    server.serveThreaded();
+
+    const std::string server_address = "localhost:" + server.getPort().toString();
+    std::cout << "Server address: " << server_address << "\n";
+
+    Http::Client client;
+    client.init();
+
+    std::vector<Async::Promise<Http::Response>> responses;
+    const int RESPONSE_SIZE = 4;
+    int rejects_counter = 0;
+    const std::vector<int> delays = {0, 1000, 4500, 1000};
+
+    std::map<int, std::string> res;
+    for (int i = 0; i < RESPONSE_SIZE; ++i)
+    {
+        const std::string page = server_address + "/" + std::to_string(i);
+        auto rb = client.get(page).timeout(std::chrono::milliseconds(delays[i]));
+        auto response = rb.send();
+        response.then([&res, num = i](Http::Response rsp)
+                      {
+                          if (rsp.code() == Http::Code::Ok)
+                          {
+                              res[num] = rsp.body();
+                          }
+                      },
+                      [&rejects_counter](std::exception_ptr)
+                      {
+                          ++rejects_counter;
+                      });
+        responses.push_back(std::move(response));
+    }
+
+    auto sync = Async::whenAll(responses.begin(), responses.end());
+    Async::Barrier<std::vector<Http::Response>> barrier(sync);
+
+    barrier.wait_for(std::chrono::seconds(2));
+
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+
+    server.shutdown();
+    client.shutdown();
+
+    ASSERT_GE(rejects_counter, 1);
+    ASSERT_EQ(res.size(), 2u);
+
+    auto it1 = res.find(0);
+    ASSERT_NE(it1, res.end());
+    ASSERT_EQ(it1->second, "0");
+
+    auto it2 = res.find(2);
+    ASSERT_NE(it2, res.end());
+    ASSERT_EQ(it2->second, "2");
 }
