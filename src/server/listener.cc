@@ -258,8 +258,8 @@ Listener::run() {
 
     for (;;) {
         std::vector<Polling::Event> events;
+        int ready_fds = poller.poll(events);
 
-        int ready_fds = poller.poll(events, 128, std::chrono::milliseconds(-1));
         if (ready_fds == -1) {
             if (errno == EINTR && g_listen_fd == -1) return;
             throw Error::system("Polling");

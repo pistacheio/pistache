@@ -260,6 +260,9 @@ private:
 
     void handleRequestsQueue();
     void handleConnectionQueue();
+    void handleReadableEntry(const Aio::FdSet::Entry& entry);
+    void handleWritableEntry(const Aio::FdSet::Entry& entry);
+    void handleHangupEntry(const Aio::FdSet::Entry& entry);
     void handleIncoming(std::shared_ptr<Connection> connection);
     void handleResponsePacket(const std::shared_ptr<Connection>& connection, const char* buffer, size_t totalBytes);
     void handleTimeout(const std::shared_ptr<Connection>& connection);

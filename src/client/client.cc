@@ -132,55 +132,15 @@ Transport::onReady(const Aio::FdSet& fds) {
         else if (entry.getTag() == requestsQueue.tag()) {
             handleRequestsQueue();
         }
-
         else if (entry.isReadable()) {
-            auto tag = entry.getTag();
-            auto fd = tag.value();
-            auto connIt = connections.find(fd);
-            if (connIt != std::end(connections)) {
-                auto connection = connIt->second.connection.lock();
-                if (connection) {
-                    handleIncoming(connection);
-                }
-                else {
-                    throw std::runtime_error("Connection error: problem with reading data from server");
-                }
-            }
-            else {
-                Guard guard(timeoutsLock);
-                auto timerIt = timeouts.find(fd);
-                if (timerIt != std::end(timeouts))
-                {
-                    auto connection = timerIt->second.lock();
-                    if (connection)
-                    {
-                        handleTimeout(connection);
-                        timeouts.erase(fd);
-                    }
-                }
-            }
+            handleReadableEntry(entry);
         }
-        else {
-            auto tag = entry.getTag();
-            auto fd = tag.value();
-            auto connIt = connections.find(fd);
-            if (connIt != std::end(connections)) {
-                auto& connectionEntry = connIt->second;
-                if (entry.isHangup())
-                    connectionEntry.reject(Error::system("Could not connect"));
-                else {
-                    auto connection = connIt->second.connection.lock();
-                    if (connection) {
-                        connectionEntry.resolve();
-                        // We are connected, we can start reading data now
-                        reactor()->modifyFd(key(), connection->fd(), NotifyOn::Read);
-                    } else {
-                       connectionEntry.reject(Error::system("Connection lost"));
-                    }
-                }
-            } else {
-                throw std::runtime_error("Unknown fd");
-            }
+        else if (entry.isWritable()) {
+            handleWritableEntry(entry);
+        } else if (entry.isHangup()) {
+            handleHangupEntry(entry);
+        } else {
+            assert(false && "Unexpected event in entry");
         }
     }
 }
@@ -297,6 +257,87 @@ Transport::handleConnectionQueue() {
             }
         }
         connections.insert(std::make_pair(conn->fd(), std::move(*data)));
+    }
+}
+
+void Transport::handleReadableEntry(const Aio::FdSet::Entry& entry)
+{
+    assert(entry.isReadable() && "Entry must be readable");
+
+    auto tag = entry.getTag();
+    const Fd fd = tag.value();
+    auto connIt = connections.find(fd);
+    if (connIt != std::end(connections))
+    {
+        auto connection = connIt->second.connection.lock();
+        if (connection)
+        {
+            handleIncoming(connection);
+        }
+        else
+        {
+            throw std::runtime_error("Connection error: problem with reading data from server");
+        }
+    }
+    else
+    {
+        Guard guard(timeoutsLock);
+        auto timerIt = timeouts.find(fd);
+        if (timerIt != std::end(timeouts))
+        {
+            auto connection = timerIt->second.lock();
+            if (connection)
+            {
+                handleTimeout(connection);
+                timeouts.erase(fd);
+            }
+        }
+    }
+}
+
+void Transport::handleWritableEntry(const Aio::FdSet::Entry& entry)
+{
+    assert(entry.isWritable() && "Entry must be writable");
+
+    auto tag = entry.getTag();
+    const Fd fd = tag.value();
+    auto connIt = connections.find(fd);
+    if (connIt != std::end(connections))
+    {
+        auto& connectionEntry = connIt->second;
+        auto connection = connIt->second.connection.lock();
+        if (connection)
+        {
+            connectionEntry.resolve();
+            // We are connected, we can start reading data now
+            reactor()->modifyFd(key(), connection->fd(), NotifyOn::Read);
+        }
+        else
+        {
+            connectionEntry.reject(Error::system("Connection lost"));
+        }
+    }
+    else
+    {
+        throw std::runtime_error("Unknown fd");
+    }
+}
+
+void Transport::handleHangupEntry(const Aio::FdSet::Entry& entry)
+{
+    assert(entry.isHangup() && "Entry must be hangup");
+
+    auto tag = entry.getTag();
+    const Fd fd = tag.value();
+    auto connIt = connections.find(fd);
+    if (connIt != std::end(connections))
+    {
+        auto& connectionEntry = connIt->second;
+        connectionEntry.reject(Error::system("Could not connect"));
+    }
+    else
+    {
+        throw std::runtime_error("Unknown fd");
     }
 }
 
