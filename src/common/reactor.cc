@@ -135,20 +135,17 @@ public:
         if (handlers_.empty())
             throw std::runtime_error("You need to set at least one handler");
 
-        std::chrono::milliseconds timeout(-1);
-
         for (;;) {
             std::vector<Polling::Event> events;
-            int ready_fds;
-            switch (ready_fds = poller.poll(events, 1024, timeout)) {
+            int ready_fds = poller.poll(events);
+
+            switch (ready_fds) {
                 case -1: break;
                 case 0: break;
                 default:
                     if (shutdown_) return;
 
                     handleFds(std::move(events));
-
-                    timeout = std::chrono::milliseconds(-1);
             }
         }
     }

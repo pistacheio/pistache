@@ -143,8 +143,8 @@ namespace Polling {
         , tag(_tag)
     { }
 
-    Epoll::Epoll(size_t max) {
-       epoll_fd = TRY_RET(epoll_create(max));
+    Epoll::Epoll() {
+       epoll_fd = TRY_RET(epoll_create(Const::MaxEvents));
     }
 
     void
@@ -188,12 +188,12 @@ namespace Polling {
     }
 
     int
-    Epoll::poll(std::vector<Event>& events, size_t maxEvents, std::chrono::milliseconds timeout) const {
+    Epoll::poll(std::vector<Event>& events, const std::chrono::milliseconds timeout) const {
         struct epoll_event evs[Const::MaxEvents];
 
         int ready_fds = -1;
         do {
-            ready_fds = epoll_wait(epoll_fd, evs, maxEvents, timeout.count());
+            ready_fds = epoll_wait(epoll_fd, evs, Const::MaxEvents, timeout.count());
         } while (ready_fds < 0 && errno == EINTR);
 
         for (int i = 0; i < ready_fds; ++i) {

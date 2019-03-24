@@ -98,7 +98,7 @@ struct Event {
 
 class Epoll {
 public:
-    explicit Epoll(size_t max = 128);
+    Epoll();
 
     void addFd(Fd fd, Flags<NotifyOn> interest, Tag tag, Mode mode = Mode::Level);
     void addFdOneShot(Fd fd, Flags<NotifyOn> interest, Tag tag, Mode mode = Mode::Level);
@@ -107,8 +107,7 @@ public:
     void rearmFd(Fd fd, Flags<NotifyOn> interest, Tag tag, Mode mode = Mode::Level);
 
     int poll(std::vector<Event>& events,
-             size_t maxEvents = Const::MaxEvents,
-             std::chrono::milliseconds timeout = std::chrono::milliseconds(0)) const;
+             const std::chrono::milliseconds timeout = std::chrono::milliseconds(-1)) const;
 
 private:
     static int toEpollEvents(const Flags<NotifyOn>& interest);
