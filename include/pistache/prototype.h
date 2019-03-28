@@ -1,6 +1,6 @@
-/* 
+/*
    Mathieu Stefani, 28 janvier 2016
-   
+
    Simple Prototype design pattern implement
 */
 

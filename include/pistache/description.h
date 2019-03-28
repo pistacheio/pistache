@@ -1,7 +1,7 @@
-/* 
-   Mathieu Stefani, 24 février 2016
-   
-   An API description (reflection) mechanism that is based on Swagger
+/*
+*  Mathieu Stefani, 24 février 2016
+*
+*  An API description (reflection) mechanism that is based on Swagger
 */
 
 #pragma once
@@ -264,7 +264,7 @@ public:
     bool hasPath(const Path& path) const;
 
     PathGroup()
-      : groups_()
+        : groups_()
     { }
 
     Group paths(const std::string& name) const;

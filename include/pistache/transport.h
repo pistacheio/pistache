@@ -122,12 +122,12 @@ private:
 
         }
 
-      private:
+    private:
         BufferHolder(Fd fd, size_t size, off_t offset = 0)
-         : _fd(fd)
-         , size_(size)
-         , offset_(offset)
-         , type(File)
+            : _fd(fd)
+            , size_(size)
+            , offset_(offset)
+            , type(File)
         { }
 
         RawBuffer _raw;
@@ -156,10 +156,10 @@ private:
     struct TimerEntry {
         TimerEntry(Fd fd_, std::chrono::milliseconds value_,
                 Async::Deferred<uint64_t> deferred_)
-          : fd(fd_)
-          , value(value_)
-          , deferred(std::move(deferred_))
-          , active()
+            : fd(fd_)
+            , value(value_)
+            , deferred(std::move(deferred_))
+            , active()
         {
             active.store(true, std::memory_order_relaxed);
         }

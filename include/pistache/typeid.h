@@ -1,7 +1,7 @@
 /* typeid.h
    Mathieu Stefani, 30 novembre 2015
    Copyright (c) 2015 Datacratic.  All rights reserved.
-   
+
    This header provides a TypeId type that holds an unique identifier
    for a given type. Basically equivalent to std::type_info except that
    it does not rely on RTTI. The identifier is determined at compile-time.

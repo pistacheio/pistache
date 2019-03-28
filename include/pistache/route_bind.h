@@ -1,6 +1,6 @@
-/* 
+/*
    Mathieu Stefani, 27 février 2016
-   
+
    A special bind() method for REST routes
 */
 

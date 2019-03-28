@@ -98,9 +98,10 @@ MediaType::fromFile(const char* fileName)
 void
 MediaType::parseRaw(const char* str, size_t len) {
     auto raise = [&](const char* str) {
-        // TODO: eventually, we should throw a more generic exception
-        // that could then be catched in lower stack frames to rethrow
-        // an HttpError
+        /* TODO: eventually, we should throw a more generic exception
+        *  that could then be catched in lower stack frames to rethrow
+        *  an HttpError
+        */
         throw HttpError(Http::Code::Unsupported_Media_Type, str);
     };
 
@@ -111,14 +112,15 @@ MediaType::parseRaw(const char* str, size_t len) {
 
     Mime::Type top = Type::None;
 
-    // The reason we are using a do { } while (0); syntax construct here is to emulate
-    // if / else-if. Since we are using items-list macros to compare the strings,
-    // we want to avoid evaluating all the branches when one of them evaluates to true.
-    //
-    // Instead, we break the loop when a branch evaluates to true so that we do
-    // not evaluate all the subsequent ones.
-    //
-    // Watch out, this pattern is repeated throughout the function
+    /* The reason we are using a do { } while (0); syntax construct here is to emulate
+    *  if / else-if. Since we are using items-list macros to compare the strings,
+    *  we want to avoid evaluating all the branches when one of them evaluates to true.
+    *
+    *  Instead, we break the loop when a branch evaluates to true so that we do
+    *  not evaluate all the subsequent ones.
+    *
+    *  Watch out, this pattern is repeated throughout the function
+    */
     do {
 #define TYPE(val, s)                                                               \
         if (match_string(s, sizeof s - 1, cursor, CaseSensitivity::Insensitive)) { \

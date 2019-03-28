@@ -1,7 +1,7 @@
-/* 
-   Mathieu Stefani, 14 mai 2016
-   
-   Swagger serializer for RapidJSON
+/*
+*  Mathieu Stefani, 14 mai 2016
+*
+*  Swagger serializer for RapidJSON
 */
 
 #pragma once

@@ -1,6 +1,6 @@
 /* tcp.h
    Mathieu Stefani, 05 novembre 2015
-   
+
    TCP
 */
 
@@ -53,7 +53,7 @@ protected:
         if (!transport_)
             throw std::logic_error("Orphaned handler");
         return transport_;
-     }
+    }
 };
 
 } // namespace Tcp

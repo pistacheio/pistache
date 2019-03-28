@@ -1,7 +1,7 @@
 /*
-   Mathieu Stefani, 16 janvier 2016
-
-   Representation of a Cookie as per http://tools.ietf.org/html/rfc6265
+*  Mathieu Stefani, 16 janvier 2016
+*
+*  Representation of a Cookie as per http://tools.ietf.org/html/rfc6265
 */
 
 #pragma once
@@ -48,7 +48,7 @@ std::ostream& operator<<(std::ostream& os, const Cookie& cookie);
 
 class CookieJar {
 public:
-    using HashMapCookies = std::unordered_map<std::string, Cookie>; // "value" -> Cookie  
+    using HashMapCookies = std::unordered_map<std::string, Cookie>; // "value" -> Cookie
     using Storage = std::unordered_map<std::string, HashMapCookies>; // "name" -> Hashmap("value" -> Cookie)
 
     struct iterator : std::iterator<std::bidirectional_iterator_tag, Cookie> {
@@ -109,7 +109,7 @@ public:
     private:
         Storage::const_iterator iter_storage;
         HashMapCookies::const_iterator iter_cookie_values;
-        Storage::const_iterator iter_storage_end; // we need to know where main hashmap ends. 
+        Storage::const_iterator iter_storage_end; // we need to know where main hashmap ends.
     };
 
     CookieJar();

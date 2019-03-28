@@ -29,7 +29,7 @@ namespace Aio {
 class FdSet {
 public:
     FdSet(std::vector<Polling::Event>&& events)
-       : events_()
+        : events_()
     {
         events_.reserve(events.size());
         events_.insert(events_.end(),

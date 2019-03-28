@@ -30,7 +30,7 @@ namespace Http {
     typename std::enable_if<Header::IsHeader<H>::value, Stream&>::type
     writeHeader(Stream& stream, Args&& ...args) {
         H header(std::forward<Args>(args)...);
-        
+
         stream << H::Name << ": ";
     header.write(stream);
 
@@ -676,29 +676,29 @@ ResponseWriter::putOnWire(const char* data, size_t len)
         auto fd = peer()->fd();
 
         return transport_->asyncWrite(fd, buffer)
-         .then
-                 <
-                         std::function< Async::Promise<ssize_t>(int)>,
-                         std::function<void(std::exception_ptr&)>
-                 >
-                 (
-                         [=](int /*l*/) {
+            .then
+                <
+                        std::function< Async::Promise<ssize_t>(int)>,
+                        std::function<void(std::exception_ptr&)>
+                >
+                (
+                        [=](int /*l*/) {
 
-                             return Async::Promise<ssize_t>( [=](Async::Deferred<ssize_t> /*deferred*/) mutable {
+                            return Async::Promise<ssize_t>( [=](Async::Deferred<ssize_t> /*deferred*/) mutable {
 
-                                 if (control == ConnectionControl::KeepAlive) return ;
+                                if (control == ConnectionControl::KeepAlive) return ;
 
-                                 if (fd)
-                                     close(fd);
+                                if (fd)
+                                    close(fd);
 
                                 return ;
-                             } );
-                         },
+                            } );
+                        },
 
-                         [=](std::exception_ptr& eptr){
-                             return Async::Promise<ssize_t>::rejected(eptr);
-                         }
-                 );
+                        [=](std::exception_ptr& eptr){
+                            return Async::Promise<ssize_t>::rejected(eptr);
+                        }
+                );
 
     } catch (const std::runtime_error& e) {
         return Async::Promise<ssize_t>::rejected(e);

@@ -144,7 +144,7 @@ namespace Polling {
     { }
 
     Epoll::Epoll() {
-       epoll_fd = TRY_RET(epoll_create(Const::MaxEvents));
+        epoll_fd = TRY_RET(epoll_create(Const::MaxEvents));
     }
 
     void

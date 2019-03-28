@@ -167,114 +167,118 @@ private:
 
 class AccessControlAllowOrigin : public Header {
 public:
-  NAME("Access-Control-Allow-Origin")
+    NAME("Access-Control-Allow-Origin")
 
-  AccessControlAllowOrigin()
-    : uri_()
-  { }
+    AccessControlAllowOrigin()
+        : uri_()
+    { }
 
-  explicit AccessControlAllowOrigin(const char* uri)
-    : uri_(uri)
-  { }
-  explicit AccessControlAllowOrigin(const std::string& uri)
-    : uri_(uri)
-  { }
+    explicit AccessControlAllowOrigin(const char* uri)
+        : uri_(uri)
+    { }
 
-  void parse(const std::string& data) override;
-  void write(std::ostream& os) const override;
+    explicit AccessControlAllowOrigin(const std::string& uri)
+        : uri_(uri)
+    { }
 
-  void setUri(std::string uri) {
-    uri_ = std::move(uri);
-  }
+    void parse(const std::string& data) override;
+    void write(std::ostream& os) const override;
 
-  std::string uri() const { return uri_; }
+    void setUri(std::string uri) {
+        uri_ = std::move(uri);
+    }
+
+    std::string uri() const { return uri_; }
 
 private:
-  std::string uri_;
+    std::string uri_;
 };
 
 class AccessControlAllowHeaders : public Header {
 public:
-  NAME("Access-Control-Allow-Headers")
+    NAME("Access-Control-Allow-Headers")
 
-  AccessControlAllowHeaders()
-    : val_()
-  { }
+    AccessControlAllowHeaders()
+        : val_()
+    { }
 
-  explicit AccessControlAllowHeaders(const char* val)
-    : val_(val)
-  { }
-  explicit AccessControlAllowHeaders(const std::string& val)
-    : val_(val)
-  { }
+    explicit AccessControlAllowHeaders(const char* val)
+        : val_(val)
+    { }
 
-  void parse(const std::string& data) override;
-  void write(std::ostream& os) const override;
+    explicit AccessControlAllowHeaders(const std::string& val)
+        : val_(val)
+    { }
 
-  void setUri(std::string val) {
-    val_ = std::move(val);
-  }
+    void parse(const std::string& data) override;
+    void write(std::ostream& os) const override;
 
-  std::string val() const { return val_; }
+    void setUri(std::string val) {
+        val_ = std::move(val);
+    }
+
+    std::string val() const { return val_; }
 
 private:
-  std::string val_;
+    std::string val_;
 };
 
 class AccessControlExposeHeaders : public Header {
 public:
-  NAME("Access-Control-Expose-Headers")
+    NAME("Access-Control-Expose-Headers")
 
-  AccessControlExposeHeaders()
-    : val_()
-  { }
+    AccessControlExposeHeaders()
+        : val_()
+    { }
 
-  explicit AccessControlExposeHeaders(const char* val)
-    : val_(val)
-  { }
-  explicit AccessControlExposeHeaders(const std::string& val)
-    : val_(val)
-  { }
+    explicit AccessControlExposeHeaders(const char* val)
+        : val_(val)
+    { }
 
-  void parse(const std::string& data) override;
-  void write(std::ostream& os) const override;
+    explicit AccessControlExposeHeaders(const std::string& val)
+        : val_(val)
+    { }
 
-  void setUri(std::string val) {
-    val_ = std::move(val);
-  }
+    void parse(const std::string& data) override;
+    void write(std::ostream& os) const override;
 
-  std::string val() const { return val_; }
+    void setUri(std::string val) {
+        val_ = std::move(val);
+    }
+
+    std::string val() const { return val_; }
 
 private:
-  std::string val_;
+    std::string val_;
 };
 
 class AccessControlAllowMethods : public Header {
 public:
-  NAME("Access-Control-Allow-Methods")
+    NAME("Access-Control-Allow-Methods")
 
-  AccessControlAllowMethods()
-    : val_()
-  { }
+    AccessControlAllowMethods()
+        : val_()
+    { }
 
-  explicit AccessControlAllowMethods(const char* val)
-    : val_(val)
-  { }
-  explicit AccessControlAllowMethods(const std::string& val)
-    : val_(val)
-  { }
+    explicit AccessControlAllowMethods(const char* val)
+        : val_(val)
+    { }
 
-  void parse(const std::string& data) override;
-  void write(std::ostream& os) const override;
+    explicit AccessControlAllowMethods(const std::string& val)
+        : val_(val)
+    { }
 
-  void setUri(std::string val) {
-    val_ = std::move(val);
-  }
+    void parse(const std::string& data) override;
+    void write(std::ostream& os) const override;
 
-  std::string val() const { return val_; }
+    void setUri(std::string val) {
+        val_ = std::move(val);
+    }
+
+    std::string val() const { return val_; }
 
 private:
-  std::string val_;
+    std::string val_;
 };
 
 class CacheControl : public Header {
@@ -282,7 +286,7 @@ public:
     NAME("Cache-Control")
 
     CacheControl()
-       : directives_()
+        : directives_()
     { }
 
     explicit CacheControl(const std::vector<Http::CacheDirective>& directives)
@@ -327,7 +331,7 @@ class EncodingHeader : public Header {
 public:
 
     EncodingHeader()
-       : encoding_()
+        : encoding_()
     { }
 
     void parseRaw(const char* str, size_t len) override;
@@ -351,11 +355,11 @@ public:
     NAME("Content-Encoding")
 
     ContentEncoding()
-       : EncodingHeader(Encoding::Identity)
+        : EncodingHeader(Encoding::Identity)
     { }
 
     explicit ContentEncoding(Encoding encoding)
-       : EncodingHeader(encoding)
+        : EncodingHeader(encoding)
     { }
 };
 
@@ -368,7 +372,7 @@ public:
     { }
 
     explicit TransferEncoding(Encoding encoding)
-       : EncodingHeader(encoding)
+        : EncodingHeader(encoding)
     { }
 };
 
@@ -398,7 +402,7 @@ public:
     NAME("Content-Type")
 
     ContentType()
-       : mime_()
+        : mime_()
     { }
 
     explicit ContentType(const Mime::MediaType& mime)
@@ -463,8 +467,8 @@ public:
     NAME("Host");
 
     Host()
-       : host_()
-       , port_(0)
+        : host_()
+        , port_(0)
     { }
 
     explicit Host(const std::string& host);
@@ -489,7 +493,7 @@ public:
     NAME("Location")
 
     Location()
-       : location_()
+        : location_()
     { }
 
     explicit Location(const std::string& location);
@@ -508,7 +512,7 @@ public:
     NAME("Server")
 
     Server()
-       : tokens_()
+        : tokens_()
     { }
 
     explicit Server(const std::vector<std::string>& tokens);

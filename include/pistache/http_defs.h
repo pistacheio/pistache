@@ -1,7 +1,7 @@
 /* http_defs.h
-   Mathieu Stefani, 01 September 2015
-
-   Various http definitions
+*  Mathieu Stefani, 01 September 2015
+*
+*  Various http definitions
 */
 
 #pragma once
@@ -150,10 +150,12 @@ enum class Expectation {
 
 class CacheDirective {
 public:
-    enum Directive { NoCache, NoStore, MaxAge, MaxStale, MinFresh,
-                     NoTransform, OnlyIfCached,
-                     Public, Private, MustRevalidate, ProxyRevalidate, SMaxAge,
-                     Ext };
+    enum Directive {
+        NoCache, NoStore, MaxAge, MaxStale, MinFresh,
+        NoTransform, OnlyIfCached,
+        Public, Private, MustRevalidate, ProxyRevalidate, SMaxAge,
+        Ext
+    };
 
     CacheDirective()
         : directive_()
@@ -183,7 +185,7 @@ class FullDate {
 public:
     using time_point = std::chrono::system_clock::time_point;
     FullDate()
-       : date_()
+        : date_()
     { }
 
     enum class Type {

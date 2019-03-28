@@ -1,34 +1,35 @@
 #ifndef DATE_H
 #define DATE_H
 
-// The MIT License (MIT)
-//
-// Copyright (c) 2015, 2016, 2017 Howard Hinnant
-// Copyright (c) 2016 Adrian Colomitchi
-// Copyright (c) 2017 Florian Dang
-// Copyright (c) 2017 Paul Thompson
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-//
-// Our apologies.  When the previous paragraph was written, lowercase had not yet
-// been invented (that would involve another several millennia of evolution).
-// We did not mean to shout.
+/* The MIT License (MIT)
+*
+*  Copyright (c) 2015, 2016, 2017 Howard Hinnant
+*  Copyright (c) 2016 Adrian Colomitchi
+*  Copyright (c) 2017 Florian Dang
+*  Copyright (c) 2017 Paul Thompson
+*
+*  Permission is hereby granted, free of charge, to any person obtaining a copy
+*  of this software and associated documentation files (the "Software"), to deal
+*  in the Software without restriction, including without limitation the rights
+*  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+*  copies of the Software, and to permit persons to whom the Software is
+*  furnished to do so, subject to the following conditions:
+*
+*  The above copyright notice and this permission notice shall be included in all
+*  copies or substantial portions of the Software.
+*
+*  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+*  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+*  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+*  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+*  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+*  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+*  SOFTWARE.
+*
+*  Our apologies.  When the previous paragraph was written, lowercase had not yet
+*  been invented (that would involve another several millennia of evolution).
+*  We did not mean to shout.
+*/
 
 #include <algorithm>
 #include <cctype>
@@ -751,7 +752,7 @@ class year_month_weekday
 public:
     year_month_weekday() = default;
     CONSTCD11 year_month_weekday(const date::year& y, const date::month& m,
-                                   const date::weekday_indexed& wdi) NOEXCEPT;
+                                 const date::weekday_indexed& wdi) NOEXCEPT;
     CONSTCD14 year_month_weekday(const sys_days& dp) NOEXCEPT;
     CONSTCD14 explicit year_month_weekday(const local_days& dp) NOEXCEPT;
 
@@ -1221,8 +1222,9 @@ inline
 days
 operator-(const day& x, const day& y) NOEXCEPT
 {
-    return days{static_cast<days::rep>(static_cast<unsigned>(x)
-                                     - static_cast<unsigned>(y))};
+    return days{static_cast<days::rep>(
+        static_cast<unsigned>(x) - static_cast<unsigned>(y)
+    )};
 }
 
 CONSTCD11
@@ -4577,10 +4579,10 @@ to_stream(std::basic_ostream<CharT, Traits>& os, const CharT* fmt,
                         auto d = static_cast<int>(static_cast<unsigned>(fds.ymd.day()));
                         if (d < 10)
                             os << ' ';
-                        os << d << ' ' 
+                        os << d << ' '
                            << make_time(duration_cast<seconds>(fds.tod.to_duration()))
                            << ' ' << fds.ymd.year();
-                        
+
                     }
                     else  // *fmt == 'x'
                     {

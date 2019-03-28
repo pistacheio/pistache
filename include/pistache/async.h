@@ -1,8 +1,8 @@
 /* async.h
-   Mathieu Stefani, 05 novembre 2015
-
-  This header brings a Promise<T> class inspired by the Promises/A+
-  specification for asynchronous operations
+*  Mathieu Stefani, 05 novembre 2015
+*
+*  This header brings a Promise<T> class inspired by the Promises/A+
+*  specification for asynchronous operations
 */
 
 #pragma once
@@ -37,9 +37,9 @@ namespace Async {
             , id_(std::move(id))
         { }
 
-      TypeId typeId() const {
-          return id_;
-      }
+        TypeId typeId() const {
+            return id_;
+        }
 
     private:
         TypeId id_;
@@ -239,7 +239,7 @@ namespace Async {
                     allocated = false;
                 }
             }
-            
+
             template<class Other>
             struct Rebind {
                 typedef CoreT<Other> Type;
@@ -1064,16 +1064,15 @@ namespace Async {
 
     private:
         Promise()
-          : core_(std::make_shared<Core>())
-          , resolver_(core_)
-          , rejection_(core_)
-        {
-        }
+            : core_(std::make_shared<Core>())
+            , resolver_(core_)
+            , rejection_(core_)
+        { }
 
         Promise(std::shared_ptr<Core>&& core)
-          : core_(core)
-          , resolver_(core_)
-          , rejection_(core_)
+            : core_(core)
+            , resolver_(core_)
+            , rejection_(core_)
         { }
 
         std::shared_ptr<Core> core_;

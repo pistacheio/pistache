@@ -1,6 +1,6 @@
 /* net.cc
    Mathieu Stefani, 12 August 2015
-   
+
 */
 
 #include <pistache/net.h>
@@ -90,16 +90,16 @@ Ipv4::loopback() {
 
 std::string
 Ipv4::toString() const {
-    
+
     // Use the built-in ipv4 string length from arpa/inet.h
     char buff[INET_ADDRSTRLEN+1];
-    
+
     in_addr_t addr;
     toNetwork(&addr);
-    
+
     // Convert the network format address into display format
     inet_ntop(AF_INET, &addr, buff, INET_ADDRSTRLEN);
-    
+
     return std::string(buff);
 }
 
@@ -131,13 +131,13 @@ Ipv6::loopback() {
 
 std::string
 Ipv6::toString() const {
-    
+
     // Use the built-in ipv6 string length from arpa/inet.h
     char buff6[INET6_ADDRSTRLEN+1];
-    
+
     in6_addr addr;
     toNetwork(&addr);
-    
+
     inet_ntop(AF_INET6, &addr, buff6, INET6_ADDRSTRLEN);
 
     return std::string(buff6);
@@ -146,7 +146,7 @@ Ipv6::toString() const {
 void Ipv6::toNetwork(in6_addr *addr6) const {
     uint16_t temp_ip6[8] = {a, b, c, d, e, f, g, h};
     uint16_t remap_ip6[8] = {0};
-    
+
      // If native endianness is little-endian swap the bytes, otherwise just copy them into the new array
     if ( htonl(1) != 1 ) {
         for (uint16_t i = 0; i<8; i++) {
@@ -215,7 +215,7 @@ AddressParser::AddressParser(const std::string& data)
         host_ = data.substr(0, end_pos);
         family_ = AF_INET;
     }
-    
+
     if (end_pos != std::string::npos)
     {
         port_ = data.substr(end_pos + 1);
@@ -250,7 +250,7 @@ Address::Address()
 { }
 
 Address::Address(std::string host, Port port)
-{   
+{
     std::string addr = std::move(host);
     addr.append(":");
     addr.append(port.toString());
@@ -282,7 +282,7 @@ Address::Address(Ipv6 ip, Port port)
 
 Address
 Address::fromUnix(struct sockaddr* addr) {
-    if (addr->sa_family == AF_INET) { 
+    if (addr->sa_family == AF_INET) {
         struct sockaddr_in *in_addr = reinterpret_cast<struct sockaddr_in *>(addr);
         char host[INET_ADDRSTRLEN+1];
         inet_ntop(AF_INET, &(in_addr->sin_addr), host, INET_ADDRSTRLEN);
@@ -297,7 +297,7 @@ Address::fromUnix(struct sockaddr* addr) {
         assert(addr);
         return Address(host, port);
     }
-    throw Error("Not an IP socket");    
+    throw Error("Not an IP socket");
 }
 
 std::string

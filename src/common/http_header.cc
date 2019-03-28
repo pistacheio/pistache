@@ -49,7 +49,7 @@ const char* encodingString(Encoding encoding) {
     case Encoding::Chunked:
         return "chunked";
     case Encoding::Unknown:
-    	return "unknown";
+        return "unknown";
     }
     return "unknown";
 }
@@ -57,8 +57,8 @@ const char* encodingString(Encoding encoding) {
 void
 Allow::write(std::ostream& os) const {
     /* This puts an extra ',' at the end :/
-    std::copy(std::begin(methods_), std::end(methods_),
-              std::ostream_iterator<Http::Method>(os, ", "));
+    * std::copy(std::begin(methods_), std::end(methods_),
+    *           std::ostream_iterator<Http::Method>(os, ", "));
     */
 
     for (std::vector<Http::Method>::size_type i = 0; i < methods_.size(); ++i) {
@@ -204,7 +204,7 @@ CacheControl::write(std::ostream& os) const {
             case CacheDirective::SMaxAge:
                 return "s-maxage";
             case CacheDirective::Ext:
-	    	return "";
+                return "";
             default:
                 return "";
         }
@@ -356,7 +356,7 @@ void
 Host::write(std::ostream& os) const {
     os << host_;
     /* @Clarity @Robustness: maybe a found a literal different than zero
-       to represent a null port ?
+    *  to represent a null port ?
     */
     if (port_ != 0) {
         os << ":" << port_;

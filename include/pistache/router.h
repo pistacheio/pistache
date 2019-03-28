@@ -32,7 +32,7 @@ struct LexicalCast {
         T out;
         if (!(iss >> out))
             throw std::runtime_error("Bad lexical cast");
-         return out;
+        return out;
     }
 };
 
@@ -237,9 +237,9 @@ public:
     Route::Status route(const Http::Request& request, Http::ResponseWriter response);
 
     Router()
-      : routes()
-      , customHandlers()
-      , notFoundHandler()
+        : routes()
+        , customHandlers()
+        , notFoundHandler()
     { }
 
 private:

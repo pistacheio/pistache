@@ -1,7 +1,7 @@
 /* mailbox.h
    Mathieu Stefani, 12 August 2015
    Copyright (c) 2014 Datacratic.  All rights reserved.
-   
+
    A simple lock-free Mailbox implementation
 */
 
@@ -64,8 +64,8 @@ class PollableMailbox : public Mailbox<T>
 {
 public:
     PollableMailbox()
-     : event_fd(-1) {
-    }
+        : event_fd(-1)
+    { }
 
     ~PollableMailbox() {
         if (event_fd != -1) close(event_fd);
@@ -251,8 +251,8 @@ public:
     typedef typename Queue<T>::Entry Entry;
 
     PollableQueue()
-     : event_fd(-1) {
-    }
+        : event_fd(-1)
+    { }
 
     ~PollableQueue() {
         if (event_fd != -1) close(event_fd);

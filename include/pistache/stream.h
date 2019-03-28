@@ -1,6 +1,6 @@
 /* stream.h
    Mathieu Stefani, 05 September 2015
-   
+
    A set of classes to control input over a sequence of bytes
 */
 
@@ -84,8 +84,8 @@ public:
     static size_t maxSize;
 
     ArrayStreamBuf()
-      : StreamBuf<CharT>()
-      , bytes()
+        : StreamBuf<CharT>()
+        , bytes()
     {
         bytes.clear();
         Base::setg(bytes.data(), bytes.data(), bytes.data() + bytes.size());
@@ -171,10 +171,11 @@ public:
     DynamicStreamBuf& operator=(const DynamicStreamBuf& other) = delete;
 
     DynamicStreamBuf(DynamicStreamBuf&& other)
-       : maxSize_(other.maxSize_)
-       , data_(std::move(other.data_)) {
-           setp(other.pptr(), other.epptr());
-           other.setp(nullptr, nullptr);
+        : maxSize_(other.maxSize_)
+        , data_(std::move(other.data_))
+    {
+        setp(other.pptr(), other.epptr());
+        other.setp(nullptr, nullptr);
     }
 
     DynamicStreamBuf& operator=(DynamicStreamBuf&& other) {
@@ -194,7 +195,7 @@ public:
         this->setp(&data_[0], &data_[0] + data_.capacity());
     }
 
-  protected:
+protected:
     int_type overflow(int_type ch);
 
 private:
@@ -241,7 +242,7 @@ public:
             return gptr;
         }
 
-      private:
+    private:
         StreamCursor& cursor;
         size_t position;
         char *eback;

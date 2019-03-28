@@ -155,8 +155,8 @@ namespace std {
             return size_ == 0;
         }
     private:
-      const char *data_;
-      size_type size_;
+        const char *data_;
+        size_type size_;
     };
 
     template<>
@@ -256,4 +256,3 @@ namespace std {
 }
 
 #endif
-

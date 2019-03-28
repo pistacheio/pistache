@@ -1,6 +1,6 @@
 /* timer_pool.h
    Mathieu Stefani, 09 février 2016
-   
+
    A pool of timer fd to avoid creating fds everytime we need a timer and
    thus reduce the total number of system calls.
 

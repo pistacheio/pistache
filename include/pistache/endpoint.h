@@ -1,7 +1,7 @@
 /*
-   Mathieu Stefani, 22 janvier 2016
-
-   An Http endpoint
+*  Mathieu Stefani, 22 janvier 2016
+*
+*  An Http endpoint
 */
 
 #pragma once

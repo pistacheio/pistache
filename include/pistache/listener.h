@@ -1,7 +1,7 @@
 /* listener.h
-   Mathieu Stefani, 12 August 2015
-   
-  A TCP Listener
+*  Mathieu Stefani, 12 August 2015
+*
+*  A TCP Listener
 */
 
 #pragma once
@@ -76,7 +76,7 @@ public:
     void setupSSL(const std::string &cert_path, const std::string &key_path, bool use_compression);
     void setupSSLAuth(const std::string &ca_file, const std::string &ca_path, int (*cb)(int, void *));
 
-private: 
+private:
     Address addr_;
     int listen_fd;
     int backlog_;

@@ -1,6 +1,6 @@
 /* timer_pool.cc
    Mathieu Stefani, 09 février 2016
-   
+
    Implementation of the timer pool
 */
 

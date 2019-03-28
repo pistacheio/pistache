@@ -1,7 +1,7 @@
 /* http.h
-   Mathieu Stefani, 13 August 2015
-
-   Http Layer
+*  Mathieu Stefani, 13 August 2015
+*
+*  Http Layer
 */
 
 #pragma once
@@ -111,23 +111,31 @@ namespace Uri {
 
         // \brief Return iterator to the beginning of the parameters map
         std::unordered_map<std::string, std::string>::const_iterator
-          parameters_begin() const {
+            parameters_begin() const
+        {
             return params.begin();
         }
 
         // \brief Return iterator to the end of the parameters map
         std::unordered_map<std::string, std::string>::const_iterator
-          parameters_end() const {
+            parameters_end() const
+        {
             return params.end();
         }
 
         // \brief returns all parameters given in the query
         std::vector<std::string> parameters() const {
-          std::vector<std::string> keys;
-          std::transform(params.begin(), params.end(), std::back_inserter(keys),
-            [](const std::unordered_map<std::string, std::string>::value_type
-               &pair) {return pair.first;});
-          return keys;
+            using type = std::unordered_map<std::string, std::string>::value_type;
+
+            std::vector<std::string> keys;
+            std::transform(
+                params.begin(),
+                params.end(),
+                std::back_inserter(keys),
+                [](const type &pair) { return pair.first; }
+            );
+
+            return keys;
         }
 
     private:
@@ -555,12 +563,12 @@ public:
     // Unsafe API
 
     DynamicStreamBuf *rdbuf() {
-       return &buf_;
+        return &buf_;
     }
 
     DynamicStreamBuf *rdbuf(DynamicStreamBuf* other) {
-       UNUSED(other)
-       throw std::domain_error("Unimplemented");
+        UNUSED(other)
+        throw std::domain_error("Unimplemented");
     }
 
     ResponseWriter clone() const {
@@ -665,9 +673,9 @@ namespace Private {
             enum Result { Complete, Incomplete, Final };
 
             explicit Chunk(Message* message_)
-              : message(message_)
-              , bytesRead(0)
-              , size(-1)
+                : message(message_)
+                , bytesRead(0)
+                , size(-1)
             { }
 
             Result parse(StreamCursor& cursor);

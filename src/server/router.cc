@@ -108,54 +108,55 @@ std::string SegmentTreeNode::sanitizeResource(const std::string& path) {
 
 void
 SegmentTreeNode::addRoute(const std::string_view& path,
-                           const Route::Handler &handler,
-                           const std::shared_ptr<char> &resource_reference) {
-  // recursion to correct path segment
-  if (!path.empty()) {
-      const auto segment_delimiter = path.find('/');
-      // current segment value
-      auto current_segment = path.substr(0, segment_delimiter);
-      // complete child path (path without this segment)
-      // if no '/' was found, it means that it is a leaf resource
-      const auto lower_path = (segment_delimiter == std::string_view::npos) ?
-          std::string_view {nullptr, 0} :
-          path.substr(segment_delimiter + 1);
+                          const Route::Handler &handler,
+                          const std::shared_ptr<char> &resource_reference) {
+    // recursion to correct path segment
+    if (!path.empty()) {
+        const auto segment_delimiter = path.find('/');
+        // current segment value
+        auto current_segment = path.substr(0, segment_delimiter);
+        // complete child path (path without this segment)
+        // if no '/' was found, it means that it is a leaf resource
+        const auto lower_path = (segment_delimiter == std::string_view::npos) ?
+            std::string_view {nullptr, 0} :
+            path.substr(segment_delimiter + 1);
 
-      std::unordered_map<std::string_view, std::shared_ptr<SegmentTreeNode>> *collection = nullptr;
-      const auto fragmentType = getSegmentType(current_segment);
-      switch (fragmentType) {
+        std::unordered_map<std::string_view, std::shared_ptr<SegmentTreeNode>> *collection = nullptr;
+        const auto fragmentType = getSegmentType(current_segment);
+        switch (fragmentType) {
         case SegmentType::Fixed:
-          collection = &fixed_;
-          break;
+            collection = &fixed_;
+            break;
         case SegmentType::Param:
-          collection = &param_;
-          break;
+            collection = &param_;
+            break;
         case SegmentType::Optional:
-          // remove the trailing question mark
-          current_segment = current_segment.substr(0,
-              current_segment.length() - 1);
-          collection = &optional_;
-          break;
+            // remove the trailing question mark
+            current_segment = current_segment.substr(0,
+                current_segment.length() - 1);
+            collection = &optional_;
+            break;
         case SegmentType::Splat:
-          if (splat_ == nullptr) {
-            splat_ = std::make_shared<SegmentTreeNode>(resource_reference);
-          }
-          splat_->addRoute(lower_path, handler, resource_reference);
-          return;
-      }
+            if (splat_ == nullptr) {
+                splat_ = std::make_shared<SegmentTreeNode>(resource_reference);
+            }
+            splat_->addRoute(lower_path, handler, resource_reference);
+            return;
+        }
 
-      // if the segment tree nodes for the lower path does not exist
-      if (collection->count(current_segment) == 0) {
-        // first create it
-        collection->insert(std::make_pair(current_segment,
-            std::make_shared<SegmentTreeNode>(resource_reference)));
-      }
-      collection->at(current_segment)->addRoute(lower_path, handler,
-          resource_reference);
+        // if the segment tree nodes for the lower path does not exist
+        if (collection->count(current_segment) == 0) {
+            // first create it
+            collection->insert(std::make_pair(current_segment,
+                std::make_shared<SegmentTreeNode>(resource_reference)));
+        }
+
+        collection->at(current_segment)->addRoute(lower_path, handler,
+            resource_reference);
     } else {  // current path segment requested
-      if (route_ != nullptr)
-        throw std::runtime_error("Requested route already exist.");
-      route_ = std::make_shared<Route>(handler);
+        if (route_ != nullptr)
+            throw std::runtime_error("Requested route already exist.");
+        route_ = std::make_shared<Route>(handler);
     }
 }
 
@@ -174,20 +175,20 @@ bool Pistache::Rest::SegmentTreeNode::removeRoute(const std::string_view& path) 
         std::unordered_map<std::string_view, std::shared_ptr<SegmentTreeNode>> *collection = nullptr;
         auto fragmentType = getSegmentType(current_segment);
         switch (fragmentType) {
-            case SegmentType::Fixed:
-              collection = &fixed_;
-              break;
-            case SegmentType::Param:
-              collection = &param_;
-              break;
-            case SegmentType::Optional:
-              // remove the trailing question mark
-              current_segment = current_segment.substr(0,
-                  current_segment.length() - 1);
-              collection = &optional_;
-              break;
-            case SegmentType::Splat:
-              return splat_->removeRoute(lower_path);
+        case SegmentType::Fixed:
+            collection = &fixed_;
+            break;
+        case SegmentType::Param:
+            collection = &param_;
+            break;
+        case SegmentType::Optional:
+            // remove the trailing question mark
+            current_segment = current_segment.substr(0,
+                current_segment.length() - 1);
+            collection = &optional_;
+            break;
+        case SegmentType::Splat:
+            return splat_->removeRoute(lower_path);
         }
 
         try {
@@ -290,7 +291,7 @@ Pistache::Rest::SegmentTreeNode::findRoute(
             return std::make_tuple(nullptr, std::vector<TypedParam>(),
                                    std::vector<TypedParam>());
         } else {
-          return std::make_tuple(route_, std::move(params), std::move(splats));
+            return std::make_tuple(route_, std::move(params), std::move(splats));
         }
     }
 }
@@ -340,7 +341,7 @@ Router::handler() const {
 
 std::shared_ptr<Private::RouterHandler>
 Router::handler(std::shared_ptr<Rest::Router> router) {
-  return std::make_shared<Private::RouterHandler>(router);
+    return std::make_shared<Private::RouterHandler>(router);
 }
 
 void
@@ -442,9 +443,9 @@ Router::route(const Http::Request& req, Http::ResponseWriter response) {
     }
 
     if (hasNotFoundHandler()) {
-      invokeNotFoundHandler(req, std::move(response));
+        invokeNotFoundHandler(req, std::move(response));
     } else {
-      response.send(Http::Code::Not_Found, "Could not find a matching route");
+        response.send(Http::Code::Not_Found, "Could not find a matching route");
     }
     return Route::Status::NotFound;
 }

@@ -1,7 +1,7 @@
 /* common.h
-   Mathieu Stefani, 12 August 2015
-
-   A collection of macro / utilities / constants
+*  Mathieu Stefani, 12 August 2015
+*
+*  A collection of macro / utilities / constants
 */
 
 #pragma once
@@ -61,4 +61,3 @@ struct PrintException {
 
 // Until we require C++17 compiler with [[maybe_unused]]
 #define UNUSED(x) (void)(x);
-

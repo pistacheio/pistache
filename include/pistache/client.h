@@ -1,7 +1,7 @@
 /*
-   Mathieu Stefani, 29 janvier 2016
-
-   The Http client
+*  Mathieu Stefani, 29 janvier 2016
+*
+*  The Http client
 */
 
 #pragma once
@@ -109,10 +109,10 @@ private:
                 Async::Resolver resolve, Async::Rejection reject,
                 std::shared_ptr<TimerPool::Entry> timer,
                 OnDone onDone)
-          : resolve(std::move(resolve))
-          , reject(std::move(reject))
-          , timer(std::move(timer))
-          , onDone(std::move(onDone))
+            : resolve(std::move(resolve))
+            , reject(std::move(reject))
+            , timer(std::move(timer))
+            , onDone(std::move(onDone))
         { }
 
         Async::Resolver resolve;
@@ -170,19 +170,19 @@ public:
     PROTOTYPE_OF(Aio::Handler, Transport)
 
     Transport()
-      : requestsQueue()
-      , connectionsQueue()
-      , connections()
-      , timeouts()
-      , timeoutsLock()
+        : requestsQueue()
+        , connectionsQueue()
+        , connections()
+        , timeouts()
+        , timeoutsLock()
     { }
 
     Transport(const Transport &)
-      : requestsQueue()
-      , connectionsQueue()
-      , connections()
-      , timeouts()
-      , timeoutsLock()
+        : requestsQueue()
+        , connectionsQueue()
+        , connections()
+        , timeouts()
+        , timeoutsLock()
     { }
 
     void onReady(const Aio::FdSet& fds) override;
@@ -321,63 +321,63 @@ private:
 class Client {
 public:
 
-   friend class RequestBuilder;
+    friend class RequestBuilder;
 
-   struct Options {
-       friend class Client;
+    struct Options {
+        friend class Client;
 
-       Options()
-           : threads_(Default::Threads)
-           , maxConnectionsPerHost_(Default::MaxConnectionsPerHost)
-           , keepAlive_(Default::KeepAlive)
-       { }
+        Options()
+            : threads_(Default::Threads)
+            , maxConnectionsPerHost_(Default::MaxConnectionsPerHost)
+            , keepAlive_(Default::KeepAlive)
+        { }
 
-       Options& threads(int val);
-       Options& keepAlive(bool val);
-       Options& maxConnectionsPerHost(int val);
+        Options& threads(int val);
+        Options& keepAlive(bool val);
+        Options& maxConnectionsPerHost(int val);
 
-   private:
-       int threads_;
-       int maxConnectionsPerHost_;
-       bool keepAlive_;
-   };
+    private:
+        int threads_;
+        int maxConnectionsPerHost_;
+        bool keepAlive_;
+    };
 
-   Client();
-   ~Client();
+    Client();
+    ~Client();
 
-   static Options options();
-   void init(const Options& options = Options());
+    static Options options();
+    void init(const Options& options = Options());
 
-   RequestBuilder get(const std::string& resource);
-   RequestBuilder post(const std::string& resource);
-   RequestBuilder put(const std::string& resource);
-   RequestBuilder patch(const std::string& resource);
-   RequestBuilder del(const std::string& resource);
+    RequestBuilder get(const std::string& resource);
+    RequestBuilder post(const std::string& resource);
+    RequestBuilder put(const std::string& resource);
+    RequestBuilder patch(const std::string& resource);
+    RequestBuilder del(const std::string& resource);
 
-   void shutdown();
+    void shutdown();
 
 private:
-   std::shared_ptr<Aio::Reactor> reactor_;
+    std::shared_ptr<Aio::Reactor> reactor_;
 
-   ConnectionPool pool;
-   Aio::Reactor::Key transportKey;
+    ConnectionPool pool;
+    Aio::Reactor::Key transportKey;
 
-   std::atomic<uint64_t> ioIndex;
+    std::atomic<uint64_t> ioIndex;
 
-   using Lock = std::mutex;
-   using Guard = std::lock_guard<Lock>;
+    using Lock = std::mutex;
+    using Guard = std::lock_guard<Lock>;
 
-   Lock queuesLock;
-   std::unordered_map<std::string, MPMCQueue<std::shared_ptr<Connection::RequestData>, 2048>> requestsQueues;
-   bool stopProcessPequestsQueues;
+    Lock queuesLock;
+    std::unordered_map<std::string, MPMCQueue<std::shared_ptr<Connection::RequestData>, 2048>> requestsQueues;
+    bool stopProcessPequestsQueues;
 
-   RequestBuilder prepareRequest(const std::string& resource, Http::Method method);
+    RequestBuilder prepareRequest(const std::string& resource, Http::Method method);
 
-   Async::Promise<Response> doRequest(
-           Http::Request request,
-           std::chrono::milliseconds timeout);
+    Async::Promise<Response> doRequest(
+            Http::Request request,
+            std::chrono::milliseconds timeout);
 
-   void processRequestQueue();
+    void processRequestQueue();
 
 };
 

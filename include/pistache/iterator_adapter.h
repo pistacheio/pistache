@@ -1,7 +1,7 @@
 /*
-   Mathieu Stefani, 28 février 2016
-
-   A collection of sample iterator adapters
+*  Mathieu Stefani, 28 février 2016
+*
+*  A collection of sample iterator adapters
 */
 
 #pragma once

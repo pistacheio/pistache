@@ -1,6 +1,6 @@
 /* mime.h
    Mathieu Stefani, 29 August 2015
-   
+
    Type safe representation of a MIME Type (RFC 1590)
 */
 
@@ -89,7 +89,7 @@ public:
     typedef uint16_t Type;
 
     explicit Q(Type val)
-       : val_()
+        : val_()
     {
         if (val > 100) {
             throw std::runtime_error("Invalid quality value, must be in the [0; 100] range");
@@ -205,8 +205,8 @@ private:
     Mime::Suffix suffix_;
 
     /* Let's save some extra memory allocations by only storing the
-       raw MediaType along with indexes of the relevant parts
-       Note: experimental for now as it might not be a good idea
+    * raw MediaType along with indexes of the relevant parts
+    * Note: experimental for now as it might not be a good idea
     */
     std::string raw_;
 

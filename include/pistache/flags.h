@@ -1,7 +1,7 @@
 /* flags.h
-   Mathieu Stefani, 18 August 2015
-   
-   Make it easy to have bitwise operators for scoped or unscoped enumerations
+*  Mathieu Stefani, 18 August 2015
+*
+*  Make it easy to have bitwise operators for scoped or unscoped enumerations
 */
 
 #pragma once
@@ -74,7 +74,7 @@ public:
             static_cast<T>(static_cast<Type>(val) Op static_cast<Type>(rhs.val)) \
         ); \
     }
-    
+
     DEFINE_BITWISE_OP_CONST(|)
     DEFINE_BITWISE_OP_CONST(&)
     DEFINE_BITWISE_OP_CONST(^)
@@ -148,4 +148,3 @@ std::ostream& operator<<(std::ostream& os, Pistache::Flags<T> flags) {
 
     return os;
 }
-

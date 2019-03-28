@@ -113,7 +113,7 @@ public:
     }
 
     Optional(Optional<T> &&other)
-      noexcept(types::is_nothrow_move_constructible<T>::value)
+        noexcept(types::is_nothrow_move_constructible<T>::value)
     {
         *this = std::move(other);
     }
@@ -166,7 +166,7 @@ public:
 
 
     Optional<T> &operator=(Optional<T> &&other)
-      noexcept(types::is_nothrow_move_constructible<T>::value)
+        noexcept(types::is_nothrow_move_constructible<T>::value)
     {
         if (!other.isEmpty()) {
             move_helper(std::move(other), types::is_move_constructible<T>());

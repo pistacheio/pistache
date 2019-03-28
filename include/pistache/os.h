@@ -73,7 +73,7 @@ struct Tag {
     friend class Epoll;
 
     explicit constexpr Tag(uint64_t value)
-      : value_(value)
+        : value_(value)
     { }
 
     constexpr uint64_t value() const { return value_; }
