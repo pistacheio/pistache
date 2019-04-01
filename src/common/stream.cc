@@ -106,7 +106,7 @@ DynamicStreamBuf::overflow(DynamicStreamBuf::int_type ch) {
     if (!traits_type::eq_int_type(ch, traits_type::eof())) {
         const auto size = data_.size();
         if (size < maxSize_) {
-            reserve(std::max(size, 1LU) * 2);
+            reserve((size ? size : 1u) * 2);
             *pptr() = ch;
             pbump(1);
             return traits_type::not_eof(ch);
