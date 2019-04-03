@@ -1,6 +1,8 @@
 cmake_minimum_required (VERSION 3.1.3)
 project (pistache)
 
+include(GNUInstallDirs)
+
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -pedantic -Wextra -Wno-missing-field-initializers")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/CMakeModules)
 
@@ -76,11 +78,13 @@ if (PISTACHE_SSL)
 endif (PISTACHE_SSL)
 
 include_directories (${CMAKE_CURRENT_SOURCE_DIR}/include)
+
 # Set version...
 
     # Major and minor version...
     set(VERSION_MAJOR 0)
     set(VERSION_MINOR 0)
+    set(VERSION_PATCH 0)
 
     # Make available in a header file...
     configure_file (
@@ -88,6 +92,16 @@ include_directories (${CMAKE_CURRENT_SOURCE_DIR}/include)
         "include/pistache/version.h"
         @ONLY
     )
+
+    # Install version header...
+    if(PISTACHE_INSTALL)
+        install (
+            FILES
+            ${CMAKE_BINARY_DIR}/include/pistache/version.h
+            DESTINATION
+            ${CMAKE_INSTALL_INCLUDEDIR}/pistache/
+        )
+    endif()
 
 # Set libraries...
 
@@ -99,25 +113,15 @@ include_directories (${CMAKE_CURRENT_SOURCE_DIR}/include)
         set(LIBS "${LIBS} -lssl -lcrypto")
     endif(PISTACHE_SSL)
 
-if(PISTACHE_INSTALL)
-    # Install header...
-    install (
-        FILES
-        ${CMAKE_BINARY_DIR}/include/pistache/version.h
-        DESTINATION
-        include/pistache/
-    )
-endif()
-
 # Configure the pkg-config metadata...
 
     # Initialize the metadata variables and to support remote builds...
     set(prefix         ${CMAKE_INSTALL_PREFIX})
     set(exec_prefix    ${CMAKE_INSTALL_PREFIX}/bin)
-    set(libdir         ${CMAKE_INSTALL_PREFIX}/lib)
+    set(libdir         ${CMAKE_INSTALL_FULL_LIBDIR}/)
     set(libs           ${LIBS})
-    set(includedir     ${CMAKE_INSTALL_PREFIX}/include)
-    set(version        ${VERSION_MAJOR}.${VERSION_MINOR})
+    set(includedir     ${CMAKE_INSTALL_FULL_INCLUDEDIR}/)
+    set(version        ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
 
     # Perform substitutions...
     configure_file (
@@ -126,15 +130,15 @@ endif()
         @ONLY
     )
 
-if(PISTACHE_INSTALL)
     # Install pkg-config metadata into standard location within the prefix...
-    install (
-        FILES
-        ${CMAKE_BINARY_DIR}/libpistache.pc
-        DESTINATION
-        lib/pkgconfig/
-    )
-endif()
+    if(PISTACHE_INSTALL)
+        install (
+            FILES
+            ${CMAKE_BINARY_DIR}/libpistache.pc
+            DESTINATION
+            ${CMAKE_INSTALL_LIBDIR}/pkgconfig/
+        )
+    endif()
 
 add_subdirectory (src)
 
@@ -181,3 +185,27 @@ if (PISTACHE_BUILD_DOCS)
     endif(DOXYGEN_FOUND)
 
 endif()
+
+# Generate source tarball...
+
+    # Define version of source archive...
+    set(CPACK_PACKAGE_VERSION_MAJOR ${VERSION_MAJOR})
+    set(CPACK_PACKAGE_VERSION_MINOR ${VERSION_MINOR})
+    set(CPACK_PACKAGE_VERSION_PATCH ${VERSION_PATCH})
+
+    # Generate a .tar.bz2
+    set(CPACK_SOURCE_GENERATOR "TBZ2")
+
+    # Set filename...
+    set(CPACK_SOURCE_PACKAGE_FILE_NAME
+        "${CMAKE_PROJECT_NAME}-${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
+
+    # Don't include these files in the archive...
+    set(CPACK_SOURCE_IGNORE_FILES
+      "/build/;/debian/;/prefix/;/.git*;~$;${CPACK_SOURCE_IGNORE_FILES}")
+
+    # Include the CPack module for generating the archive and add the standard
+    #  dist target to the generated makefile...
+    include(CPack)
+    add_custom_target(dist COMMAND ${CMAKE_MAKE_PROGRAM} package_source)
+
