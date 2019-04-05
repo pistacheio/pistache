@@ -12,7 +12,8 @@ We are still looking for a volunteer to document fully the API. In the mean time
 
 Pistache is [free software](https://www.gnu.org/philosophy/free-sw.en.html). It will always stay free. Contributors are welcome!
 
-Pistache was originally created by Mathieu Stefani, but he is no longer actively maintaining Pistache. A team of volunteers has taken over. 
+Pistache was originally created by Mathieu Stefani, but he is no longer actively maintaining Pistache. A team of volunteers has taken over. To reach the original
+maintainer, drop a private message to `@octal` in [cpplang Slack channel](https://cpplang.now.sh/).
 
 For those that prefer IRC over Slack, the rag-tag crew of maintainers idle in `#pistache` on Freenode. Please come and join us!
 
