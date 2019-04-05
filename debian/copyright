@@ -5,7 +5,7 @@ Source: https://github.com/oktal/pistache.git
 Comment: Upstream's Debianization.
 
 Files: *
-Copyright: Mathieu Stefani <mathieu@datacratic.com>
+Copyright: Mathieu Stefani <m.stefani@abc-arbitrage.com>
 License: Apache-2.0
  A permissive license whose main conditions require preservation of copyright
  and license notices. Contributors provide an express grant of patent rights.

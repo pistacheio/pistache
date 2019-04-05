@@ -5,7 +5,7 @@ Maintainer: Dennis Jenkins <dennis.jenkins.75@gmail.com>
 Standards-Version: 4.2.1
 Build-Depends:
     cmake (>= 3.8.0),
-    debhelper (>= 11),
+    debhelper-compat (= 11),
     dh-exec,
     libc6-dev (>= 2.26),
     libcurl4-openssl-dev,
