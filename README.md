@@ -14,7 +14,7 @@ Pistache is [free software](https://www.gnu.org/philosophy/free-sw.en.html). It 
 
 Pistache was originally created by Mathieu Stefani, but he is no longer actively maintaining Pistache. A team of volunteers has taken over. 
 
-For those that prefer IRC over Slack, the rag-tag crew of maintainers idlie in `#pistache` on Freenode. Please come and join us!
+For those that prefer IRC over Slack, the rag-tag crew of maintainers idle in `#pistache` on Freenode. Please come and join us!
 
 # Precompiled packages
 
