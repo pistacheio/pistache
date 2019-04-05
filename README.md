@@ -10,7 +10,7 @@ We are still looking for a volunteer to document fully the API. In the mean time
 
 # Contributing
 
-Pistache is [free software](https://www.gnu.org/philosophy/free-sw.en.html). It will always stay free. Contributors are welcome!
+Pistache is released under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0). Contributors are welcome!
 
 Pistache was originally created by Mathieu Stefani, but he is no longer actively maintaining Pistache. A team of volunteers has taken over. To reach the original
 maintainer, drop a private message to `@octal` in [cpplang Slack channel](https://cpplang.now.sh/).
