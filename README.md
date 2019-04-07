@@ -1,5 +1,5 @@
 # Pistache
-
+[![N|Solid](http://pistache.io/assets/images/logo.png)](https://www.github.com/oktal/pistache)
 [![Travis Build Status](https://travis-ci.org/oktal/pistache.svg?branch=master)](https://travis-ci.org/oktal/pistache)
 
 Pistache is a modern and elegant HTTP and REST framework for C++. It is entirely written in pure-C++11 and provides a clear and pleasant API. 
@@ -12,8 +12,7 @@ We are still looking for a volunteer to document fully the API. In the mean time
 
 Pistache is released under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0). Contributors are welcome!
 
-Pistache was originally created by Mathieu Stefani, but he is no longer actively maintaining Pistache. A team of volunteers has taken over. To reach the original
-maintainer, drop a private message to `@octal` in [cpplang Slack channel](https://cpplang.now.sh/).
+Pistache was originally created by Mathieu Stefani, but he is no longer actively maintaining Pistache. A team of volunteers has taken over. To reach the original maintainer, drop a private message to `@octal` in [cpplang Slack channel](https://cpplang.now.sh/).
 
 For those that prefer IRC over Slack, the rag-tag crew of maintainers idle in `#pistache` on Freenode. Please come and join us!
 
@@ -103,10 +102,12 @@ Be patient, async_test can take some time before completing. And that's it, now 
 
 Some other CMAKE defines:
 
-| Option                    | Default     | Description                                                 |
-|---------------------------|-------------|-------------------------------------------------------------|
-| PISTACHE_BUILD_EXAMPLES   | False       | Build all of the example apps                               |
-| PISTACHE_BUILD_TESTS      | False       | Build all of the unit tests                                 |
+| Option                        | Default     | Description                                    |
+|-------------------------------|-------------|------------------------------------------------|
+| PISTACHE_BUILD_EXAMPLES       | False       | Build all of the example apps                  |
+| PISTACHE_BUILD_TESTS          | False       | Build all of the unit tests                    |
+| PISTACHE_ENABLE_NETWORK_TESTS | True        | Run unit tests requiring remote network access |
+| PISTACHE_USE_SSL              | False       | Build server with SSL support                  |
 
 # Example
 
