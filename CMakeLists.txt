@@ -15,10 +15,11 @@ if(CMAKE_BUILD_TYPE MATCHES "Debug")
 endif()
 
 option(PISTACHE_BUILD_TESTS "build tests alongside the project" OFF)
+option(PISTACHE_ENABLE_NETWORK_TESTS "if tests are built, run ones needing network access" ON)
 option(PISTACHE_BUILD_EXAMPLES "build examples alongside the project" OFF)
 option(PISTACHE_BUILD_DOCS "build docs alongside the project" OFF)
 option(PISTACHE_INSTALL "add pistache as install target (recommended)" ON)
-option(PISTACHE_SSL "add support for SSL server" OFF)
+option(PISTACHE_USE_SSL "add support for SSL server" OFF)
 
 find_program(CTEST_MEMORYCHECK_COMMAND NAMES valgrind)
 find_program(CTEST_COVERAGE_COMMAND NAMES gcov)
@@ -72,10 +73,10 @@ endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if (PISTACHE_SSL)
+if (PISTACHE_USE_SSL)
     add_definitions(-DPISTACHE_USE_SSL)
     link_libraries(-lssl -lcrypto)
-endif (PISTACHE_SSL)
+endif (PISTACHE_USE_SSL)
 
 include_directories (${CMAKE_CURRENT_SOURCE_DIR}/include)
 
@@ -84,7 +85,7 @@ include_directories (${CMAKE_CURRENT_SOURCE_DIR}/include)
     # Major and minor version...
     set(VERSION_MAJOR 0)
     set(VERSION_MINOR 0)
-    set(VERSION_PATCH 0)
+    set(VERSION_PATCH 001)
 
     # Make available in a header file...
     configure_file (
@@ -109,9 +110,9 @@ include_directories (${CMAKE_CURRENT_SOURCE_DIR}/include)
     set(LIBS "-lpistache -lpthread")
 
     # If building with OpenSSL support...
-    if(PISTACHE_SSL)
+    if(PISTACHE_USE_SSL)
         set(LIBS "${LIBS} -lssl -lcrypto")
-    endif(PISTACHE_SSL)
+    endif(PISTACHE_USE_SSL)
 
 # Configure the pkg-config metadata...
 

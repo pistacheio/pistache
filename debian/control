@@ -1,7 +1,7 @@
 Source: pistache
 Section: libdevel
 Priority: optional
-Maintainer: Dennis Jenkins <dennis.jenkins.75@gmail.com>
+Maintainer: Kip Warner <kip@thevertigo.com>
 Standards-Version: 4.2.1
 Build-Depends:
     cmake (>= 3.8.0),
@@ -38,6 +38,7 @@ Description: elegant C++ REST framework
  It is free as in freedom and released under the Apache 2.0 license.
  .
  This package contains the development headers, static library, and examples.
+ The static library was built with SSL support.
 
 Package: libpistache0
 Architecture: any
@@ -55,5 +56,5 @@ Description: elegant C++ REST framework
  .
  It is free as in freedom and released under the Apache 2.0 license.
  .
- This package contains the shared library.
+ This package contains the shared library built with SSL support.
 

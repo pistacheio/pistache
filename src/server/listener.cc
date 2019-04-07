@@ -365,7 +365,7 @@ void Listener::handleNewConnection()
     int client_fd = acceptConnection(peer_addr);
 
 #ifdef PISTACHE_USE_SSL
-    SSL *ssl;
+    SSL *ssl = nullptr;
 
     if (this->useSSL_) {
 

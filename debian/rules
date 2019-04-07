@@ -47,6 +47,7 @@ override_dh_auto_configure:
 	    -DCMAKE_BUILD_TYPE=Release                                              \
 	    -DPISTACHE_BUILD_EXAMPLES=true                                          \
 	    -DPISTACHE_BUILD_TESTS=true                                             \
+	    -DPISTACHE_ENABLE_NETWORK_TESTS=false                                   \
 	    -DPISTACHE_BUILD_DOCS=false                                             \
 	    -DPISTACHE_USE_SSL=true                                                 \
 	    -DCMAKE_INSTALL_PREFIX=/usr                                             \
@@ -56,7 +57,7 @@ override_dh_auto_configure:
 ifeq (,$(findstring nocheck,$(DEB_BUILD_OPTIONS)))
 override_dh_auto_test:
 	@echo "# Performing unit tests..."
-	dh_auto_test -- test test_memcheck || { find . -iname "LastTest.log" -exec cat {} \; exit 99; }
+	dh_auto_test -- test test_memcheck || { find . -iname "LastTest.log" -exec cat {} \; ; exit 99; }
 endif
 
 # Prepare an upstream vanilla distribution tarball as per DPM § 4.9...
@@ -76,8 +77,9 @@ $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM).orig.tar.bz2:
 		-DCMAKE_BUILD_TYPE=Release                                              \
 		-DPISTACHE_BUILD_EXAMPLES=true                                          \
 		-DPISTACHE_BUILD_TESTS=true                                             \
+	    -DPISTACHE_ENABLE_NETWORK_TESTS=false                                   \
 		-DPISTACHE_BUILD_DOCS=false                                             \
-		-DPISTACHE_USE_SSL=true                                                 \
+	    -DPISTACHE_USE_SSL=true                                                 \
 		-DCMAKE_INSTALL_PREFIX=/usr                                             \
 		$(SOURCE_DIR)                                                           \
 	&& make dist                                                                \
