@@ -95,11 +95,12 @@ namespace {
         auto res = request.resource();
         auto s = splitUrl(res);
         auto body = request.body();
+        auto query = request.query();
 
         auto host = s.first;
         auto path = s.second;
 
-        auto pathStr = path.toString();
+        auto pathStr = path.toString() + query.as_str();
 
         streamBuf << request.method() << " ";
         if (pathStr[0] != '/')
