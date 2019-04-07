@@ -35,7 +35,7 @@ Description: elegant C++ REST framework
  Pistache provides both an HTTP client and server that can be used to create and
  query complex web and REST APIs.
  .
- It is free as in freedom and released under the Apache 2.0 license.
+ Pistache is released under the Apache License 2.0 license.
  .
  This package contains the development headers, static library, and examples.
  The static library was built with SSL support.
@@ -54,7 +54,7 @@ Description: elegant C++ REST framework
  Pistache provides both an HTTP client and server that can be used to create and
  query complex web and REST APIs.
  .
- It is free as in freedom and released under the Apache 2.0 license.
+ Pistache is released under the Apache License 2.0 license.
  .
  This package contains the shared library built with SSL support.
 
