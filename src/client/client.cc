@@ -100,12 +100,13 @@ namespace {
         auto host = s.first;
         auto path = s.second;
 
-        auto pathStr = path.toString() + query.as_str();
+        auto pathStr = path.toString();
 
         streamBuf << request.method() << " ";
         if (pathStr[0] != '/')
             streamBuf << '/';
-        streamBuf << pathStr;
+
+        streamBuf << pathStr << query.as_str();
         streamBuf << " HTTP/1.1" << crlf;
 
         writeCookies(streamBuf, request.cookies());
