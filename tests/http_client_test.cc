@@ -50,6 +50,16 @@ struct FastEvenPagesHandler : public Http::Handler
     }
 };
 
+struct QueryBounceHandler : public Http::Handler
+{
+    HTTP_PROTOTYPE(QueryBounceHandler)
+
+    void onRequest(const Http::Request& request, Http::ResponseWriter writer) override
+    {
+        writer.send(Http::Code::Ok, request.query().as_str());
+    }
+};
+
 TEST(http_client_test, one_client_with_one_request)
 {
     const Pistache::Address address("localhost", Pistache::Port(0));
@@ -388,4 +398,78 @@ TEST(http_client_test, test_client_timeout)
     auto it2 = res.find(2);
     ASSERT_NE(it2, res.end());
     ASSERT_EQ(it2->second, "2");
+}
+
+TEST(http_client_test, client_sends_query)
+{
+    const Pistache::Address address("localhost", Pistache::Port(0));
+
+    Http::Endpoint server(address);
+    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto server_opts = Http::Endpoint::options().flags(flags);
+    server.init(server_opts);
+    server.setHandler(Http::make_handler<QueryBounceHandler>());
+    server.serveThreaded();
+
+    const std::string server_address = "localhost:" + server.getPort().toString();
+    std::cout << "Server address: " << server_address << "\n";
+
+    Http::Client client;
+    client.init();
+
+    std::string queryStr;
+    Http::Uri::Query query({
+        { "param1", "1" },
+        { "param2", "3.14" },
+        { "param3", "a+string" }
+    });
+
+    auto rb = client.get(server_address);
+    auto response = rb.params(query).send();
+
+    response.then([&queryStr](Http::Response rsp)
+                  {
+                      if (rsp.code() == Http::Code::Ok)
+                          queryStr = rsp.body();
+                  },
+                  Async::IgnoreException);
+
+    Async::Barrier<Http::Response> barrier(response);
+    barrier.wait_for(std::chrono::seconds(5));
+
+    EXPECT_EQ(queryStr[0], '?');
+
+    std::unordered_map<std::string, std::string> results;
+    bool key = true;
+    std::string keyStr, valueStr;;
+
+    for (auto it = std::next(queryStr.begin()); it != queryStr.end(); it++)
+    {
+        if (*it == '&' || std::next(it) == queryStr.end())
+        {
+            if (*it != '&')
+                valueStr += *it;
+            results[keyStr] = valueStr;
+            keyStr = "";
+            valueStr = "";
+            key = true;
+        }
+        else if (*it == '=')
+            key = false;
+        else if (key)
+            keyStr += *it;
+        else
+            valueStr += *it;
+    }
+
+    EXPECT_EQ(results.size(), std::distance(query.parameters_begin(), query.parameters_end()));
+
+    for (auto entry : results)
+    {
+        ASSERT_TRUE(query.has(entry.first));
+        EXPECT_EQ(entry.second, query.get(entry.first).get());
+    }
+
+    server.shutdown();
+    client.shutdown();
 }
