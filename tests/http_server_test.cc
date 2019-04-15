@@ -261,9 +261,9 @@ TEST(http_server_test, server_with_static_file)
     char fileName[PATH_MAX] = "/tmp/pistacheioXXXXXX";
     if(!mkstemp(fileName))
     {
-        std::cerr << "No suitable filename can be generated!" << fileName << '\n';
+        std::cerr << "No suitable filename can be generated!" << std::endl;
     }
-    std::cout << "Creating temporary file: " << fileName << '\n';
+    std::cout << "Creating temporary file: " << fileName << std::endl;
 
     std::ofstream tmpFile;
     tmpFile.open(fileName);

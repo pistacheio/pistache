@@ -38,9 +38,9 @@ TEST(stream, test_file_buffer)
     char fileName[PATH_MAX] = "/tmp/pistacheioXXXXXX";
     if(!mkstemp(fileName))
     {
-        std::cerr << "No suitable filename can be generated!" << fileName << '\n';
+        std::cerr << "No suitable filename can be generated!" << std::endl;
     }
-    std::cout << "Temporary file name: " << fileName << '\n';
+    std::cout << "Temporary file name: " << fileName << std::endl;
 
     const std::string dataToWrite("Hello World!");
     std::ofstream tmpFile;
