@@ -36,7 +36,10 @@ TEST(stream, test_buffer)
 TEST(stream, test_file_buffer)
 {
     char fileName[PATH_MAX] = "/tmp/pistacheioXXXXXX";
-    mkstemp(fileName);
+    if(!mkstemp(fileName))
+    {
+        std::cerr << "No suitable filename can be generated!" << fileName << '\n';
+    }
     std::cout << "Temporary file name: " << fileName << '\n';
 
     const std::string dataToWrite("Hello World!");
@@ -50,5 +53,5 @@ TEST(stream, test_file_buffer)
     ASSERT_NE(fileBuffer.fd(), -1);
     ASSERT_EQ(fileBuffer.size(), dataToWrite.size());
 
-    unlink(fileName);
+    std::remove(fileName);
 }
