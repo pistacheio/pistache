@@ -462,7 +462,7 @@ TEST(http_client_test, client_sends_query)
             valueStr += *it;
     }
 
-    EXPECT_EQ(results.size(), std::distance(query.parameters_begin(), query.parameters_end()));
+    EXPECT_EQ(static_cast<long int>(results.size()), std::distance(query.parameters_begin(), query.parameters_end()));
 
     for (auto entry : results)
     {

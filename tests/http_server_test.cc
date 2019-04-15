@@ -259,8 +259,11 @@ TEST(http_server_test, server_with_static_file)
 {
     const std::string data("Hello, World!");
     char fileName[PATH_MAX] = "/tmp/pistacheioXXXXXX";
-    mkstemp(fileName);
-    std::cout << "Creating temporary file: " << fileName << '\n';
+    if(!mkstemp(fileName))
+    {
+        std::cerr << "No suitable filename can be generated!" << std::endl;
+    }
+    std::cout << "Creating temporary file: " << fileName << std::endl;
 
     std::ofstream tmpFile;
     tmpFile.open(fileName);
@@ -302,7 +305,7 @@ TEST(http_server_test, server_with_static_file)
     server.shutdown();
 
     std::cout << "Deleting file " << fileName << std::endl;
-    unlink(fileName);
+    std::remove(fileName);
 
     ASSERT_EQ(data, resultData);
 }
