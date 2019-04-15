@@ -84,6 +84,7 @@ FileBuffer::FileBuffer(const std::string& fileName)
     struct stat sb;
     int res = ::fstat(fd, &sb);
     if (res == -1) {
+        close(fd);
         throw std::runtime_error("Could not get file stats");
     }
 
