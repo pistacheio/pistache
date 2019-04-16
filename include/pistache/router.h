@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include <regex>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -122,12 +121,6 @@ private:
     std::shared_ptr<SegmentTreeNode> splat_;
     std::shared_ptr<Route> route_;
 
-    /**
-     * Common web servers (nginx, httpd, IIS) collapse multiple
-     * forward slashes to a single one. This regex is used to
-     * obtain the same result.
-     */
-    static std::regex multiple_slash;
 
     static SegmentType getSegmentType(const std::string_view& fragment);
 

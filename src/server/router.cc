@@ -59,9 +59,6 @@ Request::splat() const {
     return splats_;
 }
 
-std::regex SegmentTreeNode::multiple_slash = std::regex("//+",
-    std::regex_constants::optimize);
-
 SegmentTreeNode::SegmentTreeNode(): resource_ref_(),
         fixed_(), param_(), optional_(), splat_(nullptr), route_(nullptr) {
     std::shared_ptr<char> ptr(new char[0], std::default_delete<char[]>());
@@ -98,8 +95,14 @@ SegmentTreeNode::getSegmentType(const std::string_view& fragment) {
 }
 
 std::string SegmentTreeNode::sanitizeResource(const std::string& path) {
-    const auto& dup = std::regex_replace(path,
-        SegmentTreeNode::multiple_slash, std::string("/"));
+    std::string dup;
+    dup.reserve(path.size());
+    for (size_t i = 0; i < path.size(); ++i) {
+        if (path[i] == '/' && i != 0 && path[i-1] == '/') {
+          continue;
+        }
+        dup.push_back(path[i]);
+    }
     if (dup[dup.length() - 1] == '/') {
         return dup.substr(1, dup.length() - 2);
     }
