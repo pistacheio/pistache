@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <stdexcept>
 #include <cassert>
+#include <cmath>
 
 #include <pistache/optional.h>
 
@@ -99,7 +100,7 @@ public:
     }
 
     static Q fromFloat(double f) {
-        return Q(static_cast<Type>(f * 100.0));
+        return Q(static_cast<Type>(round(f * 100.0)));
     }
 
     Type value() const { return val_; }

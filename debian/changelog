@@ -1,0 +1,14 @@
+pistache (0.0.001-kip1~cosmic) cosmic; urgency=medium
+
+  * Build with PISTACHE_ENABLE_NETWORK_TESTS=false to appease sbuild
+  * Removed GPL'd pbuilder-hooks/C10shell since it was causing lintian warning
+    on possible-gpl-code-linked-with-openssl
+
+ -- Kip Warner <kip@thevertigo.com>  Sat, 06 Apr 2019 17:26:34 -0700
+
+pistache (0.0.0-kip1~cosmic) cosmic; urgency=medium
+
+  * Initial release.
+
+ -- Kip Warner <kip@thevertigo.com>  Tue, 2 Apr 2019 19:25:11 -0700
+
