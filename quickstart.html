@@ -101,6 +101,8 @@
 			<ul id="markdown-toc">
   <li><a href="#requirements" id="markdown-toc-requirements">Requirements</a></li>
   <li><a href="#installing-pistache" id="markdown-toc-installing-pistache">Installing Pistache</a></li>
+  <li><a href="#pkgconfig-pistache" id="markdown-toc-pkgconfig-pistache">Using Pistache with pkg-config</a></li>
+  <li><a href="#building-pistache" id="markdown-toc-building-pistache">Building Pistache</a></li>
   <li><a href="#serving-requests" id="markdown-toc-serving-requests">Serving requests</a>    <ul>
       <li><a href="#include" id="markdown-toc-include">Include</a></li>
       <li><a href="#hello-world" id="markdown-toc-hello-world">Hello World</a></li>
@@ -123,7 +125,45 @@ and asynchronous API.</p>
 
 <h1 id="installing-pistache">Installing Pistache</h1>
 
-<p>To download the latest available release, clone the repository over github.</p>
+A request for official Debian sponsorship of our package was submitted on 23 April, 2019. You can follow its progress <a href="https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=927839">here</a>. In the mean time you can try our Ubuntu packages.
+
+<p>To use our Ubuntu PPA for <a href="https://launchpad.net/%7Ekip/+archive/ubuntu/pistache-stable">stable</a> packages, run the following:</p>
+
+<p><code>
+$ sudo add-apt-repository ppa:kip/pistache-stable<br />
+$ sudo apt update<br />
+$ sudo apt install libpistache-dev<br />
+</code></p>
+
+<p>To use our Ubuntu PPA for <a href="https://launchpad.net/%7Ekip/+archive/ubuntu/pistache-unstable">unstable</a> packages, run the following:</p>
+
+<p><code>
+$ sudo add-apt-repository ppa:kip/pistache-unstable<br />
+$ sudo apt update<br />
+$ sudo apt install libpistache-dev<br />
+</code></p>
+
+<h1 id="pkgconfig-pistache">Using with pkg-config</h1>
+
+<p>If you would like to automatically have your project's build environment use the appropriate compiler and linker build flags necessary to use Pistache, <a href="https://www.freedesktop.org/wiki/Software/pkg-config/">pkg-config</a> can greatly simplify things. The `libpistache-dev` package includes a pkg-config manifest.</p>
+
+<p>To use with the GNU Autotools, as an example, include the following snippet in your project's `configure.ac`:</p>
+
+<p><code>
+
+    # Pistache...<br />
+    PKG_CHECK_MODULES(<br />
+        [libpistache], [libpistache >= 0.0], [],<br />
+        [AC_MSG_ERROR([libpistache >= 0.0 missing...])])<br />
+    YOURPROJECT_CXXFLAGS="$YOURPROJECT_CXXFLAGS $libpistache_CFLAGS"<br />
+    YOURPROJECT_LIBS="$YOURPROJECT_LIBS $libpistache_LIBS"<br />
+
+</code></p>
+
+
+<h1 id="building-pistache">Building Pistache</h1>
+
+<p>To download the latest available source, clone the repository over github.</p>
 
 <p><code>
 git clone https://github.com/oktal/pistache.git
