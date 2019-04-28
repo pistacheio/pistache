@@ -19,10 +19,10 @@ For those that prefer IRC over Slack, the rag-tag crew of maintainers idle in `#
 # Precompiled packages
 
 ## Ubuntu PPA (Stable)
-If you would like to use [stable](https://launchpad.net/%7Ekip/+archive/ubuntu/pistache-stable) packages, run the following:
+If you would like to use [stable](https://launchpad.net/%7Ekip/+archive/ubuntu/pistache) packages, run the following:
 
 ```console
-$ sudo add-apt-repository ppa:kip/pistache-stable
+$ sudo add-apt-repository ppa:kip/pistache
 $ sudo apt update
 $ sudo apt install libpistache-dev
 ```
