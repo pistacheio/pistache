@@ -70,7 +70,7 @@ class Request;
 struct Route {
     enum class Result { Ok, Failure };
 
-    enum class Status { Match, NotFound };
+    enum class Status { Match, NotFound, NotAllowed };
 
     typedef std::function<Result(const Request, Http::ResponseWriter)> Handler;
 
