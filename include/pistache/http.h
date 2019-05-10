@@ -486,6 +486,12 @@ public:
      * - movedPermantly -> 301
      * - moved() -> 302
      */
+    Async::Promise<ssize_t> sendMethodNotAllowed(const std::vector<Http::Method>& supportedMethods) {
+        code_ = Http::Code::Method_Not_Allowed;
+        headers_.add(std::make_shared<Http::Header::Allow>(supportedMethods));
+        std::string body = codeString(Pistache::Http::Code::Method_Not_Allowed);
+        return putOnWire(body.c_str(), body.size());
+    }
 
     Async::Promise<ssize_t> send(Code code) {
         code_ = code;
