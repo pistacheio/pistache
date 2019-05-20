@@ -83,45 +83,35 @@ private:
     uint16_t port;
 };
 
-class Ipv4 {
-public:
-    Ipv4(uint8_t a, uint8_t b, uint8_t c, uint8_t d);
 
-    static Ipv4 any();
-    static Ipv4 loopback();
+class IP {
+private:
+    int port;
+    int family;    
+    union {
+        struct sockaddr_in addr;
+        struct sockaddr_in6 addr6;
+    };
+public:
+    IP();
+    IP(uint8_t a, uint8_t b, uint8_t c, uint8_t d);
+    IP(uint16_t a, uint16_t b, uint16_t c, uint16_t d, uint16_t e, uint16_t f, uint16_t g, uint16_t h);
+    IP(struct sockaddr *);
+    static IP any();
+    static IP loopback();
+    static IP any(bool ipv6);
+    static IP loopback(bool ipv6);
+    int getFamily() const;
+    int getPort() const;
     std::string toString() const;
     void toNetwork(in_addr_t*) const;
-
-private:
-    uint8_t a;
-    uint8_t b;
-    uint8_t c;
-    uint8_t d;
-};
-
-class Ipv6 {
-public:
-    Ipv6(uint16_t a, uint16_t b, uint16_t c, uint16_t d, uint16_t e, uint16_t f, uint16_t g, uint16_t h);
-
-    static Ipv6 any();
-    static Ipv6 loopback();
-
-    std::string toString() const;
-    void toNetwork(in6_addr*) const;
-
-    // Returns 'true' if the kernel/libc support IPV6, false if not.
+    void toNetwork(struct in6_addr*) const;
+    // Returns 'true' if the system has IPV6 support, false if not.
     static bool supported();
-
-private:
-    uint16_t a;
-    uint16_t b;
-    uint16_t c;
-    uint16_t d;
-    uint16_t e;
-    uint16_t f;
-    uint16_t g;
-    uint16_t h;
 };
+using Ipv4 = IP;
+using Ipv6 = IP;
+
 
 class AddressParser {
 public:
@@ -131,11 +121,13 @@ public:
     bool hasColon() const;
     int family() const;
 private:
+    
     std::string host_;
     std::string port_;
     bool hasColon_ = false;
     int family_ = 0;
 };
+
 
 class Address {
 public:
@@ -143,8 +135,7 @@ public:
     Address(std::string host, Port port);
     Address(std::string addr);
     Address(const char* addr);
-    Address(Ipv4 ip, Port port);
-    Address(Ipv6 ip, Port port);
+    Address(IP ip, Port port);
 
     Address(const Address& other) = default;
     Address(Address&& other) = default;
@@ -160,9 +151,8 @@ public:
 
 private:
     void init(const std::string& addr);
-    std::string host_;
+    IP ip_;
     Port port_;
-    int family_ = AF_INET;
 };
 
 class Error : public std::runtime_error {
