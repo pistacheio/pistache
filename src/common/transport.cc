@@ -269,6 +269,11 @@ Transport::asyncWriteImpl(Fd fd)
                     wq.push_front(WriteEntry(std::move(deferred), bufferHolder, flags));
                     reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
                 }
+                else if (errno == EBADF) {
+                    wq.pop_front();
+                    toWrite.erase(fd);
+                    stop = true;
+                }
                 else {
                     cleanUp();
                     deferred.reject(Pistache::Error::system("Could not write data"));
