@@ -269,6 +269,14 @@ Transport::asyncWriteImpl(Fd fd)
                     wq.push_front(WriteEntry(std::move(deferred), bufferHolder, flags));
                     reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
                 }
+                // EBADF can happen when the HTTP parser, in the case of
+                // an error, closes fd before the entire request is processed.
+                // https://github.com/oktal/pistache/issues/501
+                else if (errno == EBADF) {
+                    wq.pop_front();
+                    toWrite.erase(fd);
+                    stop = true;
+                }
                 else {
                     cleanUp();
                     deferred.reject(Pistache::Error::system("Could not write data"));
