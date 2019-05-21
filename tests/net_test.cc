@@ -130,7 +130,7 @@ TEST(net_test, address_creation)
     ASSERT_EQ(address20.family(), AF_INET6);
     ASSERT_EQ(address20.port(), 8080);
     
-    Address address21(IP::loopback(true), Port(8080));
+    Address address21(IP::loopback(), Port(8080));
     ASSERT_EQ(address21.host(), "127.0.0.1");
     ASSERT_EQ(address21.family(), AF_INET);
     ASSERT_EQ(address21.port(), 8080);
