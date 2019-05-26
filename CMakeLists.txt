@@ -87,6 +87,14 @@ include_directories (${CMAKE_CURRENT_SOURCE_DIR}/include)
     set(VERSION_MINOR 0)
     set(VERSION_PATCH 001)
 
+    # Get last commit date from Git...
+    execute_process(
+        COMMAND git log -1 --format=%cd --date=format:%Y%m%d
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE VERSION_GIT_DATE
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+
     # Make available in a header file...
     configure_file (
         "include/pistache/version.h.in"
@@ -122,7 +130,7 @@ include_directories (${CMAKE_CURRENT_SOURCE_DIR}/include)
     set(libdir         ${CMAKE_INSTALL_FULL_LIBDIR}/)
     set(libs           ${LIBS})
     set(includedir     ${CMAKE_INSTALL_FULL_INCLUDEDIR}/)
-    set(version        ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
+    set(version        ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}-git${VERSION_GIT_DATE})
 
     # Perform substitutions...
     configure_file (
@@ -190,16 +198,16 @@ endif()
 # Generate source tarball...
 
     # Define version of source archive...
-    set(CPACK_PACKAGE_VERSION_MAJOR ${VERSION_MAJOR})
-    set(CPACK_PACKAGE_VERSION_MINOR ${VERSION_MINOR})
-    set(CPACK_PACKAGE_VERSION_PATCH ${VERSION_PATCH})
+    set(CPACK_PACKAGE_VERSION_MAJOR     ${VERSION_MAJOR})
+    set(CPACK_PACKAGE_VERSION_MINOR     ${VERSION_MINOR})
+    set(CPACK_PACKAGE_VERSION_PATCH     ${VERSION_PATCH})
 
     # Generate a .tar.bz2
     set(CPACK_SOURCE_GENERATOR "TBZ2")
 
     # Set filename...
     set(CPACK_SOURCE_PACKAGE_FILE_NAME
-        "${CMAKE_PROJECT_NAME}-${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
+        "${CMAKE_PROJECT_NAME}-${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}-git${VERSION_GIT_DATE}")
 
     # Don't include these files in the archive...
     set(CPACK_SOURCE_IGNORE_FILES
