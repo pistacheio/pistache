@@ -70,7 +70,7 @@ $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM).orig.tar.bz2:
 	@echo "# Preparing source for $(DEB_SOURCE) v$(DEB_VERSION_UPSTREAM)..."
 	cd $(SOURCE_DIR)                                                            \
 	&& cd $(PACKAGE_DIR)                                                        \
-	&& mkdir $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)                              \
+	&& mkdir -p $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)                              \
 	&& cd $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)                                 \
 	&& cmake                                                                    \
 		-G "Unix Makefiles"                                                     \

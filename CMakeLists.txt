@@ -82,18 +82,26 @@ include_directories (${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # Set version...
 
-    # Major and minor version...
-    set(VERSION_MAJOR 0)
-    set(VERSION_MINOR 0)
-    set(VERSION_PATCH 001)
+    # Retrieve from external file...
+    file(READ "version.txt" VERSION_FILE)
 
-    # Get last commit date from Git...
-    execute_process(
-        COMMAND git log -1 --format=%cd --date=format:%Y%m%d
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        OUTPUT_VARIABLE VERSION_GIT_DATE
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
+    # Extract version...
+
+        # Major...
+        string(REGEX MATCH "VERSION_MAJOR *([0-9]*)" _ ${VERSION_FILE})
+        set(VERSION_MAJOR ${CMAKE_MATCH_1})
+
+        # Minor...
+        string(REGEX MATCH "VERSION_MINOR *([0-9]+)" _ ${VERSION_FILE})
+        set(VERSION_MINOR ${CMAKE_MATCH_1})
+
+        # Patch...
+        string(REGEX MATCH "VERSION_PATCH *([0-9]+)" _ ${VERSION_FILE})
+        set(VERSION_PATCH ${CMAKE_MATCH_1})
+
+        # Git date...
+        string(REGEX MATCH "VERSION_GIT_DATE *([0-9]+)" _ ${VERSION_FILE})
+        set(VERSION_GIT_DATE ${CMAKE_MATCH_1})
 
     # Make available in a header file...
     configure_file (
