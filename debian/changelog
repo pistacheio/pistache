@@ -1,3 +1,9 @@
+pistache (0.0.001-git20190526-kip1~disco) disco; urgency=medium
+
+  * Built from latest git head.
+
+ -- Kip Warner <kip@thevertigo.com>  Sun, 26 May 2019 09:25:37 -0700
+
 pistache (0.0.001-git20190525-kip1~disco) disco; urgency=medium
 
   * Built from latest git head.
