@@ -1,5 +1,5 @@
 /* version.h
-   Kip Warner, 29 May 2018
+   Kip Warner, 25 May 2019
 
    Version constants
 */
@@ -12,6 +12,7 @@ namespace Version {
     static constexpr int Major = @VERSION_MAJOR@;
     static constexpr int Minor = @VERSION_MINOR@;
     static constexpr int Patch = @VERSION_PATCH@;
+    static constexpr int Git   = @VERSION_GIT_DATE@;
 } // namespace Version
 } // namespace Pistache
 
