@@ -19,6 +19,7 @@ int main() {
     if (sigemptyset(&signals) != 0
             || sigaddset(&signals, SIGTERM) != 0
             || sigaddset(&signals, SIGINT) != 0
+            || sigaddset(&signals, SIGHUP) != 0
             || pthread_sigmask(SIG_BLOCK, &signals, nullptr) != 0) {
         perror("install signal handler failed");
         return 1;
