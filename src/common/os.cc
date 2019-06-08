@@ -191,10 +191,7 @@ namespace Polling {
     Epoll::poll(std::vector<Event>& events, const std::chrono::milliseconds timeout) const {
         struct epoll_event evs[Const::MaxEvents];
 
-        int ready_fds = -1;
-        do {
-            ready_fds = epoll_wait(epoll_fd, evs, Const::MaxEvents, timeout.count());
-        } while (ready_fds < 0 && errno == EINTR);
+        int ready_fds = epoll_wait(epoll_fd, evs, Const::MaxEvents, timeout.count());
 
         for (int i = 0; i < ready_fds; ++i) {
             const struct epoll_event *ev = evs + i;

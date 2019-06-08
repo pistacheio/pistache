@@ -11,6 +11,7 @@ pistache_example(http_server)
 pistache_example(http_client)
 pistache_example(rest_server)
 pistache_example(custom_header)
+pistache_example(http_server_shutdown)
 
 set(RAPIDJSON_ROOT_DIR PATH "${PROJECT_SOURCE_DIR}/third-party/rapidjson")
 
