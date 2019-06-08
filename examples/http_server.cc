@@ -171,12 +171,8 @@ int main(int argc, char *argv[]) {
     auto server = std::make_shared<Http::Endpoint>(addr);
 
     auto opts = Http::Endpoint::options()
-        .threads(thr)
-        .flags(Tcp::Options::InstallSignalHandler);
+        .threads(thr);
     server->init(opts);
     server->setHandler(Http::make_handler<MyHandler>());
     server->serve();
-
-    std::cout << "Shutdowning server" << std::endl;
-    server->shutdown();
 }
