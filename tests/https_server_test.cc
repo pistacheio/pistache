@@ -28,7 +28,7 @@ struct HelloHandler : public Http::Handler {
 
 TEST(http_client_test, basic_tls_request) {
     Http::Endpoint server(ADDRESS "1");
-    auto           flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto           flags = Tcp::Options::ReuseAddr;
     auto           server_opts = Http::Endpoint::options().flags(flags);
 
     server.init(server_opts);
@@ -65,7 +65,7 @@ TEST(http_client_test, basic_tls_request) {
 
 TEST(http_client_test, basic_tls_request_with_auth) {
     Http::Endpoint server(ADDRESS "2");
-    auto           flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto           flags = Tcp::Options::ReuseAddr;
     auto           server_opts = Http::Endpoint::options().flags(flags);
 
     server.init(server_opts);
@@ -106,7 +106,7 @@ TEST(http_client_test, basic_tls_request_with_auth) {
 
 TEST(http_client_test, basic_tls_request_with_auth_no_client_cert) {
     Http::Endpoint server(ADDRESS "3");
-    auto           flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto           flags = Tcp::Options::ReuseAddr;
     auto           server_opts = Http::Endpoint::options().flags(flags);
 
     server.init(server_opts);
@@ -144,7 +144,7 @@ TEST(http_client_test, basic_tls_request_with_auth_no_client_cert) {
 
 TEST(http_client_test, basic_tls_request_with_auth_client_cert_not_signed) {
     Http::Endpoint server(ADDRESS "4");
-    auto           flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto           flags = Tcp::Options::ReuseAddr;
     auto           server_opts = Http::Endpoint::options().flags(flags);
 
     server.init(server_opts);
@@ -195,7 +195,7 @@ static int verify_callback(int verify, void *ctx)
 
 TEST(http_client_test, basic_tls_request_with_auth_with_cb) {
     Http::Endpoint server(ADDRESS "5");
-    auto           flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto           flags = Tcp::Options::ReuseAddr;
     auto           server_opts = Http::Endpoint::options().flags(flags);
 
     server.init(server_opts);

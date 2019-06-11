@@ -124,13 +124,13 @@ before_script:
     -DCMAKE_BUILD_TYPE=Debug
     -DPISTACHE_BUILD_EXAMPLES=true
     -DPISTACHE_BUILD_TESTS=true
-    -DPISTACHE_SSL=true
+    -DPISTACHE_USE_SSL=true
 
   # Release build
   - cmake -H.
     -BBuild-Release
     -DCMAKE_BUILD_TYPE=Release
-    -DPISTACHE_SSL=true
+    -DPISTACHE_USE_SSL=true
 
 script:
   # Debug build

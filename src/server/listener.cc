@@ -37,21 +37,6 @@
 namespace Pistache {
 namespace Tcp {
 
-namespace {
-    volatile sig_atomic_t g_listen_fd = -1;
-
-    void closeListener() {
-        if (g_listen_fd != -1) {
-            ::close(g_listen_fd);
-            g_listen_fd = -1;
-        }
-    }
-
-    void handle_sigint(int) {
-        closeListener();
-    }
-}
-
 void setSocketOptions(Fd fd, Flags<Options> options) {
     if (options.hasFlag(Options::ReuseAddr)) {
         int one = 1;
@@ -129,13 +114,6 @@ Listener::init(
     options_ = options;
     backlog_ = backlog;
     useSSL_ = false;
-
-    if (options_.hasFlag(Options::InstallSignalHandler)) {
-        if (signal(SIGINT, handle_sigint) == SIG_ERR) {
-            throw std::runtime_error("Could not install signal handler");
-        }
-    }
-
     workers_ = workers;
 
 }
@@ -213,7 +191,6 @@ Listener::bind(const Address& address) {
     make_non_blocking(fd);
     poller.addFd(fd, Polling::NotifyOn::Read, Polling::Tag(fd));
     listen_fd = fd;
-    g_listen_fd = fd;
 
     auto transport = std::make_shared<Transport>(handler_);
 
@@ -261,7 +238,6 @@ Listener::run() {
         int ready_fds = poller.poll(events);
 
         if (ready_fds == -1) {
-            if (errno == EINTR && g_listen_fd == -1) return;
             throw Error::system("Polling");
         }
         for (const auto& event: events) {
@@ -365,7 +341,7 @@ void Listener::handleNewConnection()
     int client_fd = acceptConnection(peer_addr);
 
 #ifdef PISTACHE_USE_SSL
-    SSL *ssl;
+    SSL *ssl = nullptr;
 
     if (this->useSSL_) {
 

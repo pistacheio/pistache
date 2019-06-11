@@ -130,7 +130,7 @@ TEST(http_server_test, client_disconnection_on_timeout_from_single_threaded_serv
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto flags = Tcp::Options::ReuseAddr;
     auto server_opts = Http::Endpoint::options().flags(flags);
     server.init(server_opts);
     const int ONE_SECOND_TIMEOUT = 1;
@@ -153,7 +153,7 @@ TEST(http_server_test, client_multiple_requests_disconnection_on_timeout_from_si
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto flags = Tcp::Options::ReuseAddr;
     auto server_opts = Http::Endpoint::options().flags(flags);
     server.init(server_opts);
 
@@ -177,7 +177,7 @@ TEST(http_server_test, multiple_client_with_requests_to_multithreaded_server) {
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto flags = Tcp::Options::ReuseAddr;
     auto server_opts = Http::Endpoint::options().flags(flags).threads(3);
     server.init(server_opts);
     server.setHandler(Http::make_handler<HelloHandlerWithDelay>());
@@ -214,7 +214,7 @@ TEST(http_server_test, multiple_client_with_different_requests_to_multithreaded_
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto flags = Tcp::Options::ReuseAddr;
     auto server_opts = Http::Endpoint::options().flags(flags).threads(4);
     server.init(server_opts);
     const int SIX_SECONDS_DELAY = 6;
@@ -259,8 +259,11 @@ TEST(http_server_test, server_with_static_file)
 {
     const std::string data("Hello, World!");
     char fileName[PATH_MAX] = "/tmp/pistacheioXXXXXX";
-    mkstemp(fileName);
-    std::cout << "Creating temporary file: " << fileName << '\n';
+    if(!mkstemp(fileName))
+    {
+        std::cerr << "No suitable filename can be generated!" << std::endl;
+    }
+    std::cout << "Creating temporary file: " << fileName << std::endl;
 
     std::ofstream tmpFile;
     tmpFile.open(fileName);
@@ -270,7 +273,7 @@ TEST(http_server_test, server_with_static_file)
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto flags = Tcp::Options::ReuseAddr;
     auto server_opts = Http::Endpoint::options().flags(flags);
     server.init(server_opts);
     server.setHandler(Http::make_handler<FileHandler>(fileName));
@@ -302,7 +305,7 @@ TEST(http_server_test, server_with_static_file)
     server.shutdown();
 
     std::cout << "Deleting file " << fileName << std::endl;
-    unlink(fileName);
+    std::remove(fileName);
 
     ASSERT_EQ(data, resultData);
 }

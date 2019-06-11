@@ -1,0 +1,15 @@
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: pistache
+Upstream-Contact: Dennis Jenkins <dennis.jenkins.75@gmail.com>
+Source: https://github.com/oktal/pistache.git
+Comment: Upstream's Debianization.
+
+Files: *
+Copyright: Copyright 2001-2019 Mathieu Stefani <m.stefani@abc-arbitrage.com>
+License: Apache-2.0
+ A permissive license whose main conditions require preservation of copyright
+ and license notices. Contributors provide an express grant of patent rights.
+ Licensed works, modifications, and larger works may be distributed under
+ different terms and without source code.
+
+

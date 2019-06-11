@@ -95,6 +95,7 @@ namespace {
         auto res = request.resource();
         auto s = splitUrl(res);
         auto body = request.body();
+        auto query = request.query();
 
         auto host = s.first;
         auto path = s.second;
@@ -104,7 +105,8 @@ namespace {
         streamBuf << request.method() << " ";
         if (pathStr[0] != '/')
             streamBuf << '/';
-        streamBuf << pathStr;
+
+        streamBuf << pathStr << query.as_str();
         streamBuf << " HTTP/1.1" << crlf;
 
         writeCookies(streamBuf, request.cookies());

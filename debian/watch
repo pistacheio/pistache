@@ -1,0 +1,4 @@
+version=4
+opts=filenamemangle=s/.+\/v?(\d\S+)\.tar\.bz2/pistache-$1\.tar\.bz2/ \
+  https://github.com/oktal/pistache/tags .*/?(\d+\.\d+.\d+)\.tar\.bz2
+

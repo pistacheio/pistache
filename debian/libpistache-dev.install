@@ -1,0 +1,5 @@
+usr/lib/*/pkgconfig
+usr/lib/*/cmake
+usr/include usr
+usr/lib/*/libpistache*.a
+usr/lib/*/libpistache*.so
