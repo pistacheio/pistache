@@ -297,15 +297,19 @@ namespace Private {
             else if (name == "Set-Cookie") {
                 message->cookies_.add(Cookie::fromRaw(cursor.offset(start), cursor.diff(start)));
             }
+
+            // If the header is registered with the Registry, add its strongly
+            //  typed form to the headers list...
             else if (Header::Registry::instance().isRegistered(name)) {
                 std::shared_ptr<Header::Header> header = Header::Registry::instance().makeHeader(name);
                 header->parseRaw(cursor.offset(start), cursor.diff(start));
                 message->headers_.add(header);
             }
-            else {
-                std::string value(cursor.offset(start), cursor.diff(start));
-                message->headers_.addRaw(Header::Raw(std::move(name), std::move(value)));
-            }
+
+            // But also preserve a raw header version too, regardless of whether
+            //  its type was known to the Registry...
+            std::string value(cursor.offset(start), cursor.diff(start));
+            message->headers_.addRaw(Header::Raw(std::move(name), std::move(value)));
 
             // CRLF
             if (!cursor.advance(2)) return State::Again;

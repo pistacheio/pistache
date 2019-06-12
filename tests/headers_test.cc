@@ -1,4 +1,4 @@
-#include <pistache/http_headers.h>
+#include <pistache/http.h>
 #include <pistache/date.h>
 
 #include "gtest/gtest.h"
@@ -647,3 +647,45 @@ TEST(headers_test, could_not_find_header)
 
     ASSERT_TRUE("Unknown header" == what);
 }
+
+// Verify registered headers appear in both the client request's strongly typed
+//  and raw lists...
+TEST(headers_test, registered_header_in_raw_list)
+{
+    // Make sure TestHeader is registered because Googletest does not guarantee
+    //  add_new_header_test will be run before this test...
+    if(!Pistache::Http::Header::Registry::instance().isRegistered(TestHeader::Name))
+        Pistache::Http::Header::Registry::instance().registerHeader<TestHeader>();
+
+    // Verify test header is registered...
+    ASSERT_TRUE(Pistache::Http::Header::Registry::instance().isRegistered(TestHeader::Name));
+
+    // Prepare a client request header string that should use our registered
+    //  TestHeader...
+    std::string line = std::string(TestHeader::Name) + ": some data\r\n";
+
+    // Prepare to load the client test header string...
+    Pistache::RawStreamBuf<> buf(&line[0], line.size());
+    Pistache::StreamCursor cursor(&buf);
+
+    // Simulate server deserializing the client's header request...
+    Pistache::Http::Request request;
+    Pistache::Http::Private::HeadersStep step(&request);
+    step.apply(cursor);
+
+    // Retrieve all of the headers the client submitted in their request...
+    const auto &headersCollection = request.headers();
+
+    // Verify our TestHeader is in the strongly typed list...
+    ASSERT_TRUE(headersCollection.has<TestHeader>());
+
+    // Obtain the raw header list...
+    const auto &rawHeadersList = headersCollection.rawList();
+
+    // Verify the TestHeader is in the raw list as expected...
+    const auto foundRawHeader = rawHeadersList.find(TestHeader::Name);
+    ASSERT_TRUE(foundRawHeader != rawHeadersList.end());
+    ASSERT_TRUE(foundRawHeader->second.name() == TestHeader::Name);
+    ASSERT_TRUE(foundRawHeader->second.value() == "some data");
+}
+
