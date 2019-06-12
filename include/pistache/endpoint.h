@@ -24,6 +24,9 @@ public:
         Options& maxRequestSize(size_t val);
         Options& maxResponseSize(size_t val);
 
+        [[deprecated("Replaced by maxRequestSize(val)")]]
+        Options& maxPayload(size_t val);
+
     private:
         int threads_;
         Flags<Tcp::Options> flags_;

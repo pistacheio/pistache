@@ -45,6 +45,11 @@ Endpoint::Options::maxRequestSize(size_t val) {
 }
 
 Endpoint::Options&
+Endpoint::Options::maxPayload(size_t val) {
+    return maxRequestSize(val);
+}
+
+Endpoint::Options&
 Endpoint::Options::maxResponseSize(size_t val) {
     maxResponseSize_ = val;
     return *this;
