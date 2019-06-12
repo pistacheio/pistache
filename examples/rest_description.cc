@@ -30,8 +30,7 @@ public:
 
     void init(size_t thr = 2) {
         auto opts = Http::Endpoint::options()
-            .threads(thr)
-            .flags(Tcp::Options::InstallSignalHandler);
+            .threads(thr);
         httpEndpoint->init(opts);
         createDescription();
     }
@@ -49,10 +48,6 @@ public:
 
         httpEndpoint->setHandler(router.handler());
         httpEndpoint->serve();
-    }
-
-    void shutdown() {
-        httpEndpoint->shutdown();
     }
 
 private:
@@ -157,6 +152,4 @@ int main(int argc, char *argv[]) {
 
     banker.init(thr);
     banker.start();
-
-    banker.shutdown();
 }

@@ -29,6 +29,4 @@ int main() {
     server.init(opts);
     server.setHandler(Http::make_handler<HelloHandler>());
     server.serve();
-
-    server.shutdown();
 }
