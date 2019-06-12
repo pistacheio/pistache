@@ -17,6 +17,7 @@ Endpoint::Options::Options()
     , flags_()
     , backlog_(Const::MaxBacklog)
     , maxRequestSize_(Const::DefaultMaxRequestSize)
+    , maxResponseSize_(Const::DefaultMaxResponseSize)
 { }
 
 Endpoint::Options&
