@@ -78,7 +78,7 @@ void handleEcho(const Rest::Request& /*request*/, Http::ResponseWriter response)
     response.send(Http::Code::Ok, "", MIME(Text, Plain));
 }
 
-TEST(payload, from_description)
+TEST(request_size, from_description)
 {
     const Address addr(Ipv4::any(), Port(0));
     const size_t threads = 20;
@@ -121,7 +121,7 @@ TEST(payload, from_description)
     endpoint->shutdown();
 }
 
-TEST(payload, manual_construction) {
+TEST(request_size, manual_construction) {
     class MyHandler : public Http::Handler {
         public:
         HTTP_PROTOTYPE(MyHandler)
