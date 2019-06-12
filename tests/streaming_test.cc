@@ -107,7 +107,7 @@ TEST(streaming, from_description)
     auto opts = Http::Endpoint::options()
         .threads(threads)
         .flags(flags)
-        .maxPayload(1024*1024)
+        .maxRequestSize(1024*1024)
         ;
 
     endpoint = std::make_shared<Pistache::Http::Endpoint>(addr);

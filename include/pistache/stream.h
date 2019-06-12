@@ -1,6 +1,6 @@
 /* stream.h
    Mathieu Stefani, 05 September 2015
-   
+
    A set of classes to control input over a sequence of bytes
 */
 
@@ -120,7 +120,7 @@ private:
 };
 
 template<typename CharT>
-size_t ArrayStreamBuf<CharT>::maxSize = Const::DefaultMaxPayload;
+size_t ArrayStreamBuf<CharT>::maxSize = Const::DefaultMaxRequestSize;
 
 struct RawBuffer
 {
@@ -158,11 +158,10 @@ public:
     typedef typename Base::traits_type traits_type;
     typedef typename Base::int_type int_type;
 
-    DynamicStreamBuf(
-            size_t size,
-            size_t maxSize = std::numeric_limits<uint32_t>::max())
-        : maxSize_(maxSize)
-        , data_()
+    static size_t maxSize;
+
+    DynamicStreamBuf( size_t size )
+        : data_()
     {
         reserve(size);
     }
@@ -171,14 +170,12 @@ public:
     DynamicStreamBuf& operator=(const DynamicStreamBuf& other) = delete;
 
     DynamicStreamBuf(DynamicStreamBuf&& other)
-       : maxSize_(other.maxSize_)
-       , data_(std::move(other.data_)) {
+       : data_(std::move(other.data_)) {
            setp(other.pptr(), other.epptr());
            other.setp(nullptr, nullptr);
     }
 
     DynamicStreamBuf& operator=(DynamicStreamBuf&& other) {
-        maxSize_ = other.maxSize_;
         data_ = std::move(other.data_);
         setp(other.pptr(), other.epptr());
         other.setp(nullptr, nullptr);
@@ -200,7 +197,6 @@ public:
 private:
     void reserve(size_t size);
 
-    size_t maxSize_;
     std::vector<char> data_;
 };
 
