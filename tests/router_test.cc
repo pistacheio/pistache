@@ -154,7 +154,7 @@ TEST(router_test, test_notfound_exactly_once) {
     Address addr(Ipv4::any(), 0);
     auto endpoint = std::make_shared<Http::Endpoint>(addr);
 
-    auto opts = Http::Endpoint::options().threads(1).maxPayload(4096);
+    auto opts = Http::Endpoint::options().threads(1).maxRequestSize(4096);
     endpoint->init(opts);
 
     int count_found = 0;

@@ -16,7 +16,7 @@ Endpoint::Options::Options()
     : threads_(1)
     , flags_()
     , backlog_(Const::MaxBacklog)
-    , maxPayload_(Const::DefaultMaxPayload)
+    , maxRequestSize_(Const::DefaultMaxRequestSize)
 { }
 
 Endpoint::Options&
@@ -38,8 +38,14 @@ Endpoint::Options::backlog(int val) {
 }
 
 Endpoint::Options&
-Endpoint::Options::maxPayload(size_t val) {
-    maxPayload_ = val;
+Endpoint::Options::maxRequestSize(size_t val) {
+    maxRequestSize_ = val;
+    return *this;
+}
+
+Endpoint::Options&
+Endpoint::Options::maxResponseSize(size_t val) {
+    maxResponseSize_ = val;
     return *this;
 }
 
@@ -53,7 +59,8 @@ Endpoint::Endpoint(const Address& addr)
 void
 Endpoint::init(const Endpoint::Options& options) {
     listener.init(options.threads_, options.flags_);
-    ArrayStreamBuf<char>::maxSize = options.maxPayload_;
+    ArrayStreamBuf<char>::maxSize = options.maxRequestSize_;
+    DynamicStreamBuf::maxSize = options.maxResponseSize_;
 }
 
 void
