@@ -365,9 +365,6 @@ Transport::handleWriteQueue() {
 
         {
             Guard guard(toWriteLock);
-            // don't enqueue anything to write if the peer has already
-            // disconnected. Security and memory leaks occur if we do.
-            if (peers.find(fd) == peers.end()) continue;
             toWrite[fd].push_back(std::move(*write));
         }
 
