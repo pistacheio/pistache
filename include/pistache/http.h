@@ -216,6 +216,8 @@ public:
         other.timerFd = -1;
     }
 
+    ~Timeout() { disarm(); }
+
     Timeout& operator=(Timeout&& other) {
         handler = other.handler;
         transport = other.transport;
