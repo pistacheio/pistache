@@ -290,7 +290,7 @@ void
 ContentLength::parse(const std::string& data) {
     try {
         size_t pos;
-        uint64_t val = std::stoi(data, &pos);
+        uint64_t val = std::stoull(data, &pos);
         if (pos != 0) {
         }
 
