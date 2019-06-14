@@ -261,12 +261,9 @@ int AddressParser::family() const
     return family_;
 }
 
-Address::Address()
-{ 
-    port_ = Port(0);
-    ip_ = IP::any(); 
-    
-}
+Address::Address() :
+    ip_{}, port_{0}
+{}
 
 Address::Address(std::string host, Port port)
 {   
