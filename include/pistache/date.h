@@ -4032,7 +4032,7 @@ public:
         , s_()
         {}
 
-    CONSTCD11 explicit time_of_day_storage(Duration since_midnight) NOEXCEPT
+    CONSTCD11 explicit time_of_day_storage(const Duration& since_midnight) NOEXCEPT
         : base(std::chrono::duration_cast<std::chrono::hours>(since_midnight),
                since_midnight < Duration{0}, is24hr)
         , m_(std::chrono::duration_cast<std::chrono::minutes>(detail::abs(since_midnight) - h_))
@@ -4040,7 +4040,7 @@ public:
         {}
 
     CONSTCD11 explicit time_of_day_storage(std::chrono::hours h, std::chrono::minutes m,
-                                           std::chrono::seconds s, precision sub_s,
+                                           std::chrono::seconds s, const precision& sub_s,
                                            unsigned md) NOEXCEPT
         : base(h, false, md)
         , m_(m)
