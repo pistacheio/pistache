@@ -603,7 +603,7 @@ class month_weekday_last
 
 public:
     CONSTCD11 month_weekday_last(const date::month& m,
-                                 const date::weekday_last& wd) NOEXCEPT;
+                                 const date::weekday_last& wdl) NOEXCEPT;
 
     CONSTCD11 date::month        month()        const NOEXCEPT;
     CONSTCD11 date::weekday_last weekday_last() const NOEXCEPT;
