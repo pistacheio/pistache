@@ -114,7 +114,7 @@ include_directories (${CMAKE_CURRENT_SOURCE_DIR}/include)
     if(PISTACHE_INSTALL)
         install (
             FILES
-            ${CMAKE_BINARY_DIR}/include/pistache/version.h
+            ${CMAKE_CURRENT_BINARY_DIR}/include/pistache/version.h
             DESTINATION
             ${CMAKE_INSTALL_INCLUDEDIR}/pistache/
         )
@@ -151,7 +151,7 @@ include_directories (${CMAKE_CURRENT_SOURCE_DIR}/include)
     if(PISTACHE_INSTALL)
         install (
             FILES
-            ${CMAKE_BINARY_DIR}/libpistache.pc
+            ${CMAKE_CURRENT_BINARY_DIR}/libpistache.pc
             DESTINATION
             ${CMAKE_INSTALL_LIBDIR}/pkgconfig/
         )
