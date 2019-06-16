@@ -603,7 +603,7 @@ class month_weekday_last
 
 public:
     CONSTCD11 month_weekday_last(const date::month& m,
-                                 const date::weekday_last& wd) NOEXCEPT;
+                                 const date::weekday_last& wdl) NOEXCEPT;
 
     CONSTCD11 date::month        month()        const NOEXCEPT;
     CONSTCD11 date::weekday_last weekday_last() const NOEXCEPT;
@@ -1005,9 +1005,9 @@ trunc(T t) NOEXCEPT
     static_assert(digits < numeric_limits<I>::digits, "");
     CONSTDATA auto max = I{1} << (digits-1);
     CONSTDATA auto min = -max;
-    const auto negative = t < T{0};
     if (min <= t && t <= max && t != 0 && t == t)
     {
+        const auto negative = t < T{0};
         t = static_cast<T>(static_cast<I>(t));
         if (t == 0 && negative)
             t = -t;
@@ -4032,7 +4032,7 @@ public:
         , s_()
         {}
 
-    CONSTCD11 explicit time_of_day_storage(Duration since_midnight) NOEXCEPT
+    CONSTCD11 explicit time_of_day_storage(const Duration& since_midnight) NOEXCEPT
         : base(std::chrono::duration_cast<std::chrono::hours>(since_midnight),
                since_midnight < Duration{0}, is24hr)
         , m_(std::chrono::duration_cast<std::chrono::minutes>(detail::abs(since_midnight) - h_))
@@ -4040,7 +4040,7 @@ public:
         {}
 
     CONSTCD11 explicit time_of_day_storage(std::chrono::hours h, std::chrono::minutes m,
-                                           std::chrono::seconds s, precision sub_s,
+                                           std::chrono::seconds s, const precision& sub_s,
                                            unsigned md) NOEXCEPT
         : base(h, false, md)
         , m_(m)
