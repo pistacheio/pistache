@@ -21,27 +21,29 @@ option(PISTACHE_BUILD_DOCS "build docs alongside the project" OFF)
 option(PISTACHE_INSTALL "add pistache as install target (recommended)" ON)
 option(PISTACHE_USE_SSL "add support for SSL server" OFF)
 
-find_program(CTEST_MEMORYCHECK_COMMAND NAMES valgrind)
-find_program(CTEST_COVERAGE_COMMAND NAMES gcov)
-find_program(CMAKE_CXX_CPPCHECK NAMES cppcheck)
+if (PISTACHE_BUILD_TESTS)
+    find_program(CTEST_MEMORYCHECK_COMMAND NAMES valgrind)
+    find_program(CTEST_COVERAGE_COMMAND NAMES gcov)
+    find_program(CMAKE_CXX_CPPCHECK NAMES cppcheck)
 
-if (CMAKE_CXX_CPPCHECK)
-    message("-- Cppcheck found " ${CMAKE_CXX_CPPCHECK})
-    list(
-        APPEND CMAKE_CXX_CPPCHECK 
-            "--enable=all"
-            "--suppress=*:${PROJECT_SOURCE_DIR}/third-party*"
-            "--suppress=*:${PROJECT_SOURCE_DIR}/tests*"
-    )
-else()
-    message("-- Cppcheck not found")
-    set(CMAKE_CXX_CPPCHECK "")
+    if (CMAKE_CXX_CPPCHECK)
+        message("-- Cppcheck found " ${CMAKE_CXX_CPPCHECK})
+        list(
+            APPEND CMAKE_CXX_CPPCHECK 
+                "--enable=all"
+                "--suppress=*:${PROJECT_SOURCE_DIR}/third-party*"
+                "--suppress=*:${PROJECT_SOURCE_DIR}/tests*"
+        )
+    else()
+        message("-- Cppcheck not found")
+        set(CMAKE_CXX_CPPCHECK "")
+    endif()
+
+    INCLUDE(Dart)
+
+    add_custom_target(test_memcheck COMMAND ${CMAKE_CTEST_COMMAND}  --force-new-ctest-process --test-action memcheck)
+    add_custom_target(coverage COMMAND ${CMAKE_CTEST_COMMAND}  --force-new-ctest-process --test-action coverage)
 endif()
-
-INCLUDE(Dart)
-
-add_custom_target(test_memcheck COMMAND ${CMAKE_CTEST_COMMAND}  --force-new-ctest-process --test-action memcheck)
-add_custom_target(coverage COMMAND ${CMAKE_CTEST_COMMAND}  --force-new-ctest-process --test-action coverage)
 
 # CMAKE version less than 3.8 does not understand the CMAKE_CXX_FLAGS
 # set to 17, so a manual check if performed on older version
