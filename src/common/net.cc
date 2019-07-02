@@ -333,10 +333,8 @@ void Address::init(const std::string& addr)
             throw std::invalid_argument("Invalid IPv6 address");
         }
         
-        char buff[INET6_ADDRSTRLEN+1] = {};
-        memcpy(buff, host_.c_str(), INET6_ADDRSTRLEN);
         struct in6_addr addr;
-        inet_pton(AF_INET6, buff, &addr);
+        inet_pton(AF_INET6, host_.c_str(), &addr);
         struct sockaddr_in6 s_addr = {0};
         s_addr.sin6_family = AF_INET6;
         memcpy(&(s_addr.sin6_addr.s6_addr16), &addr.s6_addr16, 8*sizeof(uint16_t));
@@ -374,10 +372,8 @@ void Address::init(const std::string& addr)
             throw std::invalid_argument("Invalid IPv4 address");
         }
         
-        char buff[INET_ADDRSTRLEN+1] = {};
-        memcpy(buff, host_.c_str(), INET_ADDRSTRLEN);
         struct in_addr addr;
-        inet_pton(AF_INET, buff, &addr);
+        inet_pton(AF_INET, host_.c_str(), &addr);
         struct sockaddr_in s_addr = {0};
         s_addr.sin_family = AF_INET;
         memcpy(&(s_addr.sin_addr.s_addr), &addr.s_addr, sizeof(uint32_t));
