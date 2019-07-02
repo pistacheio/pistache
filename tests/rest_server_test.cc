@@ -1,6 +1,6 @@
-/* 
+/*
    Mathieu Stefani, 07 février 2016
-   
+
    Example of a REST endpoint with routing
 */
 
@@ -45,6 +45,7 @@ private:
     void setupRoutes() {
         using namespace Rest;
         Routes::Get(router, "/read/function1", Routes::bind(&StatsEndpoint::doAuth, this));
+        Routes::Get(router, "/read/hostname", Routes::bind(&StatsEndpoint::doResolveClient, this));
     }
 
     void doAuth(const Rest::Request& /*request*/, Http::ResponseWriter response) {
@@ -52,6 +53,10 @@ private:
             writer.send(Http::Code::Ok, "1");
         }, std::move(response));
         worker.detach();
+    }
+
+    void doResolveClient(const Rest::Request& /*request*/, Http::ResponseWriter response) {
+        response.send(Http::Code::Ok, response.peer()->hostname());
     }
 
     std::shared_ptr<Http::Endpoint> httpEndpoint;
@@ -78,6 +83,9 @@ TEST(rest_server_test, basic_test) {
     ASSERT_EQ(res->status, 200);
     ASSERT_EQ(res->body, "1");
 
+    res = client.Get("/read/hostname");
+    ASSERT_EQ(res->status, 200);
+    ASSERT_EQ(res->body, "localhost");
     stats.shutdown();
 }
 
