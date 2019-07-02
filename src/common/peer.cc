@@ -7,6 +7,9 @@
 #include <stdexcept>
 
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 
 #include <pistache/peer.h>
 #include <pistache/async.h>
@@ -41,8 +44,25 @@ const Address& Peer::address() const
     return addr;
 }
 
-const std::string& Peer::hostname() const
+const std::string& Peer::hostname()
 {
+    if (hostname_.empty()) {
+        char host[NI_MAXHOST];
+        struct sockaddr_in sa;
+        sa.sin_family = AF_INET;
+        if (inet_pton(AF_INET, addr.host().c_str(), &sa.sin_addr) == 0) {
+          hostname_ = addr.host();
+        } else {
+          if (!getnameinfo((struct sockaddr*)&sa, sizeof(sa)
+                          , host, sizeof(host)
+                          , NULL, 0   // Service info
+                          , NI_NAMEREQD // Raise an error if name resolution failed
+                )
+            ) {
+            hostname_.assign((char *)host);
+          }
+        }
+    }
     return hostname_;
 }
 
@@ -106,7 +126,7 @@ Peer::send(const RawBuffer& buffer, int flags) {
     return transport()->asyncWrite(fd_, buffer, flags);
 }
 
-std::ostream& operator<<(std::ostream& os, const Peer& peer) {
+std::ostream& operator<<(std::ostream& os, Peer& peer) {
     const auto& addr = peer.address();
     os << "(" << addr.host() << ", " << addr.port() << ") [" << peer.hostname() << "]";
     return os;

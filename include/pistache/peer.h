@@ -41,7 +41,7 @@ public:
     ~Peer();
     
     const Address& address() const;
-    const std::string& hostname() const;
+    const std::string& hostname();
 
     void associateFd(Fd fd);
     Fd fd() const;
@@ -69,7 +69,7 @@ private:
     void *ssl_;
 };
 
-std::ostream& operator<<(std::ostream& os, const Peer& peer);
+std::ostream& operator<<(std::ostream& os, Peer& peer);
 
 } // namespace Tcp
 } // namespace Pistache
