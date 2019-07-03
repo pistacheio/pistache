@@ -153,6 +153,8 @@ public:
     void run() override {
         handlers_.forEachHandler([](const std::shared_ptr<Handler> handler) {
             handler->context_.tid = std::this_thread::get_id();
+ 
+
         });
 
         while (!shutdown_)
@@ -334,11 +336,11 @@ public:
 
     static constexpr uint32_t KeyMarker = 0xBADB0B;
 
-    AsyncImpl(Reactor* reactor, size_t threads)
+    AsyncImpl(Reactor* reactor, size_t threads,const char *threadsName)
         : Reactor::Impl(reactor) {
 
         for (size_t i = 0; i < threads; ++i) {
-            std::unique_ptr<Worker> wrk(new Worker(reactor));
+            std::unique_ptr<Worker> wrk(new Worker(reactor,threadsName));
             workers_.push_back(std::move(wrk));
         }
     }
@@ -454,8 +456,10 @@ private:
 
     struct Worker {
 
-        explicit Worker(Reactor* reactor) {
+        explicit Worker(Reactor* reactor,const char* threadsName) {
+            strcpy(threadsName_, threadsName);
             sync.reset(new SyncImpl(reactor));
+
         }
 
         ~Worker() {
@@ -464,9 +468,13 @@ private:
         }
 
         void run() {
-            thread = std::thread([=]() {
+            thread = std::thread([=]() {    
+                if (strlen(threadsName_) > 0 ) {            
+                    pthread_setname_np(pthread_self(),threadsName_);
+                }
                 sync->run();
             });
+
         }
 
         void shutdown() {
@@ -475,6 +483,7 @@ private:
 
         std::thread thread;
         std::unique_ptr<SyncImpl> sync;
+        char threadsName_[15];
     };
 
     std::vector<std::unique_ptr<Worker>> workers_;
@@ -597,12 +606,14 @@ SyncContext::makeImpl(Reactor* reactor) const {
 
 Reactor::Impl*
 AsyncContext::makeImpl(Reactor* reactor) const {
-    return new AsyncImpl(reactor, threads_);
+    return new AsyncImpl(reactor, threads_, threadsName_);
 }
 
 AsyncContext
 AsyncContext::singleThreaded() {
-    return AsyncContext(1);
+    char threadNameSingle[2];
+    threadNameSingle[1]='\0';
+    return AsyncContext(1, threadNameSingle);
 }
 
 } // namespace Aio
