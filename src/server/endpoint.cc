@@ -14,7 +14,7 @@ namespace Http {
 
 Endpoint::Options::Options()
     : threads_(1)
-    , threadsName_("")
+    , threadsName_()
     , flags_()
     , backlog_(Const::MaxBacklog)
     , maxRequestSize_(Const::DefaultMaxRequestSize)
