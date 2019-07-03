@@ -14,6 +14,7 @@ namespace Http {
 
 Endpoint::Options::Options()
     : threads_(1)
+    , threadsName_("")
     , flags_()
     , backlog_(Const::MaxBacklog)
     , maxRequestSize_(Const::DefaultMaxRequestSize)
@@ -23,6 +24,13 @@ Endpoint::Options::Options()
 Endpoint::Options&
 Endpoint::Options::threads(int val) {
     threads_ = val;
+    return *this;
+}
+
+Endpoint::Options&
+Endpoint::Options::threadsName(const char* val) {
+    strncpy(threadsName_, val, 15);
+    threadsName_[15] = '\0';
     return *this;
 }
 
@@ -64,7 +72,7 @@ Endpoint::Endpoint(const Address& addr)
 
 void
 Endpoint::init(const Endpoint::Options& options) {
-    listener.init(options.threads_, options.flags_);
+    listener.init(options.threads_,  options.flags_, options.threadsName_);
     ArrayStreamBuf<char>::maxSize = options.maxRequestSize_;
     DynamicStreamBuf::maxSize = options.maxResponseSize_;
 }
