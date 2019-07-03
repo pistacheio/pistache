@@ -19,6 +19,7 @@ public:
         friend class Endpoint;
 
         Options& threads(int val);
+        Options& threadsName(const char* val);
         Options& flags(Flags<Tcp::Options> flags);
         Options& backlog(int val);
         Options& maxRequestSize(size_t val);
@@ -29,6 +30,7 @@ public:
 
     private:
         int threads_;
+        char threadsName_[16];
         Flags<Tcp::Options> flags_;
         int backlog_;
         size_t maxRequestSize_;
