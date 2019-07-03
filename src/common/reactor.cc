@@ -611,9 +611,7 @@ AsyncContext::makeImpl(Reactor* reactor) const {
 
 AsyncContext
 AsyncContext::singleThreaded() {
-    char threadNameSingle[2];
-    threadNameSingle[1]='\0';
-    return AsyncContext(1, threadNameSingle);
+    return AsyncContext(1);
 }
 
 } // namespace Aio
