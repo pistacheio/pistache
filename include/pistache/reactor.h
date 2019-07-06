@@ -176,10 +176,12 @@ public:
 
 class AsyncContext : public ExecutionContext {
 public:
-    explicit AsyncContext(size_t threads,const char* threadsName = "")
+    explicit AsyncContext(size_t threads, std::string threadsName = "")
         : threads_(threads)
 
-    { strcpy(threadsName_,threadsName);}
+    {
+        threadsName_ = threadsName;
+    }
 
     virtual ~AsyncContext() {}
 
@@ -189,7 +191,7 @@ public:
 
 private:
     size_t threads_;
-    char threadsName_[16];
+    std::string threadsName_;
 };
 
 class Handler : public Prototype<Handler> {
