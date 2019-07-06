@@ -153,8 +153,6 @@ public:
     void run() override {
         handlers_.forEachHandler([](const std::shared_ptr<Handler> handler) {
             handler->context_.tid = std::this_thread::get_id();
- 
-
         });
 
         while (!shutdown_)
@@ -336,11 +334,11 @@ public:
 
     static constexpr uint32_t KeyMarker = 0xBADB0B;
 
-    AsyncImpl(Reactor* reactor, size_t threads,const char *threadsName)
+    AsyncImpl(Reactor* reactor, size_t threads, std::string threadsName)
         : Reactor::Impl(reactor) {
 
         for (size_t i = 0; i < threads; ++i) {
-            std::unique_ptr<Worker> wrk(new Worker(reactor,threadsName));
+            std::unique_ptr<Worker> wrk(new Worker(reactor, threadsName));
             workers_.push_back(std::move(wrk));
         }
     }
@@ -456,10 +454,9 @@ private:
 
     struct Worker {
 
-        explicit Worker(Reactor* reactor,const char* threadsName) {
-            strcpy(threadsName_, threadsName);
+        explicit Worker(Reactor* reactor, std::string threadsName) {
+            threadsName_ = threadsName;
             sync.reset(new SyncImpl(reactor));
-
         }
 
         ~Worker() {
@@ -468,13 +465,12 @@ private:
         }
 
         void run() {
-            thread = std::thread([=]() {    
-                if (strlen(threadsName_) > 0 ) {            
-                    pthread_setname_np(pthread_self(),threadsName_);
+            thread = std::thread([=]() {
+                if (threadsName_.size() > 0) {    
+                    pthread_setname_np(pthread_self(), threadsName_.substr(0,15).c_str());
                 }
                 sync->run();
             });
-
         }
 
         void shutdown() {
@@ -483,7 +479,7 @@ private:
 
         std::thread thread;
         std::unique_ptr<SyncImpl> sync;
-        char threadsName_[15];
+        std::string threadsName_;
     };
 
     std::vector<std::unique_ptr<Worker>> workers_;
