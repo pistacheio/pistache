@@ -108,7 +108,7 @@ void
 Listener::init(
     size_t workers,
     Flags<Options> options,
-    const char * workersName,
+    std::string workersName,
     int backlog)
 {
     if (workers > hardware_concurrency()) {
@@ -119,7 +119,7 @@ Listener::init(
     backlog_ = backlog;
     useSSL_ = false;
     workers_ = workers;
-    strcpy(workersName_, workersName);
+    workersName_ = workersName;
 
 }
 
