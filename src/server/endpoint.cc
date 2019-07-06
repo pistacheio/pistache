@@ -14,7 +14,6 @@ namespace Http {
 
 Endpoint::Options::Options()
     : threads_(1)
-    , threadsName_()
     , flags_()
     , backlog_(Const::MaxBacklog)
     , maxRequestSize_(Const::DefaultMaxRequestSize)
@@ -28,9 +27,8 @@ Endpoint::Options::threads(int val) {
 }
 
 Endpoint::Options&
-Endpoint::Options::threadsName(const char* val) {
-    strncpy(threadsName_, val, 15);
-    threadsName_[15] = '\0';
+Endpoint::Options::threadsName(std::string val) {
+    threadsName_ = val;
     return *this;
 }
 
