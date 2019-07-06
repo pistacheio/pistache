@@ -52,7 +52,7 @@ public:
     void init(
             size_t workers,
             Flags<Options> options = Options::None,
-            const char * workersName = "",
+            std::string workersName = "",
             int backlog = Const::MaxBacklog);
     void setHandler(const std::shared_ptr<Handler>& handler);
 
@@ -66,7 +66,7 @@ public:
     void runThreaded();
 
     void shutdown();
- 
+
     Async::Promise<Load> requestLoad(const Load& old);
 
     Options options() const;
@@ -88,7 +88,7 @@ private:
     std::thread acceptThread;
 
     size_t workers_;
-    char   workersName_[16];
+    std::string workersName_;
     std::shared_ptr<Handler> handler_;
 
     Aio::Reactor reactor_;
