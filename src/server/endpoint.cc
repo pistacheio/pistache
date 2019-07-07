@@ -27,7 +27,7 @@ Endpoint::Options::threads(int val) {
 }
 
 Endpoint::Options&
-Endpoint::Options::threadsName(std::string val) {
+Endpoint::Options::threadsName(const std::string& val) {
     threadsName_ = val;
     return *this;
 }
