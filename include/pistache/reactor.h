@@ -176,7 +176,7 @@ public:
 
 class AsyncContext : public ExecutionContext {
 public:
-    explicit AsyncContext(size_t threads, std::string threadsName = "")
+    explicit AsyncContext(size_t threads,const std::string& threadsName = "")
         : threads_(threads)
 
     {
