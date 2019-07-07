@@ -52,7 +52,7 @@ public:
     void init(
             size_t workers,
             Flags<Options> options = Options::None,
-            std::string workersName = "",
+            const std::string& workersName = "",
             int backlog = Const::MaxBacklog);
     void setHandler(const std::shared_ptr<Handler>& handler);
 
