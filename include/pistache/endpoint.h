@@ -19,7 +19,7 @@ public:
         friend class Endpoint;
 
         Options& threads(int val);
-        Options& threadsName(std::string val);
+        Options& threadsName(const std::string& val);
         Options& flags(Flags<Tcp::Options> flags);
         Options& backlog(int val);
         Options& maxRequestSize(size_t val);
