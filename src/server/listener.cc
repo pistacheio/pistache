@@ -108,7 +108,7 @@ void
 Listener::init(
     size_t workers,
     Flags<Options> options,
-    std::string workersName,
+    const std::string& workersName,
     int backlog)
 {
     if (workers > hardware_concurrency()) {
