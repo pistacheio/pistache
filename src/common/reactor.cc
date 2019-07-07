@@ -334,7 +334,7 @@ public:
 
     static constexpr uint32_t KeyMarker = 0xBADB0B;
 
-    AsyncImpl(Reactor* reactor, size_t threads,const std::string& threadsName)
+    AsyncImpl(Reactor* reactor, size_t threads, const std::string& threadsName)
         : Reactor::Impl(reactor) {
 
         for (size_t i = 0; i < threads; ++i) {
@@ -454,7 +454,7 @@ private:
 
     struct Worker {
 
-        explicit Worker(Reactor* reactor,const std::string& threadsName) {
+        explicit Worker(Reactor* reactor, const std::string& threadsName) {
             threadsName_ = threadsName;
             sync.reset(new SyncImpl(reactor));
         }
