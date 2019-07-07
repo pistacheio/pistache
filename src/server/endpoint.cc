@@ -70,7 +70,7 @@ Endpoint::Endpoint(const Address& addr)
 
 void
 Endpoint::init(const Endpoint::Options& options) {
-    listener.init(options.threads_,  options.flags_, options.threadsName_);
+    listener.init(options.threads_, options.flags_, options.threadsName_);
     ArrayStreamBuf<char>::maxSize = options.maxRequestSize_;
     DynamicStreamBuf::maxSize = options.maxResponseSize_;
 }
