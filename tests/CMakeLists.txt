@@ -32,6 +32,7 @@ pistache_test(string_view_test)
 pistache_test(mailbox_test)
 pistache_test(stream_test)
 pistache_test(reactor_test)
+pistache_test(threadname_test)
 
 if (PISTACHE_USE_SSL)
 

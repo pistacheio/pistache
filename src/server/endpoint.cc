@@ -27,6 +27,12 @@ Endpoint::Options::threads(int val) {
 }
 
 Endpoint::Options&
+Endpoint::Options::threadsName(const std::string& val) {
+    threadsName_ = val;
+    return *this;
+}
+
+Endpoint::Options&
 Endpoint::Options::flags(Flags<Tcp::Options> flags) {
     flags_ = flags;
     return *this;
@@ -64,7 +70,7 @@ Endpoint::Endpoint(const Address& addr)
 
 void
 Endpoint::init(const Endpoint::Options& options) {
-    listener.init(options.threads_, options.flags_);
+    listener.init(options.threads_, options.flags_, options.threadsName_);
     ArrayStreamBuf<char>::maxSize = options.maxRequestSize_;
     DynamicStreamBuf::maxSize = options.maxResponseSize_;
 }

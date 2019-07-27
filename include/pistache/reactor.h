@@ -176,9 +176,12 @@ public:
 
 class AsyncContext : public ExecutionContext {
 public:
-    explicit AsyncContext(size_t threads)
+    explicit AsyncContext(size_t threads, const std::string& threadsName = "")
         : threads_(threads)
-    { }
+
+    {
+        threadsName_ = threadsName;
+    }
 
     virtual ~AsyncContext() {}
 
@@ -188,6 +191,7 @@ public:
 
 private:
     size_t threads_;
+    std::string threadsName_;
 };
 
 class Handler : public Prototype<Handler> {

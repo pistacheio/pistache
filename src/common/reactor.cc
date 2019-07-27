@@ -334,11 +334,11 @@ public:
 
     static constexpr uint32_t KeyMarker = 0xBADB0B;
 
-    AsyncImpl(Reactor* reactor, size_t threads)
+    AsyncImpl(Reactor* reactor, size_t threads, const std::string& threadsName)
         : Reactor::Impl(reactor) {
 
         for (size_t i = 0; i < threads; ++i) {
-            std::unique_ptr<Worker> wrk(new Worker(reactor));
+            std::unique_ptr<Worker> wrk(new Worker(reactor, threadsName));
             workers_.push_back(std::move(wrk));
         }
     }
@@ -454,7 +454,8 @@ private:
 
     struct Worker {
 
-        explicit Worker(Reactor* reactor) {
+        explicit Worker(Reactor* reactor, const std::string& threadsName) {
+            threadsName_ = threadsName;
             sync.reset(new SyncImpl(reactor));
         }
 
@@ -465,6 +466,9 @@ private:
 
         void run() {
             thread = std::thread([=]() {
+                if (threadsName_.size() > 0) {    
+                    pthread_setname_np(pthread_self(), threadsName_.substr(0,15).c_str());
+                }
                 sync->run();
             });
         }
@@ -475,6 +479,7 @@ private:
 
         std::thread thread;
         std::unique_ptr<SyncImpl> sync;
+        std::string threadsName_;
     };
 
     std::vector<std::unique_ptr<Worker>> workers_;
@@ -597,7 +602,7 @@ SyncContext::makeImpl(Reactor* reactor) const {
 
 Reactor::Impl*
 AsyncContext::makeImpl(Reactor* reactor) const {
-    return new AsyncImpl(reactor, threads_);
+    return new AsyncImpl(reactor, threads_, threadsName_);
 }
 
 AsyncContext

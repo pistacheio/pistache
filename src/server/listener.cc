@@ -69,6 +69,7 @@ Listener::Listener()
     , poller()
     , options_()
     , workers_(Const::DefaultWorkers)
+    , workersName_()
     , reactor_()
     , transportKey()
     , useSSL_(false)
@@ -82,6 +83,7 @@ Listener::Listener(const Address& address)
     , poller()
     , options_()
     , workers_(Const::DefaultWorkers)
+    , workersName_()
     , reactor_()
     , transportKey()
     , useSSL_(false)
@@ -105,7 +107,9 @@ Listener::~Listener() {
 void
 Listener::init(
     size_t workers,
-    Flags<Options> options, int backlog)
+    Flags<Options> options,
+    const std::string& workersName,
+    int backlog)
 {
     if (workers > hardware_concurrency()) {
         // Log::warning() << "More workers than available cores"
@@ -115,6 +119,7 @@ Listener::init(
     backlog_ = backlog;
     useSSL_ = false;
     workers_ = workers;
+    workersName_ = workersName;
 
 }
 
@@ -194,7 +199,7 @@ Listener::bind(const Address& address) {
 
     auto transport = std::make_shared<Transport>(handler_);
 
-    reactor_.init(Aio::AsyncContext(workers_));
+    reactor_.init(Aio::AsyncContext(workers_, workersName_));
     transportKey = reactor_.addHandler(transport);
 }
 
