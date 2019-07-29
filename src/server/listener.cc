@@ -43,6 +43,11 @@ void setSocketOptions(Fd fd, Flags<Options> options) {
         TRY(::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof (one)));
     }
 
+    if(options.hasFlag(Options::ReusePort)) {
+        int one = 1;
+        TRY(::setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof (one)));
+    }
+
     if (options.hasFlag(Options::Linger)) {
         struct linger opt;
         opt.l_onoff = 1;
