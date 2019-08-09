@@ -106,6 +106,7 @@ public:
     {
         if (!other.isEmpty()) {
             ::new (data()) T(*other.data());
+            none_flag = ValueMarker;
         }
         else {
             none_flag = NoneMarker;
@@ -153,6 +154,7 @@ public:
                 data()->~T();
             }
             ::new (data()) T(*other.data());
+            none_flag = ValueMarker;
         }
         else {
             if (none_flag != NoneMarker) {
@@ -237,33 +239,36 @@ private:
 
     void move_helper(Optional<T> &&other, std::true_type) {
         ::new (data()) T(std::move(*other.data()));
+        none_flag = ValueMarker;
     }
 
     void move_helper(Optional<T> &&other, std::false_type) {
         ::new (data()) T(*other.data());
+        none_flag = ValueMarker;
     }
 
     template<typename U>
     void from_some_helper(types::Some<U> some, std::true_type) {
         ::new (data()) T(std::move(some.val_));
+        none_flag = ValueMarker;
     }
 
     template<typename U>
     void from_some_helper(types::Some<U> some, std::false_type) {
         ::new (data()) T(some.val_);
+        none_flag = ValueMarker;
     }
 
     typedef uint8_t none_flag_t;
     static constexpr none_flag_t NoneMarker = 1;
+    static constexpr none_flag_t ValueMarker = 0;
 
-    union {
-        uint8_t bytes[sizeof(T)];
-        none_flag_t none_flag;
-    };
+    uint8_t bytes[sizeof(T)];
+    none_flag_t none_flag;
 };
 
 #define PistacheCheckSize(Type) \
-    static_assert(sizeof(Optional<Type>) == sizeof(Type), "Size differs")
+    static_assert(sizeof(Optional<Type>) == sizeof(Type) + sizeof(uint8_t), "Size differs")
 
 PistacheCheckSize(uint8_t);
 PistacheCheckSize(uint16_t);
