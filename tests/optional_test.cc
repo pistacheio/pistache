@@ -21,7 +21,7 @@ TEST(optional, copy_constructor) {
     EXPECT_TRUE(copy_constructed.get());
 }
 
-TEST(optional, assignment_operator) {
+TEST(optional, copy_assignment_operator_for_convertible_type) {
     Optional<bool> value;
     EXPECT_TRUE(value.isEmpty());
 
@@ -77,7 +77,7 @@ TEST(optional, copy_constructor_none) {
     EXPECT_TRUE(value.isEmpty());
 }
 
-TEST(optional, assignment_operator_none) {
+TEST(optional, copy_assignment_operator_none) {
     Optional<bool> value(Pistache::None());
     EXPECT_TRUE(value.isEmpty());
 
