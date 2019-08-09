@@ -21,16 +21,6 @@ TEST(optional, copy_constructor) {
     EXPECT_TRUE(copy_constructed.get());
 }
 
-TEST(optional, assignment_operator) {
-    Optional<bool> value;
-    EXPECT_TRUE(value.isEmpty());
-
-    value = Pistache::Some(true);
-    ASSERT_FALSE(value.isEmpty());
-
-    EXPECT_TRUE(value.get());
-}
-
 TEST(optional, copy_assignment_operator) {
     Optional<bool> value(Pistache::Some(true));
     ASSERT_FALSE(value.isEmpty());
@@ -42,6 +32,26 @@ TEST(optional, copy_assignment_operator) {
     ASSERT_FALSE(other.isEmpty());
 
     EXPECT_TRUE(other.get());
+}
+
+TEST(optional, copy_assignment_operator_for_convertible_type) {
+    Optional<bool> value;
+    EXPECT_TRUE(value.isEmpty());
+
+    value = Pistache::Some(true);
+    ASSERT_FALSE(value.isEmpty());
+
+    EXPECT_TRUE(value.get());
+}
+
+TEST(optional, copy_assignment_operator_for_self_assignment) {
+    Optional<bool> value(Pistache::Some(true));
+    ASSERT_FALSE(value.isEmpty());
+    EXPECT_TRUE(value.get());
+
+    value = value;
+    ASSERT_FALSE(value.isEmpty());
+    EXPECT_TRUE(value.get());
 }
 
 TEST(optional, move_constructor) {
@@ -59,7 +69,8 @@ TEST(optional, move_assignment_operator) {
     ASSERT_FALSE(value.isEmpty());
     EXPECT_TRUE(value.get());
 
-    Optional<bool> move_assigned = std::move(value);
+    Optional<bool> move_assigned;
+    move_assigned = std::move(value);
     ASSERT_FALSE(move_assigned.isEmpty());
     EXPECT_TRUE(move_assigned.get());
 }
@@ -77,7 +88,7 @@ TEST(optional, copy_constructor_none) {
     EXPECT_TRUE(value.isEmpty());
 }
 
-TEST(optional, assignment_operator_none) {
+TEST(optional, copy_assignment_operator_none) {
     Optional<bool> value(Pistache::None());
     EXPECT_TRUE(value.isEmpty());
 
