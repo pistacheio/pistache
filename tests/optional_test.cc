@@ -69,7 +69,8 @@ TEST(optional, move_assignment_operator) {
     ASSERT_FALSE(value.isEmpty());
     EXPECT_TRUE(value.get());
 
-    Optional<bool> move_assigned = std::move(value);
+    Optional<bool> move_assigned;
+    move_assigned = std::move(value);
     ASSERT_FALSE(move_assigned.isEmpty());
     EXPECT_TRUE(move_assigned.get());
 }
