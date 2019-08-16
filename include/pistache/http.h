@@ -178,6 +178,12 @@ public:
     std::shared_ptr<Tcp::Peer> peer() const;
 #endif
 
+    const Address& address() const;
+
+    void copyAddress(const Address& address) {
+        address_ = address;
+    }
+
 private:
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
     void associatePeer(const std::shared_ptr<Tcp::Peer>& peer) {
@@ -188,6 +194,7 @@ private:
     }
 #endif
 
+
     Method method_;
     std::string resource_;
     Uri::Query query_;
@@ -195,6 +202,7 @@ private:
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
     std::weak_ptr<Tcp::Peer> peer_;
 #endif
+    Address address_;
 };
 
 class Handler;

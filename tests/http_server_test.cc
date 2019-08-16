@@ -78,6 +78,20 @@ private:
     std::string fileName_;
 };
 
+struct AddressEchoHandler : public Http::Handler
+{
+    HTTP_PROTOTYPE(AddressEchoHandler)
+
+    AddressEchoHandler() { }
+
+    void onRequest(const Http::Request& request, Http::ResponseWriter writer) override
+    {
+        std::string requestAddress = request.address().host();
+        writer.send(Http::Code::Ok, requestAddress);
+        std::cout << "[server] Sent: " << requestAddress << std::endl;
+    }
+};
+
 int clientLogicFunc(int response_size,
                     const std::string& server_page,
                     int timeout_seconds,
@@ -309,3 +323,43 @@ TEST(http_server_test, server_with_static_file)
 
     ASSERT_EQ(data, resultData);
 }
+
+TEST(http_server_test, server_request_copies_address)
+{
+    const Pistache::Address address("localhost", Pistache::Port(0));
+
+    Http::Endpoint server(address);
+    auto flags = Tcp::Options::ReuseAddr;
+    auto server_opts = Http::Endpoint::options().flags(flags);
+    server.init(server_opts);
+    server.setHandler(Http::make_handler<AddressEchoHandler>());
+    server.serveThreaded();
+
+    const std::string server_address = "localhost:" + server.getPort().toString();
+    std::cout << "Server address: " << server_address << "\n";
+
+    Http::Client client;
+    client.init();
+    auto rb = client.get(server_address);
+    auto response = rb.send();
+    std::string resultData;
+    response.then([&resultData](Http::Response resp)
+                  {
+                      std::cout << "Response code is " << resp.code() << std::endl;
+                      if (resp.code() == Http::Code::Ok)
+                      {
+                          resultData = resp.body();
+                      }
+                  },
+                  Async::Throw);
+
+    const int WAIT_TIME = 2;
+    Async::Barrier<Http::Response> barrier(response);
+    barrier.wait_for(std::chrono::seconds(WAIT_TIME));
+
+    client.shutdown();
+    server.shutdown();
+
+    ASSERT_EQ("127.0.0.1", resultData);
+}
+
