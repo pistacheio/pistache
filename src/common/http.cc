@@ -564,6 +564,11 @@ Request::cookies() const {
     return cookies_;
 }
 
+const Address&
+Request::address() const {
+    return address_;
+}
+
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
 std::shared_ptr<Tcp::Peer>
 Request::peer() const {
@@ -792,6 +797,8 @@ Handler::onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer
 #endif
 
             auto request = parser.request;
+            request.copyAddress(peer->address());
+
             auto connection = request.headers().tryGet<Header::Connection>();
 
             if (connection) {
