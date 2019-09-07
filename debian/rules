@@ -54,8 +54,8 @@ override_dh_auto_configure:
 	    $(SOURCE_DIR)
 
 # Perform unit testing, but only if not disabled...
-ifeq (,$(findstring nocheck,$(DEB_BUILD_OPTIONS)))
 override_dh_auto_test:
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 	@echo "# Performing unit tests..."
 	dh_auto_test -- test test_memcheck || { find . -iname "LastTest.log" -exec cat {} \; ; exit 99; }
 endif
