@@ -28,7 +28,7 @@ Currently Pistache is built and tested on a number of [architectures](https://wi
 
 - amd64
 - arm64
-- armhf (build fails at this moment)
+- armhf
 - i386
 - ppc64el
 - s390x
