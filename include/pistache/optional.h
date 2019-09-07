@@ -263,7 +263,7 @@ private:
     static constexpr none_flag_t NoneMarker = 1;
     static constexpr none_flag_t ValueMarker = 0;
 
-    uint8_t bytes[sizeof(T)] alignas(T);
+    alignas(T) uint8_t bytes[sizeof(T)];
     none_flag_t none_flag;
 };
 
