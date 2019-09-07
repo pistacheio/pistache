@@ -263,12 +263,12 @@ private:
     static constexpr none_flag_t NoneMarker = 1;
     static constexpr none_flag_t ValueMarker = 0;
 
-    uint8_t bytes[sizeof(T)];
+    uint8_t bytes[sizeof(T)] alignas(T);
     none_flag_t none_flag;
 };
 
 #define PistacheCheckSize(Type) \
-    static_assert(sizeof(Optional<Type>) == sizeof(Type) + sizeof(uint8_t), "Size differs")
+    static_assert(sizeof(Optional<Type>) == sizeof(Type) + alignof(Type), "Size differs")
 
 PistacheCheckSize(uint8_t);
 PistacheCheckSize(uint16_t);
