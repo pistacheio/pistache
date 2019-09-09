@@ -56,8 +56,13 @@ override_dh_auto_configure:
 # Perform unit testing, but only if not disabled...
 ifeq (,$(findstring nocheck,$(DEB_BUILD_OPTIONS)))
 override_dh_auto_test:
-	@echo "# Performing unit tests..."
+ifeq "$(DEB_BUILD_ARCH)" "armhf"
+	@echo "# Performing unit tests, but skipping memcheck because valgrind broken on this platform..."
+	dh_auto_test -- test || { find . -iname "LastTest.log" -exec cat {} \; ; exit 99; }
+else
+	@echo "# Performing all unit tests..."
 	dh_auto_test -- test test_memcheck || { find . -iname "LastTest.log" -exec cat {} \; ; exit 99; }
+endif
 endif
 
 # Prepare an upstream vanilla distribution tarball as per DPM § 4.9...

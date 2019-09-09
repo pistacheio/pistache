@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <array>
 #include <cstdlib>
 #include <cstring>
 #include <utility>
@@ -230,11 +231,11 @@ public:
 
 private:
     T *constData() const {
-        return const_cast<T *const>(reinterpret_cast<const T *const>(bytes));
+        return const_cast<T *const>(reinterpret_cast<const T *const>(bytes.data()));
     }
 
     T *data() const {
-        return const_cast<T *>(reinterpret_cast<const T *>(bytes));
+        return const_cast<T *>(reinterpret_cast<const T *>(bytes.data()));
     }
 
     void move_helper(Optional<T> &&other, std::true_type) {
@@ -263,12 +264,12 @@ private:
     static constexpr none_flag_t NoneMarker = 1;
     static constexpr none_flag_t ValueMarker = 0;
 
-    uint8_t bytes[sizeof(T)];
+    alignas(T) std::array<uint8_t, sizeof(T)> bytes;
     none_flag_t none_flag;
 };
 
 #define PistacheCheckSize(Type) \
-    static_assert(sizeof(Optional<Type>) == sizeof(Type) + sizeof(uint8_t), "Size differs")
+    static_assert(sizeof(Optional<Type>) == sizeof(Type) + alignof(Type), "Size differs")
 
 PistacheCheckSize(uint8_t);
 PistacheCheckSize(uint16_t);
