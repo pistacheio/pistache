@@ -1,6 +1,6 @@
-pistache (0.0.001-git20190907-kip1~disco) disco; urgency=medium
+pistache (0.0.001-git20190920-kip1~disco) disco; urgency=medium
 
-  * Built from latest Git head with fixes for armhf.
+  * Added DEP-8 compliant test for autopkgtest.
 
- -- Kip Warner <kip@thevertigo.com>  Thu, 06 Sep 2019 09:33:00 -0700
+ -- Kip Warner <kip@thevertigo.com>  Fri, 20 Sep 2019 15:23:06 -0700
 

@@ -1,0 +1,9 @@
+#
+#   Pistache.
+#   Copyright (C) 2015-2019 Mathieu Stefani. Released under the terms of the
+#   Apache License 2.0.
+#
+
+Tests: test-compilation-and-link.sh
+Depends: libpistache-dev, build-essential
+

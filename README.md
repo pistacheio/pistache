@@ -19,7 +19,7 @@ For those that prefer IRC over Slack, the rag-tag crew of maintainers idle in `#
 # Precompiled Packages
 
 ## Debian and Ubuntu
-We have submitted both a [Request for Packaging](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=929593) and a [Request for Sponsorship](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=927839) downstream to Debian. Once Pistache has an official Debian package maintainer intimately familiar with the [Debian Policy Manual](https://www.debian.org/doc/debian-policy/), we can expect to eventually see Pistache available in Debian and all Debian based distributions (e.g. Ubuntu and many others).
+We have submitted both a [Request for Packaging](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=929593) downstream to Debian. Once Pistache has an official Debian package maintainer intimately familiar with the [Debian Policy Manual](https://www.debian.org/doc/debian-policy/), we can expect to eventually see Pistache available in Debian and all derivatives (e.g. Ubuntu and many others).
 
 But until then currently Pistache has partially compliant upstream Debianization. Our long term goal is to have our source package properly Debianized downstream by a Debian Policy Manual SME. In the mean time consider using our PPAs to avoid having to build from source.
 
@@ -34,7 +34,7 @@ Currently Pistache is built and tested on a number of [architectures](https://wi
 - s390x
 
 ### Ubuntu PPA (Stable)
-If you would like to use [stable](https://launchpad.net/%7Ekip/+archive/ubuntu/pistache) packages, run the following:
+Currently there is no stable release of Pistache published to the [stable](https://launchpad.net/%7Ekip/+archive/ubuntu/pistache) PPA. However, when that time comes, run the following to install a stable package:
 
 ```console
 $ sudo add-apt-repository ppa:kip/pistache

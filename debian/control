@@ -27,7 +27,8 @@ Pre-Depends: ${misc:Pre-Depends}
 Depends:
  ${misc:Depends},
  pkg-config (>= 0.28),
- libpistache0 (= ${binary:Version})
+ libpistache0 (= ${binary:Version}),
+ libssl-dev
 Description: elegant C++ REST framework
  Pistache is a C++ REST framework originally written by Mathieu Stefani at
  Datacratic, since maintained by other volunteers. It is written in pure C++11
