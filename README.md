@@ -19,7 +19,7 @@ For those that prefer IRC over Slack, the rag-tag crew of maintainers idle in `#
 # Precompiled Packages
 
 ## Debian and Ubuntu
-We have submitted both a [Request for Packaging](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=929593) downstream to Debian. Once Pistache has an official Debian package maintainer intimately familiar with the [Debian Policy Manual](https://www.debian.org/doc/debian-policy/), we can expect to eventually see Pistache available in Debian and all derivatives (e.g. Ubuntu and many others).
+We have submitted a [Request for Packaging](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=929593) downstream to Debian. Once Pistache has an official Debian package maintainer intimately familiar with the [Debian Policy Manual](https://www.debian.org/doc/debian-policy/), we can expect to eventually see Pistache available in Debian and all derivatives (e.g. Ubuntu and many others).
 
 But until then currently Pistache has partially compliant upstream Debianization. Our long term goal is to have our source package properly Debianized downstream by a Debian Policy Manual SME. In the mean time consider using our PPAs to avoid having to build from source.
 
