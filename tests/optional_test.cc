@@ -75,6 +75,14 @@ TEST(optional, move_assignment_operator) {
     EXPECT_TRUE(move_assigned.get());
 }
 
+TEST(optional, integer)
+{
+    Optional<int32_t> value(Pistache::Some(1));
+    ASSERT_FALSE(value.isEmpty());
+
+    EXPECT_TRUE(value.get());
+}
+
 TEST(optional, constructor_none) {
     Optional<bool> value(Pistache::None());
     EXPECT_TRUE(value.isEmpty());
@@ -110,4 +118,10 @@ TEST(optional, move_assignment_operator_none) {
 
     Optional<bool> move_assigned(std::move(value));
     EXPECT_TRUE(move_assigned.isEmpty());
+}
+
+TEST(optional, integer_none)
+{
+    Optional<int32_t> value(Pistache::None());
+    EXPECT_TRUE(value.isEmpty());
 }
