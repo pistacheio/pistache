@@ -34,8 +34,8 @@ RawBuffer::RawBuffer(const char* data, size_t length, bool isDetached)
     , length_(length)
     , isDetached_(isDetached)
 {
-    data_.resize(length_ + 1);
-    data_.assign(data, length_ + 1);
+    // input may come not from a ZTS - copy only length_ characters.
+    data_.assign(data, length_);
 }
 
 RawBuffer RawBuffer::detach(size_t fromIndex)

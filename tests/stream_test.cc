@@ -29,7 +29,7 @@ TEST(stream, test_buffer)
     RawBuffer buffer4 = buffer3.detach(0);
     ASSERT_EQ(buffer4.size(), 0u);
     ASSERT_EQ(buffer4.isDetached(), false);
-    
+
     ASSERT_THROW(buffer1.detach(2 * len);, std::range_error);
 }
 
@@ -54,4 +54,24 @@ TEST(stream, test_file_buffer)
     ASSERT_EQ(fileBuffer.size(), dataToWrite.size());
 
     std::remove(fileName);
+}
+
+TEST(stream, test_dyn_buffer)
+{
+    DynamicStreamBuf buf(128);
+
+    {
+        std::ostream os(&buf);
+
+        for (unsigned i = 0; i < 128; ++i) {
+            os << "A";
+        }
+    }
+
+    auto rawbuf = buf.buffer();
+
+    ASSERT_EQ(rawbuf.size(), 128u);
+    ASSERT_EQ(rawbuf.isDetached(), false);
+    ASSERT_EQ(rawbuf.data().size(), 128u);
+    ASSERT_EQ(strlen(rawbuf.data().c_str()), 128u);
 }
