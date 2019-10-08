@@ -27,6 +27,7 @@ RegisterHeader(ContentEncoding);
 RegisterHeader(TransferEncoding);
 RegisterHeader(ContentLength);
 RegisterHeader(ContentType);
+RegisterHeader(Authorization);
 RegisterHeader(Date);
 RegisterHeader(Expect);
 RegisterHeader(Host);
