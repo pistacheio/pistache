@@ -393,6 +393,27 @@ private:
     uint64_t value_;
 };
 
+class Authorization : public Header {
+public:
+    NAME("Authorization");
+
+    Authorization()
+            : value_("NONE")
+    { }
+
+    explicit Authorization(std::string val)
+            : value_(val)
+    { }
+
+    void parse(const std::string& data) override;
+    void write(std::ostream& os) const override;
+
+    std::string value() const { return value_; }
+
+private:
+    std::string value_;
+};
+
 class ContentType : public Header {
 public:
     NAME("Content-Type")
