@@ -227,6 +227,7 @@ public:
     void options(const std::string& resource, Route::Handler handler);
     void addRoute(Http::Method method, const std::string& resource, Route::Handler handler);
     void removeRoute(Http::Method method, const std::string& resource);
+    void head(const std::string& resource, Route::Handler handler);
 
     void addCustomHandler(Route::Handler handler);
 
@@ -313,6 +314,7 @@ namespace Routes {
     void Delete(Router& router, const std::string& resource, Route::Handler handler);
     void Options(Router& router, const std::string& resource, Route::Handler handler);
     void Remove(Router& router, Http::Method method, const std::string& resource);
+    void Head(Router& router, const std::string& resource, Route::Handler handler);
 
     void NotFound(Router& router, Route::Handler handler);
 
