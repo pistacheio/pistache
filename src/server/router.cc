@@ -400,6 +400,11 @@ Router::removeRoute(Http::Method method, const std::string& resource) {
 }
 
 void
+Router::head(const std::string& resource, Route::Handler handler) {
+    addRoute(Http::Method::Head, resource, std::move(handler));
+}
+
+void
 Router::addCustomHandler(Route::Handler handler) {
     customHandlers.push_back(std::move(handler));
 }
@@ -515,6 +520,10 @@ void Remove(Router& router, Http::Method method, const std::string& resource) {
 
 void NotFound(Router& router, Route::Handler handler) {
     router.addNotFoundHandler(std::move(handler));
+}
+
+void Head(Router& router, const std::string& resource, Route::Handler handler) {
+    router.head(resource, std::move(handler));
 }
 
 } // namespace Routes
