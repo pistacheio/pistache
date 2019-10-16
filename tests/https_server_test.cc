@@ -1,3 +1,5 @@
+#include <array>
+
 #include <pistache/http.h>
 #include <pistache/client.h>
 #include <pistache/endpoint.h>
@@ -97,12 +99,19 @@ TEST(http_client_test, basic_tls_request_with_servefile) {
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
 
+    std::array<char, CURL_ERROR_SIZE> errorstring;
+    curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorstring.data());
+    //curl_easy_setopt(curl, CURLOPT_VERBOSE, true);
+
     /* Skip hostname check */
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 
     res = curl_easy_perform(curl);
+
+    if(res != CURLE_OK)
+        std::cerr << errorstring.data() << std::endl;
+
     ASSERT_EQ(res, CURLE_OK);
-    std::cout << buffer << std::endl;
     ASSERT_EQ(buffer.rfind("-----BEGIN CERTIFICATE-----", 0), 0);
 
     curl_easy_cleanup(curl);
