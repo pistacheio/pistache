@@ -75,53 +75,8 @@ TEST(http_client_test, basic_tls_request) {
     server.shutdown();
 }
 
-TEST(http_client_test, basic_tls_request_with_servefile) {
-    Http::Endpoint server(ADDRESS "2");
-    auto           flags = Tcp::Options::ReuseAddr;
-    auto           server_opts = Http::Endpoint::options().flags(flags);
-
-    server.init(server_opts);
-    server.setHandler(Http::make_handler<ServeFileHandler>());
-    server.useSSL("./certs/server.crt", "./certs/server.key");
-    server.serveThreaded();
-
-    CURL        *curl;
-    CURLcode    res;
-    std::string buffer;
-
-    curl_global_init(CURL_GLOBAL_DEFAULT);
-    curl = curl_easy_init();
-    ASSERT_NE(curl, nullptr);
-
-    curl_easy_setopt(curl, CURLOPT_URL, "https://" ADDRESS "2");
-    curl_easy_setopt(curl, CURLOPT_CAINFO, "./certs/rootCA.crt");
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &write_cb);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
-
-    std::array<char, CURL_ERROR_SIZE> errorstring;
-    curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorstring.data());
-    //curl_easy_setopt(curl, CURLOPT_VERBOSE, true);
-
-    /* Skip hostname check */
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
-
-    res = curl_easy_perform(curl);
-
-    if(res != CURLE_OK)
-        std::cerr << errorstring.data() << std::endl;
-
-    ASSERT_EQ(res, CURLE_OK);
-    ASSERT_EQ(buffer.rfind("-----BEGIN CERTIFICATE-----", 0), 0);
-
-    curl_easy_cleanup(curl);
-    curl_global_cleanup();
-
-    server.shutdown();
-}
-
 TEST(http_client_test, basic_tls_request_with_auth) {
-    Http::Endpoint server(ADDRESS "3");
+    Http::Endpoint server(ADDRESS "2");
     auto           flags = Tcp::Options::ReuseAddr;
     auto           server_opts = Http::Endpoint::options().flags(flags);
 
@@ -139,7 +94,7 @@ TEST(http_client_test, basic_tls_request_with_auth) {
     curl = curl_easy_init();
     ASSERT_NE(curl, nullptr);
 
-    curl_easy_setopt(curl, CURLOPT_URL, "https://" ADDRESS "3");
+    curl_easy_setopt(curl, CURLOPT_URL, "https://" ADDRESS "2");
     curl_easy_setopt(curl, CURLOPT_SSLCERT, "./certs/client.crt");
     curl_easy_setopt(curl, CURLOPT_SSLKEY, "./certs/client.key");
     curl_easy_setopt(curl, CURLOPT_CAINFO, "./certs/rootCA.crt");
@@ -162,7 +117,7 @@ TEST(http_client_test, basic_tls_request_with_auth) {
 }
 
 TEST(http_client_test, basic_tls_request_with_auth_no_client_cert) {
-    Http::Endpoint server(ADDRESS "4");
+    Http::Endpoint server(ADDRESS "3");
     auto           flags = Tcp::Options::ReuseAddr;
     auto           server_opts = Http::Endpoint::options().flags(flags);
 
@@ -180,7 +135,7 @@ TEST(http_client_test, basic_tls_request_with_auth_no_client_cert) {
     curl = curl_easy_init();
     ASSERT_NE(curl, nullptr);
 
-    curl_easy_setopt(curl, CURLOPT_URL, "https://" ADDRESS "4");
+    curl_easy_setopt(curl, CURLOPT_URL, "https://" ADDRESS "3");
     curl_easy_setopt(curl, CURLOPT_CAINFO, "./certs/rootCA.crt");
 
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1);
@@ -200,7 +155,7 @@ TEST(http_client_test, basic_tls_request_with_auth_no_client_cert) {
 }
 
 TEST(http_client_test, basic_tls_request_with_auth_client_cert_not_signed) {
-    Http::Endpoint server(ADDRESS "5");
+    Http::Endpoint server(ADDRESS "4");
     auto           flags = Tcp::Options::ReuseAddr;
     auto           server_opts = Http::Endpoint::options().flags(flags);
 
@@ -218,7 +173,7 @@ TEST(http_client_test, basic_tls_request_with_auth_client_cert_not_signed) {
     curl = curl_easy_init();
     ASSERT_NE(curl, nullptr);
 
-    curl_easy_setopt(curl, CURLOPT_URL, "https://" ADDRESS "5");
+    curl_easy_setopt(curl, CURLOPT_URL, "https://" ADDRESS "4");
     curl_easy_setopt(curl, CURLOPT_SSLCERT, "./certs/client_not_signed.crt");
     curl_easy_setopt(curl, CURLOPT_SSLKEY, "./certs/client_not_signed.key");
     curl_easy_setopt(curl, CURLOPT_CAINFO, "./certs/rootCA.crt");
@@ -251,7 +206,7 @@ static int verify_callback(int verify, void *ctx)
 
 
 TEST(http_client_test, basic_tls_request_with_auth_with_cb) {
-    Http::Endpoint server(ADDRESS "6");
+    Http::Endpoint server(ADDRESS "5");
     auto           flags = Tcp::Options::ReuseAddr;
     auto           server_opts = Http::Endpoint::options().flags(flags);
 
@@ -269,7 +224,7 @@ TEST(http_client_test, basic_tls_request_with_auth_with_cb) {
     curl = curl_easy_init();
     ASSERT_NE(curl, nullptr);
 
-    curl_easy_setopt(curl, CURLOPT_URL, "https://" ADDRESS "6");
+    curl_easy_setopt(curl, CURLOPT_URL, "https://" ADDRESS "5");
     curl_easy_setopt(curl, CURLOPT_SSLCERT, "./certs/client.crt");
     curl_easy_setopt(curl, CURLOPT_SSLKEY, "./certs/client.key");
     curl_easy_setopt(curl, CURLOPT_CAINFO, "./certs/rootCA.crt");
@@ -289,6 +244,51 @@ TEST(http_client_test, basic_tls_request_with_auth_with_cb) {
     curl_easy_cleanup(curl);
     curl_global_cleanup();
     callback_called = false;
+
+    server.shutdown();
+}
+
+TEST(http_client_test, basic_tls_request_with_servefile) {
+    Http::Endpoint server(ADDRESS "6");
+    auto           flags = Tcp::Options::ReuseAddr;
+    auto           server_opts = Http::Endpoint::options().flags(flags);
+
+    server.init(server_opts);
+    server.setHandler(Http::make_handler<ServeFileHandler>());
+    server.useSSL("./certs/server.crt", "./certs/server.key");
+    server.serveThreaded();
+
+    CURL        *curl;
+    CURLcode    res;
+    std::string buffer;
+
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    curl = curl_easy_init();
+    ASSERT_NE(curl, nullptr);
+
+    curl_easy_setopt(curl, CURLOPT_URL, "https://" ADDRESS "6");
+    curl_easy_setopt(curl, CURLOPT_CAINFO, "./certs/rootCA.crt");
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &write_cb);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
+
+    std::array<char, CURL_ERROR_SIZE> errorstring;
+    curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorstring.data());
+    //curl_easy_setopt(curl, CURLOPT_VERBOSE, true);
+
+    /* Skip hostname check */
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+
+    res = curl_easy_perform(curl);
+
+    if(res != CURLE_OK)
+        std::cerr << errorstring.data() << std::endl;
+
+    ASSERT_EQ(res, CURLE_OK);
+    ASSERT_EQ(buffer.rfind("-----BEGIN CERTIFICATE-----", 0), 0);
+
+    curl_easy_cleanup(curl);
+    curl_global_cleanup();
 
     server.shutdown();
 }
