@@ -7,6 +7,8 @@
 #include <pistache/peer.h>
 #include <unistd.h>
 
+#ifdef PISTACHE_USE_SSL
+
 ssize_t SSL_sendfile(SSL *out, int in, off_t *offset, size_t count)
 {
     unsigned char       buffer[4096] = { 0 };
@@ -33,3 +35,5 @@ ssize_t SSL_sendfile(SSL *out, int in, off_t *offset, size_t count)
 
     return written;
 }
+
+#endif /* PISTACHE_USE_SSL */
