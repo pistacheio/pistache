@@ -713,3 +713,29 @@ TEST(headers_test, raw_headers_are_case_insensitive)
     ASSERT_FALSE(request.headers().tryGetRaw("Custom-Header").isEmpty());
     ASSERT_FALSE(request.headers().tryGetRaw("custom-header").isEmpty());
 }
+
+
+TEST(headers_test, cookie_headers_are_case_insensitive)
+{
+    {
+        std::string line = "cookie: x=y\r\n";
+        Pistache::RawStreamBuf<> buf(&line[0], line.size());
+        Pistache::StreamCursor cursor(&buf);
+        Pistache::Http::Request request;
+        Pistache::Http::Private::HeadersStep step(&request);
+        step.apply(cursor);
+
+        ASSERT_TRUE(request.cookies().has("x"));
+    }
+
+    {
+        std::string line = "set-cookie: x=y\r\n";
+        Pistache::RawStreamBuf<> buf(&line[0], line.size());
+        Pistache::StreamCursor cursor(&buf);
+        Pistache::Http::Request request;
+        Pistache::Http::Private::HeadersStep step(&request);
+        step.apply(cursor);
+
+        ASSERT_TRUE(request.cookies().has("x"));
+    }
+}
