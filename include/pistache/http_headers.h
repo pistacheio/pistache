@@ -30,8 +30,11 @@ struct LowercaseHash {
 
 struct LowercaseEqual {
     bool operator()(const std::string& left, const std::string& right) const {
-        return toLowercase(left) == toLowercase(right);
-    }
+        return std::equal(left.begin(), left.end(), right.begin(), right.end(),
+            [] (const char& a, const char& b) {
+                return std::tolower(a) == std::tolower(b);
+            });
+    };
 };
 
 class Collection {
