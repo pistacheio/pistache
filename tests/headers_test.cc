@@ -700,3 +700,16 @@ TEST(headers_test, registered_header_in_raw_list)
     ASSERT_TRUE(foundRawHeader->second.value() == "some data");
 }
 
+TEST(headers_test, raw_headers_are_case_insensitive)
+{
+    std::string line = "Custom-Header: x\r\n";
+
+    Pistache::RawStreamBuf<> buf(&line[0], line.size());
+    Pistache::StreamCursor cursor(&buf);
+    Pistache::Http::Request request;
+    Pistache::Http::Private::HeadersStep step(&request);
+    step.apply(cursor);
+
+    ASSERT_FALSE(request.headers().tryGetRaw("Custom-Header").isEmpty());
+    ASSERT_FALSE(request.headers().tryGetRaw("custom-header").isEmpty());
+}

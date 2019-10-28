@@ -109,7 +109,7 @@ public:
 
     std::vector<std::shared_ptr<Header>> list() const;
 
-    const std::unordered_map<std::string, Raw>& rawList() const {
+    const std::unordered_map<std::string,Raw,LowercaseHash,LowercaseEqual>& rawList() const {
         return rawHeaders;
     }
 
@@ -126,7 +126,12 @@ private:
         LowercaseHash,
         LowercaseEqual
     > headers;
-    std::unordered_map<std::string, Raw> rawHeaders;
+    std::unordered_map<
+        std::string,
+        Raw,
+        LowercaseHash,
+        LowercaseEqual
+    > rawHeaders;
 };
 
 class Registry {
