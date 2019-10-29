@@ -233,7 +233,7 @@ AddressParser::AddressParser(const std::string& data)
         family_ = AF_INET;
     }
     
-    if (end_pos != std::string::npos)
+    if (end_pos != std::string::npos && hasColon_)
     {
         port_ = data.substr(end_pos + 1);
         if (port_.empty())
