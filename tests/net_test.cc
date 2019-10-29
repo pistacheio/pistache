@@ -136,9 +136,14 @@ TEST(net_test, address_creation)
     ASSERT_EQ(address21.port(), 8080);
 
     Address address22("[2001:0DB8:AABB:CCDD:EEFF:0011:2233:4455]");
-    ASSERT_EQ(address11.host(), "2001:db8:aabb:ccdd:eeff:11:2233:4455");
-    ASSERT_EQ(address11.family(), AF_INET6);
-    ASSERT_EQ(address11.port(), 8080);
+    ASSERT_EQ(address22.host(), "2001:db8:aabb:ccdd:eeff:11:2233:4455");
+    ASSERT_EQ(address22.family(), AF_INET6);
+    ASSERT_EQ(address22.port(), 80);
+
+    Address address23("[::]");
+    ASSERT_EQ(address23.host(), "::");
+    ASSERT_EQ(address23.family(), AF_INET6);
+    ASSERT_EQ(address23.port(), 80);
 
 }
 
