@@ -700,3 +700,55 @@ TEST(headers_test, registered_header_in_raw_list)
     ASSERT_TRUE(foundRawHeader->second.value() == "some data");
 }
 
+TEST(headers_test, raw_headers_are_case_insensitive)
+{
+    // no matter the casing of the input header,
+    std::vector<std::string> test_cases = {
+        "Custom-Header: x\r\n",
+        "CUSTOM-HEADER: x\r\n",
+        "custom-header: x\r\n",
+        "CuStOm-HeAdEr: x\r\n"
+    };
+
+    for(auto&& test : test_cases) {
+        Pistache::RawStreamBuf<> buf(&test[0], test.size());
+        Pistache::StreamCursor cursor(&buf);
+        Pistache::Http::Request request;
+        Pistache::Http::Private::HeadersStep step(&request);
+        step.apply(cursor);
+
+        // or the header you try and get, it should work:
+        ASSERT_FALSE(request.headers().tryGetRaw("Custom-Header").isEmpty());
+        ASSERT_FALSE(request.headers().tryGetRaw("CUSTOM-HEADER").isEmpty());
+        ASSERT_FALSE(request.headers().tryGetRaw("custom-header").isEmpty());
+        ASSERT_FALSE(request.headers().tryGetRaw("CuStOm-HeAdEr").isEmpty());
+    }
+}
+
+
+TEST(headers_test, cookie_headers_are_case_insensitive)
+{
+    // no matter the casing of the cookie header(s),
+    std::vector<std::string> test_cases = {
+        "Cookie: x=y\r\n",
+        "COOKIE: x=y\r\n",
+        "cookie: x=y\r\n",
+        "CoOkIe: x=y\r\n",
+        "Set-Cookie: x=y\r\n",
+        "SET-COOKIE: x=y\r\n",
+        "set-cookie: x=y\r\n",
+        "SeT-CoOkIe: x=y\r\n",
+    };
+
+    for(auto&& test : test_cases) {
+        Pistache::RawStreamBuf<> buf(&test[0], test.size());
+        Pistache::StreamCursor cursor(&buf);
+        Pistache::Http::Request request;
+        Pistache::Http::Private::HeadersStep step(&request);
+        step.apply(cursor);
+
+        // the cookies should still exist.
+        ASSERT_TRUE(request.cookies().has("x"));
+        ASSERT_TRUE(request.cookies().get("x").value == "y");
+    }
+}

@@ -290,11 +290,11 @@ namespace Private {
                 if (!cursor.advance(1)) return State::Again;
             }
 
-            if (name == "Cookie") {
+            if (Header::LowercaseEqualStatic(name, "cookie")) {
                 message->cookies_.removeAllCookies(); // removing existing cookies before re-adding them.
                 message->cookies_.addFromRaw(cursor.offset(start), cursor.diff(start));
             }
-            else if (name == "Set-Cookie") {
+            else if (Header::LowercaseEqualStatic(name, "set-cookie")) {
                 message->cookies_.add(Cookie::fromRaw(cursor.offset(start), cursor.diff(start)));
             }
 
