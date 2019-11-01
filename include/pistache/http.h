@@ -14,7 +14,6 @@
 #include <algorithm>
 #include <memory>
 #include <string>
-#include <cstddef>
 
 #include <sys/timerfd.h>
 
@@ -501,7 +500,7 @@ public:
         code_ = Http::Code::Method_Not_Allowed;
         headers_.add(std::make_shared<Http::Header::Allow>(supportedMethods));
         std::string body = codeString(Pistache::Http::Code::Method_Not_Allowed);
-        return putOnWire(reinterpret_cast<const std::byte *>(body.c_str()), body.size());
+        return putOnWire(body.c_str(), body.size());
     }
 
     Async::Promise<ssize_t> send(Code code) {
@@ -524,7 +523,7 @@ public:
                 headers_.add(std::make_shared<Header::ContentType>(mime));
         }
 
-        return putOnWire(reinterpret_cast<const std::byte *>(body.c_str()), body.size());
+        return putOnWire(body.c_str(), body.size());
     }
 
     template<size_t N>
@@ -534,15 +533,12 @@ public:
             const Mime::MediaType& mime = Mime::MediaType())
     {
         return send(
-            code,
-            reinterpret_cast<const std::byte *>(arr),
-            N - 1,
-            std::forward<const Mime::MediaType&>(mime));
+            code, arr, N - 1, std::forward<const Mime::MediaType&>(mime));
     }
 
     Async::Promise<ssize_t> send(
             Code code,
-            const std::byte *data,
+            const char* data,
             const size_t size,
             const Mime::MediaType& mime = Mime::MediaType())
     {
@@ -624,7 +620,7 @@ private:
         timeout_.associatePeer(peer_);
     }
 
-    Async::Promise<ssize_t> putOnWire(const std::byte* data, size_t len);
+    Async::Promise<ssize_t> putOnWire(const char* data, size_t len);
 
     std::weak_ptr<Tcp::Peer> peer_;
     DynamicStreamBuf buf_;

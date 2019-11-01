@@ -16,7 +16,6 @@
 #include <ctime>
 #include <iomanip>
 #include <unordered_map>
-#include <cstddef>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -640,7 +639,7 @@ ResponseStream::ends() {
 }
 
 Async::Promise<ssize_t>
-ResponseWriter::putOnWire(const std::byte* data, size_t len)
+ResponseWriter::putOnWire(const char* data, size_t len)
 {
     try {
         std::ostream os(&buf_);
@@ -667,7 +666,7 @@ ResponseWriter::putOnWire(const std::byte* data, size_t len)
         OUT(os << crlf);
 
         if (len > 0) {
-            OUT(os.write(reinterpret_cast<const char *>(data), len));
+            OUT(os.write(data, len));
         }
 
         auto buffer = buf_.buffer();
