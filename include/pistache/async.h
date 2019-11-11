@@ -570,15 +570,18 @@ namespace Async {
                 template<typename P>
                 void finishResolve(P& promise) {
                     auto chainer = makeChainer(promise);
-                    promise.then(std::move(chainer), [=](std::exception_ptr exc) {
-                        auto core = this->chain_;
-                        core->exc = std::move(exc);
-                        core->state = State::Rejected;
+                    std::weak_ptr<Core> weakPtr = this->chain_;
+                    promise.then(std::move(chainer), [weakPtr](std::exception_ptr exc) {
+                        if (auto core = weakPtr.lock()) {
+                            core->exc = std::move(exc);
+                            core->state = State::Rejected;
 
-                        for (const auto& req: core->requests) {
-                            req->reject(core);
+                            for (const auto& req: core->requests) {
+                                req->reject(core);
+                            }
                         }
                     });
+
                 }
 
                 Resolve resolve_;
