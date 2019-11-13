@@ -1,6 +1,6 @@
 /* mime.h
    Mathieu Stefani, 29 August 2015
-   
+
    Type safe representation of a MIME Type (RFC 1590)
 */
 
@@ -37,10 +37,12 @@ namespace Mime {
     SUB_TYPE(Javascript, "javascript") \
     SUB_TYPE(Css       , "css")        \
     \
-    SUB_TYPE(OctetStream,    "octet-stream") \
-    SUB_TYPE(Json          , "json")                  \
-    SUB_TYPE(FormUrlEncoded, "x-www-form-urlencoded") \
-    SUB_TYPE(FormData,       "form-data")             \
+    SUB_TYPE(OctetStream        , "octet-stream")           \
+    SUB_TYPE(Json               , "json")                   \
+    SUB_TYPE(JsonSchema         , "schema+json")            \
+    SUB_TYPE(JsonSchemaInstance , "schema-instance+json")   \
+    SUB_TYPE(FormUrlEncoded     , "x-www-form-urlencoded")  \
+    SUB_TYPE(FormData           , "form-data")              \
     \
     SUB_TYPE(Png, "png") \
     SUB_TYPE(Gif, "gif") \
