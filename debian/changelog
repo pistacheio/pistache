@@ -1,3 +1,15 @@
+pistache (0.0.001-git20191031-kip1) eoan; urgency=medium
+
+  * Latest upstream and first build for eoan.
+
+ -- Kip Warner <kip@thevertigo.com>  Thu, 31 Oct 2019 18:23:04 -0700
+
+pistache (0.0.001-git20191017-kip1) disco; urgency=medium
+
+  * Latest upstream.
+
+ -- Kip Warner <kip@thevertigo.com>  Thu, 17 Oct 2019 21:57:28 -0700
+
 pistache (0.0.001-git20190920-kip1~disco) disco; urgency=medium
 
   * Added DEP-8 compliant test for autopkgtest.

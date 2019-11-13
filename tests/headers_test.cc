@@ -247,6 +247,17 @@ TEST(headers_test, content_length)
     ASSERT_TRUE(cl.value() == 3495U);
 }
 
+TEST(headers_test, authorization_test)
+{
+    Pistache::Http::Header::Authorization au;
+    std::ostringstream oss;
+    au.parse("Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXUyJ9.eyJleHAiOjE1NzA2MzA0MDcsImlhdCI6MTU3MDU0NDAwNywibmFtZSI6IkFkbWluIE5hbWUiLCJzYW1wbGUiOiJUZXN0In0.zLTAAnBftlqccsU-4mL69P4tQl3VhcglMg-d0131JxqX4xSZLlO5xMRrCPBgn_00OxKJ9CQdnpjpuzblNQd2-A");
+    au.write(oss);
+
+    ASSERT_TRUE("Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXUyJ9.eyJleHAiOjE1NzA2MzA0MDcsImlhdCI6MTU3MDU0NDAwNywibmFtZSI6IkFkbWluIE5hbWUiLCJzYW1wbGUiOiJUZXN0In0.zLTAAnBftlqccsU-4mL69P4tQl3VhcglMg-d0131JxqX4xSZLlO5xMRrCPBgn_00OxKJ9CQdnpjpuzblNQd2-A" == oss.str());
+    ASSERT_TRUE(au.value() == "Bearer eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXUyJ9.eyJleHAiOjE1NzA2MzA0MDcsImlhdCI6MTU3MDU0NDAwNywibmFtZSI6IkFkbWluIE5hbWUiLCJzYW1wbGUiOiJUZXN0In0.zLTAAnBftlqccsU-4mL69P4tQl3VhcglMg-d0131JxqX4xSZLlO5xMRrCPBgn_00OxKJ9CQdnpjpuzblNQd2-A");
+}
+
 TEST(headers_test, expect_test)
 {
     Pistache::Http::Header::Expect e;
@@ -689,3 +700,55 @@ TEST(headers_test, registered_header_in_raw_list)
     ASSERT_TRUE(foundRawHeader->second.value() == "some data");
 }
 
+TEST(headers_test, raw_headers_are_case_insensitive)
+{
+    // no matter the casing of the input header,
+    std::vector<std::string> test_cases = {
+        "Custom-Header: x\r\n",
+        "CUSTOM-HEADER: x\r\n",
+        "custom-header: x\r\n",
+        "CuStOm-HeAdEr: x\r\n"
+    };
+
+    for(auto&& test : test_cases) {
+        Pistache::RawStreamBuf<> buf(&test[0], test.size());
+        Pistache::StreamCursor cursor(&buf);
+        Pistache::Http::Request request;
+        Pistache::Http::Private::HeadersStep step(&request);
+        step.apply(cursor);
+
+        // or the header you try and get, it should work:
+        ASSERT_FALSE(request.headers().tryGetRaw("Custom-Header").isEmpty());
+        ASSERT_FALSE(request.headers().tryGetRaw("CUSTOM-HEADER").isEmpty());
+        ASSERT_FALSE(request.headers().tryGetRaw("custom-header").isEmpty());
+        ASSERT_FALSE(request.headers().tryGetRaw("CuStOm-HeAdEr").isEmpty());
+    }
+}
+
+
+TEST(headers_test, cookie_headers_are_case_insensitive)
+{
+    // no matter the casing of the cookie header(s),
+    std::vector<std::string> test_cases = {
+        "Cookie: x=y\r\n",
+        "COOKIE: x=y\r\n",
+        "cookie: x=y\r\n",
+        "CoOkIe: x=y\r\n",
+        "Set-Cookie: x=y\r\n",
+        "SET-COOKIE: x=y\r\n",
+        "set-cookie: x=y\r\n",
+        "SeT-CoOkIe: x=y\r\n",
+    };
+
+    for(auto&& test : test_cases) {
+        Pistache::RawStreamBuf<> buf(&test[0], test.size());
+        Pistache::StreamCursor cursor(&buf);
+        Pistache::Http::Request request;
+        Pistache::Http::Private::HeadersStep step(&request);
+        step.apply(cursor);
+
+        // the cookies should still exist.
+        ASSERT_TRUE(request.cookies().has("x"));
+        ASSERT_TRUE(request.cookies().get("x").value == "y");
+    }
+}

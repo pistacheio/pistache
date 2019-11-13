@@ -27,6 +27,7 @@ RegisterHeader(ContentEncoding);
 RegisterHeader(TransferEncoding);
 RegisterHeader(ContentLength);
 RegisterHeader(ContentType);
+RegisterHeader(Authorization);
 RegisterHeader(Date);
 RegisterHeader(Expect);
 RegisterHeader(Host);
@@ -38,6 +39,14 @@ std::string
 toLowercase(std::string str) {
     std::transform(str.begin(), str.end(), str.begin(), ::tolower);
     return str;
+}
+
+bool
+LowercaseEqualStatic(const std::string& dynamic, const std::string& statik) {
+    return std::equal(dynamic.begin(), dynamic.end(), statik.begin(), statik.end(),
+        [] (const char& a, const char& b) {
+            return std::tolower(a) == b;
+        });
 }
 
 Registry& Registry::instance() {

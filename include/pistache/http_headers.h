@@ -28,10 +28,15 @@ struct LowercaseHash {
     }
 };
 
+bool LowercaseEqualStatic(const std::string& dynamic, const std::string& statik);
+
 struct LowercaseEqual {
     bool operator()(const std::string& left, const std::string& right) const {
-        return toLowercase(left) == toLowercase(right);
-    }
+        return std::equal(left.begin(), left.end(), right.begin(), right.end(),
+            [] (const char& a, const char& b) {
+                return std::tolower(a) == std::tolower(b);
+            });
+    };
 };
 
 class Collection {
@@ -109,7 +114,7 @@ public:
 
     std::vector<std::shared_ptr<Header>> list() const;
 
-    const std::unordered_map<std::string, Raw>& rawList() const {
+    const std::unordered_map<std::string,Raw,LowercaseHash,LowercaseEqual>& rawList() const {
         return rawHeaders;
     }
 
@@ -126,7 +131,12 @@ private:
         LowercaseHash,
         LowercaseEqual
     > headers;
-    std::unordered_map<std::string, Raw> rawHeaders;
+    std::unordered_map<
+        std::string,
+        Raw,
+        LowercaseHash,
+        LowercaseEqual
+    > rawHeaders;
 };
 
 class Registry {

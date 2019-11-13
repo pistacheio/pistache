@@ -12,6 +12,7 @@
 #include <pistache/peer.h>
 #include <pistache/tcp.h>
 #include <pistache/os.h>
+#include <pistache/utils.h>
 
 
 namespace Pistache {
@@ -257,7 +258,21 @@ Transport::asyncWriteImpl(Fd fd)
             } else {
                 auto file = buffer.fd();
                 off_t offset = totalWritten;
-                bytesWritten = ::sendfile(fd, file, &offset, len);
+
+#ifdef PISTACHE_USE_SSL
+                auto it = peers.find(fd);
+
+                if (it == std::end(peers))
+                    throw std::runtime_error("No peer found for fd: " + std::to_string(fd));
+
+                if (it->second->ssl() != NULL) {
+                    bytesWritten = SSL_sendfile((SSL *)it->second->ssl(), file, &offset, len);
+                } else {
+#endif /* PISTACHE_USE_SSL */
+                    bytesWritten = ::sendfile(fd, file, &offset, len);
+#ifdef PISTACHE_USE_SSL
+                }
+#endif /* PISTACHE_USE_SSL */
             }
             if (bytesWritten < 0) {
                 if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -272,7 +287,7 @@ Transport::asyncWriteImpl(Fd fd)
                 // EBADF can happen when the HTTP parser, in the case of
                 // an error, closes fd before the entire request is processed.
                 // https://github.com/oktal/pistache/issues/501
-                else if (errno == EBADF) {
+                else if (errno == EBADF || errno == EPIPE || errno == ECONNRESET) {
                     wq.pop_front();
                     toWrite.erase(fd);
                     stop = true;

@@ -305,6 +305,19 @@ ContentLength::write(std::ostream& os) const {
 }
 
 void
+Authorization::parse(const std::string& data) {
+    try {
+        value_ = data;
+    } catch (const std::invalid_argument& e) {
+    }
+}
+
+void
+Authorization::write(std::ostream& os) const {
+    os << value_;
+}
+
+void
 Date::parse(const std::string &str) {
     fullDate_ = FullDate::fromString(str);
 }

@@ -507,6 +507,7 @@ public:
         code_ = code;
         return putOnWire(nullptr, 0);
     }
+
     Async::Promise<ssize_t> send(
             Code code,
             const std::string& body,
@@ -531,6 +532,16 @@ public:
             const char (&arr)[N],
             const Mime::MediaType& mime = Mime::MediaType())
     {
+        return send(
+            code, arr, N - 1, std::forward<const Mime::MediaType&>(mime));
+    }
+
+    Async::Promise<ssize_t> send(
+            Code code,
+            const char* data,
+            const size_t size,
+            const Mime::MediaType& mime = Mime::MediaType())
+    {
         /* @Refactor: code duplication */
         code_ = code;
 
@@ -542,7 +553,7 @@ public:
                 headers_.add(std::make_shared<Header::ContentType>(mime));
         }
 
-        return putOnWire(arr, N - 1);
+        return putOnWire(data, size);
     }
 
     ResponseStream stream(Code code, size_t streamSize = DefaultStreamSize) {
