@@ -125,3 +125,49 @@ TEST(optional, integer_none)
     Optional<int32_t> value(Pistache::None());
     EXPECT_TRUE(value.isEmpty());
 }
+
+TEST(optional, equal_operator_empty_equalto_empty)
+{
+    Optional<int32_t> value(Pistache::None());
+    Optional<int32_t> value2(Pistache::None());
+
+    EXPECT_EQ(value, value2);
+}
+
+TEST(optional, equal_operator_value_equalto_value)
+{
+    Optional<int32_t> value(Pistache::Some(1));
+    Optional<int32_t> value2(Pistache::Some(1));
+
+    EXPECT_EQ(value, value2);
+}
+
+TEST(optional, equal_operator_empty_notequalto_value)
+{
+    Optional<int32_t> value(Pistache::None());
+    Optional<int32_t> value2(Pistache::Some(2));
+
+    EXPECT_NE(value, value2);
+}
+
+TEST(optional, equal_operator_value_notequalto_value)
+{
+    Optional<int32_t> value(Pistache::Some(1));
+    Optional<int32_t> value2(Pistache::Some(2));
+
+    EXPECT_NE(value, value2);
+}
+
+struct not_comparable
+{
+    bool operator==(const not_comparable& other) const = delete;
+};
+
+TEST(optional, is_comparable_type)
+{
+    using Pistache::types::has_equalto_operator;
+    EXPECT_FALSE(has_equalto_operator<not_comparable>::value);
+    EXPECT_TRUE(has_equalto_operator<int>::value);
+    EXPECT_TRUE(has_equalto_operator<double>::value);
+    EXPECT_TRUE(has_equalto_operator<std::string>::value);
+}
