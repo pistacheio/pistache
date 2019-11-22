@@ -240,13 +240,15 @@ public:
         }
     }
 
-    template<typename = typename std::enable_if<types::has_equalto_operator<T>::value>::type>
     bool operator==(const Optional<T>& other) const {
+        static_assert(types::has_equalto_operator<T>::value,
+                      "optional<T> requires T to be comparable by equal to operator");
         return (isEmpty() && other.isEmpty()) || (!isEmpty() && !other.isEmpty() && get() == other.get());
     }
 
-    template<typename = typename std::enable_if<types::has_equalto_operator<T>::value>::type>
     bool operator!=(const Optional<T>& other) const {
+        static_assert(types::has_equalto_operator<T>::value,
+                      "optional<T> requires T to be comparable by equal to operator");
         return !(*this == other);
    }
 
