@@ -14,6 +14,7 @@
 #include <iostream>
 #include <tuple>
 #include <functional>
+#include <type_traits>
 
 namespace Pistache {
 
@@ -81,6 +82,17 @@ namespace types {
     struct is_move_constructible :
         std::is_constructible<T, typename std::add_rvalue_reference<T>::type> {};
 
+    // Workaround for C++14 defect (CWG 1558)
+    template <typename... Ts> struct make_void { typedef void type; };
+    template <typename... Ts> using void_t = typename make_void<Ts...>::type;
+
+    template <typename, typename = void_t<>>
+    struct has_equalto_operator : std::false_type {};
+
+    template <typename T>
+    struct has_equalto_operator<
+        T, void_t<decltype(std::declval<T>() == std::declval<T>())>>
+        : std::true_type {};
 }
 
 
