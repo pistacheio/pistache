@@ -240,12 +240,12 @@ public:
         }
     }
 
-    template<typename U = T, typename = typename std::enable_if<types::has_equalto_operator<U>::value>::type>
+    template<typename = typename std::enable_if<types::has_equalto_operator<T>::value>::type>
     bool operator==(const Optional<T>& other) const {
         return (isEmpty() && other.isEmpty()) || (!isEmpty() && !other.isEmpty() && get() == other.get());
     }
 
-    template<typename U = T, typename = typename std::enable_if<types::has_equalto_operator<U>::value>::type>
+    template<typename = typename std::enable_if<types::has_equalto_operator<T>::value>::type>
     bool operator!=(const Optional<T>& other) const {
         return !(*this == other);
    }
