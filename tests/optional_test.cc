@@ -163,7 +163,7 @@ struct not_comparable
     bool operator==(const not_comparable& other) const = delete;
 };
 
-TEST(optional, is_comparable_type)
+TEST(has_equalto_operator, is_comparable_type)
 {
     using Pistache::types::has_equalto_operator;
     EXPECT_FALSE(has_equalto_operator<not_comparable>::value);
