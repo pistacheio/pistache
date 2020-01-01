@@ -1,3 +1,9 @@
+pistache (0.0.001-git20191231-kip1) eoan; urgency=medium
+
+  * Latest upstream.
+
+ -- Kip Warner <kip@thevertigo.com>  Tue, 31 Dec 2019 11:21:10 -0800
+
 pistache (0.0.001-git20191031-kip1) eoan; urgency=medium
 
   * Latest upstream and first build for eoan.

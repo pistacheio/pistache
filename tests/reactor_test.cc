@@ -63,7 +63,7 @@ private:
 
 TEST(reactor_test, reactor_creation)
 {
-    const size_t NUM_THREADS = 2;
+    constexpr size_t NUM_THREADS = 2;
     std::shared_ptr<Aio::Reactor> reactor = Aio::Reactor::create();
     reactor->init(Aio::AsyncContext(NUM_THREADS));
     auto key = reactor->addHandler(std::make_shared<TransportMock>());
@@ -99,3 +99,13 @@ TEST(reactor_test, reactor_creation)
         }
     }
 }
+
+TEST(reactor_test, reactor_exceed_max_threads)
+{
+    constexpr size_t MAX_SUPPORTED_THREADS = 255;
+    std::shared_ptr<Aio::Reactor> reactor = Aio::Reactor::create();
+    ASSERT_THROW(
+        reactor->init(Aio::AsyncContext(5 * MAX_SUPPORTED_THREADS + 1)),
+        std::runtime_error);
+}
+

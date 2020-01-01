@@ -10,8 +10,11 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
+#include <string>
 #include <unordered_map>
 #include <vector>
+
+using namespace std::string_literals;
 
 namespace Pistache {
 namespace Aio {
@@ -88,7 +91,7 @@ public:
     }
 
     std::shared_ptr<Handler> handler(const Reactor::Key& key) const {
-        return handlers_[key.data()];
+        return handlers_.at(key.data());
     }
 
     std::vector<std::shared_ptr<Handler>> handlers(const Reactor::Key& key) const override {
@@ -183,7 +186,7 @@ private:
         // Fast-path: if we only have one handler, do not bother scanning the fds to find
         // the right handlers
         if (handlers_.size() == 1)
-            handlers_[0]->onReady(FdSet(std::move(events)));
+            handlers_.at(0)->onReady(FdSet(std::move(events)));
         else {
             std::unordered_map<std::shared_ptr<Handler>, std::vector<Polling::Event>> fdHandlers;
 
@@ -192,8 +195,8 @@ private:
                 uint64_t value;
 
                 std::tie(index, value) = decodeTag(event.tag);
-                auto handler = handlers_[index];
-                auto& evs = fdHandlers[handler];
+                auto handler = handlers_.at(index);
+                auto& evs = fdHandlers.at(handler);
                 evs.push_back(std::move(event));
             }
 
@@ -230,7 +233,7 @@ private:
             HandlerList list;
 
             for (size_t i = 0; i < index_; ++i) {
-                list.handlers[i] = handlers[i]->clone();
+                list.handlers.at(i) = handlers.at(i)->clone();
             }
             list.index_ = index_;
 
@@ -242,20 +245,20 @@ private:
                 throw std::runtime_error("Maximum handlers reached");
 
             Reactor::Key key(index_);
-            handlers[index_++] = handler;
+            handlers.at(index_++) = handler;
 
             return key;
         }
 
         std::shared_ptr<Handler> operator[](size_t index) const {
-            return handlers[index];
+            return handlers.at(index);
         }
 
         std::shared_ptr<Handler> at(size_t index) const {
             if (index >= index_)
                 throw std::runtime_error("Attempting to retrieve invalid handler");
 
-            return handlers[index];
+            return handlers.at(index);
         }
 
         bool empty() const {
@@ -287,7 +290,7 @@ private:
         template<typename Func>
         void forEachHandler(Func func) const {
             for (size_t i = 0; i < index_; ++i)
-                func(handlers[i]);
+                func(handlers.at(i));
         }
 
     private:
@@ -337,38 +340,41 @@ public:
     AsyncImpl(Reactor* reactor, size_t threads, const std::string& threadsName)
         : Reactor::Impl(reactor) {
 
-        for (size_t i = 0; i < threads; ++i) {
-            std::unique_ptr<Worker> wrk(new Worker(reactor, threadsName));
-            workers_.push_back(std::move(wrk));
-        }
+        if(threads > SyncImpl::MaxHandlers())
+            throw std::runtime_error(
+                "Too many worker threads requested (max "s +
+                std::to_string(SyncImpl::MaxHandlers()) +
+                ")."s);
+
+        for (size_t i = 0; i < threads; ++i)
+            workers_.emplace_back(std::make_unique<Worker>(reactor, threadsName));
     }
 
     Reactor::Key addHandler(
             const std::shared_ptr<Handler>& handler, bool) override {
 
-        Reactor::Key keys[SyncImpl::MaxHandlers()];
+        std::array<Reactor::Key, SyncImpl::MaxHandlers()> keys;
 
         for (size_t i = 0; i < workers_.size(); ++i) {
-            auto &wrk = workers_[i];
+            auto &wrk = workers_.at(i);
 
             auto cl = handler->clone();
             auto key = wrk->sync->addHandler(cl, false /* setKey */);
             auto newKey = encodeKey(key, i);
             cl->key_ = newKey;
 
-            keys[i] = key;
+            keys.at(i) = key;
         }
 
-        auto data = keys[0].data() << 32 | KeyMarker;
+        auto data = keys.at(0).data() << 32 | KeyMarker;
 
         return Reactor::Key(data);
     }
 
     std::vector<std::shared_ptr<Handler>> handlers(const Reactor::Key& key) const override {
 
-        uint32_t idx;
-        uint32_t marker;
-        std::tie(idx, marker) = decodeKey(key);
+
+        const auto [idx, marker] = decodeKey(key);
         if (marker != KeyMarker)
             throw std::runtime_error("Invalid key");
 
@@ -444,7 +450,7 @@ private:
     template<typename Func, typename... Args>
     void dispatchCall(const Reactor::Key& key, Func func, Args&& ...args) const {
         auto decoded = decodeKey(key);
-        auto& wrk = workers_[decoded.second];
+        auto& wrk = workers_.at(decoded.second);
 
         Reactor::Key originalKey(decoded.first);
         CALL_MEMBER_FN(wrk->sync.get(), func)(originalKey, std::forward<Args>(args)...);
