@@ -585,7 +585,8 @@ Reactor::run() {
 
 void
 Reactor::shutdown() {
-    impl()->shutdown();
+    if(impl_)
+        impl()->shutdown();
 }
 
 void
@@ -596,7 +597,7 @@ Reactor::runOnce() {
 Reactor::Impl *
 Reactor::impl() const {
     if (!impl_)
-        throw std::runtime_error("Invalid object state, you should call init() before");
+        throw std::runtime_error("Invalid object state, you should call init() before.");
 
     return impl_.get();
 }
