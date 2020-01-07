@@ -147,6 +147,14 @@ namespace Polling {
        epoll_fd = TRY_RET(epoll_create(Const::MaxEvents));
     }
 
+    Epoll::~Epoll()
+    {
+        if (epoll_fd > 0)
+        {
+            close(epoll_fd);
+        }
+    }
+        
     void
     Epoll::addFd(Fd fd, Flags<NotifyOn> interest, Tag tag, Mode mode) {
         struct epoll_event ev;
