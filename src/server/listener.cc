@@ -95,6 +95,12 @@ Listener::~Listener() {
         shutdown();
     if (acceptThread.joinable())
         acceptThread.join();
+   
+    if (listen_fd > 0)
+    {
+        close(listen_fd);
+        listen_fd = 0;
+    }    
 #ifdef PISTACHE_USE_SSL
     if (this->useSSL_)
     {
