@@ -68,7 +68,7 @@ public:
     }
 
     const Entry& operator[](size_t index) const {
-        return events_[index];
+        return events_.at(index);
     }
 
     iterator begin() {
