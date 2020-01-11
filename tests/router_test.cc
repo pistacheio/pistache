@@ -154,7 +154,7 @@ TEST(router_test, test_notfound_exactly_once) {
     Address addr(Ipv4::any(), 0);
     auto endpoint = std::make_shared<Http::Endpoint>(addr);
 
-    auto opts = Http::Endpoint::options().threads(1).maxPayload(4096);
+    auto opts = Http::Endpoint::options().threads(1).maxRequestSize(4096);
     endpoint->init(opts);
 
     int count_found = 0;
@@ -201,6 +201,37 @@ TEST(router_test, test_notfound_exactly_once) {
     client.Get("/wedge");
     ASSERT_EQ(count_found, 0);
     ASSERT_EQ(count_not_found, 2);
+
+    endpoint->shutdown();
+}
+
+TEST(router_test, test_route_head_request) {
+    Address addr(Ipv4::any(), 0);
+    auto endpoint = std::make_shared<Http::Endpoint>(addr);
+
+    auto opts = Http::Endpoint::options().threads(1).maxRequestSize(4096);
+    endpoint->init(opts);
+
+    int count_found = 0;
+
+    Rest::Router router;
+
+    Routes::Head(router, "/moogle", [&count_found](
+            const Pistache::Rest::Request&,
+            Pistache::Http::ResponseWriter response) {
+        count_found++;
+        response.send(Pistache::Http::Code::Ok);
+        return Pistache::Rest::Route::Result::Ok;
+    });
+
+    endpoint->setHandler(router.handler());
+    endpoint->serveThreaded();
+    const auto bound_port = endpoint->getPort();
+    httplib::Client client("localhost", bound_port);
+
+    count_found = 0;
+    client.Head("/moogle");
+    ASSERT_EQ(count_found, 1);
 
     endpoint->shutdown();
 }

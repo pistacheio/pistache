@@ -4,23 +4,37 @@
    Implementation of common HTTP headers described by the RFC
 */
 
+#include <pistache/http_header.h>
+#include <pistache/common.h>
+#include <pistache/config.h>
+#include <pistache/http.h>
+#include <pistache/stream.h>
+
 #include <stdexcept>
 #include <iterator>
 #include <limits>
 #include <cstring>
 #include <iostream>
 
-#include <pistache/http_header.h>
-#include <pistache/common.h>
-#include <pistache/http.h>
-#include <pistache/stream.h>
-#include <arpa/inet.h>
-
-using namespace std;
-
 namespace Pistache {
 namespace Http {
 namespace Header {
+
+void
+Header::parse(const std::string & str) {
+    parseRaw(str.c_str(), str.length());
+}
+
+void
+Header::parseRaw(const char *str, size_t len) {
+    parse(std::string(str, len));
+}
+
+void
+Allow::parseRaw(const char* str, size_t len) {
+    UNUSED(str)
+    UNUSED(len)
+}
 
 const char* encodingString(Encoding encoding) {
     switch (encoding) {
@@ -35,26 +49,9 @@ const char* encodingString(Encoding encoding) {
     case Encoding::Chunked:
         return "chunked";
     case Encoding::Unknown:
-        return "unknown";
+    	return "unknown";
     }
-
-    unreachable();
-}
-
-void
-Header::parse(const std::string& data) {
-    parseRaw(data.c_str(), data.size());
-}
-
-void
-Header::parseRaw(const char *str, size_t len) {
-    parse(std::string(str, len));
-}
-
-void
-Allow::parseRaw(const char* str, size_t len) {
-    UNUSED(str)
-    UNUSED(len)
+    return "unknown";
 }
 
 void
@@ -207,7 +204,7 @@ CacheControl::write(std::ostream& os) const {
             case CacheDirective::SMaxAge:
                 return "s-maxage";
             case CacheDirective::Ext:
-                return "";
+	    	return "";
             default:
                 return "";
         }
@@ -293,7 +290,7 @@ void
 ContentLength::parse(const std::string& data) {
     try {
         size_t pos;
-        uint64_t val = std::stoi(data, &pos);
+        uint64_t val = std::stoull(data, &pos);
         if (pos != 0) {
         }
 
@@ -308,18 +305,31 @@ ContentLength::write(std::ostream& os) const {
 }
 
 void
+Authorization::parse(const std::string& data) {
+    try {
+        value_ = data;
+    } catch (const std::invalid_argument& e) {
+    }
+}
+
+void
+Authorization::write(std::ostream& os) const {
+    os << value_;
+}
+
+void
 Date::parse(const std::string &str) {
     fullDate_ = FullDate::fromString(str);
 }
 
 void
 Date::write(std::ostream& os) const {
-    UNUSED(os)
+	fullDate_.write(os);
 }
 
 void
-Expect::parseRaw(const char* str, size_t len) {
-    if (memcmp(str, "100-continue", len)) {
+Expect::parseRaw(const char* str, size_t /*len*/) {
+    if (std::strcmp(str, "100-continue") == 0) {
         expectation_ = Expectation::Continue;
     } else {
         expectation_ = Expectation::Ext;
@@ -340,52 +350,18 @@ Host::Host(const std::string& data)
     parse(data);
 }
 
-void
-Host::parse(const std::string& data) {
-    unsigned long pos = data.find(']');
-    unsigned long s_pos = data.find('[');
-    if (pos != std::string::npos && s_pos != std::string::npos) {
-        //IPv6 address
-        host_ = data.substr(s_pos, pos+1);
-        try {
-            in6_addr addr6;
-            char buff6[INET6_ADDRSTRLEN+1];
-            memcpy(buff6, host_.c_str(), INET6_ADDRSTRLEN);
-            inet_pton(AF_INET6, buff6, &(addr6.s6_addr16));
-        } catch (std::runtime_error) {
-            throw std::invalid_argument("Invalid IPv6 address");
-        }
-        pos++;
-    } else {
-        //IPv4 address
-        pos = data.find(':');
-        if (pos == std::string::npos) {
-            host_ = data;
-            port_ = HTTP_STANDARD_PORT;
-        }
-        host_ = data.substr(0, pos);
-        if (host_ == "*") {
-            host_ = "0.0.0.0";
-        }
-        try {
-            in_addr addr;
-            char buff[INET_ADDRSTRLEN+1];
-            memcpy(buff, host_.c_str(), INET_ADDRSTRLEN);
-            inet_pton(AF_INET, buff, &(addr));
-        } catch (std::runtime_error) {
-            throw std::invalid_argument("Invalid IPv4 address");
-        }
+void Host::parse(const std::string& data)
+{
+    AddressParser parser(data);
+    host_ = parser.rawHost();
+    const std::string& port = parser.rawPort();
+    if (port.empty())
+    {
+        port_ = Const::HTTP_STANDARD_PORT;
     }
-    char *end;
-    const std::string portPart = data.substr(pos + 1);
-    long port;
-    if (pos != std::string::npos) {
-        port = strtol(portPart.c_str(), &end, 10);
-        if (port < std::numeric_limits<uint16_t>::min()|| port > std::numeric_limits<uint16_t>::max())
-            throw std::invalid_argument("Invalid port");
-        port_ = static_cast<uint16_t>(port);
-    } else {
-        port_ = HTTP_STANDARD_PORT;
+    else
+    {
+        port_ = Port(port);
     }
 }
 
@@ -545,16 +521,21 @@ Server::Server(const char* token)
 }
 
 void
-Server::parse(const std::string& data)
+Server::parse(const std::string& token)
 {
-    UNUSED(data)
+    tokens_.push_back(token);
 }
 
 void
 Server::write(std::ostream& os) const
 {
-    std::copy(std::begin(tokens_), std::end(tokens_),
-                 std::ostream_iterator<std::string>(os, " "));
+    for (size_t i = 0; i < tokens_.size(); i++) {
+        auto & token = tokens_[i];
+        os << token;
+        if ( i < tokens_.size() - 1 ) {
+            os << " ";
+        }
+    }
 }
 
 void

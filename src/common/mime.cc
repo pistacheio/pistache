@@ -1,7 +1,7 @@
 /* mime.cc
    Mathieu Stefani, 29 August 2015
 
-   Implementaton of MIME Type parsing
+   Implementation of MIME Type parsing
 */
 
 #include <cstring>
@@ -9,7 +9,6 @@
 #include <pistache/mime.h>
 #include <pistache/http.h>
 
-using namespace std;
 
 namespace Pistache {
 namespace Http {
@@ -108,7 +107,7 @@ MediaType::parseRaw(const char* str, size_t len) {
     RawStreamBuf<char> buf(const_cast<char *>(str), len);
     StreamCursor cursor(&buf);
 
-    raw_ = string(str, len);
+    raw_ = std::string(str, len);
 
     Mime::Type top = Type::None;
 
@@ -247,7 +246,7 @@ MediaType::setQuality(Q quality) {
 }
 
 Optional<std::string>
-MediaType::getParam(std::string name) const {
+MediaType::getParam(const std::string& name) const {
     auto it = params.find(name);
     if (it == std::end(params)) {
         return None();
@@ -257,8 +256,8 @@ MediaType::getParam(std::string name) const {
 }
 
 void
-MediaType::setParam(std::string name, std::string value) {
-    params[name] = value;
+MediaType::setParam(const std::string& name, std::string value) {
+    params[name] = std::move(value);
 }
 
 std::string

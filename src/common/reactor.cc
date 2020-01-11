@@ -10,8 +10,11 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
+#include <string>
 #include <unordered_map>
 #include <vector>
+
+using namespace std::string_literals;
 
 namespace Pistache {
 namespace Aio {
@@ -64,7 +67,7 @@ public:
  */
 class SyncImpl : public Reactor::Impl {
 public:
-    SyncImpl(Reactor* reactor)
+    explicit SyncImpl(Reactor* reactor)
         : Reactor::Impl(reactor)
         , handlers_()
         , shutdown_()
@@ -88,7 +91,7 @@ public:
     }
 
     std::shared_ptr<Handler> handler(const Reactor::Key& key) const {
-        return handlers_[key.data()];
+        return handlers_.at(key.data());
     }
 
     std::vector<std::shared_ptr<Handler>> handlers(const Reactor::Key& key) const override {
@@ -135,20 +138,17 @@ public:
         if (handlers_.empty())
             throw std::runtime_error("You need to set at least one handler");
 
-        std::chrono::milliseconds timeout(-1);
-
         for (;;) {
             std::vector<Polling::Event> events;
-            int ready_fds;
-            switch (ready_fds = poller.poll(events, 1024, timeout)) {
+            int ready_fds = poller.poll(events);
+
+            switch (ready_fds) {
                 case -1: break;
                 case 0: break;
                 default:
                     if (shutdown_) return;
 
                     handleFds(std::move(events));
-
-                    timeout = std::chrono::milliseconds(-1);
             }
         }
     }
@@ -173,12 +173,12 @@ public:
 
 private:
 
-    Polling::Tag encodeTag(const Reactor::Key& key, Polling::Tag tag) const {
+    static Polling::Tag encodeTag(const Reactor::Key& key, Polling::Tag tag) {
         uint64_t value = tag.value();
         return HandlerList::encodeTag(key, value);
     }
 
-    std::pair<size_t, uint64_t> decodeTag(const Polling::Tag& tag) const {
+    static std::pair<size_t, uint64_t> decodeTag(const Polling::Tag& tag) {
         return HandlerList::decodeTag(tag);
     }
 
@@ -186,7 +186,7 @@ private:
         // Fast-path: if we only have one handler, do not bother scanning the fds to find
         // the right handlers
         if (handlers_.size() == 1)
-            handlers_[0]->onReady(FdSet(std::move(events)));
+            handlers_.at(0)->onReady(FdSet(std::move(events)));
         else {
             std::unordered_map<std::shared_ptr<Handler>, std::vector<Polling::Event>> fdHandlers;
 
@@ -195,8 +195,8 @@ private:
                 uint64_t value;
 
                 std::tie(index, value) = decodeTag(event.tag);
-                auto handler = handlers_[index];
-                auto& evs = fdHandlers[handler];
+                auto handler = handlers_.at(index);
+                auto& evs = fdHandlers.at(handler);
                 evs.push_back(std::move(event));
             }
 
@@ -233,7 +233,7 @@ private:
             HandlerList list;
 
             for (size_t i = 0; i < index_; ++i) {
-                list.handlers[i] = handlers[i]->clone();
+                list.handlers.at(i) = handlers.at(i)->clone();
             }
             list.index_ = index_;
 
@@ -245,20 +245,20 @@ private:
                 throw std::runtime_error("Maximum handlers reached");
 
             Reactor::Key key(index_);
-            handlers[index_++] = handler;
+            handlers.at(index_++) = handler;
 
             return key;
         }
 
         std::shared_ptr<Handler> operator[](size_t index) const {
-            return handlers[index];
+            return handlers.at(index);
         }
 
         std::shared_ptr<Handler> at(size_t index) const {
             if (index >= index_)
                 throw std::runtime_error("Attempting to retrieve invalid handler");
 
-            return handlers[index];
+            return handlers.at(index);
         }
 
         bool empty() const {
@@ -290,7 +290,7 @@ private:
         template<typename Func>
         void forEachHandler(Func func) const {
             for (size_t i = 0; i < index_; ++i)
-                func(handlers[i]);
+                func(handlers.at(i));
         }
 
     private:
@@ -337,41 +337,44 @@ public:
 
     static constexpr uint32_t KeyMarker = 0xBADB0B;
 
-    AsyncImpl(Reactor* reactor, size_t threads)
+    AsyncImpl(Reactor* reactor, size_t threads, const std::string& threadsName)
         : Reactor::Impl(reactor) {
 
-        for (size_t i = 0; i < threads; ++i) {
-            std::unique_ptr<Worker> wrk(new Worker(reactor));
-            workers_.push_back(std::move(wrk));
-        }
+        if(threads > SyncImpl::MaxHandlers())
+            throw std::runtime_error(
+                "Too many worker threads requested (max "s +
+                std::to_string(SyncImpl::MaxHandlers()) +
+                ")."s);
+
+        for (size_t i = 0; i < threads; ++i)
+            workers_.emplace_back(std::make_unique<Worker>(reactor, threadsName));
     }
 
     Reactor::Key addHandler(
             const std::shared_ptr<Handler>& handler, bool) override {
 
-        Reactor::Key keys[SyncImpl::MaxHandlers()];
+        std::array<Reactor::Key, SyncImpl::MaxHandlers()> keys;
 
         for (size_t i = 0; i < workers_.size(); ++i) {
-            auto &wrk = workers_[i];
+            auto &wrk = workers_.at(i);
 
             auto cl = handler->clone();
             auto key = wrk->sync->addHandler(cl, false /* setKey */);
             auto newKey = encodeKey(key, i);
             cl->key_ = newKey;
 
-            keys[i] = key;
+            keys.at(i) = key;
         }
 
-        auto data = keys[0].data() << 32 | KeyMarker;
+        auto data = keys.at(0).data() << 32 | KeyMarker;
 
         return Reactor::Key(data);
     }
 
     std::vector<std::shared_ptr<Handler>> handlers(const Reactor::Key& key) const override {
 
-        uint32_t idx;
-        uint32_t marker;
-        std::tie(idx, marker) = decodeKey(key);
+
+        const auto [idx, marker] = decodeKey(key);
         if (marker != KeyMarker)
             throw std::runtime_error("Invalid key");
 
@@ -427,14 +430,15 @@ public:
     }
 
 private:
-    Reactor::Key encodeKey(const Reactor::Key& originalKey, uint32_t value) const
+    static Reactor::Key encodeKey(const Reactor::Key& originalKey, uint32_t value)
     {
         auto data = originalKey.data();
         auto newValue = data << 32 | value;
         return Reactor::Key(newValue);
     }
 
-    std::pair<uint32_t, uint32_t> decodeKey(const Reactor::Key& encodedKey) const {
+    static std::pair<uint32_t, uint32_t> decodeKey(const Reactor::Key& encodedKey)
+    {
         auto data = encodedKey.data();
         uint32_t hi = data >> 32;
         uint32_t lo = data & 0xFFFFFFFF;
@@ -446,7 +450,7 @@ private:
     template<typename Func, typename... Args>
     void dispatchCall(const Reactor::Key& key, Func func, Args&& ...args) const {
         auto decoded = decodeKey(key);
-        auto& wrk = workers_[decoded.second];
+        auto& wrk = workers_.at(decoded.second);
 
         Reactor::Key originalKey(decoded.first);
         CALL_MEMBER_FN(wrk->sync.get(), func)(originalKey, std::forward<Args>(args)...);
@@ -456,7 +460,8 @@ private:
 
     struct Worker {
 
-        Worker(Reactor* reactor) {
+        explicit Worker(Reactor* reactor, const std::string& threadsName) {
+            threadsName_ = threadsName;
             sync.reset(new SyncImpl(reactor));
         }
 
@@ -467,6 +472,9 @@ private:
 
         void run() {
             thread = std::thread([=]() {
+                if (threadsName_.size() > 0) {    
+                    pthread_setname_np(pthread_self(), threadsName_.substr(0,15).c_str());
+                }
                 sync->run();
             });
         }
@@ -477,6 +485,7 @@ private:
 
         std::thread thread;
         std::unique_ptr<SyncImpl> sync;
+        std::string threadsName_;
     };
 
     std::vector<std::unique_ptr<Worker>> workers_;
@@ -576,7 +585,8 @@ Reactor::run() {
 
 void
 Reactor::shutdown() {
-    impl()->shutdown();
+    if(impl_)
+        impl()->shutdown();
 }
 
 void
@@ -587,7 +597,7 @@ Reactor::runOnce() {
 Reactor::Impl *
 Reactor::impl() const {
     if (!impl_)
-        throw std::runtime_error("Invalid object state, you should call init() before");
+        throw std::runtime_error("Invalid object state, you should call init() before.");
 
     return impl_.get();
 }
@@ -599,7 +609,7 @@ SyncContext::makeImpl(Reactor* reactor) const {
 
 Reactor::Impl*
 AsyncContext::makeImpl(Reactor* reactor) const {
-    return new AsyncImpl(reactor, threads_);
+    return new AsyncImpl(reactor, threads_, threadsName_);
 }
 
 AsyncContext

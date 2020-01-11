@@ -1,10 +1,12 @@
 /* stream.h
    Mathieu Stefani, 05 September 2015
-   
+
    A set of classes to control input over a sequence of bytes
 */
 
 #pragma once
+
+#include <pistache/os.h>
 
 #include <cstddef>
 #include <stdexcept>
@@ -15,7 +17,6 @@
 #include <iostream>
 #include <string>
 
-#include <pistache/os.h>
 
 namespace Pistache {
 
@@ -60,7 +61,6 @@ public:
         const CharT* gptr = this->gptr();
         return *(gptr + 1);
     }
-
 };
 
 template<typename CharT = char>
@@ -74,7 +74,6 @@ public:
     RawStreamBuf(char* begin, size_t len) {
         Base::setg(begin, begin, begin + len);
     }
-
 };
 
 // Make the buffer dynamic
@@ -121,49 +120,30 @@ private:
 };
 
 template<typename CharT>
-size_t ArrayStreamBuf<CharT>::maxSize = Const::DefaultMaxPayload;
+size_t ArrayStreamBuf<CharT>::maxSize = Const::DefaultMaxRequestSize;
 
-struct Buffer {
-    Buffer()
-        : data(nullptr)
-        , len(0)
-        , isOwned(false)
-    { }
+struct RawBuffer
+{
+    RawBuffer();
+    RawBuffer(std::string data, size_t length, bool isDetached = false);
+    RawBuffer(const char* data, size_t length, bool isDetached = false);
 
-    Buffer(const char * const _data, size_t _len, bool _own = false)
-        : data(_data)
-        , len(_len)
-        , isOwned(_own)
-    { }
-
-    Buffer detach(size_t fromIndex = 0) const {
-        if (fromIndex > len)
-            throw std::invalid_argument("Invalid index (> len)");
-
-        size_t retainedLen = len - fromIndex;
-        char *newData = new char[retainedLen];
-        std::copy(data + fromIndex, data + len, newData);
-
-        return Buffer(newData, retainedLen, true);
-    }
-
-    const char* const data;
-    const size_t len;
-    const bool isOwned;
+    RawBuffer detach(size_t fromIndex);
+    const std::string& data() const;
+    size_t size() const;
+    bool isDetached() const;
+private:
+    std::string data_;
+    size_t length_;
+    bool isDetached_;
 };
 
-struct FileBuffer {
-    FileBuffer()
-        : fileName_()
-        , fd_()
-        , size_()
-    { }
+struct FileBuffer
+{
+    explicit FileBuffer(const std::string& fileName);
 
-    FileBuffer(const std::string& fileName);
-
-    std::string fileName() const { return fileName_; }
-    Fd fd() const { return fd_; }
-    size_t size() const { return size_; }
+    Fd fd() const;
+    size_t size() const;
 
 private:
     std::string fileName_;
@@ -178,11 +158,10 @@ public:
     typedef typename Base::traits_type traits_type;
     typedef typename Base::int_type int_type;
 
-    DynamicStreamBuf(
-            size_t size,
-            size_t maxSize = std::numeric_limits<uint32_t>::max())
-        : maxSize_(maxSize)
-        , data_()
+    static size_t maxSize;
+
+    DynamicStreamBuf( size_t size )
+        : data_()
     {
         reserve(size);
     }
@@ -191,22 +170,20 @@ public:
     DynamicStreamBuf& operator=(const DynamicStreamBuf& other) = delete;
 
     DynamicStreamBuf(DynamicStreamBuf&& other)
-       : maxSize_(other.maxSize_)
-       , data_(std::move(other.data_)) {
+       : data_(std::move(other.data_)) {
            setp(other.pptr(), other.epptr());
            other.setp(nullptr, nullptr);
     }
 
     DynamicStreamBuf& operator=(DynamicStreamBuf&& other) {
-        maxSize_ = other.maxSize_;
         data_ = std::move(other.data_);
         setp(other.pptr(), other.epptr());
         other.setp(nullptr, nullptr);
         return *this;
     }
 
-    Buffer buffer() const {
-        return Buffer(data_.data(), pptr() - &data_[0]);
+    RawBuffer buffer() const {
+        return RawBuffer((const char*) data_.data(), pptr() - &data_[0]);
     }
 
     void clear() {
@@ -214,13 +191,12 @@ public:
         this->setp(&data_[0], &data_[0] + data_.capacity());
     }
 
-protected:
+  protected:
     int_type overflow(int_type ch);
 
 private:
     void reserve(size_t size);
 
-    size_t maxSize_;
     std::vector<char> data_;
 };
 
@@ -261,7 +237,7 @@ public:
             return gptr;
         }
 
-    private:
+      private:
         StreamCursor& cursor;
         size_t position;
         char *eback;

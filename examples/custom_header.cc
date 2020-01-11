@@ -33,7 +33,7 @@ public:
         , min(minor)
     { }
 
-    void parse(const std::string& str) {
+    void parse(const std::string& str) override {
         auto p = str.find('.');
         std::string major, minor;
         if (p != std::string::npos) {
@@ -54,11 +54,11 @@ public:
         os << "." << min;
     }
 
-    uint32_t major() const {
+    uint32_t majorVersion() const {
         return maj;
     }
 
-    uint32_t minor() const {
+    uint32_t minorVersion() const {
         return min;
     }
 

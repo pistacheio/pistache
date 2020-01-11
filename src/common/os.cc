@@ -3,20 +3,20 @@
 
 */
 
-#include <fstream>
-#include <iterator>
-#include <algorithm>
-#include <thread>
+#include <pistache/common.h>
+#include <pistache/config.h>
+#include <pistache/os.h>
 
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 
-#include <pistache/os.h>
-#include <pistache/common.h>
+#include <algorithm>
+#include <fstream>
+#include <iterator>
+#include <thread>
 
-using namespace std;
 
 namespace Pistache {
 
@@ -137,10 +137,24 @@ CpuSet::toPosix() const {
 
 namespace Polling {
 
-    Epoll::Epoll(size_t max) {
-       epoll_fd = TRY_RET(epoll_create(max));
+    Event::Event(Tag _tag)
+        : flags()
+        , fd(-1)
+        , tag(_tag)
+    { }
+
+    Epoll::Epoll() {
+       epoll_fd = TRY_RET(epoll_create(Const::MaxEvents));
     }
 
+    Epoll::~Epoll()
+    {
+        if (epoll_fd >= 0)
+        {
+            close(epoll_fd);
+        }
+    }
+        
     void
     Epoll::addFd(Fd fd, Flags<NotifyOn> interest, Tag tag, Mode mode) {
         struct epoll_event ev;
@@ -182,13 +196,13 @@ namespace Polling {
     }
 
     int
-    Epoll::poll(std::vector<Event>& events, size_t maxEvents, std::chrono::milliseconds timeout) const {
+    Epoll::poll(std::vector<Event>& events, const std::chrono::milliseconds timeout) const {
         struct epoll_event evs[Const::MaxEvents];
 
         int ready_fds = -1;
         do {
-            ready_fds = epoll_wait(epoll_fd, evs, maxEvents, timeout.count());
-        } while (ready_fds < 0 && errno == EINTR);
+            ready_fds = ::epoll_wait(epoll_fd, evs, Const::MaxEvents, timeout.count());
+        } while(ready_fds < 0 && errno == EINTR);
 
         for (int i = 0; i < ready_fds; ++i) {
             const struct epoll_event *ev = evs + i;
@@ -237,6 +251,10 @@ namespace Polling {
     }
 
 } // namespace Poller
+
+NotifyFd::NotifyFd()
+    : event_fd(-1)
+{ }
 
 Polling::Tag
 NotifyFd::bind(Polling::Epoll& poller) {

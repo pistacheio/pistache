@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <pistache/typeid.h>
+
 #include <type_traits>
 #include <functional>
 #include <memory>
@@ -14,10 +16,9 @@
 #include <vector>
 #include <mutex>
 #include <condition_variable>
+#include <stdexcept>
+#include <typeinfo>
 
-#include <pistache/optional.h>
-#include <pistache/typeid.h>
-#include <pistache/common.h>
 
 namespace Pistache {
 namespace Async {
@@ -170,14 +171,16 @@ namespace Async {
 
         struct Core {
             Core(State _state, TypeId _id)
-                : state(_state)
+                : allocated(false)
+                , state(_state)
                 , exc()
                 , mtx()
                 , requests()
                 , id(_id)
             { }
 
-            State state;
+            bool allocated;
+            std::atomic<State> state;
             std::exception_ptr exc;
 
             /*
@@ -209,11 +212,18 @@ namespace Async {
                 }
 
                 void *mem = memory();
+
+                if (allocated) {
+                    reinterpret_cast<T*>(mem)->~T();
+                    allocated = false;
+                }
+
                 new (mem) T(std::forward<Args>(args)...);
+                allocated = true;
                 state = State::Fulfilled;
             }
 
-            virtual ~Core() { }
+            virtual ~Core() {}
         };
 
         template<typename T>
@@ -223,13 +233,17 @@ namespace Async {
                 , storage()
             { }
 
+            ~CoreT() {
+                if (allocated) {
+                    reinterpret_cast<T*>(&storage)->~T();
+                    allocated = false;
+                }
+            }
+            
             template<class Other>
             struct Rebind {
                 typedef CoreT<Other> Type;
             };
-
-            typedef typename std::aligned_storage<sizeof(T), alignof(T)>::type Storage;
-            Storage storage;
 
             T& value() {
                 if (state != State::Fulfilled)
@@ -240,9 +254,14 @@ namespace Async {
 
             bool isVoid() const override { return false; }
 
+        protected:
             void *memory() override {
                 return &storage;
             }
+
+        private:
+            typedef typename std::aligned_storage<sizeof(T), alignof(T)>::type Storage;
+            Storage storage;
         };
 
         template<>
@@ -253,6 +272,7 @@ namespace Async {
 
             bool isVoid() const override { return true; }
 
+        protected:
             void *memory() override {
                 return nullptr;
             }
@@ -268,16 +288,19 @@ namespace Async {
 
             void resolve(const std::shared_ptr<Core>& core) override {
                 if (resolveCount_ >= 1)
-                    throw Error("Resolve must not be called more than once");
+                  return; //TODO is this the right thing?
+                    //throw Error("Resolve must not be called more than once");
 
-                doResolve(coreCast(core));
                 ++resolveCount_;
+                doResolve(coreCast(core));
             }
 
             void reject(const std::shared_ptr<Core>& core) override {
                 if (rejectCount_ >= 1)
-                    throw Error("Reject must not be called more than once");
+                  return; //TODO is this the right thing?
+                    //throw Error("Reject must not be called more than once");
 
+                ++rejectCount_;
                 try {
                     doReject(coreCast(core));
                 } catch (const InternalRethrow& e) {
@@ -288,7 +311,6 @@ namespace Async {
                     }
                 }
 
-                ++rejectCount_;
             }
 
             std::shared_ptr<CoreT<T>> coreCast(const std::shared_ptr<Core>& core) const {
@@ -396,8 +418,7 @@ namespace Async {
                 static_assert(sizeof...(Args) == 0,
                         "Can not attach a non-void continuation to a void-Promise");
 
-                void doResolve(const std::shared_ptr<CoreT<void>>& core) {
-                    UNUSED(core)
+                void doResolve(const std::shared_ptr<CoreT<void>>& /*core*/) {
                     finishResolve(resolve_());
                 }
 
@@ -474,8 +495,7 @@ namespace Async {
                 static_assert(sizeof...(Args) == 0,
                         "Can not attach a non-void continuation to a void-Promise");
 
-                void doResolve(const std::shared_ptr<CoreT<void>>& core) {
-                    UNUSED(core)
+                void doResolve(const std::shared_ptr<CoreT<void>>& /*core*/) {
                     resolve_();
                 }
 
@@ -550,15 +570,18 @@ namespace Async {
                 template<typename P>
                 void finishResolve(P& promise) {
                     auto chainer = makeChainer(promise);
-                    promise.then(std::move(chainer), [=](std::exception_ptr exc) {
-                        auto core = this->chain_;
-                        core->exc = std::move(exc);
-                        core->state = State::Rejected;
+                    std::weak_ptr<Core> weakPtr = this->chain_;
+                    promise.then(std::move(chainer), [weakPtr](std::exception_ptr exc) {
+                        if (auto core = weakPtr.lock()) {
+                            core->exc = std::move(exc);
+                            core->state = State::Rejected;
 
-                        for (const auto& req: core->requests) {
-                            req->reject(core);
+                            for (const auto& req: core->requests) {
+                                req->reject(core);
+                            }
                         }
                     });
+
                 }
 
                 Resolve resolve_;
@@ -582,8 +605,7 @@ namespace Async {
                     , reject_(reject)
                 { }
 
-                void doResolve(const std::shared_ptr<CoreT<void>>& core) {
-                    UNUSED(core)
+                void doResolve(const std::shared_ptr<CoreT<void>>& /*core*/) {
                     auto promise = resolve_();
                     finishResolve(promise);
                 }
@@ -1156,13 +1178,15 @@ namespace Async {
                     : total(_total)
                     , resolved(0)
                     , rejected(false)
+                    , mtx()
                     , resolve(std::move(_resolver))
                     , reject(std::move(_rejection))
                 { }
 
                 const size_t total;
-                std::atomic<size_t> resolved;
-                std::atomic<bool> rejected;
+                size_t resolved;
+                bool rejected;
+                std::mutex mtx;
 
                 Resolver resolve;
                 Rejection reject;
@@ -1170,11 +1194,13 @@ namespace Async {
 
             template<size_t Index, typename T, typename Data>
             static void resolveT(const T& val, Data& data) {
+                std::lock_guard<std::mutex> guard(data->mtx);
+
                 if (data->rejected) return;
 
                 // @Check thread-safety of std::get ?
                 std::get<Index>(data->results) = val;
-                data->resolved.fetch_add(1, std::memory_order_relaxed);
+                data->resolved++;
 
                 if (data->resolved == data->total) {
                     data->resolve(data->results);
@@ -1183,9 +1209,11 @@ namespace Async {
 
             template<typename Data>
             static void resolveVoid(Data& data) {
+                std::lock_guard<std::mutex> guard(data->mtx);
+
                 if (data->rejected) return;
 
-                data->resolved.fetch_add(1, std::memory_order_relaxed);
+                data->resolved++;
 
                 if (data->resolved == data->total) {
                     data->resolve(data->results);
@@ -1194,7 +1222,9 @@ namespace Async {
 
             template<typename Data>
             static void reject(std::exception_ptr exc, Data& data) {
-                data->rejected.store(true);
+                std::lock_guard<std::mutex> guard(data->mtx);
+
+                data->rejected = true;
                 data->reject(exc);
             }
         };
@@ -1204,11 +1234,13 @@ namespace Async {
             struct Data {
                 Data(size_t, Resolver resolver, Rejection rejection)
                     : done(false)
+                    , mtx()
                     , resolve(std::move(resolver))
                     , reject(std::move(rejection))
                 { }
 
-                std::atomic<bool> done;
+                bool done;
+                std::mutex mtx;
 
                 Resolver resolve;
                 Rejection reject;
@@ -1216,30 +1248,36 @@ namespace Async {
 
             template<size_t Index, typename T, typename Data>
             static void resolveT(const T& val, Data& data) {
+                std::lock_guard<std::mutex> guard(data->mtx);
+
                 if (data->done) return;
 
                 // Instead of allocating a new core, ideally we could share the same core as
                 // the relevant promise but we do not have access to the promise here is so meh
                 auto core = std::make_shared<Private::CoreT<T>>();
                 core->template construct<T>(val);
-                data->resolve(Async::Any(std::move(core)));
+                data->resolve(Async::Any(core));
 
                 data->done = true;
             }
 
             template<typename Data>
             static void resolveVoid(Data& data) {
+                std::lock_guard<std::mutex> guard(data->mtx);
+
                 if (data->done) return;
 
                 auto core = std::make_shared<Private::CoreT<void>>();
-                data->resolve(Async::Any(std::move(core)));
+                data->resolve(Async::Any(core));
 
                 data->done = true;
             }
 
             template<typename Data>
             static void reject(std::exception_ptr exc, Data& data) {
-                data->done.store(true);
+                std::lock_guard<std::mutex> guard(data->mtx);
+
+                data->done = true;
                 data->reject(exc);
             }
         };
@@ -1353,16 +1391,16 @@ namespace Async {
                  typename T,
                  typename Results
                 >
-        struct WhenAllRange {
-
+        struct WhenAllRange
+        {
             WhenAllRange(Resolver _resolve, Rejection _reject)
                 : resolve(std::move(_resolve))
                 , reject(std::move(_reject))
             { }
 
             template<typename Iterator>
-            void operator()(Iterator first, Iterator last) {
-
+            void operator()(Iterator first, Iterator last)
+            {
                 auto data = std::make_shared<DataT<T>>(
                    static_cast<size_t>(std::distance(first, last)),
                    std::move(resolve),
@@ -1375,9 +1413,11 @@ namespace Async {
                     WhenContinuation<T> cont(data, index);
 
                     it->then(std::move(cont), [=](std::exception_ptr ptr) {
+                        std::lock_guard<std::mutex> guard(data->mtx);
+
                         if (data->rejected) return;
 
-                        data->rejected.store(true);
+                        data->rejected = true;
                         data->reject(std::move(ptr));
                     });
 
@@ -1386,22 +1426,24 @@ namespace Async {
             }
 
         private:
-            struct Data {
+            struct Data
+            {
                 Data(size_t _total, Resolver _resolver, Rejection _rejection)
                     : total(_total)
                     , resolved(0)
                     , rejected(false)
+                    , mtx()
                     , resolve(std::move(_resolver))
                     , reject(std::move(_rejection))
                 { }
 
                 const size_t total;
-                std::atomic<size_t> resolved;
-                std::atomic<bool> rejected;
+                size_t resolved;
+                bool rejected;
+                std::mutex mtx;
 
                 Resolver resolve;
                 Rejection reject;
-
             };
 
             /* Ok so apparently I can not fully specialize a template structure
@@ -1429,22 +1471,25 @@ namespace Async {
             };
 
             template<typename ValueType, typename Dummy = void>
-            struct WhenContinuation {
-
-                typedef std::shared_ptr<DataT<ValueType>> D;
+            struct WhenContinuation
+            {
+                using D = std::shared_ptr<DataT<ValueType>>;
 
                 WhenContinuation(const D& _data, size_t _index)
                     : data(_data)
                     , index(_index)
                 { }
 
-                void operator()(const ValueType& val) const {
+                void operator()(const ValueType& val) const
+                {
+                    std::lock_guard<std::mutex> guard(data->mtx);
+
                     if (data->rejected) return;
 
                     data->results[index] = val;
-                    data->resolved.fetch_add(1);
-
-                    if (data->resolved == data->total) {
+                    data->resolved++;
+                    if (data->resolved == data->total)
+                    {
                         data->resolve(data->results);
                     }
                 }
@@ -1454,20 +1499,23 @@ namespace Async {
             };
 
             template<typename Dummy>
-            struct WhenContinuation<void, Dummy> {
-
-                typedef std::shared_ptr<DataT<void>> D;
+            struct WhenContinuation<void, Dummy>
+            {
+                using D = std::shared_ptr<DataT<void>>;
 
                 WhenContinuation(const D& _data, size_t)
                     : data(_data)
                 { }
 
-                void operator()() const {
+                void operator()() const
+                {
+                    std::lock_guard<std::mutex> guard(data->mtx);
+
                     if (data->rejected) return;
 
-                    data->resolved.fetch_add(1);
-
-                    if (data->resolved == data->total) {
+                    data->resolved++;
+                    if (data->resolved == data->total)
+                    {
                         data->resolve();
                     }
                 }

@@ -4,11 +4,12 @@
    Implementation of the description system
 */
 
-#include <sstream>
-#include <algorithm>
-
+#include <pistache/config.h>
 #include <pistache/description.h>
 #include <pistache/http_header.h>
+
+#include <sstream>
+#include <algorithm>
 
 namespace Pistache {
 namespace Rest {

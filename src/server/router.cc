@@ -99,7 +99,7 @@ SegmentTreeNode::getSegmentType(const std::string_view& fragment) {
 
 std::string SegmentTreeNode::sanitizeResource(const std::string& path) {
     const auto& dup = std::regex_replace(path,
-        SegmentTreeNode::multiple_slash, "/");
+        SegmentTreeNode::multiple_slash, std::string("/"));
     if (dup[dup.length() - 1] == '/') {
         return dup.substr(1, dup.length() - 2);
     }
@@ -121,7 +121,7 @@ SegmentTreeNode::addRoute(const std::string_view& path,
           std::string_view {nullptr, 0} :
           path.substr(segment_delimiter + 1);
 
-      std::unordered_map<std::string_view, std::shared_ptr<SegmentTreeNode>> *collection;
+      std::unordered_map<std::string_view, std::shared_ptr<SegmentTreeNode>> *collection = nullptr;
       const auto fragmentType = getSegmentType(current_segment);
       switch (fragmentType) {
         case SegmentType::Fixed:
@@ -171,7 +171,7 @@ bool Pistache::Rest::SegmentTreeNode::removeRoute(const std::string_view& path) 
                                 std::string_view {nullptr, 0} :
                                 path.substr(segment_delimiter + 1);
 
-        std::unordered_map<std::string_view, std::shared_ptr<SegmentTreeNode>> *collection;
+        std::unordered_map<std::string_view, std::shared_ptr<SegmentTreeNode>> *collection = nullptr;
         auto fragmentType = getSegmentType(current_segment);
         switch (fragmentType) {
             case SegmentType::Fixed:
@@ -280,7 +280,7 @@ Pistache::Rest::SegmentTreeNode::findRoute(
     } else {  // current leaf requested, or empty final optional
         if (!optional_.empty()) {
             // in case of more than one optional at this point, as it is an
-            // ambuiguity, it is resolved by using the first optional
+            // ambiguity, it is resolved by using the first optional
             auto optional = optional_.begin();
             // std::string opt {optional->first.data(), optional->first.length()};
             return optional->second->findRoute(path, params, splats);
@@ -400,6 +400,11 @@ Router::removeRoute(Http::Method method, const std::string& resource) {
 }
 
 void
+Router::head(const std::string& resource, Route::Handler handler) {
+    addRoute(Http::Method::Head, resource, std::move(handler));
+}
+
+void
 Router::addCustomHandler(Route::Handler handler) {
     customHandlers.push_back(std::move(handler));
 }
@@ -441,6 +446,29 @@ Router::route(const Http::Request& req, Http::ResponseWriter response) {
         if (handler1 == Route::Result::Ok) return Route::Status::Match;
     }
 
+    //No route or custom handler found. Let's walk through the
+    // list of other methods and see if any of them support
+    // this resource.
+    //This will allow server to send a
+    // HTTP 405 (method not allowed) response.
+    //RFC 7231 requires HTTP 405 responses to include a list of
+    // supported methods for the requested resource.
+    std::vector<Http::Method> supportedMethods;
+    for (auto& methods: routes) {
+        if (methods.first == req.method()) continue;
+
+        auto res = methods.second.findRoute(path);
+        auto rte = std::get<0>(res);
+        if (rte != nullptr) {
+            supportedMethods.push_back(methods.first);
+        }
+    }
+
+    if (!supportedMethods.empty()) {
+        response.sendMethodNotAllowed(supportedMethods);
+        return Route::Status::NotAllowed;
+    }
+
     if (hasNotFoundHandler()) {
       invokeNotFoundHandler(req, std::move(response));
     } else {
@@ -449,8 +477,7 @@ Router::route(const Http::Request& req, Http::ResponseWriter response) {
     return Route::Status::NotFound;
 }
 
-void Router::addRoute(Http::Method method,
-    const std::string& resource, Route::Handler handler) {
+void Router::addRoute(Http::Method method, const std::string& resource, Route::Handler handler) {
     if (resource.empty()) throw std::runtime_error("Invalid zero-length URL.");
     auto& r = routes[method];
     const auto sanitized = SegmentTreeNode::sanitizeResource(resource);
@@ -493,6 +520,10 @@ void Remove(Router& router, Http::Method method, const std::string& resource) {
 
 void NotFound(Router& router, Route::Handler handler) {
     router.addNotFoundHandler(std::move(handler));
+}
+
+void Head(Router& router, const std::string& resource, Route::Handler handler) {
+    router.head(resource, std::move(handler));
 }
 
 } // namespace Routes

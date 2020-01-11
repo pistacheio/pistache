@@ -10,19 +10,10 @@
 #include <pistache/http_headers.h>
 #include <pistache/cookie.h>
 #include <pistache/endpoint.h>
+#include <pistache/common.h>
 
 using namespace std;
 using namespace Pistache;
-
-struct PrintException {
-    void operator()(std::exception_ptr exc) const {
-        try {
-            std::rethrow_exception(exc);
-        } catch (const std::exception& e) {
-            std::cerr << "An exception occured: " << e.what() << std::endl;
-        }
-    }
-};
 
 struct LoadMonitor {
     LoadMonitor(const std::shared_ptr<Http::Endpoint>& endpoint)
@@ -180,12 +171,8 @@ int main(int argc, char *argv[]) {
     auto server = std::make_shared<Http::Endpoint>(addr);
 
     auto opts = Http::Endpoint::options()
-        .threads(thr)
-        .flags(Tcp::Options::InstallSignalHandler);
+        .threads(thr);
     server->init(opts);
     server->setHandler(Http::make_handler<MyHandler>());
     server->serve();
-
-    std::cout << "Shutdowning server" << std::endl;
-    server->shutdown();
 }

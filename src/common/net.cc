@@ -3,25 +3,56 @@
    
 */
 
+#include <pistache/net.h>
+#include <pistache/common.h>
+#include <pistache/config.h>
+
 #include <stdexcept>
 #include <limits>
 #include <cstring>
+#include <cassert>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <iostream>
 
-#include <pistache/net.h>
-#include <pistache/common.h>
-
-using namespace std;
-
 namespace Pistache {
+
+namespace {
+    bool IsIPv4HostName(const std::string& host)
+    {
+        in_addr addr;
+        char buff[INET_ADDRSTRLEN + 1] = {0, };
+        std::copy(host.begin(), host.end(), buff);
+        int res = inet_pton(AF_INET, buff, &addr);
+        return res;
+    }
+
+    bool IsIPv6HostName(const std::string& host)
+    {
+        in6_addr addr6;
+        char buff6[INET6_ADDRSTRLEN + 1] = {0, };
+        std::copy(host.begin(), host.end(), buff6);
+        int res = inet_pton(AF_INET6, buff6, &(addr6.s6_addr16));
+        return res;
+    }
+}
 
 Port::Port(uint16_t port)
     : port(port)
-{ }
+{}
+
+Port::Port(const std::string& data)
+{
+    if (data.empty())
+        throw std::invalid_argument("Invalid port: empty port");
+    char *end = 0;
+    long port_num = strtol(data.c_str(), &end, 10);
+    if (*end != 0 || port_num < Port::min() || port_num > Port::max())
+        throw std::invalid_argument("Invalid port: " + data);
+    port = static_cast<uint16_t>(port_num);
+}
 
 bool
 Port::isReserved() const {
@@ -39,102 +70,117 @@ Port::toString() const {
     return std::to_string(port);
 }
 
-Ipv4::Ipv4(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
-    : a(a)
-    , b(b)
-    , c(c)
-    , d(d)
-{ }
-
-Ipv4
-Ipv4::any() {
-    return Ipv4(0, 0, 0, 0);
+IP::IP() {
+    family = AF_INET;
+    addr = {0};
+    addr.sin_family = AF_INET;
+    uint8_t buff[INET_ADDRSTRLEN+1] = {0,0,0,0};
+    memcpy(&addr.sin_addr.s_addr, buff, INET_ADDRSTRLEN);
 }
 
-Ipv4
-Ipv4::loopback() {
-    return Ipv4(127, 0, 0, 1);
+IP::IP(uint8_t a, uint8_t b, uint8_t c, uint8_t d) {
+    family = AF_INET;
+    addr = {0};
+    addr.sin_family = AF_INET;
+    uint8_t buff[INET_ADDRSTRLEN+1] = {a,b,c,d};
+    memcpy(&addr.sin_addr.s_addr, buff, INET_ADDRSTRLEN);
 }
 
+IP::IP(uint16_t a, uint16_t b, uint16_t c, uint16_t d, uint16_t e, uint16_t f, uint16_t g, uint16_t h){
+    family = AF_INET6;
+    addr6 = { 0 };
+    addr6.sin6_family = AF_INET6;
+    uint16_t buff[9] {a,b,c,d,e,f,g,h, '\0'};
+    uint16_t remap[9] = {0,0,0,0,0,0,0,0, '\0'};
+    if ( htonl(1) != 1 ) {
+        for (int i = 0; i<8; i++) {
+            uint16_t x = buff[i];
+            uint16_t y = htons(x);
+            remap[i] = y;
+        }
+    } else {
+        memcpy(&remap, &buff, sizeof(remap));
+    }
+    memcpy(&addr6.sin6_addr.s6_addr16, &remap, 8*sizeof(uint16_t));
+}
+
+IP::IP(struct sockaddr* _addr) {
+    if (_addr->sa_family == AF_INET) { 
+        struct sockaddr_in *in_addr = reinterpret_cast<struct sockaddr_in *>(_addr);
+        family = AF_INET;
+        port = in_addr->sin_port;
+        memcpy(&(addr.sin_addr.s_addr), &(in_addr->sin_addr.s_addr), sizeof(in_addr_t));
+    } else if (_addr->sa_family == AF_INET6) {
+        struct sockaddr_in6 *in_addr = reinterpret_cast<struct sockaddr_in6 *>(_addr);
+        family = AF_INET6;
+        port = in_addr->sin6_port;
+        memcpy(&(addr6.sin6_addr.s6_addr16), &(in_addr->sin6_addr.s6_addr16), 8*sizeof(uint16_t));
+    }
+}
+
+IP
+IP::any() {
+    return IP(0, 0, 0, 0);
+}
+
+IP
+IP::any(bool is_ipv6) {
+    if (is_ipv6) {
+        return IP(0, 0, 0, 0, 0, 0, 0, 0);
+    } else {
+        return IP(0, 0, 0, 0);
+    }
+}
+
+IP
+IP::loopback(){
+    return IP(127, 0, 0, 1);
+}
+
+IP
+IP::loopback(bool is_ipv6) {
+    if (is_ipv6) {
+        return IP(0, 0, 0, 0, 0, 0, 0, 1);
+    } else {
+        return IP(127, 0, 0, 1);
+    }
+}
+
+int IP::getFamily() const {
+    return family;
+}
+
+int IP::getPort() const {
+    return port;
+}
 
 std::string
-Ipv4::toString() const {
-    
-    // Use the built-in ipv4 string length from arpa/inet.h
-    char buff[INET_ADDRSTRLEN+1];
-    
-    in_addr_t addr;
-    toNetwork(&addr);
-    
-    // Convert the network format address into display format
-    inet_ntop(AF_INET, &addr, buff, INET_ADDRSTRLEN);
-    
+IP::toString() const {  
+    char buff[INET6_ADDRSTRLEN+1];
+    if (family == AF_INET) {        
+        in_addr_t addr_;
+        toNetwork(&addr_);
+        inet_ntop(AF_INET, &addr_, buff, INET_ADDRSTRLEN);
+    } else if (family == AF_INET6) {
+        struct in6_addr addr_ = in6addr_any;
+        toNetwork(&addr_);
+        inet_ntop(AF_INET6, &addr_, buff, INET6_ADDRSTRLEN);
+    }
     return std::string(buff);
 }
 
-void Ipv4::toNetwork(in_addr_t *addr) const {
-    // Bitshift the bytes into an in_addr_t (a single 32bit unsigned int);
-    *addr = htonl( (uint32_t)(a<<24) | (uint32_t)(b<<16) | (uint32_t)(c<<8) | (uint32_t)d );;
+void IP::toNetwork(in_addr_t *_addr) const {
+    memcpy(_addr, &addr.sin_addr.s_addr, sizeof(uint32_t));
 }
 
-Ipv6::Ipv6(uint16_t a, uint16_t b, uint16_t c, uint16_t d, uint16_t e, uint16_t f, uint16_t g, uint16_t h)
-    : a(a)
-    , b(b)
-    , c(c)
-    , d(d)
-    , e(e)
-    , f(f)
-    , g(g)
-    , h(h)
-{ }
-
-Ipv6
-Ipv6::any() {
-    return Ipv6(0, 0, 0, 0, 0, 0, 0, 0);
+void IP::toNetwork(struct in6_addr *out) const {
+    memcpy(&out->s6_addr16, &(addr6.sin6_addr.s6_addr16), 8*sizeof(uint16_t));
 }
 
-Ipv6
-Ipv6::loopback() {
-    return Ipv6(0, 0, 0, 0, 0, 0, 0, 1);
-}
-
-std::string
-Ipv6::toString() const {
-    
-    // Use the built-in ipv6 string length from arpa/inet.h
-    char buff6[INET6_ADDRSTRLEN+1];
-    
-    in6_addr addr;
-    toNetwork(&addr);
-    
-    inet_ntop(AF_INET6, &addr, buff6, INET6_ADDRSTRLEN);
-
-    return std::string(buff6);
-}
-
-void Ipv6::toNetwork(in6_addr *addr6) const {
-    uint16_t temp_ip6[8] = {a, b, c, d, e, f, g, h};
-    uint16_t remap_ip6[8] = {0};
-    uint16_t x, y;
-    
-     // If native endianness is little-endian swap the bytes, otherwise just copy them into the new array
-    if ( htonl(1) != 1 ) {
-        for (uint16_t i = 0; i<8; i++) {
-            x = temp_ip6[i];
-            y = htons(x);
-            remap_ip6[i] = y;
-        }
-    } else {
-        memcpy(remap_ip6, temp_ip6, 16);
-    }
-    // Copy the bytes into the in6_addr struct
-    memcpy(addr6->s6_addr16, remap_ip6, 16);
-}
-
-bool Ipv6::supported() {
+bool IP::supported() {
     struct ifaddrs *ifaddr = nullptr;
     struct ifaddrs *ifa = nullptr;
-    int family, n;
+    int addr_family, n;
     bool supportsIpv6 = false;
 
     if (getifaddrs(&ifaddr) == -1) {
@@ -146,8 +192,8 @@ bool Ipv6::supported() {
             continue;
         }
 
-        family = ifa->ifa_addr->sa_family;
-        if (family == AF_INET6) {
+        addr_family = ifa->ifa_addr->sa_family;
+        if (addr_family == AF_INET6) {
             supportsIpv6 = true;
             continue;
         }
@@ -157,14 +203,71 @@ bool Ipv6::supported() {
     return supportsIpv6;
 }
 
-Address::Address()
-    : host_("")
-    , port_(0)
-{ }
+
+AddressParser::AddressParser(const std::string& data)
+{
+    std::size_t end_pos = data.find(']');
+    std::size_t start_pos = data.find('[');
+    if (start_pos != std::string::npos &&
+        end_pos != std::string::npos &&
+        start_pos < end_pos)
+    {
+        std::size_t colon_pos = data.find_first_of(':', end_pos);
+        if (colon_pos != std::string::npos)
+        {
+            hasColon_ = true;
+        }
+        host_ = data.substr(start_pos, end_pos + 1);
+        family_ = AF_INET6;
+        ++end_pos;
+    }
+    else
+    {
+        std::size_t colon_pos = data.find(':');
+        if (colon_pos != std::string::npos)
+        {
+            hasColon_ = true;
+        }
+        end_pos = colon_pos;
+        host_ = data.substr(0, end_pos);
+        family_ = AF_INET;
+    }
+    
+    if (end_pos != std::string::npos && hasColon_)
+    {
+        port_ = data.substr(end_pos + 1);
+        if (port_.empty())
+            throw std::invalid_argument("Invalid port");
+    }
+}
+
+const std::string& AddressParser::rawHost() const
+{
+    return host_;
+}
+
+const std::string& AddressParser::rawPort() const
+{
+    return port_;
+}
+
+bool AddressParser::hasColon() const
+{
+    return hasColon_;
+}
+
+int AddressParser::family() const
+{
+    return family_;
+}
+
+Address::Address() :
+    ip_{}, port_{0}
+{}
 
 Address::Address(std::string host, Port port)
 {   
-    std::string addr = host;
+    std::string addr = std::move(host);
     addr.append(":");
     addr.append(port.toString());
     init(std::move(addr));
@@ -181,41 +284,25 @@ Address::Address(const char* addr)
     init(std::string(addr));
 }
 
-Address::Address(Ipv4 ip, Port port)
-    : host_(ip.toString())
+Address::Address(IP ip, Port port)
+    : ip_(ip)
     , port_(port)
-    , family_(AF_INET)
-{ }
-
-Address::Address(Ipv6 ip, Port port)
-    : host_(ip.toString())
-    , port_(port)
-    , family_(AF_INET6)
 { }
 
 Address
 Address::fromUnix(struct sockaddr* addr) {
-    if (addr->sa_family == AF_INET) { 
-        struct sockaddr_in *in_addr = reinterpret_cast<struct sockaddr_in *>(addr);
-        char host[INET_ADDRSTRLEN+1];
-        inet_ntop(AF_INET, &(in_addr->sin_addr), host, INET_ADDRSTRLEN);
-        int port = ntohs(in_addr->sin_port);
+    if ((addr->sa_family==AF_INET) or (addr->sa_family==AF_INET6)) {
+        IP ip = IP(addr);
+        Port port = Port(ip.getPort());
         assert(addr);
-        return Address(host, port);
-    } else if (addr->sa_family == AF_INET6) {
-        struct sockaddr_in6 *in_addr = reinterpret_cast<struct sockaddr_in6 *>(addr);
-        char host[INET6_ADDRSTRLEN+1];
-        inet_ntop(AF_INET6, &(in_addr->sin6_addr), host, INET6_ADDRSTRLEN);
-        int port = ntohs(in_addr->sin6_port);
-        assert(addr);
-        return Address(host, port);
+        return Address(ip, port);
     }
     throw Error("Not an IP socket");    
 }
 
 std::string
 Address::host() const {
-    return host_;
+    return ip_.toString();
 }
 
 Port
@@ -225,53 +312,98 @@ Address::port() const {
 
 int
 Address::family() const {
-    return family_;
+    return ip_.getFamily();
 }
 
-void
-Address::init(const std::string& addr) {
-    unsigned long pos = addr.find(']');
-    unsigned long s_pos = addr.find('[');
-    if (pos != std::string::npos && s_pos != std::string::npos) {
-        //IPv6 address
-        host_ = addr.substr(s_pos+1, pos-1);
-        family_ = AF_INET6;
-        try {
-            in6_addr addr6;
-            char buff6[INET6_ADDRSTRLEN+1];
-            memcpy(buff6, host_.c_str(), INET6_ADDRSTRLEN);
-            inet_pton(AF_INET6, buff6, &(addr6.s6_addr16));
-        } catch (std::runtime_error) {
+
+
+void Address::init(const std::string& addr)
+{
+    AddressParser parser(addr);
+    int family_ = parser.family();
+    std::string host_;
+    if (family_ == AF_INET6)
+    {
+        const std::string& raw_host = parser.rawHost();
+        assert(raw_host.size() > 2);
+        host_ = addr.substr(1, raw_host.size() - 2);
+        
+        if (!IsIPv6HostName(host_))
+        {
             throw std::invalid_argument("Invalid IPv6 address");
         }
-        pos++;
-    } else {
-        //IPv4 address
-        pos = addr.find(':');
-        if (pos == std::string::npos)
-            throw std::invalid_argument("Invalid address");
-        host_ = addr.substr(0, pos);
-        family_ = AF_INET;
-        if (host_ == "*") {
+        
+        struct in6_addr addr;
+        inet_pton(AF_INET6, host_.c_str(), &addr);
+        struct sockaddr_in6 s_addr = {0};
+        s_addr.sin6_family = AF_INET6;
+        memcpy(&(s_addr.sin6_addr.s6_addr16), &addr.s6_addr16, 8*sizeof(uint16_t));
+        ip_ = IP(reinterpret_cast<struct sockaddr *>(&s_addr));
+    }
+    else if (family_ == AF_INET)
+    {
+        host_ = parser.rawHost();
+        
+        if (host_ == "*")
+        {
             host_ = "0.0.0.0";
         }
-        try {
-            in_addr addr;
-            char buff[INET_ADDRSTRLEN+1];
-            memcpy(buff, host_.c_str(), INET_ADDRSTRLEN);
-            inet_pton(AF_INET, buff, &(addr));
-        } catch (std::runtime_error) {
+        else if (host_ == "localhost")
+        {
+            host_ = "127.0.0.1";
+        }
+        
+        struct hostent *hp = ::gethostbyname(host_.c_str());
+        
+        if (hp)
+        {
+            struct in_addr **addr_list;
+            addr_list = (struct in_addr **)hp->h_addr_list;
+            for(int i = 0; addr_list[i] != NULL; i++)
+            {
+                // Just take the first IP address
+                host_ = std::string(inet_ntoa(*addr_list[i]));
+                break;
+            }
+        }
+        
+        if (!IsIPv4HostName(host_))
+        {
             throw std::invalid_argument("Invalid IPv4 address");
         }
+        
+        struct in_addr addr;
+        inet_pton(AF_INET, host_.c_str(), &addr);
+        struct sockaddr_in s_addr = {0};
+        s_addr.sin_family = AF_INET;
+        memcpy(&(s_addr.sin_addr.s_addr), &addr.s_addr, sizeof(uint32_t));
+        ip_ = IP(reinterpret_cast<struct sockaddr *>(&s_addr));
     }
-    char *end;
-    const std::string portPart = addr.substr(pos + 1);
+    else
+    { assert(false); }
+
+    const std::string& portPart = parser.rawPort();
     if (portPart.empty())
-        throw std::invalid_argument("Invalid port");
-    long port = strtol(portPart.c_str(), &end, 10);
-    if (*end != 0 || port < Port::min() || port > Port::max())
-        throw std::invalid_argument("Invalid port");
-    port_ = static_cast<uint16_t>(port);
+    {
+        if (parser.hasColon())
+        {
+            // "www.example.com:" or "127.0.0.1:" cases
+            throw std::invalid_argument("Invalid port");
+        }
+        else
+        {
+            // "www.example.com" or "127.0.0.1" cases
+            port_ = Const::HTTP_STANDARD_PORT;
+        }
+    }
+    else
+    {
+        char *end = 0;
+        long port = strtol(portPart.c_str(), &end, 10);
+        if (*end != 0 || port < Port::min() || port > Port::max())
+            throw std::invalid_argument("Invalid port");
+        port_ = Port(port);
+    }
 }
 
 Error::Error(const char* message)

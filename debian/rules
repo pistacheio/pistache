@@ -1,0 +1,100 @@
+#!/usr/bin/make -f
+#
+#   Pistache.
+#   Copyright (C) 2015-2019 Mathieu Stefani. Released under the terms of the
+#   Apache License 2.0.
+#
+
+# Output every command that modifies files on the build system...
+DH_VERBOSE = 1
+export DH_OPTIONS=-v
+
+# Set flags for how the package will be compiled and built. Note separated with
+#  white space and not comma, as per DPM § 4.9.1...
+
+    # Set various group related security hardening build flags for format,
+    #  fortify, stackprotector, relro, bindnow, and pie...
+    DH_BUILD_MAINT_OPTIONS  = hardening=+all
+
+    # Skip unit testing...
+    #DH_BUILD_MAINT_OPTIONS += nocheck
+
+    # The above should be reflected when dpkg-buildflags is called and merged
+    #  with the defaults...
+    export DH_BUILD_MAINT_OPTIONS
+    export DPKG_EXPORT_BUILDFLAGS = 1
+
+# Standard rules and preset shell variables...
+include /usr/share/dpkg/default.mk
+
+# Directory containing package since may not be called from current working
+#  directory. MAKEFILE_LIST pre-defined by Make and appended each time another
+#  makefile is included, so first one should be debian/rules...
+PACKAGE_DIR = $(abspath $(dir $(firstword $(MAKEFILE_LIST))))
+
+# Source directory...
+SOURCE_DIR  = $(abspath $(PACKAGE_DIR)/../)
+
+# Main packaging script based on debhelper 7 syntax. The % is an implicit
+#  pattern rule that acts as a universal target...
+%:
+	dh $@
+
+# Configure source...
+override_dh_auto_configure:
+	dh_auto_configure --                                                        \
+	    -G "Unix Makefiles"                                                     \
+	    -DCMAKE_BUILD_TYPE=Release                                              \
+	    -DPISTACHE_BUILD_EXAMPLES=true                                          \
+	    -DPISTACHE_BUILD_TESTS=true                                             \
+	    -DPISTACHE_ENABLE_NETWORK_TESTS=false                                   \
+	    -DPISTACHE_BUILD_DOCS=false                                             \
+	    -DPISTACHE_USE_SSL=true                                                 \
+	    -DCMAKE_INSTALL_PREFIX=/usr                                             \
+	    $(SOURCE_DIR)
+
+# Perform unit testing, but only if not disabled...
+ifeq (,$(findstring nocheck,$(DEB_BUILD_OPTIONS)))
+override_dh_auto_test:
+ifeq "$(DEB_BUILD_ARCH)" "armhf"
+	@echo "# Performing unit tests, but skipping memcheck because valgrind broken on this platform..."
+	dh_auto_test -- test || { find . -iname "LastTest.log" -exec cat {} \; ; exit 99; }
+else
+	@echo "# Performing all unit tests..."
+	dh_auto_test -- test test_memcheck || { find . -iname "LastTest.log" -exec cat {} \; ; exit 99; }
+endif
+endif
+
+# Prepare an upstream vanilla distribution tarball as per DPM § 4.9...
+#  http://wiki.debian.org/onlyjob/get-orig-source
+get-orig-source: $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM).orig.tar.bz2 $(info I: $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM))
+	@
+
+# Prepare an upstream vanilla distribution tarball...
+$(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM).orig.tar.bz2:
+	@echo "# Preparing source for $(DEB_SOURCE) v$(DEB_VERSION_UPSTREAM)..."
+	cd $(SOURCE_DIR)                                                            \
+	&& cd $(PACKAGE_DIR)                                                        \
+	&& mkdir -p $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)                              \
+	&& cd $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)                                 \
+	&& cmake                                                                    \
+		-G "Unix Makefiles"                                                     \
+		-DCMAKE_BUILD_TYPE=Release                                              \
+		-DPISTACHE_BUILD_EXAMPLES=true                                          \
+		-DPISTACHE_BUILD_TESTS=true                                             \
+	    -DPISTACHE_ENABLE_NETWORK_TESTS=false                                   \
+		-DPISTACHE_BUILD_DOCS=false                                             \
+	    -DPISTACHE_USE_SSL=true                                                 \
+		-DCMAKE_INSTALL_PREFIX=/usr                                             \
+		$(SOURCE_DIR)                                                           \
+	&& make dist                                                                \
+	&& mv -v $(DEB_SOURCE)-$(DEB_VERSION_UPSTREAM).tar.bz2 $(SOURCE_DIR)/../$@
+	@echo "# Cleaning up..."
+	cd $(PACKAGE_DIR)/$(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)                     \
+	&& make clean
+	cd $(PACKAGE_DIR)                                                           \
+	&& $(RM) -r $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)
+
+# Targets which aren't actual products...
+.PHONY: get-orig-source override_dh_auto_configure override_dh_auto_test
+

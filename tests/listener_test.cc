@@ -175,7 +175,16 @@ TEST(listener_test, listener_bind_port_not_free_throw_runtime) {
         FAIL() << "Expected std::runtime_error while binding, got nothing";
     } catch (std::runtime_error const & err) {
         std::cout << err.what() << std::endl;
-        ASSERT_STREQ("Address already in use", err.what());
+        int flag = 0 ;
+        // GNU libc
+        if ( strncmp(err.what(), "Address already in use", sizeof("Address already in use")) == 0 ) {
+            flag = 1;
+        }
+        // Musl libc
+        if ( strncmp(err.what(), "Address in use", sizeof("Address in use")) == 0 ) {
+            flag = 1;
+        }
+        ASSERT_EQ(flag, 1);
     } catch ( ... ) {
         FAIL() << "Expected std::runtime_error";
     }

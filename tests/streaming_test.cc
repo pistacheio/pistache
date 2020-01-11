@@ -8,38 +8,78 @@
 #include <curl/curl.h>
 #include <curl/easy.h>
 
+#include <vector>
+#include <queue>
+#include <mutex>
+#include <thread>
+
 using namespace std;
 using namespace Pistache;
 
-static const size_t N_LETTERS = 26;
-static const size_t LETTER_REPEATS = 100000;
-static const size_t SET_REPEATS = 10;
-static const uint16_t PORT = 9082;
+static constexpr size_t N_LETTERS = 26;
+static constexpr size_t LETTER_REPEATS = 100000;
+static constexpr size_t SET_REPEATS = 10;
+static constexpr size_t N_WORKERS = 10;
 
-void dumpData(const Rest::Request&req, Http::ResponseWriter response) {
-    UNUSED(req);
+
+void dumpData(const Rest::Request& /*req*/, Http::ResponseWriter response)
+{
+    using Lock = std::mutex;
+    using Guard = std::lock_guard<Lock>;
+
+    Lock responseLock;
+    std::vector<std::thread> workers;
+    std::condition_variable cv;
+
+    std::queue<std::function<void()>> jobs;
+    Lock jobLock;
+    std::atomic<size_t> jobCounter(0);
+
+    constexpr size_t JOB_LIMIT = SET_REPEATS * N_LETTERS;
+
+    for (size_t j = 0; j < N_WORKERS; ++j)
+    {
+        workers.push_back(std::thread([&jobCounter, &cv, &jobLock, &jobs]()
+        {
+            while(jobCounter < JOB_LIMIT)
+            {
+                std::unique_lock<Lock> l(jobLock);
+                cv.wait(l, [&jobCounter, &jobs]{ return jobs.size() || !(jobCounter < JOB_LIMIT);});
+                if (!jobs.empty())
+                {
+                    auto f = std::move(jobs.front());
+                    jobs.pop();
+                    l.unlock();
+                    f();
+                    ++jobCounter;
+                    l.lock();
+                }
+            }
+            cv.notify_all();
+        }));
+    }
 
     auto stream = response.stream(Http::Code::Ok);
-    char letter = 'A';
-
-    std::mutex responseGuard;
-    std::vector<std::thread> workers;
+    const char letter = 'A';
 
     for (size_t s = 0; s < SET_REPEATS; ++s) {
         for (size_t i = 0; i < N_LETTERS; ++i ) {
-            std::thread job([&,i]() -> void {
-                const size_t nchunks = 10;
-                size_t chunk_size = LETTER_REPEATS / nchunks;
-                std::string payload(chunk_size, letter + i);
+            auto job = [&stream, &responseLock, i]() -> void {
+                constexpr size_t nchunks = 10;
+                constexpr size_t chunk_size = LETTER_REPEATS / nchunks;
+                const std::string payload(chunk_size, letter + i);
                 {
-                    std::unique_lock<std::mutex> lock(responseGuard);
+                    Guard guard(responseLock);
                     for (size_t chunk = 0; chunk < nchunks; ++chunk) {
                         stream.write(payload.c_str(), chunk_size);
                         stream.flush();
                     }
                 }
-            });
-            workers.push_back(std::move(job));
+            };
+            std::unique_lock<Lock> l(jobLock);
+            jobs.push(std::move(job));
+            l.unlock();
+            cv.notify_all();
         }
     }
 
@@ -47,9 +87,9 @@ void dumpData(const Rest::Request&req, Http::ResponseWriter response) {
     stream.ends();
 }
 
-TEST(stream, from_description)
+TEST(streaming, from_description)
 {
-    Address addr(Ipv4::any(), PORT);
+    Address addr(Ipv4::any(), Port(0));
     const size_t threads = 20;
 
     std::shared_ptr<Http::Endpoint> endpoint;
@@ -63,12 +103,11 @@ TEST(stream, from_description)
 
     router.initFromDescription(desc);
 
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
-
+    auto flags = Tcp::Options::ReuseAddr;
     auto opts = Http::Endpoint::options()
         .threads(threads)
         .flags(flags)
-        .maxPayload(1024*1024)
+        .maxRequestSize(1024*1024)
         ;
 
     endpoint = std::make_shared<Pistache::Http::Endpoint>(addr);
@@ -86,7 +125,8 @@ TEST(stream, from_description)
         return size * nmemb;
     };
 
-    std::string url = "http://localhost:" + std::to_string(PORT) + "/";
+    const auto port = endpoint->getPort();
+    std::string url = "http://localhost:" + std::to_string(port) + "/";
     CURLcode res = CURLE_FAILED_INIT;
     CURL * curl = curl_easy_init();
     if (curl)

@@ -7,6 +7,9 @@
 #include <stdexcept>
 
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 
 #include <pistache/peer.h>
 #include <pistache/async.h>
@@ -15,26 +18,51 @@
 namespace Pistache {
 namespace Tcp {
 
-using namespace std;
-
 Peer::Peer()
     : transport_(nullptr)
     , fd_(-1)
+    , ssl_(NULL)
 { }
 
 Peer::Peer(const Address& addr)
     : transport_(nullptr)
     , addr(addr)
     , fd_(-1)
+    , ssl_(NULL)
 { }
 
-Address
-Peer::address() const {
+Peer::~Peer()
+{
+#ifdef PISTACHE_USE_SSL
+    if (ssl_)
+        SSL_free((SSL *)ssl_);
+#endif /* PISTACHE_USE_SSL */
+}
+
+const Address& Peer::address() const
+{
     return addr;
 }
 
-string
-Peer::hostname() const {
+const std::string& Peer::hostname()
+{
+    if (hostname_.empty()) {
+        char host[NI_MAXHOST];
+        struct sockaddr_in sa;
+        sa.sin_family = AF_INET;
+        if (inet_pton(AF_INET, addr.host().c_str(), &sa.sin_addr) == 0) {
+          hostname_ = addr.host();
+        } else {
+          if (!getnameinfo((struct sockaddr*)&sa, sizeof(sa)
+                          , host, sizeof(host)
+                          , NULL, 0   // Service info
+                          , NI_NAMEREQD // Raise an error if name resolution failed
+                )
+            ) {
+            hostname_.assign((char *)host);
+          }
+        }
+    }
     return hostname_;
 }
 
@@ -42,6 +70,19 @@ void
 Peer::associateFd(int fd) {
     fd_ = fd;
 }
+
+#ifdef PISTACHE_USE_SSL
+void
+Peer::associateSSL(void *ssl)
+{
+    ssl_ = ssl;
+}
+
+void *
+Peer::ssl(void) const {
+    return ssl_;
+}
+#endif /* PISTACHE_USE_SSL */
 
 int
 Peer::fd() const {
@@ -53,7 +94,7 @@ Peer::fd() const {
 }
 
 void
-Peer::putData(std::string name, std::shared_ptr<void> data) {
+Peer::putData(std::string name, std::shared_ptr<Pistache::Http::Private::ParserBase> data) {
     auto it = data_.find(name);
     if (it != std::end(data_)) {
         throw std::runtime_error("The data already exists");
@@ -62,7 +103,7 @@ Peer::putData(std::string name, std::shared_ptr<void> data) {
     data_.insert(std::make_pair(std::move(name), std::move(data)));
 }
 
-std::shared_ptr<void>
+std::shared_ptr<Pistache::Http::Private::ParserBase>
 Peer::getData(std::string name) const {
     auto data = tryGetData(std::move(name));
     if (data == nullptr) {
@@ -72,7 +113,7 @@ Peer::getData(std::string name) const {
     return data;
 }
 
-std::shared_ptr<void>
+std::shared_ptr<Pistache::Http::Private::ParserBase>
 Peer::tryGetData(std::string(name)) const {
     auto it = data_.find(name);
     if (it == std::end(data_)) return nullptr;
@@ -81,11 +122,11 @@ Peer::tryGetData(std::string(name)) const {
 }
 
 Async::Promise<ssize_t>
-Peer::send(const Buffer& buffer, int flags) {
+Peer::send(const RawBuffer& buffer, int flags) {
     return transport()->asyncWrite(fd_, buffer, flags);
 }
 
-std::ostream& operator<<(std::ostream& os, const Peer& peer) {
+std::ostream& operator<<(std::ostream& os, Peer& peer) {
     const auto& addr = peer.address();
     os << "(" << addr.host() << ", " << addr.port() << ") [" << peer.hostname() << "]";
     return os;

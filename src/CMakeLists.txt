@@ -11,27 +11,41 @@ set(SOURCE_FILES
     ${INCLUDE_FILES}
 )
 
-add_library(pistache ${SOURCE_FILES})
-set_target_properties(pistache PROPERTIES
-    OUTPUT_NAME "pistache"
-    VERSION ${GENERIC_LIB_VERSION}
-    SOVERSION ${GENERIC_LIB_SOVERSION}
-)
+add_library(pistache OBJECT ${SOURCE_FILES})
+set_target_properties(pistache PROPERTIES POSITION_INDEPENDENT_CODE 1)
 add_definitions(-DONLY_C_LOCALE=1)
 
 target_include_directories(pistache PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
 )
 
-set(include_install_dir "include")
-set(lib_install_dir "lib/")
-set(bin_install_dir "bin/")
+set(include_install_dir ${CMAKE_INSTALL_INCLUDEDIR})
+set(lib_install_dir ${CMAKE_INSTALL_LIBDIR})
+set(bin_install_dir ${CMAKE_INSTALL_BINDIR})
 
-target_link_libraries(pistache pthread)
+add_library(pistache_shared SHARED $<TARGET_OBJECTS:pistache>)
+add_library(pistache_static STATIC $<TARGET_OBJECTS:pistache>)
+
+target_link_libraries(pistache_shared pthread)
+target_link_libraries(pistache_static pthread)
+
+set(Pistache_OUTPUT_NAME "pistache")
+set_target_properties(pistache_shared PROPERTIES
+    OUTPUT_NAME ${Pistache_OUTPUT_NAME}
+    VERSION ${version}
+    SOVERSION ${VERSION_MAJOR}
+)
+
+set_target_properties(pistache_static PROPERTIES 
+    OUTPUT_NAME ${Pistache_OUTPUT_NAME}
+)
 
 if (PISTACHE_INSTALL)
+    set(Pistache_CMAKE_INSTALL_PATH "${CMAKE_INSTALL_LIBDIR}/cmake/pistache")
+    set(Pistache_CONFIG_FILE "PistacheConfig.cmake")
+
     install(
-      TARGETS pistache
+      TARGETS pistache_shared
       EXPORT ${targets_export_name}
       ARCHIVE DESTINATION ${lib_install_dir}
       LIBRARY DESTINATION ${lib_install_dir}
@@ -42,24 +56,25 @@ if (PISTACHE_INSTALL)
       DIRECTORY "${PROJECT_SOURCE_DIR}/include/pistache"
       DESTINATION ${include_install_dir}
       FILES_MATCHING PATTERN "*.*h")
-    install(TARGETS pistache
+    install(TARGETS pistache_static
             EXPORT PistacheTargets
-            DESTINATION lib)
+            DESTINATION ${CMAKE_INSTALL_LIBDIR})
     install(EXPORT PistacheTargets
-            DESTINATION "lib/cmake/pistache"
+            DESTINATION ${Pistache_CMAKE_INSTALL_PATH}
             EXPORT_LINK_INTERFACE_LIBRARIES
             COMPONENT cmake-config
     )
 
     include(CMakePackageConfigHelpers)
     configure_package_config_file(
-        "PistacheConfig.cmake.in"
-        "${CMAKE_CURRENT_BINARY_DIR}/PistacheConfig.cmake"
-        INSTALL_DESTINATION "lib/cmake/pistache"
+        "${Pistache_CONFIG_FILE}.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/${Pistache_CONFIG_FILE}"
+        INSTALL_DESTINATION ${Pistache_CMAKE_INSTALL_PATH}
+        PATH_VARS include_install_dir lib_install_dir
     )
     install(
-        FILES "${CMAKE_CURRENT_BINARY_DIR}/PistacheConfig.cmake"
-        DESTINATION "lib/cmake/pistache"
+        FILES "${CMAKE_CURRENT_BINARY_DIR}/${Pistache_CONFIG_FILE}"
+        DESTINATION ${Pistache_CMAKE_INSTALL_PATH}
         COMPONENT cmake-config
     )
 endif()

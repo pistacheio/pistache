@@ -1,13 +1,14 @@
 #include "gtest/gtest.h"
 
+#include <pistache/async.h>
+#include <pistache/common.h>
+
 #include <thread>
 #include <algorithm>
 #include <deque>
 #include <mutex>
 #include <condition_variable>
 #include <random>
-
-#include <pistache/async.h>
 
 using namespace Pistache;
 
@@ -449,4 +450,27 @@ TEST(async_test, stress_multithreaded_test) {
     for (auto& wrk: workers) {
         wrk->stop();
     }
+}
+
+TEST(async_test, chain_rejects)
+{
+    bool ok = false;
+    std::unique_ptr<Async::Rejection> rejecter;
+    Async::Promise<int> promise([&](Async::Resolver& resolve, Async::Rejection& reject) {
+        UNUSED(resolve)
+        rejecter.reset(new Async::Rejection(std::move(reject)));
+    });
+    promise.then(
+    	[](int v) -> Async::Promise<int> {
+    		return Async::Promise<int>::resolved(v);
+    	},
+    	[&](std::exception_ptr e)->Async::Promise<int>
+    	{
+    		ok = true;
+    		return Async::Promise<int>::rejected(e);
+    	});
+
+    ASSERT_FALSE(ok);
+    (*rejecter)(std::runtime_error("foo"));
+    ASSERT_TRUE(ok);
 }

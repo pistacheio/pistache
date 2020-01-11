@@ -338,7 +338,7 @@ public:
     }
 
 protected:
-    EncodingHeader(Encoding encoding)
+    explicit EncodingHeader(Encoding encoding)
         : encoding_(encoding)
     { }
 
@@ -391,6 +391,27 @@ public:
 
 private:
     uint64_t value_;
+};
+
+class Authorization : public Header {
+public:
+    NAME("Authorization");
+
+    Authorization()
+            : value_("NONE")
+    { }
+
+    explicit Authorization(std::string val)
+            : value_(val)
+    { }
+
+    void parse(const std::string& data) override;
+    void write(std::ostream& os) const override;
+
+    std::string value() const { return value_; }
+
+private:
+    std::string value_;
 };
 
 class ContentType : public Header {
@@ -551,6 +572,31 @@ public:
 private:
     std::string ua_;
 };
+
+#define CUSTOM_HEADER(header_name) \
+    class header_name : public Pistache::Http::Header::Header { \
+    public:                                                     \
+        NAME(#header_name)                                      \
+                                                                \
+        header_name() = default;                                \
+                                                                \
+        explicit header_name(const char* value)                 \
+        : value_{value} {}                                      \
+                                                                \
+        explicit header_name(std::string value)                 \
+        : value_(std::move(value)) {}                           \
+                                                                \
+        void parseRaw(const char *str, size_t len) final        \
+        { value_ = { str, len };}                               \
+                                                                \
+        void write(std::ostream& os) const final                \
+        { os << value_; };                                      \
+                                                                \
+        std::string val() const { return value_; };             \
+                                                                \
+    private:                                                    \
+        std::string value_;                                     \
+    };                                                          \
 
 class Raw {
 public:

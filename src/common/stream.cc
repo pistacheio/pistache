@@ -3,6 +3,8 @@
 
 */
 
+#include <pistache/stream.h>
+
 #include <iostream>
 #include <algorithm>
 #include <string>
@@ -12,13 +14,63 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#include <pistache/stream.h>
 
 namespace Pistache {
 
+RawBuffer::RawBuffer()
+    : data_()
+    , length_(0)
+    , isDetached_(false)
+{ }
+
+RawBuffer::RawBuffer(std::string data, size_t length, bool isDetached)
+    : data_(std::move(data))
+    , length_(length)
+    , isDetached_(isDetached)
+{ }
+
+RawBuffer::RawBuffer(const char* data, size_t length, bool isDetached)
+    : data_()
+    , length_(length)
+    , isDetached_(isDetached)
+{
+    // input may come not from a ZTS - copy only length_ characters.
+    data_.assign(data, length_);
+}
+
+RawBuffer RawBuffer::detach(size_t fromIndex)
+{
+    if (data_.empty())
+        return RawBuffer();
+
+    if (length_ < fromIndex)
+        throw std::range_error("Trying to detach buffer from an index bigger than lengthght.");
+
+    auto newDatalength = length_ - fromIndex;
+    std::string newData = data_.substr(fromIndex, newDatalength);
+
+    return RawBuffer(std::move(newData), newDatalength, true);
+}
+
+const std::string& RawBuffer::data() const
+{
+    return data_;
+}
+
+size_t RawBuffer::size() const
+{
+    return length_;
+}
+
+bool RawBuffer::isDetached() const
+{
+    return isDetached_;
+}
 
 FileBuffer::FileBuffer(const std::string& fileName)
     : fileName_(fileName)
+    , fd_(-1)
+    , size_(0)
 {
     if (fileName.empty()) {
         throw std::runtime_error("Empty fileName");
@@ -32,6 +84,7 @@ FileBuffer::FileBuffer(const std::string& fileName)
     struct stat sb;
     int res = ::fstat(fd, &sb);
     if (res == -1) {
+        close(fd);
         throw std::runtime_error("Could not get file stats");
     }
 
@@ -39,12 +92,24 @@ FileBuffer::FileBuffer(const std::string& fileName)
     size_ = sb.st_size;
 }
 
+Fd FileBuffer::fd() const
+{
+    return fd_;
+}
+
+size_t FileBuffer::size() const
+{
+    return size_;
+}
+
+size_t DynamicStreamBuf::maxSize = Const::DefaultMaxResponseSize;
+
 DynamicStreamBuf::int_type
 DynamicStreamBuf::overflow(DynamicStreamBuf::int_type ch) {
     if (!traits_type::eq_int_type(ch, traits_type::eof())) {
         const auto size = data_.size();
-        if (size < maxSize_) {
-            reserve(size * 2);
+        if (size < maxSize) {
+            reserve((size ? size : 1u) * 2);
             *pptr() = ch;
             pbump(1);
             return traits_type::not_eof(ch);
@@ -57,7 +122,7 @@ DynamicStreamBuf::overflow(DynamicStreamBuf::int_type ch) {
 void
 DynamicStreamBuf::reserve(size_t size)
 {
-    if (size > maxSize_) size = maxSize_;
+    if (size > maxSize) size = maxSize;
     const size_t oldSize = data_.size();
     data_.resize(size);
     this->setp(&data_[0] + oldSize, &data_[0] + size);

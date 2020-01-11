@@ -6,6 +6,10 @@
 
 #pragma once
 
+#include <pistache/config.h>
+#include <pistache/common.h>
+#include <pistache/flags.h>
+
 #include <memory>
 #include <chrono>
 #include <vector>
@@ -13,8 +17,6 @@
 
 #include <sched.h>
 
-#include <pistache/flags.h>
-#include <pistache/common.h>
 
 namespace Pistache {
 
@@ -87,11 +89,7 @@ inline constexpr bool operator==(Tag lhs, Tag rhs) {
 }
 
 struct Event {
-    explicit Event(Tag _tag)
-        : flags()
-        , fd(-1)
-        , tag(_tag)
-    { }
+    explicit Event(Tag _tag);
 
     Flags<NotifyOn> flags;
     Fd fd;
@@ -100,7 +98,8 @@ struct Event {
 
 class Epoll {
 public:
-    Epoll(size_t max = 128);
+    Epoll();
+    ~Epoll(); 
 
     void addFd(Fd fd, Flags<NotifyOn> interest, Tag tag, Mode mode = Mode::Level);
     void addFdOneShot(Fd fd, Flags<NotifyOn> interest, Tag tag, Mode mode = Mode::Level);
@@ -109,22 +108,19 @@ public:
     void rearmFd(Fd fd, Flags<NotifyOn> interest, Tag tag, Mode mode = Mode::Level);
 
     int poll(std::vector<Event>& events,
-             size_t maxEvents = Const::MaxEvents,
-             std::chrono::milliseconds timeout = std::chrono::milliseconds(0)) const;
+             const std::chrono::milliseconds timeout = std::chrono::milliseconds(-1)) const;
 
 private:
     static int toEpollEvents(const Flags<NotifyOn>& interest);
     static Flags<NotifyOn> toNotifyOn(int events);
-    int epoll_fd;
+    Fd epoll_fd;
 };
 
 } // namespace Polling
 
 class NotifyFd {
 public:
-    NotifyFd()
-        : event_fd(-1)
-    { }
+    NotifyFd();
 
     Polling::Tag bind(Polling::Epoll& poller);
 
@@ -138,7 +134,7 @@ public:
     bool tryRead() const;
 
 private:
-    int event_fd;
+    Fd event_fd;
 };
 
 } // namespace Pistache

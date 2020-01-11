@@ -1,0 +1,62 @@
+Source: pistache
+Section: libdevel
+Priority: optional
+Maintainer: Kip Warner <kip@thevertigo.com>
+Standards-Version: 4.2.1
+Build-Depends:
+    cmake (>= 3.8.0),
+    cppcheck,
+    debhelper-compat (= 11),
+    dh-exec,
+    libc6-dev (>= 2.26),
+    libcurl4-openssl-dev,
+    libgtest-dev (>= 1.8.0),
+    libssl-dev (>= 1.1.1),
+    libstdc++6 (>= 7.2.0),
+    lintian,
+    pkg-config (>= 0.28),
+    rapidjson-dev (>= 1.1.0),
+    valgrind
+Vcs-Git: https://github.com/oktal/pistache.git
+Vcs-browser: https://www.github.com/oktal/pistache
+Homepage: https://www.github.com/oktal/pistache
+
+Package: libpistache-dev
+Architecture: any
+Pre-Depends: ${misc:Pre-Depends}
+Depends:
+ ${misc:Depends},
+ pkg-config (>= 0.28),
+ libpistache0 (= ${binary:Version}),
+ libssl-dev
+Description: elegant C++ REST framework
+ Pistache is a C++ REST framework originally written by Mathieu Stefani at
+ Datacratic, since maintained by other volunteers. It is written in pure C++11
+ with no external dependency and provides a low-level HTTP abstraction.
+ .
+ Pistache provides both an HTTP client and server that can be used to create and
+ query complex web and REST APIs.
+ .
+ Pistache is released under the Apache License 2.0 license.
+ .
+ This package contains the development headers, static library, and examples.
+ The static library was built with SSL support.
+
+Package: libpistache0
+Architecture: any
+Pre-Depends: ${misc:Pre-Depends}
+Depends:
+    ${misc:Depends},
+    ${shlibs:Depends}
+Description: elegant C++ REST framework
+ Pistache is a C++ REST framework originally written by Mathieu Stefani at
+ Datacratic, since maintained by other volunteers. It is written in pure C++11
+ with no external dependency and provides a low-level HTTP abstraction.
+ .
+ Pistache provides both an HTTP client and server that can be used to create and
+ query complex web and REST APIs.
+ .
+ Pistache is released under the Apache License 2.0 license.
+ .
+ This package contains the shared library built with SSL support.
+

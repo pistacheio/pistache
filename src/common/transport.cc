@@ -12,6 +12,7 @@
 #include <pistache/peer.h>
 #include <pistache/tcp.h>
 #include <pistache/os.h>
+#include <pistache/utils.h>
 
 
 namespace Pistache {
@@ -85,7 +86,7 @@ Transport::onReady(const Aio::FdSet& fds) {
                 auto it = timers.find(tag.value());
                 auto& entry = it->second;
                 handleTimer(std::move(entry));
-                timers.erase(it);
+                timers.erase(it->first);
             }
             else {
                 throw std::runtime_error("Unknown fd");
@@ -130,7 +131,20 @@ Transport::handleIncoming(const std::shared_ptr<Peer>& peer) {
     int fd = peer->fd();
 
     for (;;) {
-        ssize_t bytes = recv(fd, buffer + totalBytes, Const::MaxBuffer - totalBytes, 0);
+
+        ssize_t bytes;
+
+#ifdef PISTACHE_USE_SSL
+        if (peer->ssl() != NULL) {
+            bytes = SSL_read((SSL *)peer->ssl(), buffer + totalBytes,
+                Const::MaxBuffer - totalBytes);
+        } else {
+#endif /* PISTACHE_USE_SSL */
+            bytes = recv(fd, buffer + totalBytes, Const::MaxBuffer - totalBytes, 0);
+#ifdef PISTACHE_USE_SSL
+        }
+#endif /* PISTACHE_USE_SSL */
+
         if (bytes == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 if (totalBytes > 0) {
@@ -166,19 +180,20 @@ Transport::handlePeerDisconnection(const std::shared_ptr<Peer>& peer) {
     if (it == std::end(peers))
         throw std::runtime_error("Could not find peer to erase");
 
-    peers.erase(it);
+#ifdef PISTACHE_USE_SSL
+    if (peer->ssl() != NULL) {
+        SSL_free((SSL *)peer->ssl());
+        peer->associateSSL(NULL);
+    }
+#endif /* PISTACHE_USE_SSL */
+
+    peers.erase(it->first);
 
     {
         // Clean up buffers
         Guard guard(toWriteLock);
         auto & wq = toWrite[fd];
         while (wq.size() > 0) {
-            auto & entry = wq.front();
-            const BufferHolder & buffer = entry.buffer;
-            if (buffer.isRaw()) {
-                auto raw = buffer.raw();
-                if (raw.isOwned) delete[] raw.data;
-            }
             wq.pop_front();
         }
         toWrite.erase(fd);
@@ -205,14 +220,10 @@ Transport::asyncWriteImpl(Fd fd)
 
         auto & entry = wq.front();
         int flags    = entry.flags;
-        const BufferHolder &buffer = entry.buffer;
+        BufferHolder &buffer = entry.buffer;
         Async::Deferred<ssize_t> deferred = std::move(entry.deferred);
 
         auto cleanUp = [&]() {
-            if (buffer.isRaw()) {
-                auto raw = buffer.raw();
-                if (raw.isOwned) delete[] raw.data;
-            }
             wq.pop_front();
             if (wq.size() == 0) {
                 toWrite.erase(fd);
@@ -225,20 +236,61 @@ Transport::asyncWriteImpl(Fd fd)
         for (;;) {
             ssize_t bytesWritten = 0;
             auto len = buffer.size() - totalWritten;
+
             if (buffer.isRaw()) {
                 auto raw = buffer.raw();
-                auto ptr = raw.data + totalWritten;
-                bytesWritten = ::send(fd, ptr, len, flags | MSG_NOSIGNAL);
+                auto ptr = raw.data().c_str() + totalWritten;
+
+#ifdef PISTACHE_USE_SSL
+                auto it = peers.find(fd);
+
+                if (it == std::end(peers))
+                    throw std::runtime_error("No peer found for fd: " + std::to_string(fd));
+
+                if (it->second->ssl() != NULL) {
+                    bytesWritten = SSL_write((SSL *)it->second->ssl(), ptr, len);
+                } else {
+#endif /* PISTACHE_USE_SSL */
+                    bytesWritten = ::send(fd, ptr, len, flags);
+#ifdef PISTACHE_USE_SSL
+                }
+#endif /* PISTACHE_USE_SSL */
             } else {
                 auto file = buffer.fd();
                 off_t offset = totalWritten;
-                bytesWritten = ::sendfile(fd, file, &offset, len);
+
+#ifdef PISTACHE_USE_SSL
+                auto it = peers.find(fd);
+
+                if (it == std::end(peers))
+                    throw std::runtime_error("No peer found for fd: " + std::to_string(fd));
+
+                if (it->second->ssl() != NULL) {
+                    bytesWritten = SSL_sendfile((SSL *)it->second->ssl(), file, &offset, len);
+                } else {
+#endif /* PISTACHE_USE_SSL */
+                    bytesWritten = ::sendfile(fd, file, &offset, len);
+#ifdef PISTACHE_USE_SSL
+                }
+#endif /* PISTACHE_USE_SSL */
             }
             if (bytesWritten < 0) {
                 if (errno == EAGAIN || errno == EWOULDBLOCK) {
+
+                    auto bufferHolder = buffer.detach(totalWritten);
+
+                    // pop_front kills buffer - so we cannot continue loop or use buffer after this point
                     wq.pop_front();
-                    wq.push_front(WriteEntry(std::move(deferred), buffer.detach(totalWritten), flags));
+                    wq.push_front(WriteEntry(std::move(deferred), bufferHolder, flags));
                     reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
+                }
+                // EBADF can happen when the HTTP parser, in the case of
+                // an error, closes fd before the entire request is processed.
+                // https://github.com/oktal/pistache/issues/501
+                else if (errno == EBADF || errno == EPIPE || errno == ECONNRESET) {
+                    wq.pop_front();
+                    toWrite.erase(fd);
+                    stop = true;
                 }
                 else {
                     cleanUp();
@@ -320,16 +372,15 @@ void
 Transport::handleWriteQueue() {
     // Let's drain the queue
     for (;;) {
-        auto entry = writesQueue.popSafe();
-        if (!entry) break;
+        auto write = writesQueue.popSafe();
+        if (!write) break;
 
-        auto &write = entry->data();
-        auto fd = write.peerFd;
+        auto fd = write->peerFd;
         if (!isPeerFd(fd)) continue;
 
         {
             Guard guard(toWriteLock);
-            toWrite[fd].push_back(std::move(write));
+            toWrite[fd].push_back(std::move(*write));
         }
 
         reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write, Polling::Mode::Edge);
@@ -339,22 +390,20 @@ Transport::handleWriteQueue() {
 void
 Transport::handleTimerQueue() {
     for (;;) {
-        auto entry = timersQueue.popSafe();
-        if (!entry) break;
+        auto timer = timersQueue.popSafe();
+        if (!timer) break;
 
-        auto &timer = entry->data();
-        armTimerMsImpl(std::move(timer));
+        armTimerMsImpl(std::move(*timer));
     }
 }
 
 void
 Transport::handlePeerQueue() {
     for (;;) {
-        auto entry = peersQueue.popSafe();
-        if (!entry) break;
+        auto data = peersQueue.popSafe();
+        if (!data) break;
 
-        const auto &data = entry->data();
-        handlePeer(data.peer);
+        handlePeer(data->peer);
     }
 }
 

@@ -32,9 +32,9 @@ public:
        : events_()
     {
         events_.reserve(events.size());
-        for (auto &&event: events) {
-            events_.push_back(std::move(event));
-        }
+        events_.insert(events_.end(),
+                       std::make_move_iterator(events.begin()),
+                       std::make_move_iterator(events.end()));
     }
 
     struct Entry : private Polling::Event {
@@ -68,7 +68,7 @@ public:
     }
 
     const Entry& operator[](size_t index) const {
-        return events_[index];
+        return events_.at(index);
     }
 
     iterator begin() {
@@ -176,9 +176,12 @@ public:
 
 class AsyncContext : public ExecutionContext {
 public:
-    explicit AsyncContext(size_t threads)
+    explicit AsyncContext(size_t threads, const std::string& threadsName = "")
         : threads_(threads)
-    { }
+
+    {
+        threadsName_ = threadsName;
+    }
 
     virtual ~AsyncContext() {}
 
@@ -188,6 +191,7 @@ public:
 
 private:
     size_t threads_;
+    std::string threadsName_;
 };
 
 class Handler : public Prototype<Handler> {

@@ -11,6 +11,8 @@
 
 #pragma once
 
+#include <functional>
+
 namespace Pistache {
 
 class TypeId {

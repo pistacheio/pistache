@@ -85,10 +85,11 @@ protected:
     Version version_;
     Code code_;
 
-    Header::Collection headers_;
     std::string body_;
 
     CookieJar cookies_;
+    Header::Collection headers_;
+
 };
 
 namespace Uri {
@@ -146,6 +147,8 @@ public:
     // @Todo: try to remove the need for friend-ness here
     friend class Client;
 
+    Request();
+
     Request(const Request& other) = default;
     Request& operator=(const Request& other) = default;
 
@@ -175,9 +178,13 @@ public:
     std::shared_ptr<Tcp::Peer> peer() const;
 #endif
 
-private:
-    Request();
+    const Address& address() const;
 
+    void copyAddress(const Address& address) {
+        address_ = address;
+    }
+
+private:
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
     void associatePeer(const std::shared_ptr<Tcp::Peer>& peer) {
         if (peer_.use_count() > 0)
@@ -187,6 +194,7 @@ private:
     }
 #endif
 
+
     Method method_;
     std::string resource_;
     Uri::Query query_;
@@ -194,6 +202,7 @@ private:
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
     std::weak_ptr<Tcp::Peer> peer_;
 #endif
+    Address address_;
 };
 
 class Handler;
@@ -214,6 +223,8 @@ public:
     {
         other.timerFd = -1;
     }
+
+    ~Timeout() { disarm(); }
 
     Timeout& operator=(Timeout&& other) {
         handler = other.handler;
@@ -395,11 +406,9 @@ public:
     friend class Private::ResponseLineStep;
     friend class Private::Parser<Http::Response>;
 
-    Response()
-        : Message()
-    { }
+    Response() = default;
 
-    Response(Version version)
+    explicit Response(Version version)
         : Message()
     {
         version_ = version;
@@ -487,11 +496,18 @@ public:
      * - movedPermantly -> 301
      * - moved() -> 302
      */
+    Async::Promise<ssize_t> sendMethodNotAllowed(const std::vector<Http::Method>& supportedMethods) {
+        code_ = Http::Code::Method_Not_Allowed;
+        headers_.add(std::make_shared<Http::Header::Allow>(supportedMethods));
+        std::string body = codeString(Pistache::Http::Code::Method_Not_Allowed);
+        return putOnWire(body.c_str(), body.size());
+    }
 
     Async::Promise<ssize_t> send(Code code) {
         code_ = code;
         return putOnWire(nullptr, 0);
     }
+
     Async::Promise<ssize_t> send(
             Code code,
             const std::string& body,
@@ -516,6 +532,16 @@ public:
             const char (&arr)[N],
             const Mime::MediaType& mime = Mime::MediaType())
     {
+        return send(
+            code, arr, N - 1, std::forward<const Mime::MediaType&>(mime));
+    }
+
+    Async::Promise<ssize_t> send(
+            Code code,
+            const char* data,
+            const size_t size,
+            const Mime::MediaType& mime = Mime::MediaType())
+    {
         /* @Refactor: code duplication */
         code_ = code;
 
@@ -527,7 +553,7 @@ public:
                 headers_.add(std::make_shared<Header::ContentType>(mime));
         }
 
-        return putOnWire(arr, N - 1);
+        return putOnWire(data, size);
     }
 
     ResponseStream stream(Code code, size_t streamSize = DefaultStreamSize) {
@@ -611,7 +637,7 @@ namespace Private {
     enum class State { Again, Next, Done };
 
     struct Step {
-        Step(Message* request)
+        explicit Step(Message* request)
             : message(request)
         { }
 
@@ -619,53 +645,53 @@ namespace Private {
 
         virtual State apply(StreamCursor& cursor) = 0;
 
-        void raise(const char* msg, Code code = Code::Bad_Request);
+        static void raise(const char* msg, Code code = Code::Bad_Request);
 
         Message *message;
     };
 
     class RequestLineStep : public Step {
     public:
-        RequestLineStep(Request* request)
+        explicit RequestLineStep(Request* request)
             : Step(request)
         { }
 
-        State apply(StreamCursor& cursor);
+        State apply(StreamCursor& cursor) override;
     };
 
     class ResponseLineStep : public Step {
     public:
-        ResponseLineStep(Response* response)
+        explicit ResponseLineStep(Response* response)
             : Step(response)
         { }
 
-        State apply(StreamCursor& cursor);
+        State apply(StreamCursor& cursor) override;
     };
 
     class HeadersStep : public Step {
     public:
-        HeadersStep(Message* request)
+        explicit HeadersStep(Message* request)
             : Step(request)
         { }
 
-        State apply(StreamCursor& cursor);
+        State apply(StreamCursor& cursor) override;
     };
 
     class BodyStep : public Step {
     public:
-        BodyStep(Message* message_)
+        explicit BodyStep(Message* message_)
             : Step(message_)
             , chunk(message_)
             , bytesRead(0)
         { }
 
-        State apply(StreamCursor& cursor);
+        State apply(StreamCursor& cursor) override;
 
     private:
         struct Chunk {
             enum Result { Complete, Incomplete, Final };
 
-            Chunk(Message* message_)
+            explicit Chunk(Message* message_)
               : message(message_)
               , bytesRead(0)
               , size(-1)

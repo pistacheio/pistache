@@ -26,8 +26,7 @@ enum class Options : uint64_t {
     FastOpen             = Linger << 1,
     QuickAck             = FastOpen << 1,
     ReuseAddr            = QuickAck << 1,
-    ReverseLookup        = ReuseAddr << 1,
-    InstallSignalHandler = ReverseLookup << 1
+    ReusePort            = ReuseAddr << 1,
 };
 
 DECLARE_FLAGS_OPERATORS(Options)

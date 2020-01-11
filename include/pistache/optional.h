@@ -7,12 +7,14 @@
 
 #pragma once
 
+#include <array>
 #include <cstdlib>
 #include <cstring>
 #include <utility>
 #include <iostream>
 #include <tuple>
 #include <functional>
+#include <type_traits>
 
 namespace Pistache {
 
@@ -80,6 +82,17 @@ namespace types {
     struct is_move_constructible :
         std::is_constructible<T, typename std::add_rvalue_reference<T>::type> {};
 
+    // Workaround for C++14 defect (CWG 1558)
+    template <typename... Ts> struct make_void { typedef void type; };
+    template <typename... Ts> using void_t = typename make_void<Ts...>::type;
+
+    template <typename, typename = void_t<>>
+    struct has_equalto_operator : std::false_type {};
+
+    template <typename T>
+    struct has_equalto_operator<
+        T, void_t<decltype(std::declval<T>() == std::declval<T>())>>
+        : std::true_type {};
 }
 
 
@@ -106,6 +119,7 @@ public:
     {
         if (!other.isEmpty()) {
             ::new (data()) T(*other.data());
+            none_flag = ValueMarker;
         }
         else {
             none_flag = NoneMarker;
@@ -153,6 +167,7 @@ public:
                 data()->~T();
             }
             ::new (data()) T(*other.data());
+            none_flag = ValueMarker;
         }
         else {
             if (none_flag != NoneMarker) {
@@ -168,7 +183,7 @@ public:
     Optional<T> &operator=(Optional<T> &&other)
       noexcept(types::is_nothrow_move_constructible<T>::value)
     {
-        if (other.data()) {
+        if (!other.isEmpty()) {
             move_helper(std::move(other), types::is_move_constructible<T>());
             other.none_flag = NoneMarker;
         }
@@ -225,45 +240,59 @@ public:
         }
     }
 
+    bool operator==(const Optional<T>& other) const {
+        static_assert(types::has_equalto_operator<T>::value,
+                      "optional<T> requires T to be comparable by equal to operator");
+        return (isEmpty() && other.isEmpty()) || (!isEmpty() && !other.isEmpty() && get() == other.get());
+    }
+
+    bool operator!=(const Optional<T>& other) const {
+        static_assert(types::has_equalto_operator<T>::value,
+                      "optional<T> requires T to be comparable by equal to operator");
+        return !(*this == other);
+   }
 
 private:
     T *constData() const {
-        return const_cast<T *const>(reinterpret_cast<const T *const>(bytes));
+        return const_cast<T *const>(reinterpret_cast<const T *const>(bytes.data()));
     }
 
     T *data() const {
-        return const_cast<T *>(reinterpret_cast<const T *>(bytes));
+        return const_cast<T *>(reinterpret_cast<const T *>(bytes.data()));
     }
 
     void move_helper(Optional<T> &&other, std::true_type) {
         ::new (data()) T(std::move(*other.data()));
+        none_flag = ValueMarker;
     }
 
     void move_helper(Optional<T> &&other, std::false_type) {
         ::new (data()) T(*other.data());
+        none_flag = ValueMarker;
     }
 
     template<typename U>
     void from_some_helper(types::Some<U> some, std::true_type) {
         ::new (data()) T(std::move(some.val_));
+        none_flag = ValueMarker;
     }
 
     template<typename U>
     void from_some_helper(types::Some<U> some, std::false_type) {
         ::new (data()) T(some.val_);
+        none_flag = ValueMarker;
     }
 
     typedef uint8_t none_flag_t;
     static constexpr none_flag_t NoneMarker = 1;
+    static constexpr none_flag_t ValueMarker = 0;
 
-    union {
-        uint8_t bytes[sizeof(T)];
-        none_flag_t none_flag;
-    };
+    alignas(T) std::array<uint8_t, sizeof(T)> bytes;
+    none_flag_t none_flag;
 };
 
 #define PistacheCheckSize(Type) \
-    static_assert(sizeof(Optional<Type>) == sizeof(Type), "Size differs")
+    static_assert(sizeof(Optional<Type>) == sizeof(Type) + alignof(Type), "Size differs")
 
 PistacheCheckSize(uint8_t);
 PistacheCheckSize(uint16_t);

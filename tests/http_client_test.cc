@@ -30,12 +30,42 @@ struct DelayHandler : public Http::Handler
     }
 };
 
+struct FastEvenPagesHandler : public Http::Handler
+{
+    HTTP_PROTOTYPE(FastEvenPagesHandler)
+
+    void onRequest(const Http::Request& request, Http::ResponseWriter writer) override
+    {
+        std::string page = request.resource().erase(0, 1);
+        int num = std::stoi(page);
+        if (num % 2 != 0)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(2500));
+            writer.send(Http::Code::Ok, std::to_string(num));
+        }
+        else
+        {
+            writer.send(Http::Code::Ok, std::to_string(num));
+        }
+    }
+};
+
+struct QueryBounceHandler : public Http::Handler
+{
+    HTTP_PROTOTYPE(QueryBounceHandler)
+
+    void onRequest(const Http::Request& request, Http::ResponseWriter writer) override
+    {
+        writer.send(Http::Code::Ok, request.query().as_str());
+    }
+};
+
 TEST(http_client_test, one_client_with_one_request)
 {
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto flags = Tcp::Options::ReuseAddr;
     auto server_opts = Http::Endpoint::options().flags(flags);
     server.init(server_opts);
     server.setHandler(Http::make_handler<HelloHandler>());
@@ -48,13 +78,14 @@ TEST(http_client_test, one_client_with_one_request)
     client.init();
 
     auto rb = client.get(server_address);
-    auto response = rb.send();
+    auto response = rb.header<Http::Header::Connection>(Http::ConnectionControl::KeepAlive).send();
     bool done = false;
-    response.then([&](Http::Response rsp)
+    response.then([&done](Http::Response rsp)
                   {
                       if (rsp.code() == Http::Code::Ok)
                           done = true;
-                  }, Async::IgnoreException);
+                  },
+                  Async::IgnoreException);
 
     Async::Barrier<Http::Response> barrier(response);
     barrier.wait_for(std::chrono::seconds(5));
@@ -65,11 +96,12 @@ TEST(http_client_test, one_client_with_one_request)
     ASSERT_TRUE(done);
 }
 
-TEST(http_client_test, one_client_with_multiple_requests) {
+TEST(http_client_test, one_client_with_multiple_requests)
+{
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto flags = Tcp::Options::ReuseAddr;
     auto server_opts = Http::Endpoint::options().flags(flags);
     server.init(server_opts);
     server.setHandler(Http::make_handler<HelloHandler>());
@@ -86,12 +118,15 @@ TEST(http_client_test, one_client_with_multiple_requests) {
     int response_counter = 0;
 
     auto rb = client.get(server_address);
-    for (int i = 0; i < RESPONSE_SIZE; ++i) {
+    for (int i = 0; i < RESPONSE_SIZE; ++i)
+    {
         auto response = rb.send();
-        response.then([&](Http::Response rsp) {
-            if (rsp.code() == Http::Code::Ok)
-                ++response_counter;
-        }, Async::IgnoreException);
+        response.then([&response_counter](Http::Response rsp)
+                      {
+                          if (rsp.code() == Http::Code::Ok)
+                              ++response_counter;
+                      },
+                      Async::IgnoreException);
         responses.push_back(std::move(response));
     }
 
@@ -110,7 +145,7 @@ TEST(http_client_test, multiple_clients_with_one_request) {
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto flags = Tcp::Options::ReuseAddr;
     auto server_opts = Http::Endpoint::options().flags(flags);
     server.init(server_opts);
     server.setHandler(Http::make_handler<HelloHandler>());
@@ -132,24 +167,30 @@ TEST(http_client_test, multiple_clients_with_one_request) {
 
     auto rb1 = client1.get(server_address);
     auto response1 = rb1.send();
-    response1.then([&](Http::Response rsp) {
-            if (rsp.code() == Http::Code::Ok)
-                ++response_counter;
-        }, Async::IgnoreException);
+    response1.then([&response_counter](Http::Response rsp)
+                   {
+                       if (rsp.code() == Http::Code::Ok)
+                           ++response_counter;
+                   },
+                   Async::IgnoreException);
     responses.push_back(std::move(response1));
     auto rb2 = client2.get(server_address);
     auto response2 = rb2.send();
-    response2.then([&](Http::Response rsp) {
-            if (rsp.code() == Http::Code::Ok)
-                ++response_counter;
-        }, Async::IgnoreException);
+    response2.then([&response_counter](Http::Response rsp)
+                   {
+                       if (rsp.code() == Http::Code::Ok)
+                           ++response_counter;
+                   },
+                   Async::IgnoreException);
     responses.push_back(std::move(response2));
     auto rb3 = client3.get(server_address);
     auto response3 = rb3.send();
-    response3.then([&](Http::Response rsp) {
-            if (rsp.code() == Http::Code::Ok)
-                ++response_counter;
-        }, Async::IgnoreException);
+    response3.then([&response_counter](Http::Response rsp)
+                   {
+                       if (rsp.code() == Http::Code::Ok)
+                           ++response_counter;
+                   },
+                   Async::IgnoreException);
     responses.push_back(std::move(response3));
 
     auto sync = Async::whenAll(responses.begin(), responses.end());
@@ -170,7 +211,7 @@ TEST(http_client_test, timeout_reject)
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto flags = Tcp::Options::ReuseAddr;
     auto server_opts = Http::Endpoint::options().flags(flags);
     server.init(server_opts);
     server.setHandler(Http::make_handler<DelayHandler>());
@@ -183,7 +224,7 @@ TEST(http_client_test, timeout_reject)
     client.init();
 
     auto rb = client.get(server_address).timeout(std::chrono::milliseconds(1000));
-    auto response = rb.send();
+    auto response = rb.header<Http::Header::Connection>(Http::ConnectionControl::KeepAlive).send();
     bool is_reject = false;
     response.then([&is_reject](Http::Response /*rsp*/)
                   {
@@ -203,12 +244,12 @@ TEST(http_client_test, timeout_reject)
     ASSERT_TRUE(is_reject);
 }
 
-TEST(http_client_test, one_client_with_multiple_requests_and_one_connection_per_host)
+TEST(http_client_test, one_client_with_multiple_requests_and_one_connection_per_host_and_two_threads)
 {
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
-    auto flags = Tcp::Options::InstallSignalHandler | Tcp::Options::ReuseAddr;
+    auto flags = Tcp::Options::ReuseAddr;
     auto server_opts = Http::Endpoint::options().flags(flags);
     server.init(server_opts);
     server.setHandler(Http::make_handler<HelloHandler>());
@@ -228,7 +269,7 @@ TEST(http_client_test, one_client_with_multiple_requests_and_one_connection_per_
     auto rb = client.get(server_address);
     for (int i = 0; i < RESPONSE_SIZE; ++i)
     {
-        auto response = rb.send();
+        auto response = rb.header<Http::Header::Connection>(Http::ConnectionControl::KeepAlive).send();
         response.then([&](Http::Response rsp)
                       {
                           if (rsp.code() == Http::Code::Ok)
@@ -247,4 +288,188 @@ TEST(http_client_test, one_client_with_multiple_requests_and_one_connection_per_
     client.shutdown();
 
     ASSERT_TRUE(response_counter == RESPONSE_SIZE);
+}
+
+TEST(http_client_test, one_client_with_multiple_requests_and_two_connections_per_host_and_one_thread)
+{
+    const Pistache::Address address("localhost", Pistache::Port(0));
+
+    Http::Endpoint server(address);
+    auto flags = Tcp::Options::ReuseAddr;
+    auto server_opts = Http::Endpoint::options().flags(flags);
+    server.init(server_opts);
+    server.setHandler(Http::make_handler<HelloHandler>());
+    server.serveThreaded();
+
+    const std::string server_address = "localhost:" + server.getPort().toString();
+    std::cout << "Server address: " << server_address << "\n";
+
+    Http::Client client;
+    auto opts = Http::Client::options().maxConnectionsPerHost(2).threads(1);
+    client.init(opts);
+
+    std::vector<Async::Promise<Http::Response>> responses;
+    const int RESPONSE_SIZE = 6;
+    std::atomic<int> response_counter(0);
+
+    auto rb = client.get(server_address);
+    for (int i = 0; i < RESPONSE_SIZE; ++i)
+    {
+        auto response = rb.header<Http::Header::Connection>(Http::ConnectionControl::KeepAlive).send();
+        response.then([&](Http::Response rsp)
+                      {
+                          if (rsp.code() == Http::Code::Ok)
+                              ++response_counter;
+                      },
+                      Async::IgnoreException);
+        responses.push_back(std::move(response));
+    }
+
+    auto sync = Async::whenAll(responses.begin(), responses.end());
+    Async::Barrier<std::vector<Http::Response>> barrier(sync);
+
+    barrier.wait_for(std::chrono::seconds(5));
+
+    server.shutdown();
+    client.shutdown();
+
+    ASSERT_TRUE(response_counter == RESPONSE_SIZE);
+}
+
+TEST(http_client_test, test_client_timeout)
+{
+    const Pistache::Address address("localhost", Pistache::Port(0));
+
+    Http::Endpoint server(address);
+    auto flags = Tcp::Options::ReuseAddr;
+    auto server_opts = Http::Endpoint::options().flags(flags).threads(4);
+    server.init(server_opts);
+    server.setHandler(Http::make_handler<FastEvenPagesHandler>());
+    server.serveThreaded();
+
+    const std::string server_address = "localhost:" + server.getPort().toString();
+    std::cout << "Server address: " << server_address << "\n";
+
+    Http::Client client;
+    client.init();
+
+    std::vector<Async::Promise<Http::Response>> responses;
+    const int RESPONSE_SIZE = 4;
+    int rejects_counter = 0;
+    const std::vector<int> timeouts = {0, 1000, 4500, 1000};
+
+    std::map<int, std::string> res;
+    for (int i = 0; i < RESPONSE_SIZE; ++i)
+    {
+        const std::string page = server_address + "/" + std::to_string(i);
+        auto rb = client.get(page).timeout(std::chrono::milliseconds(timeouts[i]));
+        auto response = rb.send();
+        response.then([&res, num = i](Http::Response rsp)
+                      {
+                          if (rsp.code() == Http::Code::Ok)
+                          {
+                              res[num] = rsp.body();
+                          }
+                      },
+                      [&rejects_counter](std::exception_ptr)
+                      {
+                          ++rejects_counter;
+                      });
+        responses.push_back(std::move(response));
+    }
+
+    auto sync = Async::whenAll(responses.begin(), responses.end());
+    Async::Barrier<std::vector<Http::Response>> barrier(sync);
+
+    barrier.wait_for(std::chrono::seconds(2));
+
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+
+    server.shutdown();
+    client.shutdown();
+
+    ASSERT_GE(rejects_counter, 1);
+    ASSERT_EQ(res.size(), 2u);
+
+    auto it1 = res.find(0);
+    ASSERT_NE(it1, res.end());
+    ASSERT_EQ(it1->second, "0");
+
+    auto it2 = res.find(2);
+    ASSERT_NE(it2, res.end());
+    ASSERT_EQ(it2->second, "2");
+}
+
+TEST(http_client_test, client_sends_query)
+{
+    const Pistache::Address address("localhost", Pistache::Port(0));
+
+    Http::Endpoint server(address);
+    auto flags = Tcp::Options::ReuseAddr;
+    auto server_opts = Http::Endpoint::options().flags(flags);
+    server.init(server_opts);
+    server.setHandler(Http::make_handler<QueryBounceHandler>());
+    server.serveThreaded();
+
+    const std::string server_address = "localhost:" + server.getPort().toString();
+    std::cout << "Server address: " << server_address << "\n";
+
+    Http::Client client;
+    client.init();
+
+    std::string queryStr;
+    Http::Uri::Query query({
+        { "param1", "1" },
+        { "param2", "3.14" },
+        { "param3", "a+string" }
+    });
+
+    auto rb = client.get(server_address);
+    auto response = rb.params(query).send();
+
+    response.then([&queryStr](Http::Response rsp)
+                  {
+                      if (rsp.code() == Http::Code::Ok)
+                          queryStr = rsp.body();
+                  },
+                  Async::IgnoreException);
+
+    Async::Barrier<Http::Response> barrier(response);
+    barrier.wait_for(std::chrono::seconds(5));
+
+    EXPECT_EQ(queryStr[0], '?');
+
+    std::unordered_map<std::string, std::string> results;
+    bool key = true;
+    std::string keyStr, valueStr;;
+
+    for (auto it = std::next(queryStr.begin()); it != queryStr.end(); it++)
+    {
+        if (*it == '&' || std::next(it) == queryStr.end())
+        {
+            if (*it != '&')
+                valueStr += *it;
+            results[keyStr] = valueStr;
+            keyStr = "";
+            valueStr = "";
+            key = true;
+        }
+        else if (*it == '=')
+            key = false;
+        else if (key)
+            keyStr += *it;
+        else
+            valueStr += *it;
+    }
+
+    EXPECT_EQ(static_cast<long int>(results.size()), std::distance(query.parameters_begin(), query.parameters_end()));
+
+    for (auto entry : results)
+    {
+        ASSERT_TRUE(query.has(entry.first));
+        EXPECT_EQ(entry.second, query.get(entry.first).get());
+    }
+
+    server.shutdown();
+    client.shutdown();
 }
