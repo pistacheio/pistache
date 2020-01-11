@@ -92,7 +92,7 @@ public:
     }
 
     template<size_t M>
-    ArrayStreamBuf(char (&arr)[M]) {
+    explicit ArrayStreamBuf(char (&arr)[M]) {
         bytes.clear();
         std::copy(arr, arr + M, std::back_inserter(bytes));
         Base::setg(bytes.data(), bytes.data(), bytes.data() + bytes.size());
@@ -160,7 +160,7 @@ public:
 
     static size_t maxSize;
 
-    DynamicStreamBuf( size_t size )
+    explicit DynamicStreamBuf( size_t size )
         : data_()
     {
         reserve(size);
@@ -202,7 +202,7 @@ private:
 
 class StreamCursor {
 public:
-    StreamCursor(StreamBuf<char>* _buf, size_t initialPos = 0)
+    explicit StreamCursor(StreamBuf<char>* _buf, size_t initialPos = 0)
         : buf(_buf)
     {
         advance(initialPos);
@@ -211,7 +211,7 @@ public:
     static constexpr int Eof = -1;
 
     struct Token {
-        Token(StreamCursor& _cursor)
+        explicit Token(StreamCursor& _cursor)
             : cursor(_cursor)
             , position(cursor.buf->position())
             , eback(cursor.buf->begptr())
@@ -246,7 +246,7 @@ public:
     };
 
     struct Revert {
-        Revert(StreamCursor& _cursor)
+        explicit Revert(StreamCursor& _cursor)
             : cursor(_cursor)
             , eback(cursor.buf->begptr())
             , gptr(cursor.buf->curptr())

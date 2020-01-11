@@ -31,7 +31,7 @@ public:
 private:
     typedef void const* Id;
 
-    TypeId(Id id)
+    explicit TypeId(Id id)
         : id_(id)
     { }
 

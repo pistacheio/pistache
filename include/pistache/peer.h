@@ -37,9 +37,9 @@ public:
     friend class Transport;
 
     Peer();
-    Peer(const Address& addr);
+    explicit Peer(const Address& addr);
     ~Peer();
-    
+
     const Address& address() const;
     const std::string& hostname();
 
