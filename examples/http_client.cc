@@ -49,12 +49,13 @@ int main(int argc, char *argv[]) {
                std::cout << "Response body = " << body << std::endl;
         }, Async::IgnoreException);
         responses.push_back(std::move(resp));
+        auto sync = Async::whenAll(responses.begin(), responses.end());
+        Async::Barrier<std::vector<Http::Response>> barrier(sync);
+
+        if(barrier.wait_for(std::chrono::seconds(5)) == std::cv_status::timeout) {
+                ++failedRequests;
+        }
     }
-
-    auto sync = Async::whenAll(responses.begin(), responses.end());
-    Async::Barrier<std::vector<Http::Response>> barrier(sync);
-
-    barrier.wait_for(std::chrono::seconds(5));
 
     auto end = std::chrono::system_clock::now();
     std::cout << "Summary of execution" << std::endl
