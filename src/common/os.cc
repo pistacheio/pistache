@@ -149,7 +149,7 @@ namespace Polling {
 
     Epoll::~Epoll()
     {
-        if (epoll_fd > 0)
+        if (epoll_fd >= 0)
         {
             close(epoll_fd);
         }
