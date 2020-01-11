@@ -308,6 +308,12 @@ enum class CaseSensitivity {
 bool match_raw(const void* buf, size_t len, StreamCursor& cursor);
 bool match_string(const char *str, size_t len, StreamCursor& cursor,
         CaseSensitivity cs = CaseSensitivity::Insensitive);
+template<size_t N>
+bool match_string(const char (&str)[N], StreamCursor& cursor,
+        CaseSensitivity cs = CaseSensitivity::Insensitive) {
+    return match_string(str, N - 1, cursor, cs);
+}
+
 bool match_literal(char c, StreamCursor& cursor, CaseSensitivity cs = CaseSensitivity::Insensitive);
 bool match_until(char c, StreamCursor& cursor, CaseSensitivity cs = CaseSensitivity::Insensitive);
 bool match_until(std::initializer_list<char> chars, StreamCursor& cursor, CaseSensitivity cs = CaseSensitivity::Insensitive);
