@@ -99,6 +99,7 @@ struct Event {
 class Epoll {
 public:
     Epoll();
+    ~Epoll(); 
 
     void addFd(Fd fd, Flags<NotifyOn> interest, Tag tag, Mode mode = Mode::Level);
     void addFdOneShot(Fd fd, Flags<NotifyOn> interest, Tag tag, Mode mode = Mode::Level);
