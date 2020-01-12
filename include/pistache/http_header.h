@@ -407,7 +407,10 @@ public:
             : value_("NONE")
     { }
 
-    explicit Authorization(std::string val)
+    explicit Authorization(std::string &&val)
+            : value_(std::move(val))
+    { }
+    explicit Authorization(const std::string &val)
             : value_(val)
     { }
 
@@ -431,7 +434,10 @@ public:
     explicit ContentType(const Mime::MediaType& mime)
         : mime_(mime)
     { }
-    explicit ContentType(std::string raw_mime_str)
+    explicit ContentType(std::string &&raw_mime_str)
+        : ContentType(Mime::MediaType(std::move(raw_mime_str)))
+    { }
+    explicit ContentType(const std::string &raw_mime_str)
         : ContentType(Mime::MediaType(raw_mime_str))
     { }
 
