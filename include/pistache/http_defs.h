@@ -160,7 +160,7 @@ public:
         , data()
     { }
 
-    CacheDirective(Directive directive);
+    explicit CacheDirective(Directive directive);
     CacheDirective(Directive directive, std::chrono::seconds delta);
 
     Directive directive() const { return directive_; }
