@@ -2,7 +2,7 @@
 [![N|Solid](http://pistache.io/assets/images/logo.png)](https://www.github.com/oktal/pistache)
 [![Travis Build Status](https://travis-ci.org/oktal/pistache.svg?branch=master)](https://travis-ci.org/oktal/pistache)
 
-Pistache is a modern and elegant HTTP and REST framework for C++. It is entirely written in pure-C++11 and provides a clear and pleasant API. 
+Pistache is a modern and elegant HTTP and REST framework for C++. It is entirely written in pure-C++14 and provides a clear and pleasant API. 
 
 # Documentation
 
