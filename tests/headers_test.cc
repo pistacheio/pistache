@@ -60,9 +60,11 @@ TEST(headers_test, accept)
 
     Pistache::Http::Header::Accept a4;
     ASSERT_THROW(a4.parse("text/*;q=0.4, text/html;q=0.3,"), std::runtime_error);
+    /* Shameless dummy comment to work around syntax highlighting bug in nano... */
 
     Pistache::Http::Header::Accept a5;
     ASSERT_THROW(a5.parse("text/*;q=0.4, text/html;q=0.3, "), std::runtime_error);
+    /* Shameless dummy comment to work around syntax highlighting bug in nano... */
 }
 
 TEST(headers_test, allow)
@@ -220,7 +222,10 @@ TEST(headers_test, cache_control)
     oss.str("");
 
     Pistache::Http::Header::CacheControl cc12;
-    cc12.addDirectives({Pistache::Http::CacheDirective::Public, Pistache::Http::CacheDirective(Pistache::Http::CacheDirective::MaxAge, std::chrono::seconds(600))});
+    cc12.addDirectives({
+      Pistache::Http::CacheDirective(Pistache::Http::CacheDirective::Public),
+      Pistache::Http::CacheDirective(Pistache::Http::CacheDirective::MaxAge, std::chrono::seconds(600))
+    });
     cc12.write(oss);
     ASSERT_TRUE(oss.str() == "public, max-age=600");
     oss.str("");
@@ -228,7 +233,7 @@ TEST(headers_test, cache_control)
     Pistache::Http::Header::CacheControl cc13;
     std::vector<Pistache::Http::CacheDirective> cd;
 
-    cd.push_back(Pistache::Http::CacheDirective::Public);
+    cd.push_back(Pistache::Http::CacheDirective(Pistache::Http::CacheDirective::Public));
     cd.push_back(Pistache::Http::CacheDirective(Pistache::Http::CacheDirective::MaxAge, std::chrono::seconds(600)));
 
     cc13.addDirectives(cd);

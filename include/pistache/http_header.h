@@ -289,6 +289,9 @@ public:
         : directives_(directives)
     { }
     explicit CacheControl(Http::CacheDirective directive);
+    explicit CacheControl(Http::CacheDirective::Directive directive):
+      CacheControl(Http::CacheDirective(directive))
+    { }
 
     void parseRaw(const char* str, size_t len) override;
     void write(std::ostream& os) const override;
@@ -296,6 +299,9 @@ public:
     std::vector<Http::CacheDirective> directives() const { return directives_; }
 
     void addDirective(Http::CacheDirective directive);
+    void addDirective(Http::CacheDirective::Directive directive) {
+        addDirective(Http::CacheDirective(directive));
+    }
     void addDirectives(const std::vector<Http::CacheDirective>& directives);
 
 private:
@@ -424,6 +430,9 @@ public:
 
     explicit ContentType(const Mime::MediaType& mime)
         : mime_(mime)
+    { }
+    explicit ContentType(std::string raw_mime_str)
+        : ContentType(Mime::MediaType(raw_mime_str))
     { }
 
     void parseRaw(const char* str, size_t len) override;
