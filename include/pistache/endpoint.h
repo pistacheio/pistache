@@ -21,6 +21,10 @@ public:
         Options& threads(int val);
         Options& threadsName(const std::string& val);
         Options& flags(Flags<Tcp::Options> flags);
+        Options& flags(Tcp::Options tcp_opts) {
+            flags(Flags<Tcp::Options>(tcp_opts));
+            return *this;
+        }
         Options& backlog(int val);
         Options& maxRequestSize(size_t val);
         Options& maxResponseSize(size_t val);

@@ -84,7 +84,7 @@ public:
 
         event_fd = TRY_RET(eventfd(0, EFD_NONBLOCK));
         Tag tag(event_fd);
-        poller.addFd(event_fd, NotifyOn::Read, tag);
+        poller.addFd(event_fd, Flags<Polling::NotifyOn>(NotifyOn::Read), tag);
 
         return tag;
     }
@@ -271,7 +271,7 @@ public:
 
         event_fd = TRY_RET(eventfd(0, EFD_NONBLOCK));
         Tag tag(event_fd);
-        poller.addFd(event_fd, NotifyOn::Read, tag);
+        poller.addFd(event_fd, Flags<Polling::NotifyOn>(NotifyOn::Read), tag);
 
         return tag;
     }

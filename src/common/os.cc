@@ -261,7 +261,7 @@ NotifyFd::bind(Polling::Epoll& poller) {
     event_fd = TRY_RET(eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC));
     Polling::Tag tag(event_fd);
 
-    poller.addFd(event_fd, Polling::NotifyOn::Read, tag, Polling::Mode::Edge);
+    poller.addFd(event_fd, Flags<Polling::NotifyOn>(Polling::NotifyOn::Read), tag, Polling::Mode::Edge);
     return tag;
 }
 
