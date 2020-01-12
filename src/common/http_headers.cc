@@ -163,10 +163,10 @@ Optional<Raw>
 Collection::tryGetRaw(const std::string& name) const {
     auto it = rawHeaders.find(name);
     if (it == std::end(rawHeaders)) {
-        return None();
+        return Optional<Raw>(None());
     }
 
-    return Some(it->second);
+    return Optional<Raw>(Some(it->second));
 }
 
 bool

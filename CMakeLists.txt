@@ -29,8 +29,9 @@ if (PISTACHE_BUILD_TESTS)
     if (CMAKE_CXX_CPPCHECK)
         message("-- Cppcheck found " ${CMAKE_CXX_CPPCHECK})
         list(
-            APPEND CMAKE_CXX_CPPCHECK 
+            APPEND CMAKE_CXX_CPPCHECK
                 "--enable=all"
+                "-DCPPCHECK"
                 "--suppress=*:${PROJECT_SOURCE_DIR}/third-party*"
                 "--suppress=*:${PROJECT_SOURCE_DIR}/tests*"
         )

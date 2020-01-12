@@ -157,9 +157,9 @@ PathGroup::path(const std::string& name, Http::Method method) const {
     });
 
     if (it != std::end(group)) {
-        return Some(*it);
+        return Optional<Path>(Some(*it));
     }
-    return None();
+    return Optional<Path>(None());
 }
 
 PathGroup::group_iterator

@@ -26,8 +26,8 @@ namespace types {
     public:
         template<typename U> friend class Pistache::Optional;
 
-        Some(const T &val) : val_(val) { }
-        Some(T &&val) : val_(std::move(val)) { }
+        explicit Some(const T &val) : val_(val) { }
+        explicit Some(T &&val) : val_(std::move(val)) { }
 
     private:
         T val_;
@@ -86,8 +86,15 @@ namespace types {
     template <typename... Ts> struct make_void { typedef void type; };
     template <typename... Ts> using void_t = typename make_void<Ts...>::type;
 
+// cppcheck 1.88 (and earlier?) are unable to handle the following template.
+// cppcheck reports:
+//   (error) Syntax Error: AST broken, binary operator '>' doesn't have two operands.
+// In order to run cppcheck on the rest of this file, we need to cause cppcheck
+// to skip the next few lines of code (the code is valid and compiles just fine).
+#ifndef CPPCHECK
     template <typename, typename = void_t<>>
     struct has_equalto_operator : std::false_type {};
+#endif
 
     template <typename T>
     struct has_equalto_operator<
@@ -133,12 +140,14 @@ public:
     }
 
     template<typename U>
-    Optional(types::Some<U> some) {
+    explicit Optional(types::Some<U> some):
+      none_flag(NoneMarker)
+    {
         static_assert(std::is_same<T, U>::value || std::is_convertible<U, T>::value,
                       "Types mismatch");
         from_some_helper(std::move(some), types::is_move_constructible<U>());
     }
-    Optional(types::None) { none_flag = NoneMarker; }
+    explicit Optional(types::None) { none_flag = NoneMarker; }
 
     template<typename U>
     Optional<T> &operator=(types::Some<U> some) {
