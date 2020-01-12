@@ -39,7 +39,7 @@ namespace std {
 
         constexpr string_view(const char *s, size_type count) : data_(s), size_(count) { }
 
-        string_view(const char *s) : data_(s), size_(strlen(s)) { }
+        explicit string_view(const char *s) : data_(s), size_(strlen(s)) { }
 
 
         string_view

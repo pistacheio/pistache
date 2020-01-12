@@ -186,7 +186,7 @@ private:
     };
 
     struct PeerEntry {
-        PeerEntry(std::shared_ptr<Peer> peer_)
+        explicit PeerEntry(std::shared_ptr<Peer> peer_)
             : peer(std::move(peer_))
         { }
 

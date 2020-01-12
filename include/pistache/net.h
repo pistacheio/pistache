@@ -96,7 +96,7 @@ public:
     IP();
     IP(uint8_t a, uint8_t b, uint8_t c, uint8_t d);
     IP(uint16_t a, uint16_t b, uint16_t c, uint16_t d, uint16_t e, uint16_t f, uint16_t g, uint16_t h);
-    IP(struct sockaddr *);
+    explicit IP(struct sockaddr *);
     static IP any();
     static IP loopback();
     static IP any(bool ipv6);
@@ -133,8 +133,8 @@ class Address {
 public:
     Address();
     Address(std::string host, Port port);
-    Address(std::string addr);
-    Address(const char* addr);
+    explicit Address(std::string addr);
+    explicit Address(const char* addr);
     Address(IP ip, Port port);
 
     Address(const Address& other) = default;
@@ -157,8 +157,8 @@ private:
 
 class Error : public std::runtime_error {
 public:
-    Error(const char* message);
-    Error(std::string message);
+    explicit Error(const char* message);
+    explicit Error(std::string message);
     static Error system(const char* message);
 };
 

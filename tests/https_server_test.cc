@@ -10,14 +10,16 @@
 
 using namespace Pistache;
 
-#define ADDRESS "localhost:907"
-
 /* _ALL_ those tests should fail around 2020, when the certificates will expire */
 
 static size_t write_cb(void *contents, size_t size, size_t nmemb, void *userp)
 {
     ((std::string*)userp)->append((char*)contents, size * nmemb);
     return size * nmemb;
+}
+
+static std::string getServerUrl(const Http::Endpoint &server) {
+  return std::string("https://localhost:") + server.getPort().toString();
 }
 
 struct HelloHandler : public Http::Handler {
@@ -39,7 +41,7 @@ struct ServeFileHandler : public Http::Handler {
 };
 
 TEST(http_client_test, basic_tls_request) {
-    Http::Endpoint server(ADDRESS "1");
+    Http::Endpoint server(Address("localhost", Pistache::Port(0)));
     auto           flags = Tcp::Options::ReuseAddr;
     auto           server_opts = Http::Endpoint::options().flags(flags);
 
@@ -56,7 +58,8 @@ TEST(http_client_test, basic_tls_request) {
     curl = curl_easy_init();
     ASSERT_NE(curl, nullptr);
 
-    curl_easy_setopt(curl, CURLOPT_URL, "https://" ADDRESS "1");
+    const auto url = getServerUrl(server);
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_CAINFO, "./certs/rootCA.crt");
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &write_cb);
@@ -76,7 +79,7 @@ TEST(http_client_test, basic_tls_request) {
 }
 
 TEST(http_client_test, basic_tls_request_with_auth) {
-    Http::Endpoint server(ADDRESS "2");
+    Http::Endpoint server(Address("localhost", Pistache::Port(0)));
     auto           flags = Tcp::Options::ReuseAddr;
     auto           server_opts = Http::Endpoint::options().flags(flags);
 
@@ -94,7 +97,8 @@ TEST(http_client_test, basic_tls_request_with_auth) {
     curl = curl_easy_init();
     ASSERT_NE(curl, nullptr);
 
-    curl_easy_setopt(curl, CURLOPT_URL, "https://" ADDRESS "2");
+    const auto url = getServerUrl(server);
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_SSLCERT, "./certs/client.crt");
     curl_easy_setopt(curl, CURLOPT_SSLKEY, "./certs/client.key");
     curl_easy_setopt(curl, CURLOPT_CAINFO, "./certs/rootCA.crt");
@@ -117,7 +121,7 @@ TEST(http_client_test, basic_tls_request_with_auth) {
 }
 
 TEST(http_client_test, basic_tls_request_with_auth_no_client_cert) {
-    Http::Endpoint server(ADDRESS "3");
+    Http::Endpoint server(Address("localhost", Pistache::Port(0)));
     auto           flags = Tcp::Options::ReuseAddr;
     auto           server_opts = Http::Endpoint::options().flags(flags);
 
@@ -135,7 +139,8 @@ TEST(http_client_test, basic_tls_request_with_auth_no_client_cert) {
     curl = curl_easy_init();
     ASSERT_NE(curl, nullptr);
 
-    curl_easy_setopt(curl, CURLOPT_URL, "https://" ADDRESS "3");
+    const auto url = getServerUrl(server);
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_CAINFO, "./certs/rootCA.crt");
 
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1);
@@ -155,7 +160,7 @@ TEST(http_client_test, basic_tls_request_with_auth_no_client_cert) {
 }
 
 TEST(http_client_test, basic_tls_request_with_auth_client_cert_not_signed) {
-    Http::Endpoint server(ADDRESS "4");
+    Http::Endpoint server(Address("localhost", Pistache::Port(0)));
     auto           flags = Tcp::Options::ReuseAddr;
     auto           server_opts = Http::Endpoint::options().flags(flags);
 
@@ -173,7 +178,8 @@ TEST(http_client_test, basic_tls_request_with_auth_client_cert_not_signed) {
     curl = curl_easy_init();
     ASSERT_NE(curl, nullptr);
 
-    curl_easy_setopt(curl, CURLOPT_URL, "https://" ADDRESS "4");
+    const auto url = getServerUrl(server);
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_SSLCERT, "./certs/client_not_signed.crt");
     curl_easy_setopt(curl, CURLOPT_SSLKEY, "./certs/client_not_signed.key");
     curl_easy_setopt(curl, CURLOPT_CAINFO, "./certs/rootCA.crt");
@@ -206,7 +212,7 @@ static int verify_callback(int verify, void *ctx)
 
 
 TEST(http_client_test, basic_tls_request_with_auth_with_cb) {
-    Http::Endpoint server(ADDRESS "5");
+    Http::Endpoint server(Address("localhost", Pistache::Port(0)));
     auto           flags = Tcp::Options::ReuseAddr;
     auto           server_opts = Http::Endpoint::options().flags(flags);
 
@@ -224,7 +230,8 @@ TEST(http_client_test, basic_tls_request_with_auth_with_cb) {
     curl = curl_easy_init();
     ASSERT_NE(curl, nullptr);
 
-    curl_easy_setopt(curl, CURLOPT_URL, "https://" ADDRESS "5");
+    const auto url = getServerUrl(server);
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_SSLCERT, "./certs/client.crt");
     curl_easy_setopt(curl, CURLOPT_SSLKEY, "./certs/client.key");
     curl_easy_setopt(curl, CURLOPT_CAINFO, "./certs/rootCA.crt");
@@ -249,7 +256,7 @@ TEST(http_client_test, basic_tls_request_with_auth_with_cb) {
 }
 
 TEST(http_client_test, basic_tls_request_with_servefile) {
-    Http::Endpoint server(ADDRESS "6");
+    Http::Endpoint server(Address("localhost", Pistache::Port(0)));
     auto           flags = Tcp::Options::ReuseAddr;
     auto           server_opts = Http::Endpoint::options().flags(flags);
 
@@ -266,7 +273,8 @@ TEST(http_client_test, basic_tls_request_with_servefile) {
     curl = curl_easy_init();
     ASSERT_NE(curl, nullptr);
 
-    curl_easy_setopt(curl, CURLOPT_URL, "https://" ADDRESS "6");
+    const auto url = getServerUrl(server);
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_CAINFO, "./certs/rootCA.crt");
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &write_cb);
@@ -292,4 +300,3 @@ TEST(http_client_test, basic_tls_request_with_servefile) {
 
     server.shutdown();
 }
-

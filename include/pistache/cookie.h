@@ -52,7 +52,7 @@ public:
     using Storage = std::unordered_map<std::string, HashMapCookies>; // "name" -> Hashmap("value" -> Cookie)
 
     struct iterator : std::iterator<std::bidirectional_iterator_tag, Cookie> {
-        iterator(const Storage::const_iterator& _iterator)
+        explicit iterator(const Storage::const_iterator& _iterator)
             : iter_storage(_iterator)
             , iter_cookie_values()
             , iter_storage_end()

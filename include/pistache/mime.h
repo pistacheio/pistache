@@ -134,7 +134,7 @@ public:
         , q_()
     { }
 
-    MediaType(std::string raw, Parse parse = DontParse)
+    explicit MediaType(std::string raw, Parse parse = DontParse)
         : top_(Type::None)
         , sub_(Subtype::None)
         , suffix_(Suffix::None)

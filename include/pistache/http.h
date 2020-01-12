@@ -97,7 +97,7 @@ namespace Uri {
     class Query {
     public:
         Query();
-        Query(std::initializer_list<std::pair<const std::string, std::string>> params);
+        explicit Query(std::initializer_list<std::pair<const std::string, std::string>> params);
 
         void add(std::string name, std::string value);
         Optional<std::string> get(const std::string& name) const;

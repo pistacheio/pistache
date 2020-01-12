@@ -31,7 +31,7 @@ namespace Async {
 
     class BadType : public Error {
     public:
-        BadType(TypeId id)
+        explicit BadType(TypeId id)
             : Error("Argument type can not be used to resolve the promise "
                   " (TypeId does not match)")
             , id_(std::move(id))
@@ -139,7 +139,7 @@ namespace Async {
     namespace Private {
 
         struct InternalRethrow {
-            InternalRethrow(std::exception_ptr _exc)
+            explicit InternalRethrow(std::exception_ptr _exc)
                 : exc(std::move(_exc))
             { }
 
@@ -280,7 +280,7 @@ namespace Async {
 
         template<typename T>
         struct Continuable : public Request {
-            Continuable(const std::shared_ptr<Core>& chain)
+            explicit Continuable(const std::shared_ptr<Core>& chain)
                 : resolveCount_(0)
                 , rejectCount_(0)
                 , chain_(chain)
@@ -545,7 +545,7 @@ namespace Async {
 
                 template<typename PromiseType>
                 struct Chainer {
-                    Chainer(const std::shared_ptr<Private::Core>& core)
+                    explicit Chainer(const std::shared_ptr<Private::Core>& core)
                         : chainCore(core)
                     { }
 
@@ -619,7 +619,7 @@ namespace Async {
 
                 template<typename PromiseType, typename Dummy = void>
                 struct Chainer {
-                    Chainer(const std::shared_ptr<Private::Core>& core)
+                    explicit Chainer(const std::shared_ptr<Private::Core>& core)
                         : chainCore(core)
                     { }
 
@@ -635,7 +635,7 @@ namespace Async {
 
                 template<typename Dummy>
                 struct Chainer<void, Dummy> {
-                    Chainer(const std::shared_ptr<Private::Core>& core)
+                    explicit Chainer(const std::shared_ptr<Private::Core>& core)
                         : chainCore(core)
                     { }
 
@@ -749,7 +749,7 @@ namespace Async {
     class Resolver {
     public:
 
-        Resolver(const std::shared_ptr<Private::Core> &core)
+        explicit Resolver(const std::shared_ptr<Private::Core> &core)
             : core_(core)
         { }
 
@@ -819,7 +819,7 @@ namespace Async {
     class Rejection {
     public:
 
-        Rejection(const std::shared_ptr<Private::Core>& core)
+        explicit Rejection(const std::shared_ptr<Private::Core>& core)
             : core_(core)
         { }
 
@@ -978,7 +978,7 @@ namespace Async {
         typedef Private::CoreT<T> Core;
 
         template<typename Func>
-        Promise(Func func)
+        explicit Promise(Func func)
             : core_(std::make_shared<Core>())
             , resolver_(core_)
             , rejection_(core_)
@@ -1075,7 +1075,7 @@ namespace Async {
         {
         }
 
-        Promise(std::shared_ptr<Core>&& core)
+        explicit Promise(std::shared_ptr<Core>&& core)
           : core_(core)
           , resolver_(core_)
           , rejection_(core_)
@@ -1089,7 +1089,7 @@ namespace Async {
     template<typename T>
     class Barrier {
     public:
-        Barrier(Promise<T>& promise)
+        explicit Barrier(Promise<T>& promise)
             : promise_(promise) {
         }
 
@@ -1158,7 +1158,7 @@ namespace Async {
         }
 
     private:
-        Any(const std::shared_ptr<Private::Core>& core)
+        explicit Any(const std::shared_ptr<Private::Core>& core)
             : core_(core)
         { }
         std::shared_ptr<Private::Core> core_;
@@ -1297,7 +1297,7 @@ namespace Async {
         private:
             template<typename T, size_t Index, typename Data>
             struct WhenContinuation {
-                WhenContinuation(Data _data)
+                explicit WhenContinuation(Data _data)
                     : data(std::move(_data))
                 { }
 
@@ -1310,7 +1310,7 @@ namespace Async {
 
             template<size_t Index, typename Data>
             struct WhenContinuation<void, Index, Data> {
-                WhenContinuation(Data _data)
+                explicit WhenContinuation(Data _data)
                     : data(std::move(_data))
                 { }
 

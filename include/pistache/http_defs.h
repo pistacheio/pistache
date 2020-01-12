@@ -192,7 +192,7 @@ public:
         AscTime
     };
 
-    FullDate(time_point date)
+    explicit FullDate(time_point date)
         : date_(date)
     { }
 

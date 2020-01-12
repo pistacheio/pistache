@@ -162,7 +162,7 @@ public:
         }
 
         template < class U >
-        Entry( U&& u ) :
+        explicit Entry( U&& u ) :
             storage(),
             next(nullptr)
         {
@@ -355,6 +355,7 @@ public:
 
         enqueueIndex.store(other.enqueueIndex.load(), std::memory_order_relaxed);
         dequeueIndex.store(other.enqueueIndex.load(), std::memory_order_relaxed);
+        return *this;
     }
 
     MPMCQueue()
