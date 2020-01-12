@@ -507,9 +507,9 @@ namespace Uri {
     Query::get(const std::string& name) const {
         auto it = params.find(name);
         if (it == std::end(params))
-            return None();
+            return Optional<std::string>(None());
 
-        return Some(it->second);
+        return Optional<std::string>(Some(it->second));
     }
 
     std::string

@@ -100,7 +100,7 @@ TEST(optional, copy_assignment_operator_none) {
     Optional<bool> value(Pistache::None());
     EXPECT_TRUE(value.isEmpty());
 
-    Optional<bool> assigned = Pistache::None();
+    Optional<bool> assigned = Pistache::Optional<bool>(Pistache::None());
     EXPECT_TRUE(assigned.isEmpty());
 }
 
