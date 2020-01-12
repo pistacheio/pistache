@@ -257,13 +257,10 @@ Connection::parseRaw(const char* str, size_t len) {
     RawStreamBuf<> buf(p, p + len);
     StreamCursor cursor(&buf);
 
-#define STR(str) \
-    str, sizeof(str) - 1
-
-    if (match_string(STR("close"), cursor)) {
+    if (match_string("close", cursor)) {
         control_ = ConnectionControl::Close;
     }
-    else if (match_string(STR("keep-alive"), cursor)) {
+    else if (match_string("keep-alive", cursor)) {
         control_ = ConnectionControl::KeepAlive;
     }
     else {

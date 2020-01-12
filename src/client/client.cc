@@ -34,8 +34,8 @@ namespace
         RawStreamBuf<char> buf(const_cast<char *>(&url[0]), url.size());
         StreamCursor cursor(&buf);
 
-        match_string("http://", std::strlen("http://"), cursor);
-        match_string("www", std::strlen("www"), cursor);
+        match_string("http://", cursor);
+        match_string("www", cursor);
         match_literal('.', cursor);
 
         StreamCursor::Token hostToken(cursor);
