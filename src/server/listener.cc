@@ -78,6 +78,7 @@ Listener::Listener()
     , reactor_()
     , transportKey()
     , useSSL_(false)
+    , ssl_ctx_(nullptr)
 { }
 
 Listener::Listener(const Address& address)
@@ -92,8 +93,8 @@ Listener::Listener(const Address& address)
     , reactor_()
     , transportKey()
     , useSSL_(false)
-{
-}
+    , ssl_ctx_(nullptr)
+{ }
 
 Listener::~Listener() {
     if (isBound())
