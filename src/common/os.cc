@@ -143,9 +143,9 @@ namespace Polling {
         , tag(_tag)
     { }
 
-    Epoll::Epoll() {
-       epoll_fd = TRY_RET(epoll_create(Const::MaxEvents));
-    }
+    Epoll::Epoll():
+       epoll_fd([&](){return TRY_RET(epoll_create(Const::MaxEvents));}())
+    { }
 
     Epoll::~Epoll()
     {
@@ -154,7 +154,7 @@ namespace Polling {
             close(epoll_fd);
         }
     }
-        
+
     void
     Epoll::addFd(Fd fd, Flags<NotifyOn> interest, Tag tag, Mode mode) {
         struct epoll_event ev;
@@ -261,7 +261,7 @@ NotifyFd::bind(Polling::Epoll& poller) {
     event_fd = TRY_RET(eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC));
     Polling::Tag tag(event_fd);
 
-    poller.addFd(event_fd, Polling::NotifyOn::Read, tag, Polling::Mode::Edge);
+    poller.addFd(event_fd, Flags<Polling::NotifyOn>(Polling::NotifyOn::Read), tag, Polling::Mode::Edge);
     return tag;
 }
 

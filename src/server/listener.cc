@@ -205,7 +205,7 @@ Listener::bind(const Address& address) {
     }
 
     make_non_blocking(fd);
-    poller.addFd(fd, Polling::NotifyOn::Read, Polling::Tag(fd));
+    poller.addFd(fd, Flags<Polling::NotifyOn>(Polling::NotifyOn::Read), Polling::Tag(fd));
     listen_fd = fd;
 
     auto transport = std::make_shared<Transport>(handler_);

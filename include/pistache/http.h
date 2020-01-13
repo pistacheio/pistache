@@ -213,7 +213,7 @@ public:
 
     friend class ResponseWriter;
 
-    Timeout(Timeout&& other)
+    explicit Timeout(Timeout&& other)
         : handler(other.handler)
         , request(std::move(other.request))
         , transport(other.transport)
@@ -221,6 +221,7 @@ public:
         , timerFd(other.timerFd)
         , peer(std::move(other.peer))
     {
+        // cppcheck-suppress useInitializationList
         other.timerFd = -1;
     }
 
@@ -773,7 +774,7 @@ namespace Private {
             feed(data, len);
         }
 
-        void reset() {
+        void reset() override {
             ParserBase::reset();
 
             request.headers_.clear();
@@ -814,16 +815,16 @@ namespace Private {
 
 class Handler : public Tcp::Handler {
 public:
-    void onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer>& peer);
+    void onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer>& peer) override;
 
-    void onConnection(const std::shared_ptr<Tcp::Peer>& peer);
-    void onDisconnection(const std::shared_ptr<Tcp::Peer>& peer);
+    void onConnection(const std::shared_ptr<Tcp::Peer>& peer) override;
+    void onDisconnection(const std::shared_ptr<Tcp::Peer>& peer) override;
 
     virtual void onRequest(const Request& request, ResponseWriter response) = 0;
 
     virtual void onTimeout(const Request& request, ResponseWriter response);
 
-    virtual ~Handler() { }
+    virtual ~Handler() override { }
 
 private:
     Private::Parser<Http::Request>& getParser(const std::shared_ptr<Tcp::Peer>& peer) const;

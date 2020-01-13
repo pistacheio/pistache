@@ -51,7 +51,7 @@ public:
     explicit Listener(const Address& address);
     void init(
             size_t workers,
-            Flags<Options> options = Options::None,
+            Flags<Options> options = Flags<Options>(Options::None),
             const std::string& workersName = "",
             int backlog = Const::MaxBacklog);
     void setHandler(const std::shared_ptr<Handler>& handler);

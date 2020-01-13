@@ -140,7 +140,7 @@ struct Info {
 };
 
 struct InfoBuilder {
-    InfoBuilder(Info* info);
+    explicit InfoBuilder(Info* info);
 
     InfoBuilder& termsOfService(std::string value);
     InfoBuilder& contact(std::string name, std::string url, std::string email);
@@ -162,10 +162,16 @@ struct DataType {
 
 template<typename T>
 struct DataTypeT : public DataType {
-    const char* typeName() const { return Traits::DataTypeInfo<T>::typeName(); }
-    const char* format() const { return Traits::DataTypeInfo<T>::format(); }
+    const char* typeName() const override {
+      return Traits::DataTypeInfo<T>::typeName();
+    }
+    const char* format() const override {
+      return Traits::DataTypeInfo<T>::format();
+    }
 
-    bool validate(const std::string& input) const { return Traits::DataTypeValidation<T>::validate(input); }
+    bool validate(const std::string& input) const override {
+      return Traits::DataTypeValidation<T>::validate(input);
+    }
 
     virtual ~DataTypeT() {}
 };
@@ -290,7 +296,7 @@ private:
 };
 
 struct PathBuilder {
-    PathBuilder(Path* path);
+    explicit PathBuilder(Path* path);
 
     template<typename... Mimes>
     PathBuilder& produces(Mimes... mimes) {
@@ -364,10 +370,10 @@ private:
 struct SubPath {
     SubPath(std::string prefix, PathGroup* paths);
 
-    PathBuilder route(std::string name, Http::Method method, std::string description = "");
+    PathBuilder route(const std::string &name, Http::Method method, std::string description = "");
     PathBuilder route(PathDecl fragment, std::string description = "");
 
-    SubPath path(std::string prefix);
+    SubPath path(const std::string &prefix);
 
     template<typename T>
     void parameter(std::string name, std::string description) {
@@ -447,7 +453,7 @@ private:
 
 class Swagger {
 public:
-    Swagger(const Description& description)
+    explicit Swagger(const Description& description)
         : description_(description)
         , uiPath_()
         , uiDirectory_()

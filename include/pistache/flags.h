@@ -58,8 +58,7 @@ public:
     Flags() : val(T::None) {
     }
 
-    Flags(T _val) : val(_val)
-    {
+    explicit Flags(T _val) : val(_val) {
     }
 
 #define DEFINE_BITWISE_OP_CONST(Op) \
@@ -74,7 +73,7 @@ public:
             static_cast<T>(static_cast<Type>(val) Op static_cast<Type>(rhs.val)) \
         ); \
     }
-    
+
     DEFINE_BITWISE_OP_CONST(|)
     DEFINE_BITWISE_OP_CONST(&)
     DEFINE_BITWISE_OP_CONST(^)

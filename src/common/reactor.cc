@@ -109,7 +109,7 @@ public:
             Polling::Mode mode = Polling::Mode::Level) override {
 
         auto pollTag = encodeTag(key, tag);
-        poller.addFd(fd, interest, pollTag, mode);
+        poller.addFd(fd, Flags<Polling::NotifyOn>(interest), pollTag, mode);
     }
 
     void registerFdOneShot(
@@ -120,7 +120,7 @@ public:
             Polling::Mode mode = Polling::Mode::Level) override {
 
         auto pollTag = encodeTag(key, tag);
-        poller.addFdOneShot(fd, interest, pollTag, mode);
+        poller.addFdOneShot(fd, Flags<Polling::NotifyOn>(interest), pollTag, mode);
     }
 
     void modifyFd(
@@ -131,7 +131,7 @@ public:
             Polling::Mode mode = Polling::Mode::Level) override {
 
         auto pollTag = encodeTag(key, tag);
-        poller.rearmFd(fd, interest, pollTag, mode);
+        poller.rearmFd(fd, Flags<Polling::NotifyOn>(interest), pollTag, mode);
     }
 
     void runOnce() override {

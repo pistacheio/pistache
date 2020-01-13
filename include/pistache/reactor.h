@@ -28,7 +28,9 @@ namespace Aio {
 // A set of fds that are ready
 class FdSet {
 public:
-    FdSet(std::vector<Polling::Event>&& events)
+    FdSet() = delete;
+
+    explicit FdSet(std::vector<Polling::Event>&& events)
        : events_()
     {
         events_.reserve(events.size());
@@ -177,11 +179,8 @@ public:
 class AsyncContext : public ExecutionContext {
 public:
     explicit AsyncContext(size_t threads, const std::string& threadsName = "")
-        : threads_(threads)
-
-    {
-        threadsName_ = threadsName;
-    }
+        : threads_(threads), threadsName_(threadsName)
+    { }
 
     virtual ~AsyncContext() {}
 

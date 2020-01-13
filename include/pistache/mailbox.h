@@ -83,10 +83,10 @@ public:
         }
 
         event_fd = TRY_RET(eventfd(0, EFD_NONBLOCK));
-        Tag tag(event_fd);
-        poller.addFd(event_fd, NotifyOn::Read, tag);
+        Tag tag_(event_fd);
+        poller.addFd(event_fd, Flags<Polling::NotifyOn>(NotifyOn::Read), tag_);
 
-        return tag;
+        return tag_;
     }
 
     T *post(T *newData) {
@@ -270,10 +270,10 @@ public:
         }
 
         event_fd = TRY_RET(eventfd(0, EFD_NONBLOCK));
-        Tag tag(event_fd);
-        poller.addFd(event_fd, NotifyOn::Read, tag);
+        Tag tag_(event_fd);
+        poller.addFd(event_fd, Flags<Polling::NotifyOn>(NotifyOn::Read), tag_);
 
-        return tag;
+        return tag_;
     }
 
     template < class U >
