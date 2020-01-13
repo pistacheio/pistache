@@ -195,8 +195,8 @@ private:
                 uint64_t value;
 
                 std::tie(index, value) = decodeTag(event.tag);
-                auto handler = handlers_.at(index);
-                auto& evs = fdHandlers.at(handler);
+                auto handler_ = handlers_.at(index);
+                auto& evs = fdHandlers.at(handler_);
                 evs.push_back(std::move(event));
             }
 
@@ -460,10 +460,11 @@ private:
 
     struct Worker {
 
-        explicit Worker(Reactor* reactor, const std::string& threadsName) {
-            threadsName_ = threadsName;
-            sync.reset(new SyncImpl(reactor));
-        }
+        explicit Worker(Reactor* reactor, const std::string& threadsName):
+            thread(),
+            sync(new SyncImpl(reactor)),
+            threadsName_(threadsName)
+        { }
 
         ~Worker() {
             if (thread.joinable())
