@@ -117,7 +117,7 @@ Cookie::fromRaw(const char* str, size_t len)
     if (!match_until('=', cursor))
         throw std::runtime_error("Invalid cookie, missing value");
 
-    auto name = nameToken.text();
+    auto name_ = nameToken.text();
 
     if (!cursor.advance(1))
         throw std::runtime_error("Invalid cookie, missing value");
@@ -125,9 +125,9 @@ Cookie::fromRaw(const char* str, size_t len)
     StreamCursor::Token valueToken(cursor);
 
     match_until(';', cursor);
-    auto value = valueToken.text();
+    auto value_ = valueToken.text();
 
-    Cookie cookie(std::move(name), std::move(value));
+    Cookie cookie(std::move(name_), std::move(value_));
     if (cursor.eof()) {
         return cookie;
     }
@@ -147,17 +147,16 @@ Cookie::fromRaw(const char* str, size_t len)
         else if (match_attribute(STR("Expires"), cursor, &cookie, &Cookie::expires)) ;
         // ext
         else {
-            StreamCursor::Token nameToken(cursor);
+            StreamCursor::Token nameToken_(cursor);
             match_until('=', cursor);
 
-            auto name = nameToken.text();
+            auto name = nameToken_.text();
             std::string value;
             if (!cursor.eof()) {
                 auto token = matchValue(cursor);
                 value = token.text();
             }
             cookie.ext.insert(std::make_pair(std::move(name), std::move(value)));
-
         }
 
     } while (!cursor.eof());
