@@ -408,7 +408,7 @@ namespace Private {
         StreamCursor::Token chunkData(cursor);
         const ssize_t available = cursor.remaining();
 
-        if ((available + message->body_.size()) < size) {
+        if (static_cast<ssize_t>(available + message->body_.size()) < size) {
             cursor.advance(available);
             message->body_.append(chunkData.rawText(), available);
             return Incomplete;
@@ -451,7 +451,7 @@ namespace Private {
 
     State
     ParserBase::parse() {
-        State state = State::Again;
+        State state;
         do {
             Step *step = allSteps[currentStep].get();
             state = step->apply(cursor);

@@ -347,8 +347,8 @@ void
 Router::initFromDescription(const Rest::Description& desc) {
     auto paths = desc.rawPaths();
     for (auto it = paths.flatBegin(), end = paths.flatEnd(); it != end; ++it) {
-        const auto& paths = *it;
-        for (const auto& path: paths) {
+        const auto& paths_ = *it;
+        for (const auto& path: paths_) {
             if (!path.isBound()) {
                 std::ostringstream oss;
                 oss << "Path '" << path.value << "' is not bound";

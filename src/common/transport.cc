@@ -84,8 +84,8 @@ Transport::onReady(const Aio::FdSet& fds) {
                 handleIncoming(peer);
             } else if (isTimerFd(tag)) {
                 auto it = timers.find(tag.value());
-                auto& entry = it->second;
-                handleTimer(std::move(entry));
+                auto& entry_ = it->second;
+                handleTimer(std::move(entry_));
                 timers.erase(it->first);
             }
             else {
@@ -242,13 +242,14 @@ Transport::asyncWriteImpl(Fd fd)
                 auto ptr = raw.data().c_str() + totalWritten;
 
 #ifdef PISTACHE_USE_SSL
-                auto it = peers.find(fd);
+                auto it_ = peers.find(fd);
 
-                if (it == std::end(peers))
+                if (it_ == std::end(peers))
                     throw std::runtime_error("No peer found for fd: " + std::to_string(fd));
 
-                if (it->second->ssl() != NULL) {
-                    bytesWritten = SSL_write((SSL *)it->second->ssl(), ptr, len);
+                if (it_->second->ssl() != NULL) {
+                    auto ssl_ = static_cast<SSL*>(it_->second->ssl());
+                    bytesWritten = SSL_write(ssl_, ptr, len);
                 } else {
 #endif /* PISTACHE_USE_SSL */
                     bytesWritten = ::send(fd, ptr, len, flags);
@@ -260,13 +261,14 @@ Transport::asyncWriteImpl(Fd fd)
                 off_t offset = totalWritten;
 
 #ifdef PISTACHE_USE_SSL
-                auto it = peers.find(fd);
+                auto it_ = peers.find(fd);
 
-                if (it == std::end(peers))
+                if (it_ == std::end(peers))
                     throw std::runtime_error("No peer found for fd: " + std::to_string(fd));
 
-                if (it->second->ssl() != NULL) {
-                    bytesWritten = SSL_sendfile((SSL *)it->second->ssl(), file, &offset, len);
+                if (it_->second->ssl() != NULL) {
+                    auto ssl_ = static_cast<SSL*>(it_->second->ssl());
+                    bytesWritten = SSL_sendfile(ssl_, file, &offset, len);
                 } else {
 #endif /* PISTACHE_USE_SSL */
                     bytesWritten = ::sendfile(fd, file, &offset, len);
