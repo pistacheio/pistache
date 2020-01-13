@@ -203,7 +203,7 @@ SubPath::SubPath(
 { }
 
 PathBuilder
-SubPath::route(std::string name, Http::Method method, std::string description) {
+SubPath::route(const std::string &name, Http::Method method, std::string description) {
     auto fullPath = prefix + name;
     Path path(std::move(fullPath), method, std::move(description));
     std::copy(std::begin(parameters), std::end(parameters), std::back_inserter(path.parameters));
@@ -219,7 +219,7 @@ SubPath::route(PathDecl fragment, std::string description) {
 }
 
 SubPath
-SubPath::path(std::string prefix) {
+SubPath::path(const std::string &prefix) {
     return SubPath(this->prefix + prefix, paths);
 }
 
@@ -397,7 +397,7 @@ Swagger::install(Rest::Router& router) {
          */
 
         struct Path {
-            Path(const std::string& value)
+            explicit Path(const std::string& value)
                 : value(value)
                 , trailingSlashValue(value)
             {
@@ -406,32 +406,32 @@ Swagger::install(Rest::Router& router) {
             }
 
             static bool hasTrailingSlash(const Rest::Request& req) {
-                auto res = req.resource();
-                return res.back() == '/';
+                auto res_ = req.resource();
+                return res_.back() == '/';
             }
 
             std::string stripPrefix(const Rest::Request& req) {
-                auto res = req.resource();
-                if (!res.compare(0, value.size(), value)) {
-                    return res.substr(value.size());
+                auto res_ = req.resource();
+                if (!res_.compare(0, value.size(), value)) {
+                    return res_.substr(value.size());
                 }
-                return res;
+                return res_;
             }
 
             bool matches(const Rest::Request& req) const {
-                auto res = req.resource();
-                if (value == res)
+                auto res_ = req.resource();
+                if (value == res_)
                     return true;
 
-                if (res == trailingSlashValue)
+                if (res_ == trailingSlashValue)
                     return true;
 
                 return false;
             }
 
             bool isPrefix(const Rest::Request& req) {
-                auto res = req.resource();
-                return !res.compare(0, value.size(), value);
+                auto res_ = req.resource();
+                return !res_.compare(0, value.size(), value);
             }
 
             const std::string& withTrailingSlash() const {

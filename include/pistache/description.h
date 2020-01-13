@@ -370,10 +370,10 @@ private:
 struct SubPath {
     SubPath(std::string prefix, PathGroup* paths);
 
-    PathBuilder route(std::string name, Http::Method method, std::string description = "");
+    PathBuilder route(const std::string &name, Http::Method method, std::string description = "");
     PathBuilder route(PathDecl fragment, std::string description = "");
 
-    SubPath path(std::string prefix);
+    SubPath path(const std::string &prefix);
 
     template<typename T>
     void parameter(std::string name, std::string description) {
