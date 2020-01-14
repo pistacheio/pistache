@@ -1,3 +1,10 @@
+pistache (0.0.002-git20200113-kip1) eoan; urgency=medium
+
+  * Latest upstream.
+  * Fixed DEP-8 debian/test/test-compilation-and-link.sh
+
+ -- Kip Warner <kip@thevertigo.com>  Mon, 13 Jan 2020 20:15:48 -0800
+
 pistache (0.0.002-git20200111-kip1) eoan; urgency=medium
 
   * Latest upstream.
