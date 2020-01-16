@@ -10,5 +10,5 @@ Version: @version@
 Requires:
 Libs: -L'${libdir}/' @libs@
 Libs.private:
-Cflags: -std=c++14 -I'${includedir}/'
+Cflags: -I'${includedir}/'
 
