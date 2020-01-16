@@ -11,858 +11,819 @@
 #include <pistache/transport.h>
 
 #include <cstring>
-#include <iostream>
-#include <stdexcept>
 #include <ctime>
 #include <iomanip>
+#include <iostream>
+#include <stdexcept>
 #include <unordered_map>
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
 #include <fcntl.h>
-
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 namespace Pistache {
 namespace Http {
 
-    template<typename H, typename Stream, typename... Args>
-    typename std::enable_if<Header::IsHeader<H>::value, Stream&>::type
-    writeHeader(Stream& stream, Args&& ...args) {
-        H header(std::forward<Args>(args)...);
-        
-        stream << H::Name << ": ";
-    header.write(stream);
+template <typename H, typename Stream, typename... Args>
+typename std::enable_if<Header::IsHeader<H>::value, Stream &>::type
+writeHeader(Stream &stream, Args &&... args) {
+  H header(std::forward<Args>(args)...);
 
-    stream << crlf;
+  stream << H::Name << ": ";
+  header.write(stream);
 
-    return stream;
+  stream << crlf;
+
+  return stream;
 }
 
 namespace {
-    bool writeStatusLine(Version version, Code code, DynamicStreamBuf& buf) {
-        #define OUT(...) \
-            do { \
-                __VA_ARGS__; \
-                if (!os) return false; \
-            } while (0)
+bool writeStatusLine(Version version, Code code, DynamicStreamBuf &buf) {
+#define OUT(...)                                                               \
+  do {                                                                         \
+    __VA_ARGS__;                                                               \
+    if (!os)                                                                   \
+      return false;                                                            \
+  } while (0)
 
-        std::ostream os(&buf);
+  std::ostream os(&buf);
 
-        OUT(os << version << " ");
-        OUT(os << static_cast<int>(code));
-        OUT(os << ' ');
-        OUT(os << code);
-        OUT(os << crlf);
+  OUT(os << version << " ");
+  OUT(os << static_cast<int>(code));
+  OUT(os << ' ');
+  OUT(os << code);
+  OUT(os << crlf);
 
-        return true;
+  return true;
 
-        #undef OUT
-    }
-
-    bool writeHeaders(const Header::Collection& headers, DynamicStreamBuf& buf) {
-        #define OUT(...) \
-            do { \
-                __VA_ARGS__; \
-                if (!os)  return false; \
-            } while (0)
-
-        std::ostream os(&buf);
-
-        for (const auto& header: headers.list()) {
-            OUT(os << header->name() << ": ");
-            OUT(header->write(os));
-            OUT(os << crlf);
-        }
-
-        return true;
-
-        #undef OUT
-    }
-
-    bool writeCookies(const CookieJar& cookies, DynamicStreamBuf& buf) {
-        #define OUT(...) \
-            do { \
-                __VA_ARGS__; \
-                if (!os) return false; \
-            } while (0)
-
-        std::ostream os(&buf);
-        for (const auto& cookie: cookies) {
-            OUT(os << "Set-Cookie: ");
-            OUT(os << cookie);
-            OUT(os << crlf);
-        }
-
-        return true;
-
-        #undef OUT
-    }
-
-    using HttpMethods = std::unordered_map<std::string, Method>;
-
-    const HttpMethods httpMethods = {
-    #define METHOD(repr, str) \
-        { str, Method::repr },
-        HTTP_METHODS
-    #undef METHOD
-    };
-
+#undef OUT
 }
 
-static constexpr const char* ParserData = "__Parser";
+bool writeHeaders(const Header::Collection &headers, DynamicStreamBuf &buf) {
+#define OUT(...)                                                               \
+  do {                                                                         \
+    __VA_ARGS__;                                                               \
+    if (!os)                                                                   \
+      return false;                                                            \
+  } while (0)
+
+  std::ostream os(&buf);
+
+  for (const auto &header : headers.list()) {
+    OUT(os << header->name() << ": ");
+    OUT(header->write(os));
+    OUT(os << crlf);
+  }
+
+  return true;
+
+#undef OUT
+}
+
+bool writeCookies(const CookieJar &cookies, DynamicStreamBuf &buf) {
+#define OUT(...)                                                               \
+  do {                                                                         \
+    __VA_ARGS__;                                                               \
+    if (!os)                                                                   \
+      return false;                                                            \
+  } while (0)
+
+  std::ostream os(&buf);
+  for (const auto &cookie : cookies) {
+    OUT(os << "Set-Cookie: ");
+    OUT(os << cookie);
+    OUT(os << crlf);
+  }
+
+  return true;
+
+#undef OUT
+}
+
+using HttpMethods = std::unordered_map<std::string, Method>;
+
+const HttpMethods httpMethods = {
+#define METHOD(repr, str) {str, Method::repr},
+    HTTP_METHODS
+#undef METHOD
+};
+
+} // namespace
+
+static constexpr const char *ParserData = "__Parser";
 
 namespace Private {
 
-    void
-    Step::raise(const char* msg, Code code /* = Code::Bad_Request */) {
-        throw HttpError(code, msg);
-    }
+void Step::raise(const char *msg, Code code /* = Code::Bad_Request */) {
+  throw HttpError(code, msg);
+}
 
-    State
-    RequestLineStep::apply(StreamCursor& cursor) {
-        StreamCursor::Revert revert(cursor);
+State RequestLineStep::apply(StreamCursor &cursor) {
+  StreamCursor::Revert revert(cursor);
 
-        auto request = static_cast<Request *>(message);
+  auto request = static_cast<Request *>(message);
 
-        StreamCursor::Token methodToken(cursor);
-        if (!match_until(' ', cursor))
+  StreamCursor::Token methodToken(cursor);
+  if (!match_until(' ', cursor))
+    return State::Again;
+
+  auto it = httpMethods.find(methodToken.text());
+  if (it != httpMethods.end()) {
+    request->method_ = it->second;
+  } else {
+    raise("Unknown HTTP request method");
+  }
+
+  int n;
+
+  if (cursor.eof())
+    return State::Again;
+  else if ((n = cursor.current()) != ' ')
+    raise("Malformed HTTP request after Method, expected SP");
+
+  if (!cursor.advance(1))
+    return State::Again;
+
+  StreamCursor::Token resToken(cursor);
+  while ((n = cursor.current()) != '?' && n != ' ')
+    if (!cursor.advance(1))
+      return State::Again;
+
+  request->resource_ = resToken.text();
+
+  // Query parameters of the Uri
+  if (n == '?') {
+    if (!cursor.advance(1))
+      return State::Again;
+
+    while ((n = cursor.current()) != ' ') {
+      StreamCursor::Token keyToken(cursor);
+      if (!match_until({'=', ' ', '&'}, cursor))
+        return State::Again;
+
+      std::string key = keyToken.text();
+
+      auto c = cursor.current();
+      if (c == ' ') {
+        request->query_.add(std::move(key), "");
+      } else if (c == '&') {
+        request->query_.add(std::move(key), "");
+        if (!cursor.advance(1))
+          return State::Again;
+      } else if (c == '=') {
+        if (!cursor.advance(1))
+          return State::Again;
+
+        StreamCursor::Token valueToken(cursor);
+        if (!match_until({' ', '&'}, cursor))
+          return State::Again;
+
+        std::string value = valueToken.text();
+        request->query_.add(std::move(key), std::move(value));
+        if (cursor.current() == '&') {
+          if (!cursor.advance(1))
             return State::Again;
-
-        auto it = httpMethods.find(methodToken.text());
-        if (it != httpMethods.end())
-        {
-            request->method_ = it->second;
         }
-        else
-        {
-            raise("Unknown HTTP request method");
-        }
+      }
+    }
+  }
 
-        int n;
+  // @Todo: Fragment
 
-        if (cursor.eof()) return State::Again;
-        else if ((n = cursor.current()) != ' ')
-            raise("Malformed HTTP request after Method, expected SP");
+  // SP
+  if (!cursor.advance(1))
+    return State::Again;
 
-        if (!cursor.advance(1)) return State::Again;
+  // HTTP-Version
+  StreamCursor::Token versionToken(cursor);
 
-        StreamCursor::Token resToken(cursor);
-        while ((n = cursor.current()) != '?' && n != ' ')
-            if (!cursor.advance(1)) return State::Again;
+  while (!cursor.eol())
+    if (!cursor.advance(1))
+      return State::Again;
 
-        request->resource_ = resToken.text();
+  const char *ver = versionToken.rawText();
+  const size_t size = versionToken.size();
+  if (strncmp(ver, "HTTP/1.0", size) == 0) {
+    request->version_ = Version::Http10;
+  } else if (strncmp(ver, "HTTP/1.1", size) == 0) {
+    request->version_ = Version::Http11;
+  } else {
+    raise("Encountered invalid HTTP version");
+  }
 
-        // Query parameters of the Uri
-        if (n == '?') {
-            if (!cursor.advance(1)) return State::Again;
+  if (!cursor.advance(2))
+    return State::Again;
 
-            while ((n = cursor.current()) != ' ') {
-                StreamCursor::Token keyToken(cursor);
-                if (!match_until({ '=', ' ', '&' }, cursor))
-                    return State::Again;
+  revert.ignore();
+  return State::Next;
+}
 
-                std::string key = keyToken.text();
+State ResponseLineStep::apply(StreamCursor &cursor) {
+  StreamCursor::Revert revert(cursor);
 
-                auto c = cursor.current();
-                if (c == ' ') {
-                    request->query_.add(std::move(key), "");
-                } else if (c == '&') {
-                    request->query_.add(std::move(key), "");
-                    if (!cursor.advance(1)) return State::Again;
-                }
-                else if (c == '=') {
-                    if (!cursor.advance(1)) return State::Again;
+  auto *response = static_cast<Response *>(message);
 
-                    StreamCursor::Token valueToken(cursor);
-                    if (!match_until({ ' ', '&' }, cursor))
-                        return State::Again;
+  if (match_raw("HTTP/1.1", strlen("HTTP/1.1"), cursor)) {
+    // response->version = Version::Http11;
+  } else if (match_raw("HTTP/1.0", strlen("HTTP/1.0"), cursor)) {
+  } else {
+    raise("Encountered invalid HTTP version");
+  }
 
-                    std::string value = valueToken.text();
-                    request->query_.add(std::move(key), std::move(value));
-                    if (cursor.current() == '&') {
-                        if (!cursor.advance(1)) return State::Again;
-                    }
-                }
-            }
-        }
+  int n;
+  // SP
+  if ((n = cursor.current()) != StreamCursor::Eof && n != ' ')
+    raise("Expected SPACE after http version");
+  if (!cursor.advance(1))
+    return State::Again;
 
-        // @Todo: Fragment
+  StreamCursor::Token codeToken(cursor);
+  if (!match_until(' ', cursor))
+    return State::Again;
 
-        // SP
-        if (!cursor.advance(1)) return State::Again;
+  char *end;
+  auto code = strtol(codeToken.rawText(), &end, 10);
+  if (*end != ' ')
+    raise("Failed to parsed return code");
+  response->code_ = static_cast<Http::Code>(code);
 
-        // HTTP-Version
-        StreamCursor::Token versionToken(cursor);
+  if (!cursor.advance(1))
+    return State::Again;
 
-        while (!cursor.eol())
-            if (!cursor.advance(1)) return State::Again;
+  while (!cursor.eol() && !cursor.eof()) {
+    cursor.advance(1);
+  }
 
-        const char* ver = versionToken.rawText();
-        const size_t size = versionToken.size();
-        if (strncmp(ver, "HTTP/1.0", size) == 0) {
-            request->version_ = Version::Http10;
-        }
-        else if (strncmp(ver, "HTTP/1.1", size) == 0) {
-            request->version_ = Version::Http11;
-        }
-        else {
-            raise("Encountered invalid HTTP version");
-        }
+  if (!cursor.advance(2))
+    return State::Again;
 
-        if (!cursor.advance(2)) return State::Again;
+  revert.ignore();
+  return State::Next;
+}
 
-        revert.ignore();
-        return State::Next;
+State HeadersStep::apply(StreamCursor &cursor) {
+  StreamCursor::Revert revert(cursor);
 
+  while (!cursor.eol()) {
+    StreamCursor::Revert headerRevert(cursor);
+
+    // Read the header name
+    size_t start = cursor;
+
+    while (cursor.current() != ':')
+      if (!cursor.advance(1))
+        return State::Again;
+
+    // Skip the ':'
+    if (!cursor.advance(1))
+      return State::Again;
+
+    std::string name =
+        std::string(cursor.offset(start), cursor.diff(start) - 1);
+
+    // Ignore spaces
+    while (cursor.current() == ' ')
+      if (!cursor.advance(1))
+        return State::Again;
+
+    // Read the header value
+    start = cursor;
+    while (!cursor.eol()) {
+      if (!cursor.advance(1))
+        return State::Again;
     }
 
-    State
-    ResponseLineStep::apply(StreamCursor& cursor) {
-        StreamCursor::Revert revert(cursor);
-
-        auto *response = static_cast<Response *>(message);
-
-        if (match_raw("HTTP/1.1", strlen("HTTP/1.1"), cursor)) {
-            //response->version = Version::Http11;
-        }
-        else if (match_raw("HTTP/1.0", strlen("HTTP/1.0"), cursor)) {
-        }
-        else {
-            raise("Encountered invalid HTTP version");
-        }
-
-        int n;
-        // SP
-        if ((n = cursor.current()) != StreamCursor::Eof && n != ' ')
-            raise("Expected SPACE after http version");
-        if (!cursor.advance(1)) return State::Again;
-
-        StreamCursor::Token codeToken(cursor);
-        if (!match_until(' ', cursor))
-            return State::Again;
-
-        char *end;
-        auto code = strtol(codeToken.rawText(), &end, 10);
-        if (*end != ' ')
-            raise("Failed to parsed return code");
-        response->code_ = static_cast<Http::Code>(code);
-
-        if (!cursor.advance(1)) return State::Again;
-
-        while (!cursor.eol() && !cursor.eof())
-        {
-            cursor.advance(1);
-        }
-
-        if (!cursor.advance(2)) return State::Again;
-
-        revert.ignore();
-        return State::Next;
-
+    if (Header::LowercaseEqualStatic(name, "cookie")) {
+      message->cookies_.removeAllCookies(); // removing existing cookies before
+                                            // re-adding them.
+      message->cookies_.addFromRaw(cursor.offset(start), cursor.diff(start));
+    } else if (Header::LowercaseEqualStatic(name, "set-cookie")) {
+      message->cookies_.add(
+          Cookie::fromRaw(cursor.offset(start), cursor.diff(start)));
     }
 
-    State
-    HeadersStep::apply(StreamCursor& cursor) {
-        StreamCursor::Revert revert(cursor);
-
-        while (!cursor.eol()) {
-            StreamCursor::Revert headerRevert(cursor);
-
-            // Read the header name
-            size_t start = cursor;
-
-            while (cursor.current() != ':')
-                if (!cursor.advance(1)) return State::Again;
-
-            // Skip the ':'
-            if (!cursor.advance(1)) return State::Again;
-
-            std::string name = std::string(cursor.offset(start), cursor.diff(start) - 1);
-
-            // Ignore spaces
-            while (cursor.current() == ' ')
-                if (!cursor.advance(1)) return State::Again;
-
-            // Read the header value
-            start = cursor;
-            while (!cursor.eol()) {
-                if (!cursor.advance(1)) return State::Again;
-            }
-
-            if (Header::LowercaseEqualStatic(name, "cookie")) {
-                message->cookies_.removeAllCookies(); // removing existing cookies before re-adding them.
-                message->cookies_.addFromRaw(cursor.offset(start), cursor.diff(start));
-            }
-            else if (Header::LowercaseEqualStatic(name, "set-cookie")) {
-                message->cookies_.add(Cookie::fromRaw(cursor.offset(start), cursor.diff(start)));
-            }
-
-            // If the header is registered with the Registry, add its strongly
-            //  typed form to the headers list...
-            else if (Header::Registry::instance().isRegistered(name)) {
-                std::shared_ptr<Header::Header> header = Header::Registry::instance().makeHeader(name);
-                header->parseRaw(cursor.offset(start), cursor.diff(start));
-                message->headers_.add(header);
-            }
-
-            // But also preserve a raw header version too, regardless of whether
-            //  its type was known to the Registry...
-            std::string value(cursor.offset(start), cursor.diff(start));
-            message->headers_.addRaw(Header::Raw(std::move(name), std::move(value)));
-
-            // CRLF
-            if (!cursor.advance(2)) return State::Again;
-
-            headerRevert.ignore();
-        }
-
-        if (!cursor.advance(2)) return State::Again;
-
-        revert.ignore();
-        return State::Next;
+    // If the header is registered with the Registry, add its strongly
+    //  typed form to the headers list...
+    else if (Header::Registry::instance().isRegistered(name)) {
+      std::shared_ptr<Header::Header> header =
+          Header::Registry::instance().makeHeader(name);
+      header->parseRaw(cursor.offset(start), cursor.diff(start));
+      message->headers_.add(header);
     }
 
-    State
-    BodyStep::apply(StreamCursor& cursor) {
-        auto cl = message->headers_.tryGet<Header::ContentLength>();
-        auto te = message->headers_.tryGet<Header::TransferEncoding>();
+    // But also preserve a raw header version too, regardless of whether
+    //  its type was known to the Registry...
+    std::string value(cursor.offset(start), cursor.diff(start));
+    message->headers_.addRaw(Header::Raw(std::move(name), std::move(value)));
 
-        if (cl && te)
-            raise("Got mutually exclusive ContentLength and TransferEncoding header");
+    // CRLF
+    if (!cursor.advance(2))
+      return State::Again;
 
-        if (cl)
-            return parseContentLength(cursor, cl);
+    headerRevert.ignore();
+  }
 
-        if (te)
-            return parseTransferEncoding(cursor, te);
+  if (!cursor.advance(2))
+    return State::Again;
 
-        return State::Done;
+  revert.ignore();
+  return State::Next;
+}
 
+State BodyStep::apply(StreamCursor &cursor) {
+  auto cl = message->headers_.tryGet<Header::ContentLength>();
+  auto te = message->headers_.tryGet<Header::TransferEncoding>();
+
+  if (cl && te)
+    raise("Got mutually exclusive ContentLength and TransferEncoding header");
+
+  if (cl)
+    return parseContentLength(cursor, cl);
+
+  if (te)
+    return parseTransferEncoding(cursor, te);
+
+  return State::Done;
+}
+
+State BodyStep::parseContentLength(
+    StreamCursor &cursor, const std::shared_ptr<Header::ContentLength> &cl) {
+  auto contentLength = cl->value();
+
+  auto readBody = [&](size_t size) {
+    StreamCursor::Token token(cursor);
+    const size_t available = cursor.remaining();
+
+    // We have an incomplete body, read what we can
+    if (available < size) {
+      cursor.advance(available);
+      message->body_.append(token.rawText(), token.size());
+
+      bytesRead += available;
+
+      return false;
     }
 
-    State
-    BodyStep::parseContentLength(StreamCursor& cursor, const std::shared_ptr<Header::ContentLength>& cl) {
-        auto contentLength = cl->value();
+    cursor.advance(size);
+    message->body_.append(token.rawText(), token.size());
+    return true;
+  };
 
-        auto readBody = [&](size_t size) {
-            StreamCursor::Token token(cursor);
-            const size_t available = cursor.remaining();
+  // We already started to read some bytes but we got an incomplete payload
+  if (bytesRead > 0) {
+    // How many bytes do we still need to read ?
+    const size_t remaining = contentLength - bytesRead;
+    if (!readBody(remaining))
+      return State::Again;
+  }
+  // This is the first time we are reading the payload
+  else {
+    message->body_.reserve(contentLength);
+    if (!readBody(contentLength))
+      return State::Again;
+  }
 
-            // We have an incomplete body, read what we can
-            if (available < size) {
-                cursor.advance(available);
-                message->body_.append(token.rawText(), token.size());
+  bytesRead = 0;
+  return State::Done;
+}
 
-                bytesRead += available;
+BodyStep::Chunk::Result BodyStep::Chunk::parse(StreamCursor &cursor) {
+  if (size == -1) {
+    StreamCursor::Revert revert(cursor);
+    StreamCursor::Token chunkSize(cursor);
 
-                return false;
-            }
+    while (!cursor.eol())
+      if (!cursor.advance(1))
+        return Incomplete;
 
-            cursor.advance(size);
-            message->body_.append(token.rawText(), token.size());
-            return true;
-        };
+    char *end;
+    const char *raw = chunkSize.rawText();
+    auto sz = std::strtol(raw, &end, 16);
+    if (*end != '\r')
+      throw std::runtime_error("Invalid chunk size");
 
-        // We already started to read some bytes but we got an incomplete payload
-        if (bytesRead > 0) {
-            // How many bytes do we still need to read ?
-            const size_t remaining = contentLength - bytesRead;
-            if (!readBody(remaining)) return State::Again;
-        }
-        // This is the first time we are reading the payload
-        else {
-            message->body_.reserve(contentLength);
-            if (!readBody(contentLength)) return State::Again;
-        }
+    // CRLF
+    if (!cursor.advance(2))
+      return Incomplete;
 
-        bytesRead = 0;
-        return State::Done;
+    revert.ignore();
+
+    size = sz;
+  }
+
+  if (size == 0)
+    return Final;
+
+  message->body_.reserve(size);
+  StreamCursor::Token chunkData(cursor);
+  const ssize_t available = cursor.remaining();
+
+  if (static_cast<ssize_t>(available + message->body_.size()) < size) {
+    cursor.advance(available);
+    message->body_.append(chunkData.rawText(), available);
+    return Incomplete;
+  }
+  cursor.advance(size - message->body_.size());
+
+  if (!cursor.advance(2))
+    return Incomplete;
+
+  message->body_.append(chunkData.rawText(), size - message->body_.size());
+
+  return Complete;
+}
+
+State BodyStep::parseTransferEncoding(
+    StreamCursor &cursor, const std::shared_ptr<Header::TransferEncoding> &te) {
+  auto encoding = te->encoding();
+  if (encoding == Http::Header::Encoding::Chunked) {
+    Chunk::Result result;
+    try {
+      while ((result = chunk.parse(cursor)) != Chunk::Final) {
+        if (result == Chunk::Incomplete)
+          return State::Again;
+
+        chunk.reset();
+        if (cursor.eof())
+          return State::Again;
+      }
+      chunk.reset();
+    } catch (const std::exception &e) {
+      // reset chunk incase signal handled & chunk eventually reused
+      chunk.reset();
+      raise(e.what());
     }
 
-    BodyStep::Chunk::Result
-    BodyStep::Chunk::parse(StreamCursor& cursor) {
-        if (size == -1) {
-            StreamCursor::Revert revert(cursor);
-            StreamCursor::Token chunkSize(cursor);
+    return State::Done;
+  } else {
+    raise("Unsupported Transfer-Encoding", Code::Not_Implemented);
+  }
+  return State::Done;
+}
 
-            while (!cursor.eol()) if (!cursor.advance(1)) return Incomplete;
-
-            char *end;
-            const char *raw = chunkSize.rawText();
-            auto sz = std::strtol(raw, &end, 16);
-            if (*end != '\r') throw std::runtime_error("Invalid chunk size");
-
-            // CRLF
-            if (!cursor.advance(2)) return Incomplete;
-
-            revert.ignore();
-
-            size = sz;
-        }
-
-        if (size == 0)
-            return Final;
-
-        message->body_.reserve(size);
-        StreamCursor::Token chunkData(cursor);
-        const ssize_t available = cursor.remaining();
-
-        if (static_cast<ssize_t>(available + message->body_.size()) < size) {
-            cursor.advance(available);
-            message->body_.append(chunkData.rawText(), available);
-            return Incomplete;
-        }
-        cursor.advance(size - message->body_.size());
-
-        if (!cursor.advance(2)) return Incomplete;
-
-        message->body_.append(chunkData.rawText(),
-                              size - message->body_.size());
-
-        return Complete;
+State ParserBase::parse() {
+  State state;
+  do {
+    Step *step = allSteps[currentStep].get();
+    state = step->apply(cursor);
+    if (state == State::Next) {
+      ++currentStep;
     }
+  } while (state == State::Next);
 
-    State
-    BodyStep::parseTransferEncoding(StreamCursor& cursor, const std::shared_ptr<Header::TransferEncoding>& te) {
-        auto encoding = te->encoding();
-        if (encoding == Http::Header::Encoding::Chunked) {
-            Chunk::Result result;
-            try {
-                while ((result = chunk.parse(cursor)) != Chunk::Final) {
-                    if (result == Chunk::Incomplete) return State::Again;
+  // Should be either Again or Done
+  return state;
+}
 
-                    chunk.reset();
-                    if (cursor.eof()) return State::Again;
-                }
-                chunk.reset();
-            } catch (const std::exception& e) {
-                // reset chunk incase signal handled & chunk eventually reused
-                chunk.reset(); raise(e.what());
-            }
+bool ParserBase::feed(const char *data, size_t len) {
+  return buffer.feed(data, len);
+}
 
-            return State::Done;
-        }
-        else {
-            raise("Unsupported Transfer-Encoding", Code::Not_Implemented);
-        }
-        return State::Done;
-    }
+void ParserBase::reset() {
+  buffer.reset();
+  cursor.reset();
 
-    State
-    ParserBase::parse() {
-        State state;
-        do {
-            Step *step = allSteps[currentStep].get();
-            state = step->apply(cursor);
-            if (state == State::Next) {
-                ++currentStep;
-            }
-        } while (state == State::Next);
-
-        // Should be either Again or Done
-        return state;
-    }
-
-    bool
-    ParserBase::feed(const char* data, size_t len) {
-        return buffer.feed(data, len);
-    }
-
-    void
-    ParserBase::reset() {
-        buffer.reset();
-        cursor.reset();
-
-        currentStep = 0;
-
-    }
+  currentStep = 0;
+}
 
 } // namespace Private
 
 Message::Message()
-    : version_(Version::Http11)
-    , code_()
-    , body_()
-    , cookies_()
-    , headers_()
-{ }
+    : version_(Version::Http11), code_(), body_(), cookies_(), headers_() {}
 
 namespace Uri {
 
-    Query::Query()
-        : params()
-    { }
+Query::Query() : params() {}
 
-    Query::Query(std::initializer_list<std::pair<const std::string, std::string>> params)
-        : params(params)
-    { }
+Query::Query(
+    std::initializer_list<std::pair<const std::string, std::string>> params)
+    : params(params) {}
 
-    void
-    Query::add(std::string name, std::string value) {
-        params.insert(std::make_pair(std::move(name), std::move(value)));
-    }
+void Query::add(std::string name, std::string value) {
+  params.insert(std::make_pair(std::move(name), std::move(value)));
+}
 
-    Optional<std::string>
-    Query::get(const std::string& name) const {
-        auto it = params.find(name);
-        if (it == std::end(params))
-            return Optional<std::string>(None());
+Optional<std::string> Query::get(const std::string &name) const {
+  auto it = params.find(name);
+  if (it == std::end(params))
+    return Optional<std::string>(None());
 
-        return Optional<std::string>(Some(it->second));
-    }
+  return Optional<std::string>(Some(it->second));
+}
 
-    std::string
-    Query::as_str() const {
-        std::string query_url;
-        for(const auto &e : params) {
-            query_url += "&" + e.first + "=" + e.second;
-        }
-        if(!query_url.empty()) {
-            query_url[0] = '?'; // replace first `&` with `?`
-        }
-        return query_url;
-    }
+std::string Query::as_str() const {
+  std::string query_url;
+  for (const auto &e : params) {
+    query_url += "&" + e.first + "=" + e.second;
+  }
+  if (!query_url.empty()) {
+    query_url[0] = '?'; // replace first `&` with `?`
+  }
+  return query_url;
+}
 
-    bool
-    Query::has(const std::string& name) const {
-        return params.find(name) != std::end(params);
-    }
+bool Query::has(const std::string &name) const {
+  return params.find(name) != std::end(params);
+}
 
 } // namespace Uri
 
 Request::Request() = default;
 
-Version
-Request::version() const {
-    return version_;
-}
+Version Request::version() const { return version_; }
 
-Method
-Request::method() const {
-    return method_;
-}
+Method Request::method() const { return method_; }
 
-std::string
-Request::resource() const {
-    return resource_;
-}
+std::string Request::resource() const { return resource_; }
 
-std::string
-Request::body() const {
-    return body_;
-}
+std::string Request::body() const { return body_; }
 
-const Header::Collection&
-Request::headers() const {
-    return headers_;
-}
+const Header::Collection &Request::headers() const { return headers_; }
 
-const Uri::Query&
-Request::query() const {
-    return query_;
-}
+const Uri::Query &Request::query() const { return query_; }
 
-const CookieJar&
-Request::cookies() const {
-    return cookies_;
-}
+const CookieJar &Request::cookies() const { return cookies_; }
 
-const Address&
-Request::address() const {
-    return address_;
-}
+const Address &Request::address() const { return address_; }
 
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
-std::shared_ptr<Tcp::Peer>
-Request::peer() const {
-    auto p = peer_.lock();
+std::shared_ptr<Tcp::Peer> Request::peer() const {
+  auto p = peer_.lock();
 
-    if (!p) throw std::runtime_error("Failed to retrieve peer: Broken pipe");
+  if (!p)
+    throw std::runtime_error("Failed to retrieve peer: Broken pipe");
 
-    return p;
+  return p;
 }
 #endif
 
+ResponseStream::ResponseStream(Message &&other, std::weak_ptr<Tcp::Peer> peer,
+                               Tcp::Transport *transport, Timeout timeout,
+                               size_t streamSize)
+    : Message(std::move(other)), peer_(std::move(peer)), buf_(streamSize),
+      transport_(transport), timeout_(std::move(timeout)) {
+  if (!writeStatusLine(version_, code_, buf_))
+    throw Error("Response exceeded buffer size");
 
-ResponseStream::ResponseStream(
-        Message&& other,
-        std::weak_ptr<Tcp::Peer> peer,
-        Tcp::Transport* transport,
-        Timeout timeout,
-        size_t streamSize)
-    : Message(std::move(other))
-    , peer_(std::move(peer))
-    , buf_(streamSize)
-    , transport_(transport)
-    , timeout_(std::move(timeout))
-{
-    if (!writeStatusLine(version_, code_, buf_))
-        throw Error("Response exceeded buffer size");
+  if (!writeCookies(cookies_, buf_)) {
+    throw Error("Response exceeded buffer size");
+  }
 
-    if (!writeCookies(cookies_, buf_)) {
-        throw Error("Response exceeded buffer size");
-    }
-
-    if (writeHeaders(headers_, buf_)) {
-        std::ostream os(&buf_);
-        /* @Todo @Major:
-         * Correctly handle non-keep alive requests
-         * Do not put Keep-Alive if version == Http::11 and request.keepAlive == true
-        */
-        // writeHeader<Header::Connection>(os, ConnectionControl::KeepAlive);
-        // if (!os) throw Error("Response exceeded buffer size");
-        writeHeader<Header::TransferEncoding>(os, Header::Encoding::Chunked);
-        if (!os) throw Error("Response exceeded buffer size");
-        os << crlf;
-    }
-}
-
-void
-ResponseStream::flush() {
-    timeout_.disarm();
-    auto buf = buf_.buffer();
-
-    auto fd = peer()->fd();
-    transport_->asyncWrite(fd, buf);
-
-    buf_.clear();
-}
-
-void
-ResponseStream::ends() {
+  if (writeHeaders(headers_, buf_)) {
     std::ostream os(&buf_);
-    os << "0" << crlf;
+    /* @Todo @Major:
+     * Correctly handle non-keep alive requests
+     * Do not put Keep-Alive if version == Http::11 and request.keepAlive ==
+     * true
+     */
+    // writeHeader<Header::Connection>(os, ConnectionControl::KeepAlive);
+    // if (!os) throw Error("Response exceeded buffer size");
+    writeHeader<Header::TransferEncoding>(os, Header::Encoding::Chunked);
+    if (!os)
+      throw Error("Response exceeded buffer size");
     os << crlf;
-
-    if (!os) {
-        throw Error("Response exceeded buffer size");
-    }
-
-    flush();
+  }
 }
 
-Async::Promise<ssize_t>
-ResponseWriter::putOnWire(const char* data, size_t len)
-{
-    try {
-        std::ostream os(&buf_);
+void ResponseStream::flush() {
+  timeout_.disarm();
+  auto buf = buf_.buffer();
 
-#define OUT(...) \
-        do { \
-            __VA_ARGS__; \
-            if (!os) { \
-                return Async::Promise<ssize_t>::rejected(Error("Response exceeded buffer size")); \
-            } \
-        } while (0);
+  auto fd = peer()->fd();
+  transport_->asyncWrite(fd, buf);
 
-        OUT(writeStatusLine(version_, code_, buf_));
-        OUT(writeHeaders(headers_, buf_));
-        OUT(writeCookies(cookies_, buf_));
-
-        /* @Todo @Major:
-         * Correctly handle non-keep alive requests
-         * Do not put Keep-Alive if version == Http::11 and request.keepAlive == true
-        */
-        //OUT(writeHeader<Header::Connection>(os, ConnectionControl::KeepAlive));
-        OUT(writeHeader<Header::ContentLength>(os, len));
-
-        OUT(os << crlf);
-
-        if (len > 0) {
-            OUT(os.write(data, len));
-        }
-
-        auto buffer = buf_.buffer();
-
-        timeout_.disarm();
-
-#undef OUT
-
-        auto fd = peer()->fd();
-
-        return transport_->asyncWrite(fd, buffer)
-         .then
-                 <
-                         std::function< Async::Promise<ssize_t>(int)>,
-                         std::function<void(std::exception_ptr&)>
-                 >
-                 (
-                         [=](int /*l*/) {
-
-                             return Async::Promise<ssize_t>( [=](Async::Deferred<ssize_t> /*deferred*/) mutable {
-                                return ;
-                             } );
-                         },
-
-                         [=](std::exception_ptr& eptr){
-                             return Async::Promise<ssize_t>::rejected(eptr);
-                         }
-                 );
-
-    } catch (const std::runtime_error& e) {
-        return Async::Promise<ssize_t>::rejected(e);
-    }
+  buf_.clear();
 }
 
-Async::Promise<ssize_t>
-serveFile(ResponseWriter& response, const std::string& fileName, const Mime::MediaType& contentType)
-{
-    struct stat sb;
+void ResponseStream::ends() {
+  std::ostream os(&buf_);
+  os << "0" << crlf;
+  os << crlf;
 
-    int fd = open(fileName.c_str(), O_RDONLY);
-    if (fd == -1) {
-        std::string str_error(strerror(errno));
-        if(errno == ENOENT) {
-            throw HttpError(Http::Code::Not_Found, std::move(str_error));
-        }
-        //eles if TODO
-        /* @Improvement: maybe could we check for errno here and emit a different error
-            message
-        */
-        else {
-            throw HttpError(Http::Code::Internal_Server_Error, std::move(str_error));
-        }
-    }
+  if (!os) {
+    throw Error("Response exceeded buffer size");
+  }
 
-    int res = ::fstat(fd, &sb);
-    close(fd); // Done with fd, close before error can be thrown
-    if (res == -1) {
-        throw HttpError(Code::Internal_Server_Error, "");
-    }
+  flush();
+}
 
-    auto *buf = response.rdbuf();
+Async::Promise<ssize_t> ResponseWriter::putOnWire(const char *data,
+                                                  size_t len) {
+  try {
+    std::ostream os(&buf_);
 
-    std::ostream os(buf);
+#define OUT(...)                                                               \
+  do {                                                                         \
+    __VA_ARGS__;                                                               \
+    if (!os) {                                                                 \
+      return Async::Promise<ssize_t>::rejected(                                \
+          Error("Response exceeded buffer size"));                             \
+    }                                                                          \
+  } while (0);
 
-    #define OUT(...) \
-        do { \
-            __VA_ARGS__; \
-            if (!os) { \
-                return Async::Promise<ssize_t>::rejected(Error("Response exceeded buffer size")); \
-            } \
-        } while (0);
+    OUT(writeStatusLine(version_, code_, buf_));
+    OUT(writeHeaders(headers_, buf_));
+    OUT(writeCookies(cookies_, buf_));
 
-    auto setContentType = [&](const Mime::MediaType& contentType) {
-        auto& headers = response.headers();
-        auto ct = headers.tryGet<Header::ContentType>();
-        if (ct)
-            ct->setMime(contentType);
-        else
-            headers.add<Header::ContentType>(contentType);
-    };
-
-    OUT(writeStatusLine(response.version(), Http::Code::Ok, *buf));
-    if (contentType.isValid()) {
-        setContentType(contentType);
-    } else {
-        auto mime = Mime::MediaType::fromFile(fileName.c_str());
-        if (mime.isValid())
-            setContentType(mime);
-    }
-
-    OUT(writeHeaders(response.headers(), *buf));
-
-    const size_t len = sb.st_size;
-
+    /* @Todo @Major:
+     * Correctly handle non-keep alive requests
+     * Do not put Keep-Alive if version == Http::11 and request.keepAlive ==
+     * true
+     */
+    // OUT(writeHeader<Header::Connection>(os, ConnectionControl::KeepAlive));
     OUT(writeHeader<Header::ContentLength>(os, len));
 
     OUT(os << crlf);
 
-    auto *transport = response.transport_;
-    auto peer = response.peer();
-    auto sockFd = peer->fd();
+    if (len > 0) {
+      OUT(os.write(data, len));
+    }
 
-    auto buffer = buf->buffer();
-    return transport->asyncWrite(sockFd, buffer, MSG_MORE).then([=](ssize_t) {
-        return transport->asyncWrite(sockFd, FileBuffer(fileName));
-    }, Async::Throw);
+    auto buffer = buf_.buffer();
+
+    timeout_.disarm();
+
+#undef OUT
+
+    auto fd = peer()->fd();
+
+    return transport_->asyncWrite(fd, buffer)
+        .then<std::function<Async::Promise<ssize_t>(int)>,
+              std::function<void(std::exception_ptr &)>>(
+            [=](int /*l*/) {
+              return Async::Promise<ssize_t>(
+                  [=](Async::Deferred<ssize_t> /*deferred*/) mutable {
+                    return;
+                  });
+            },
+
+            [=](std::exception_ptr &eptr) {
+              return Async::Promise<ssize_t>::rejected(eptr);
+            });
+
+  } catch (const std::runtime_error &e) {
+    return Async::Promise<ssize_t>::rejected(e);
+  }
+}
+
+Async::Promise<ssize_t> serveFile(ResponseWriter &response,
+                                  const std::string &fileName,
+                                  const Mime::MediaType &contentType) {
+  struct stat sb;
+
+  int fd = open(fileName.c_str(), O_RDONLY);
+  if (fd == -1) {
+    std::string str_error(strerror(errno));
+    if (errno == ENOENT) {
+      throw HttpError(Http::Code::Not_Found, std::move(str_error));
+    }
+    // eles if TODO
+    /* @Improvement: maybe could we check for errno here and emit a different
+       error message
+    */
+    else {
+      throw HttpError(Http::Code::Internal_Server_Error, std::move(str_error));
+    }
+  }
+
+  int res = ::fstat(fd, &sb);
+  close(fd); // Done with fd, close before error can be thrown
+  if (res == -1) {
+    throw HttpError(Code::Internal_Server_Error, "");
+  }
+
+  auto *buf = response.rdbuf();
+
+  std::ostream os(buf);
+
+#define OUT(...)                                                               \
+  do {                                                                         \
+    __VA_ARGS__;                                                               \
+    if (!os) {                                                                 \
+      return Async::Promise<ssize_t>::rejected(                                \
+          Error("Response exceeded buffer size"));                             \
+    }                                                                          \
+  } while (0);
+
+  auto setContentType = [&](const Mime::MediaType &contentType) {
+    auto &headers = response.headers();
+    auto ct = headers.tryGet<Header::ContentType>();
+    if (ct)
+      ct->setMime(contentType);
+    else
+      headers.add<Header::ContentType>(contentType);
+  };
+
+  OUT(writeStatusLine(response.version(), Http::Code::Ok, *buf));
+  if (contentType.isValid()) {
+    setContentType(contentType);
+  } else {
+    auto mime = Mime::MediaType::fromFile(fileName.c_str());
+    if (mime.isValid())
+      setContentType(mime);
+  }
+
+  OUT(writeHeaders(response.headers(), *buf));
+
+  const size_t len = sb.st_size;
+
+  OUT(writeHeader<Header::ContentLength>(os, len));
+
+  OUT(os << crlf);
+
+  auto *transport = response.transport_;
+  auto peer = response.peer();
+  auto sockFd = peer->fd();
+
+  auto buffer = buf->buffer();
+  return transport->asyncWrite(sockFd, buffer, MSG_MORE)
+      .then(
+          [=](ssize_t) {
+            return transport->asyncWrite(sockFd, FileBuffer(fileName));
+          },
+          Async::Throw);
 
 #undef OUT
 }
 
-void
-Handler::onInput(const char* buffer, size_t len, const std::shared_ptr<Tcp::Peer>& peer) {
-    auto& parser = getParser(peer);
-    try {
-        if (!parser.feed(buffer, len)) {
-            parser.reset();
-            throw HttpError(Code::Request_Entity_Too_Large, "Request exceeded maximum buffer size");
-        }
+void Handler::onInput(const char *buffer, size_t len,
+                      const std::shared_ptr<Tcp::Peer> &peer) {
+  auto &parser = getParser(peer);
+  try {
+    if (!parser.feed(buffer, len)) {
+      parser.reset();
+      throw HttpError(Code::Request_Entity_Too_Large,
+                      "Request exceeded maximum buffer size");
+    }
 
-        auto state = parser.parse();
+    auto state = parser.parse();
 
-        if (state == Private::State::Done) {
-            ResponseWriter response(transport(), parser.request, this);
-            response.associatePeer(peer);
+    if (state == Private::State::Done) {
+      ResponseWriter response(transport(), parser.request, this);
+      response.associatePeer(peer);
 
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
-            parser.request.associatePeer(peer);
+      parser.request.associatePeer(peer);
 #endif
 
-            auto request = parser.request;
-            request.copyAddress(peer->address());
+      auto request = parser.request;
+      request.copyAddress(peer->address());
 
-            auto connection = request.headers().tryGet<Header::Connection>();
+      auto connection = request.headers().tryGet<Header::Connection>();
 
-            if (connection) {
-                response.headers()
-                    .add<Header::Connection>(connection->control());
-            } else {
-                response.headers()
-                        .add<Header::Connection>(ConnectionControl::Close);
-            }
+      if (connection) {
+        response.headers().add<Header::Connection>(connection->control());
+      } else {
+        response.headers().add<Header::Connection>(ConnectionControl::Close);
+      }
 
-            onRequest(request, std::move(response));
-            parser.reset();
-        }
-
-    } catch (const HttpError &err) {
-        ResponseWriter response(transport(), parser.request, this);
-        response.associatePeer(peer);
-        response.send(static_cast<Code>(err.code()), err.reason());
-        parser.reset();
+      onRequest(request, std::move(response));
+      parser.reset();
     }
 
-    catch (const std::exception& e) {
-        ResponseWriter response(transport(), parser.request, this);
-        response.associatePeer(peer);
-        response.send(Code::Internal_Server_Error, e.what());
-        parser.reset();
-    }
-}
-
-void
-Handler::onConnection(const std::shared_ptr<Tcp::Peer>& peer) {
-    peer->putData(ParserData, std::make_shared<Private::Parser<Http::Request>>());
-}
-
-void Handler::onDisconnection(const std::shared_ptr<Tcp::Peer>& /*peer*/)
-{ }
-
-void
-Handler::onTimeout(const Request& request, ResponseWriter response) {
-    UNUSED(request)
-    UNUSED(response)
-}
-
-void
-Timeout::onTimeout(uint64_t numWakeup) {
-    UNUSED(numWakeup)
-    if (!peer.lock()) return;
-
-    ResponseWriter response(transport, request, handler);
+  } catch (const HttpError &err) {
+    ResponseWriter response(transport(), parser.request, this);
     response.associatePeer(peer);
+    response.send(static_cast<Code>(err.code()), err.reason());
+    parser.reset();
+  }
 
-    handler->onTimeout(request, std::move(response));
+  catch (const std::exception &e) {
+    ResponseWriter response(transport(), parser.request, this);
+    response.associatePeer(peer);
+    response.send(Code::Internal_Server_Error, e.what());
+    parser.reset();
+  }
 }
 
-
-Private::Parser<Http::Request>&
-Handler::getParser(const std::shared_ptr<Tcp::Peer>& peer) const {
-    return static_cast<Private::Parser<Http::Request>&>(*peer->getData(ParserData));
+void Handler::onConnection(const std::shared_ptr<Tcp::Peer> &peer) {
+  peer->putData(ParserData, std::make_shared<Private::Parser<Http::Request>>());
 }
 
+void Handler::onDisconnection(const std::shared_ptr<Tcp::Peer> & /*peer*/) {}
+
+void Handler::onTimeout(const Request &request, ResponseWriter response) {
+  UNUSED(request)
+  UNUSED(response)
+}
+
+void Timeout::onTimeout(uint64_t numWakeup) {
+  UNUSED(numWakeup)
+  if (!peer.lock())
+    return;
+
+  ResponseWriter response(transport, request, handler);
+  response.associatePeer(peer);
+
+  handler->onTimeout(request, std::move(response));
+}
+
+Private::Parser<Http::Request> &
+Handler::getParser(const std::shared_ptr<Tcp::Peer> &peer) const {
+  return static_cast<Private::Parser<Http::Request> &>(
+      *peer->getData(ParserData));
+}
 
 } // namespace Http
 } // namespace Pistache
