@@ -1,37 +1,6 @@
-pistache (0.0.002-git20200113-kip1) eoan; urgency=medium
-
-  * Latest upstream.
-  * Fixed DEP-8 debian/test/test-compilation-and-link.sh
-
- -- Kip Warner <kip@thevertigo.com>  Mon, 13 Jan 2020 20:15:48 -0800
-
-pistache (0.0.002-git20200111-kip1) eoan; urgency=medium
+pistache (0.0.002) eoan; urgency=medium
 
   * Latest upstream.
 
- -- Kip Warner <kip@thevertigo.com>  Sat, 11 Jan 2020 14:04:54 -0800
-
-pistache (0.0.001-git20200101-kip1) eoan; urgency=medium
-
-  * Latest upstream.
-
- -- Kip Warner <kip@thevertigo.com>  Tue, 31 Dec 2019 20:21:00 -0800
-
-pistache (0.0.001-git20191031-kip1) eoan; urgency=medium
-
-  * Latest upstream and first build for eoan.
-
- -- Kip Warner <kip@thevertigo.com>  Thu, 31 Oct 2019 18:23:04 -0700
-
-pistache (0.0.001-git20191017-kip1) disco; urgency=medium
-
-  * Latest upstream.
-
- -- Kip Warner <kip@thevertigo.com>  Thu, 17 Oct 2019 21:57:28 -0700
-
-pistache (0.0.001-git20190920-kip1~disco) disco; urgency=medium
-
-  * Added DEP-8 compliant test for autopkgtest.
-
- -- Kip Warner <kip@thevertigo.com>  Fri, 20 Sep 2019 15:23:06 -0700
+ -- Kip Warner <kip@thevertigo.com>  Fri, 17 Jan 2020 14:29:59 -0800
 
