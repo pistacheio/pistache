@@ -517,9 +517,8 @@ Async::Promise<Response> Connection::perform(const Http::Request &request,
       });
 }
 
-Async::Promise<Response>
-Connection::asyncPerform(const Http::Request &request,
-                         Connection::OnDone onDone) {
+Async::Promise<Response> Connection::asyncPerform(const Http::Request &request,
+                                                  Connection::OnDone onDone) {
   return Async::Promise<Response>(
       [=](Async::Resolver &resolve, Async::Rejection &reject) {
         requestsQueue.push(RequestData(std::move(resolve), std::move(reject),
@@ -555,8 +554,8 @@ void Connection::processRequestQueue() {
     if (!req)
       break;
 
-    performImpl(req->request, std::move(req->resolve),
-                std::move(req->reject), std::move(req->onDone));
+    performImpl(req->request, std::move(req->resolve), std::move(req->reject),
+                std::move(req->onDone));
   }
 }
 
@@ -762,17 +761,17 @@ Async::Promise<Response> Client::doRequest(Http::Request request) {
   auto conn = pool.pickConnection(resource.first);
 
   if (conn == nullptr) {
-    return Async::Promise<Response>(
-        [this, resource = std::move(resource), request]
-         (Async::Resolver &resolve, Async::Rejection &reject) {
-             Guard guard(queuesLock);
+    return Async::Promise<Response>([this, resource = std::move(resource),
+                                     request](Async::Resolver &resolve,
+                                              Async::Rejection &reject) {
+      Guard guard(queuesLock);
 
-             auto data = std::make_shared<Connection::RequestData>(
-                 std::move(resolve), std::move(reject), std::move(request), nullptr);
-             auto &queue = requestsQueues[resource.first];
-             if (!queue.enqueue(data))
-                 data->reject(std::runtime_error("Queue is full"));
-        });
+      auto data = std::make_shared<Connection::RequestData>(
+          std::move(resolve), std::move(reject), std::move(request), nullptr);
+      auto &queue = requestsQueues[resource.first];
+      if (!queue.enqueue(data))
+        data->reject(std::runtime_error("Queue is full"));
+    });
   } else {
 
     if (!conn->hasTransport()) {
@@ -784,25 +783,25 @@ Async::Promise<Response> Client::doRequest(Http::Request request) {
     }
 
     if (!conn->isConnected()) {
-        std::weak_ptr<Connection> weakConn = conn;
-        auto res = conn->asyncPerform(request, [this, weakConn]() {
-            auto conn = weakConn.lock();
-            if (conn) {
-                pool.releaseConnection(conn);
-                processRequestQueue();
-            }
-        });
-        conn->connect(helpers::httpAddr(resource.first));
-        return res;
+      std::weak_ptr<Connection> weakConn = conn;
+      auto res = conn->asyncPerform(request, [this, weakConn]() {
+        auto conn = weakConn.lock();
+        if (conn) {
+          pool.releaseConnection(conn);
+          processRequestQueue();
+        }
+      });
+      conn->connect(helpers::httpAddr(resource.first));
+      return res;
     }
 
     std::weak_ptr<Connection> weakConn = conn;
     return conn->perform(request, [this, weakConn]() {
-        auto conn = weakConn.lock();
-        if (conn) {
-            pool.releaseConnection(conn);
-            processRequestQueue();
-        }
+      auto conn = weakConn.lock();
+      if (conn) {
+        pool.releaseConnection(conn);
+        processRequestQueue();
+      }
     });
   }
 }

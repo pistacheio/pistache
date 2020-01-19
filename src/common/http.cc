@@ -526,9 +526,7 @@ bool Query::has(const std::string &name) const {
 
 } // namespace Uri
 
-Message::Message(Version version)
-  : version_(version)
-{}
+Message::Message(Version version) : version_(version) {}
 
 Version Message::version() const { return version_; }
 
@@ -552,13 +550,9 @@ const Uri::Query &Request::query() const { return query_; }
 
 const Address &Request::address() const { return address_; }
 
-std::chrono::milliseconds Request::timeout() const {
-    return timeout_;
-}
+std::chrono::milliseconds Request::timeout() const { return timeout_; }
 
-Response::Response(Version version)
-    : Message(version)
-{}
+Response::Response(Version version) : Message(version) {}
 
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
 std::shared_ptr<Tcp::Peer> Request::peer() const {
