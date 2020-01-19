@@ -509,28 +509,25 @@ void Connection::handleTimeout() {
 }
 
 Async::Promise<Response> Connection::perform(const Http::Request &request,
-                                             std::chrono::milliseconds timeout,
                                              Connection::OnDone onDone) {
   return Async::Promise<Response>(
       [=](Async::Resolver &resolve, Async::Rejection &reject) {
-        performImpl(request, timeout, std::move(resolve), std::move(reject),
+        performImpl(request, std::move(resolve), std::move(reject),
                     std::move(onDone));
       });
 }
 
 Async::Promise<Response>
 Connection::asyncPerform(const Http::Request &request,
-                         std::chrono::milliseconds timeout,
                          Connection::OnDone onDone) {
   return Async::Promise<Response>(
       [=](Async::Resolver &resolve, Async::Rejection &reject) {
         requestsQueue.push(RequestData(std::move(resolve), std::move(reject),
-                                       request, timeout, std::move(onDone)));
+                                       request, std::move(onDone)));
       });
 }
 
 void Connection::performImpl(const Http::Request &request,
-                             std::chrono::milliseconds timeout,
                              Async::Resolver resolve, Async::Rejection reject,
                              Connection::OnDone onDone) {
 
@@ -541,6 +538,7 @@ void Connection::performImpl(const Http::Request &request,
   std::string buffer = streamBuf.str();
 
   std::shared_ptr<TimerPool::Entry> timer(nullptr);
+  auto timeout = request.timeout();
   if (timeout.count() > 0) {
     timer = timerPool_.pickTimer();
     timer->arm(timeout);
@@ -557,7 +555,7 @@ void Connection::processRequestQueue() {
     if (!req)
       break;
 
-    performImpl(req->request, req->timeout, std::move(req->resolve),
+    performImpl(req->request, std::move(req->resolve),
                 std::move(req->reject), std::move(req->onDone));
   }
 }
@@ -680,12 +678,12 @@ RequestBuilder &RequestBuilder::body(std::string &&val) {
 }
 
 RequestBuilder &RequestBuilder::timeout(std::chrono::milliseconds val) {
-  timeout_ = val;
+  request_.timeout_ = val;
   return *this;
 }
 
 Async::Promise<Response> RequestBuilder::send() {
-  return client_->doRequest(request_, timeout_);
+  return client_->doRequest(request_);
 }
 
 Client::Options &Client::Options::threads(int val) {
@@ -755,27 +753,25 @@ RequestBuilder Client::prepareRequest(const std::string &resource,
   return builder;
 }
 
-Async::Promise<Response> Client::doRequest(Http::Request request,
-                                           std::chrono::milliseconds timeout) {
+Async::Promise<Response> Client::doRequest(Http::Request request) {
   // request.headers_.add<Header::Connection>(ConnectionControl::KeepAlive);
   request.headers_.remove<Header::UserAgent>();
-  auto resource = request.resource();
+  auto resourceData = request.resource();
 
-  auto s = splitUrl(resource);
-  auto conn = pool.pickConnection(s.first);
+  auto resource = splitUrl(resourceData);
+  auto conn = pool.pickConnection(resource.first);
 
   if (conn == nullptr) {
-    // TODO: C++14 - use capture move for s
     return Async::Promise<Response>(
-        [this, s, request, timeout](Async::Resolver &resolve,
-                                    Async::Rejection &reject) {
-          Guard guard(queuesLock);
+        [this, resource = std::move(resource), request]
+         (Async::Resolver &resolve, Async::Rejection &reject) {
+             Guard guard(queuesLock);
 
-          auto data = std::make_shared<Connection::RequestData>(
-              std::move(resolve), std::move(reject), request, timeout, nullptr);
-          auto &queue = requestsQueues[s.first];
-          if (!queue.enqueue(data))
-            data->reject(std::runtime_error("Queue is full"));
+             auto data = std::make_shared<Connection::RequestData>(
+                 std::move(resolve), std::move(reject), std::move(request), nullptr);
+             auto &queue = requestsQueues[resource.first];
+             if (!queue.enqueue(data))
+                 data->reject(std::runtime_error("Queue is full"));
         });
   } else {
 
@@ -788,25 +784,25 @@ Async::Promise<Response> Client::doRequest(Http::Request request,
     }
 
     if (!conn->isConnected()) {
-      std::weak_ptr<Connection> weakConn = conn;
-      auto res = conn->asyncPerform(request, timeout, [this, weakConn]() {
-        auto conn = weakConn.lock();
-        if (conn) {
-          pool.releaseConnection(conn);
-          processRequestQueue();
-        }
-      });
-      conn->connect(helpers::httpAddr(s.first));
-      return res;
+        std::weak_ptr<Connection> weakConn = conn;
+        auto res = conn->asyncPerform(request, [this, weakConn]() {
+            auto conn = weakConn.lock();
+            if (conn) {
+                pool.releaseConnection(conn);
+                processRequestQueue();
+            }
+        });
+        conn->connect(helpers::httpAddr(resource.first));
+        return res;
     }
 
     std::weak_ptr<Connection> weakConn = conn;
-    return conn->perform(request, timeout, [this, weakConn]() {
-      auto conn = weakConn.lock();
-      if (conn) {
-        pool.releaseConnection(conn);
-        processRequestQueue();
-      }
+    return conn->perform(request, [this, weakConn]() {
+        auto conn = weakConn.lock();
+        if (conn) {
+            pool.releaseConnection(conn);
+            processRequestQueue();
+        }
     });
   }
 }
@@ -831,7 +827,7 @@ void Client::processRequestQueue() {
         break;
       }
 
-      conn->performImpl(data->request, data->timeout, std::move(data->resolve),
+      conn->performImpl(data->request, std::move(data->resolve),
                         std::move(data->reject), [this, conn]() {
                           pool.releaseConnection(conn);
                           processRequestQueue();

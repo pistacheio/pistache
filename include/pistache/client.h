@@ -43,19 +43,16 @@ struct Connection : public std::enable_shared_from_this<Connection> {
         RequestData(
                 Async::Resolver resolve, Async::Rejection reject,
                 const Http::Request& request,
-                std::chrono::milliseconds timeout,
                 OnDone onDone)
             : resolve(std::move(resolve))
             , reject(std::move(reject))
             , request(request)
-            , timeout(timeout)
             , onDone(std::move(onDone))
         { }
         Async::Resolver resolve;
         Async::Rejection reject;
 
         Http::Request request;
-        std::chrono::milliseconds timeout;
         OnDone onDone;
     };
 
@@ -79,17 +76,14 @@ struct Connection : public std::enable_shared_from_this<Connection> {
 
     Async::Promise<Response> perform(
             const Http::Request& request,
-            std::chrono::milliseconds timeout,
             OnDone onDone);
 
     Async::Promise<Response> asyncPerform(
             const Http::Request& request,
-            std::chrono::milliseconds timeout,
             OnDone onDone);
 
     void performImpl(
             const Http::Request& request,
-            std::chrono::milliseconds timeout,
             Async::Resolver resolve,
             Async::Rejection reject,
             OnDone onDone);
@@ -299,7 +293,6 @@ public:
     RequestBuilder& cookie(const Cookie& cookie);
     RequestBuilder& body(const std::string& val);
     RequestBuilder& body(std::string&& val);
-
     RequestBuilder& timeout(std::chrono::milliseconds val);
 
     Async::Promise<Response> send();
@@ -308,13 +301,11 @@ private:
     explicit RequestBuilder(Client* const client)
         : client_(client)
         , request_()
-        , timeout_(std::chrono::milliseconds(0))
     { }
 
     Client* const client_;
 
     Request request_;
-    std::chrono::milliseconds timeout_;
 };
 
 
@@ -373,9 +364,7 @@ private:
 
    RequestBuilder prepareRequest(const std::string& resource, Http::Method method);
 
-   Async::Promise<Response> doRequest(
-           Http::Request request,
-           std::chrono::milliseconds timeout);
+   Async::Promise<Response> doRequest(Http::Request request);
 
    void processRequestQueue();
 
