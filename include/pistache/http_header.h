@@ -6,15 +6,15 @@
 
 #pragma once
 
-#include <string>
-#include <type_traits>
 #include <memory>
 #include <ostream>
+#include <string>
+#include <type_traits>
 #include <vector>
 
+#include <pistache/http_defs.h>
 #include <pistache/mime.h>
 #include <pistache/net.h>
-#include <pistache/http_defs.h>
 
 #define SAFE_HEADER_CAST
 
@@ -29,163 +29,137 @@ namespace detail {
 static constexpr uint64_t basis = 14695981039346656037ULL;
 static constexpr uint64_t prime = 1099511628211ULL;
 
-constexpr uint64_t hash_one(char c, const char* remain, unsigned long long value)
-{
-    return c == 0 ? value : hash_one(remain[0], remain + 1, (value ^ c) * prime);
+constexpr uint64_t hash_one(char c, const char *remain,
+                            unsigned long long value) {
+  return c == 0 ? value : hash_one(remain[0], remain + 1, (value ^ c) * prime);
 }
 
-constexpr uint64_t hash(const char* str)
-{
-    return hash_one(str[0], str + 1, basis);
+constexpr uint64_t hash(const char *str) {
+  return hash_one(str[0], str + 1, basis);
 }
 
 } // namespace detail
 #endif
 
 #ifdef SAFE_HEADER_CAST
-    #define NAME(header_name) \
-        static constexpr uint64_t Hash = Pistache::Http::Header::detail::hash(header_name); \
-        uint64_t hash() const override { return Hash; } \
-        static constexpr const char *Name = header_name; \
-        const char *name() const override { return Name; }
+#define NAME(header_name)                                                      \
+  static constexpr uint64_t Hash =                                             \
+      Pistache::Http::Header::detail::hash(header_name);                       \
+  uint64_t hash() const override { return Hash; }                              \
+  static constexpr const char *Name = header_name;                             \
+  const char *name() const override { return Name; }
 #else
-    #define NAME(header_name) \
-        static constexpr const char *Name = header_name; \
-        const char *name() const override { return Name; }
+#define NAME(header_name)                                                      \
+  static constexpr const char *Name = header_name;                             \
+  const char *name() const override { return Name; }
 #endif
 
 // 3.5 Content Codings
 // 3.6 Transfer Codings
-enum class Encoding {
-    Gzip,
-    Compress,
-    Deflate,
-    Identity,
-    Chunked,
-    Unknown
-};
+enum class Encoding { Gzip, Compress, Deflate, Identity, Chunked, Unknown };
 
-const char* encodingString(Encoding encoding);
+const char *encodingString(Encoding encoding);
 
 class Header {
 public:
-    virtual ~Header() {}
-    virtual const char *name() const = 0;
+  virtual ~Header() {}
+  virtual const char *name() const = 0;
 
-    virtual void parse(const std::string& data);
-    virtual void parseRaw(const char* str, size_t len);
+  virtual void parse(const std::string &data);
+  virtual void parseRaw(const char *str, size_t len);
 
-    virtual void write(std::ostream& stream) const = 0;
+  virtual void write(std::ostream &stream) const = 0;
 
 #ifdef SAFE_HEADER_CAST
-    virtual uint64_t hash() const = 0;
+  virtual uint64_t hash() const = 0;
 #endif
-
 };
 
-template<typename H> struct IsHeader {
+template <typename H> struct IsHeader {
 
-    template<typename T>
-    static std::true_type test(decltype(T::Name) *);
+  template <typename T> static std::true_type test(decltype(T::Name) *);
 
-    template<typename T>
-    static std::false_type test(...);
+  template <typename T> static std::false_type test(...);
 
-    static constexpr bool value
-        = std::is_base_of<Header, H>::value
-       && std::is_same<decltype(test<H>(nullptr)), std::true_type>::value;
+  static constexpr bool value =
+      std::is_base_of<Header, H>::value &&
+      std::is_same<decltype(test<H>(nullptr)), std::true_type>::value;
 };
 
 #ifdef SAFE_HEADER_CAST
-template<typename To>
+template <typename To>
 typename std::enable_if<IsHeader<To>::value, std::shared_ptr<To>>::type
-header_cast(const std::shared_ptr<Header>& from)
-{
-    return static_cast<To *>(0)->Hash == from->hash() ?
-                std::static_pointer_cast<To>(from) : nullptr;
+header_cast(const std::shared_ptr<Header> &from) {
+  return static_cast<To *>(0)->Hash == from->hash()
+             ? std::static_pointer_cast<To>(from)
+             : nullptr;
 }
 
-template<typename To>
+template <typename To>
 typename std::enable_if<IsHeader<To>::value, std::shared_ptr<const To>>::type
-header_cast(const std::shared_ptr<const Header>& from)
-{
-    return static_cast<To *>(0)->Hash == from->hash() ?
-                std::static_pointer_cast<const To>(from) : nullptr;
+header_cast(const std::shared_ptr<const Header> &from) {
+  return static_cast<To *>(0)->Hash == from->hash()
+             ? std::static_pointer_cast<const To>(from)
+             : nullptr;
 }
 #endif
 
 class Allow : public Header {
 public:
-    NAME("Allow");
+  NAME("Allow");
 
-    Allow()
-        : methods_()
-    { }
+  Allow() : methods_() {}
 
-    explicit Allow(const std::vector<Http::Method>& methods)
-        : methods_(methods)
-    { }
-    explicit Allow(std::initializer_list<Http::Method> methods)
-        : methods_(methods)
-    { }
+  explicit Allow(const std::vector<Http::Method> &methods)
+      : methods_(methods) {}
+  explicit Allow(std::initializer_list<Http::Method> methods)
+      : methods_(methods) {}
 
-    explicit Allow(Http::Method method)
-        : methods_()
-    {
-        methods_.push_back(method);
-    }
+  explicit Allow(Http::Method method) : methods_() {
+    methods_.push_back(method);
+  }
 
-    void parseRaw(const char *str, size_t len) override;
-    void write(std::ostream& os) const override;
+  void parseRaw(const char *str, size_t len) override;
+  void write(std::ostream &os) const override;
 
-    void addMethod(Http::Method method);
-    void addMethods(std::initializer_list<Method> methods);
-    void addMethods(const std::vector<Http::Method>& methods);
+  void addMethod(Http::Method method);
+  void addMethods(std::initializer_list<Method> methods);
+  void addMethods(const std::vector<Http::Method> &methods);
 
-    std::vector<Http::Method> methods() const { return methods_; }
+  std::vector<Http::Method> methods() const { return methods_; }
 
 private:
-    std::vector<Http::Method> methods_;
+  std::vector<Http::Method> methods_;
 };
 
 class Accept : public Header {
 public:
-    NAME("Accept")
+  NAME("Accept")
 
-    Accept()
-        : mediaRange_()
-    { }
+  Accept() : mediaRange_() {}
 
-    void parseRaw(const char *str, size_t len) override;
-    void write(std::ostream& os) const override;
+  void parseRaw(const char *str, size_t len) override;
+  void write(std::ostream &os) const override;
 
-    const std::vector<Mime::MediaType> media() const { return mediaRange_; }
+  const std::vector<Mime::MediaType> media() const { return mediaRange_; }
 
 private:
-    std::vector<Mime::MediaType> mediaRange_;
+  std::vector<Mime::MediaType> mediaRange_;
 };
 
 class AccessControlAllowOrigin : public Header {
 public:
   NAME("Access-Control-Allow-Origin")
 
-  AccessControlAllowOrigin()
-    : uri_()
-  { }
+  AccessControlAllowOrigin() : uri_() {}
 
-  explicit AccessControlAllowOrigin(const char* uri)
-    : uri_(uri)
-  { }
-  explicit AccessControlAllowOrigin(const std::string& uri)
-    : uri_(uri)
-  { }
+  explicit AccessControlAllowOrigin(const char *uri) : uri_(uri) {}
+  explicit AccessControlAllowOrigin(const std::string &uri) : uri_(uri) {}
 
-  void parse(const std::string& data) override;
-  void write(std::ostream& os) const override;
+  void parse(const std::string &data) override;
+  void write(std::ostream &os) const override;
 
-  void setUri(std::string uri) {
-    uri_ = std::move(uri);
-  }
+  void setUri(std::string uri) { uri_ = std::move(uri); }
 
   std::string uri() const { return uri_; }
 
@@ -197,23 +171,15 @@ class AccessControlAllowHeaders : public Header {
 public:
   NAME("Access-Control-Allow-Headers")
 
-  AccessControlAllowHeaders()
-    : val_()
-  { }
+  AccessControlAllowHeaders() : val_() {}
 
-  explicit AccessControlAllowHeaders(const char* val)
-    : val_(val)
-  { }
-  explicit AccessControlAllowHeaders(const std::string& val)
-    : val_(val)
-  { }
+  explicit AccessControlAllowHeaders(const char *val) : val_(val) {}
+  explicit AccessControlAllowHeaders(const std::string &val) : val_(val) {}
 
-  void parse(const std::string& data) override;
-  void write(std::ostream& os) const override;
+  void parse(const std::string &data) override;
+  void write(std::ostream &os) const override;
 
-  void setUri(std::string val) {
-    val_ = std::move(val);
-  }
+  void setUri(std::string val) { val_ = std::move(val); }
 
   std::string val() const { return val_; }
 
@@ -225,23 +191,15 @@ class AccessControlExposeHeaders : public Header {
 public:
   NAME("Access-Control-Expose-Headers")
 
-  AccessControlExposeHeaders()
-    : val_()
-  { }
+  AccessControlExposeHeaders() : val_() {}
 
-  explicit AccessControlExposeHeaders(const char* val)
-    : val_(val)
-  { }
-  explicit AccessControlExposeHeaders(const std::string& val)
-    : val_(val)
-  { }
+  explicit AccessControlExposeHeaders(const char *val) : val_(val) {}
+  explicit AccessControlExposeHeaders(const std::string &val) : val_(val) {}
 
-  void parse(const std::string& data) override;
-  void write(std::ostream& os) const override;
+  void parse(const std::string &data) override;
+  void write(std::ostream &os) const override;
 
-  void setUri(std::string val) {
-    val_ = std::move(val);
-  }
+  void setUri(std::string val) { val_ = std::move(val); }
 
   std::string val() const { return val_; }
 
@@ -253,23 +211,15 @@ class AccessControlAllowMethods : public Header {
 public:
   NAME("Access-Control-Allow-Methods")
 
-  AccessControlAllowMethods()
-    : val_()
-  { }
+  AccessControlAllowMethods() : val_() {}
 
-  explicit AccessControlAllowMethods(const char* val)
-    : val_(val)
-  { }
-  explicit AccessControlAllowMethods(const std::string& val)
-    : val_(val)
-  { }
+  explicit AccessControlAllowMethods(const char *val) : val_(val) {}
+  explicit AccessControlAllowMethods(const std::string &val) : val_(val) {}
 
-  void parse(const std::string& data) override;
-  void write(std::ostream& os) const override;
+  void parse(const std::string &data) override;
+  void write(std::ostream &os) const override;
 
-  void setUri(std::string val) {
-    val_ = std::move(val);
-  }
+  void setUri(std::string val) { val_ = std::move(val); }
 
   std::string val() const { return val_; }
 
@@ -279,361 +229,290 @@ private:
 
 class CacheControl : public Header {
 public:
-    NAME("Cache-Control")
+  NAME("Cache-Control")
 
-    CacheControl()
-       : directives_()
-    { }
+  CacheControl() : directives_() {}
 
-    explicit CacheControl(const std::vector<Http::CacheDirective>& directives)
-        : directives_(directives)
-    { }
-    explicit CacheControl(Http::CacheDirective directive);
-    explicit CacheControl(Http::CacheDirective::Directive directive):
-      CacheControl(Http::CacheDirective(directive))
-    { }
+  explicit CacheControl(const std::vector<Http::CacheDirective> &directives)
+      : directives_(directives) {}
+  explicit CacheControl(Http::CacheDirective directive);
+  explicit CacheControl(Http::CacheDirective::Directive directive)
+      : CacheControl(Http::CacheDirective(directive)) {}
 
-    void parseRaw(const char* str, size_t len) override;
-    void write(std::ostream& os) const override;
+  void parseRaw(const char *str, size_t len) override;
+  void write(std::ostream &os) const override;
 
-    std::vector<Http::CacheDirective> directives() const { return directives_; }
+  std::vector<Http::CacheDirective> directives() const { return directives_; }
 
-    void addDirective(Http::CacheDirective directive);
-    void addDirective(Http::CacheDirective::Directive directive) {
-        addDirective(Http::CacheDirective(directive));
-    }
-    void addDirectives(const std::vector<Http::CacheDirective>& directives);
+  void addDirective(Http::CacheDirective directive);
+  void addDirective(Http::CacheDirective::Directive directive) {
+    addDirective(Http::CacheDirective(directive));
+  }
+  void addDirectives(const std::vector<Http::CacheDirective> &directives);
 
 private:
-    std::vector<Http::CacheDirective> directives_;
+  std::vector<Http::CacheDirective> directives_;
 };
 
 class Connection : public Header {
 public:
-    NAME("Connection")
+  NAME("Connection")
 
-    Connection()
-        : control_(ConnectionControl::KeepAlive)
-    { }
+  Connection() : control_(ConnectionControl::KeepAlive) {}
 
-    explicit Connection(ConnectionControl control)
-        : control_(control)
-    { }
+  explicit Connection(ConnectionControl control) : control_(control) {}
 
-    void parseRaw(const char* str, size_t len) override;
-    void write(std::ostream& os) const override;
+  void parseRaw(const char *str, size_t len) override;
+  void write(std::ostream &os) const override;
 
-    ConnectionControl control() const { return control_; }
+  ConnectionControl control() const { return control_; }
 
 private:
-    ConnectionControl control_;
+  ConnectionControl control_;
 };
 
 class EncodingHeader : public Header {
 public:
+  EncodingHeader() : encoding_() {}
 
-    EncodingHeader()
-       : encoding_()
-    { }
+  void parseRaw(const char *str, size_t len) override;
+  void write(std::ostream &os) const override;
 
-    void parseRaw(const char* str, size_t len) override;
-    void write(std::ostream& os) const override;
-
-    Encoding encoding() const {
-        return encoding_;
-    }
+  Encoding encoding() const { return encoding_; }
 
 protected:
-    explicit EncodingHeader(Encoding encoding)
-        : encoding_(encoding)
-    { }
+  explicit EncodingHeader(Encoding encoding) : encoding_(encoding) {}
 
 private:
-    Encoding encoding_;
+  Encoding encoding_;
 };
 
 class ContentEncoding : public EncodingHeader {
 public:
-    NAME("Content-Encoding")
+  NAME("Content-Encoding")
 
-    ContentEncoding()
-       : EncodingHeader(Encoding::Identity)
-    { }
+  ContentEncoding() : EncodingHeader(Encoding::Identity) {}
 
-    explicit ContentEncoding(Encoding encoding)
-       : EncodingHeader(encoding)
-    { }
+  explicit ContentEncoding(Encoding encoding) : EncodingHeader(encoding) {}
 };
 
 class TransferEncoding : public EncodingHeader {
 public:
-    NAME("Transfer-Encoding")
+  NAME("Transfer-Encoding")
 
-    TransferEncoding()
-        : EncodingHeader(Encoding::Identity)
-    { }
+  TransferEncoding() : EncodingHeader(Encoding::Identity) {}
 
-    explicit TransferEncoding(Encoding encoding)
-       : EncodingHeader(encoding)
-    { }
+  explicit TransferEncoding(Encoding encoding) : EncodingHeader(encoding) {}
 };
 
 class ContentLength : public Header {
 public:
-    NAME("Content-Length");
+  NAME("Content-Length");
 
-    ContentLength()
-        : value_(0)
-    { }
+  ContentLength() : value_(0) {}
 
-    explicit ContentLength(uint64_t val)
-        : value_(val)
-    { }
+  explicit ContentLength(uint64_t val) : value_(val) {}
 
-    void parse(const std::string& data) override;
-    void write(std::ostream& os) const override;
+  void parse(const std::string &data) override;
+  void write(std::ostream &os) const override;
 
-    uint64_t value() const { return value_; }
+  uint64_t value() const { return value_; }
 
 private:
-    uint64_t value_;
+  uint64_t value_;
 };
 
 class Authorization : public Header {
 public:
-    NAME("Authorization");
+  NAME("Authorization");
 
-    Authorization()
-            : value_("NONE")
-    { }
+  Authorization() : value_("NONE") {}
 
-    explicit Authorization(std::string &&val)
-            : value_(std::move(val))
-    { }
-    explicit Authorization(const std::string &val)
-            : value_(val)
-    { }
+  explicit Authorization(std::string &&val) : value_(std::move(val)) {}
+  explicit Authorization(const std::string &val) : value_(val) {}
 
-    void parse(const std::string& data) override;
-    void write(std::ostream& os) const override;
+  void parse(const std::string &data) override;
+  void write(std::ostream &os) const override;
 
-    std::string value() const { return value_; }
+  std::string value() const { return value_; }
 
 private:
-    std::string value_;
+  std::string value_;
 };
 
 class ContentType : public Header {
 public:
-    NAME("Content-Type")
+  NAME("Content-Type")
 
-    ContentType()
-       : mime_()
-    { }
+  ContentType() : mime_() {}
 
-    explicit ContentType(const Mime::MediaType& mime)
-        : mime_(mime)
-    { }
-    explicit ContentType(std::string &&raw_mime_str)
-        : ContentType(Mime::MediaType(std::move(raw_mime_str)))
-    { }
-    explicit ContentType(const std::string &raw_mime_str)
-        : ContentType(Mime::MediaType(raw_mime_str))
-    { }
+  explicit ContentType(const Mime::MediaType &mime) : mime_(mime) {}
+  explicit ContentType(std::string &&raw_mime_str)
+      : ContentType(Mime::MediaType(std::move(raw_mime_str))) {}
+  explicit ContentType(const std::string &raw_mime_str)
+      : ContentType(Mime::MediaType(raw_mime_str)) {}
 
-    void parseRaw(const char* str, size_t len) override;
-    void write(std::ostream& os) const override;
+  void parseRaw(const char *str, size_t len) override;
+  void write(std::ostream &os) const override;
 
-    Mime::MediaType mime() const { return mime_; }
-    void setMime(const Mime::MediaType& mime) { mime_ = mime; }
+  Mime::MediaType mime() const { return mime_; }
+  void setMime(const Mime::MediaType &mime) { mime_ = mime; }
 
 private:
-    Mime::MediaType mime_;
-
+  Mime::MediaType mime_;
 };
 
 class Date : public Header {
 public:
-    NAME("Date")
+  NAME("Date")
 
-    Date()
-        : fullDate_()
-    { }
+  Date() : fullDate_() {}
 
-    explicit Date(const FullDate& date)
-        : fullDate_(date)
-    { }
+  explicit Date(const FullDate &date) : fullDate_(date) {}
 
-    void parse(const std::string& data) override;
-    void write(std::ostream& os) const override;
+  void parse(const std::string &data) override;
+  void write(std::ostream &os) const override;
 
-    FullDate fullDate() const { return fullDate_; }
+  FullDate fullDate() const { return fullDate_; }
 
 private:
-    FullDate fullDate_;
+  FullDate fullDate_;
 };
 
 class Expect : public Header {
 public:
-    NAME("Expect")
+  NAME("Expect")
 
-    Expect()
-        : expectation_()
-    { }
+  Expect() : expectation_() {}
 
-    explicit Expect(Http::Expectation expectation)
-        : expectation_(expectation)
-    { }
+  explicit Expect(Http::Expectation expectation) : expectation_(expectation) {}
 
-    void parseRaw(const char* str, size_t len) override;
-    void write(std::ostream& os) const override;
+  void parseRaw(const char *str, size_t len) override;
+  void write(std::ostream &os) const override;
 
-    Http::Expectation expectation() const { return expectation_; }
+  Http::Expectation expectation() const { return expectation_; }
 
 private:
-    Expectation expectation_;
+  Expectation expectation_;
 };
 
 class Host : public Header {
 public:
-    NAME("Host");
+  NAME("Host");
 
-    Host()
-       : host_()
-       , port_(0)
-    { }
+  Host() : host_(), port_(0) {}
 
-    explicit Host(const std::string& host);
-    explicit Host(const std::string& host, Port port)
-        : host_(host)
-        , port_(port)
-    { }
+  explicit Host(const std::string &host);
+  explicit Host(const std::string &host, Port port)
+      : host_(host), port_(port) {}
 
-    void parse(const std::string& data) override;
-    void write(std::ostream& os) const override;
+  void parse(const std::string &data) override;
+  void write(std::ostream &os) const override;
 
-    std::string host() const { return host_; }
-    Port port() const { return port_; }
+  std::string host() const { return host_; }
+  Port port() const { return port_; }
 
 private:
-    std::string host_;
-    Port port_;
+  std::string host_;
+  Port port_;
 };
 
 class Location : public Header {
 public:
-    NAME("Location")
+  NAME("Location")
 
-    Location()
-       : location_()
-    { }
+  Location() : location_() {}
 
-    explicit Location(const std::string& location);
+  explicit Location(const std::string &location);
 
-    void parse(const std::string& data) override;
-    void write(std::ostream& os) const override;
+  void parse(const std::string &data) override;
+  void write(std::ostream &os) const override;
 
-    std::string location() const { return location_; }
+  std::string location() const { return location_; }
 
 private:
-    std::string location_;
+  std::string location_;
 };
 
 class Server : public Header {
 public:
-    NAME("Server")
+  NAME("Server")
 
-    Server()
-       : tokens_()
-    { }
+  Server() : tokens_() {}
 
-    explicit Server(const std::vector<std::string>& tokens);
-    explicit Server(const std::string& token);
-    explicit Server(const char* token);
+  explicit Server(const std::vector<std::string> &tokens);
+  explicit Server(const std::string &token);
+  explicit Server(const char *token);
 
-    void parse(const std::string& data) override;
-    void write(std::ostream& os) const override;
+  void parse(const std::string &data) override;
+  void write(std::ostream &os) const override;
 
-    std::vector<std::string> tokens() const { return tokens_; }
+  std::vector<std::string> tokens() const { return tokens_; }
+
 private:
-    std::vector<std::string> tokens_;
+  std::vector<std::string> tokens_;
 };
 
 class UserAgent : public Header {
 public:
-    NAME("User-Agent")
+  NAME("User-Agent")
 
-    UserAgent()
-        : ua_()
-    { }
+  UserAgent() : ua_() {}
 
-    explicit UserAgent(const char* ua)
-        : ua_(ua)
-    { }
+  explicit UserAgent(const char *ua) : ua_(ua) {}
 
-    explicit UserAgent(const std::string& ua) :
-        ua_(ua)
-    { }
+  explicit UserAgent(const std::string &ua) : ua_(ua) {}
 
-    void parse(const std::string& data) override;
-    void write(std::ostream& os) const override;
+  void parse(const std::string &data) override;
+  void write(std::ostream &os) const override;
 
-    void setAgent(std::string ua) {
-        ua_ = std::move(ua);
-    }
+  void setAgent(std::string ua) { ua_ = std::move(ua); }
 
-    std::string agent() const { return ua_; }
+  std::string agent() const { return ua_; }
 
 private:
-    std::string ua_;
+  std::string ua_;
 };
 
-#define CUSTOM_HEADER(header_name) \
-    class header_name : public Pistache::Http::Header::Header { \
-    public:                                                     \
-        NAME(#header_name)                                      \
-                                                                \
-        header_name() = default;                                \
-                                                                \
-        explicit header_name(const char* value)                 \
-        : value_{value} {}                                      \
-                                                                \
-        explicit header_name(std::string value)                 \
-        : value_(std::move(value)) {}                           \
-                                                                \
-        void parseRaw(const char *str, size_t len) final        \
-        { value_ = { str, len };}                               \
-                                                                \
-        void write(std::ostream& os) const final                \
-        { os << value_; };                                      \
-                                                                \
-        std::string val() const { return value_; };             \
-                                                                \
-    private:                                                    \
-        std::string value_;                                     \
-    };                                                          \
+#define CUSTOM_HEADER(header_name)                                             \
+  class header_name : public Pistache::Http::Header::Header {                  \
+  public:                                                                      \
+    NAME(#header_name)                                                         \
+                                                                               \
+    header_name() = default;                                                   \
+                                                                               \
+    explicit header_name(const char *value) : value_{value} {}                 \
+                                                                               \
+    explicit header_name(std::string value) : value_(std::move(value)) {}      \
+                                                                               \
+    void parseRaw(const char *str, size_t len) final { value_ = {str, len}; }  \
+                                                                               \
+    void write(std::ostream &os) const final { os << value_; };                \
+                                                                               \
+    std::string val() const { return value_; };                                \
+                                                                               \
+  private:                                                                     \
+    std::string value_;                                                        \
+  };
 
 class Raw {
 public:
-    Raw();
-    Raw(std::string name, std::string value)
-        : name_(std::move(name))
-        , value_(std::move(value))
-    { }
+  Raw();
+  Raw(std::string name, std::string value)
+      : name_(std::move(name)), value_(std::move(value)) {}
 
-    Raw(const Raw& other) = default;
-    Raw& operator=(const Raw& other) = default;
+  Raw(const Raw &other) = default;
+  Raw &operator=(const Raw &other) = default;
 
-    Raw(Raw&& other) = default;
-    Raw& operator=(Raw&& other) = default;
+  Raw(Raw &&other) = default;
+  Raw &operator=(Raw &&other) = default;
 
-    std::string name() const { return name_; }
-    std::string value() const { return value_; }
+  std::string name() const { return name_; }
+  std::string value() const { return value_; }
 
 private:
-    std::string name_;
-    std::string value_;
-
+  std::string name_;
+  std::string value_;
 };
 
 } // namespace Header
