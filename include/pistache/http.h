@@ -73,7 +73,8 @@ public:
     friend class Private::BodyStep;
     friend class Private::ParserBase;
 
-    Message();
+    Message() = default;
+    explicit Message(Version version);
 
     Message(const Message& other) = default;
     Message& operator=(const Message& other) = default;
@@ -81,15 +82,24 @@ public:
     Message(Message&& other) = default;
     Message& operator=(Message&& other) = default;
 
+    Version version() const;
+    Code code() const;
+
+    std::string body() const;
+
+    const CookieJar& cookies() const;
+    CookieJar& cookies();
+    const Header::Collection& headers() const;
+    Header::Collection& headers();
+
 protected:
-    Version version_;
+    Version version_ = Version::Http11;
     Code code_;
 
     std::string body_;
 
     CookieJar cookies_;
     Header::Collection headers_;
-
 };
 
 namespace Uri {
@@ -147,7 +157,7 @@ public:
     // @Todo: try to remove the need for friend-ness here
     friend class Client;
 
-    Request();
+    Request() = default;
 
     Request(const Request& other) = default;
     Request& operator=(const Request& other) = default;
@@ -155,16 +165,10 @@ public:
     Request(Request&& other) = default;
     Request& operator=(Request&& other) = default;
 
-    Version version() const;
     Method method() const;
     std::string resource() const;
 
-    std::string body() const;
-
-    const Header::Collection& headers() const;
     const Uri::Query& query() const;
-
-    const CookieJar& cookies() const;
 
     /* @Investigate: this is disabled because of a lock in the shared_ptr / weak_ptr
         implementation of libstdc++. Under contention, we experience a performance
@@ -183,6 +187,8 @@ public:
     void copyAddress(const Address& address) {
         address_ = address;
     }
+
+    std::chrono::milliseconds timeout() const;
 
 private:
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
@@ -203,6 +209,7 @@ private:
     std::weak_ptr<Tcp::Peer> peer_;
 #endif
     Address address_;
+    std::chrono::milliseconds timeout_ = std::chrono::milliseconds(0);
 };
 
 class Handler;
@@ -338,18 +345,6 @@ public:
         return sz;
     }
 
-    const Header::Collection& headers() const {
-        return headers_;
-    }
-
-    const CookieJar& cookies() const {
-        return cookies_;
-    }
-
-    Code code() const {
-        return code_;
-    }
-
     void flush();
     void ends();
 
@@ -408,46 +403,12 @@ public:
     friend class Private::Parser<Http::Response>;
 
     Response() = default;
-
-    explicit Response(Version version)
-        : Message()
-    {
-        version_ = version;
-    }
+    explicit Response(Version version);
 
     Response(const Response& other) = default;
     Response& operator=(const Response& other) = default;
     Response(Response&& other) = default;
     Response& operator=(Response&& other) = default;
-
-    const Header::Collection& headers() const {
-        return headers_;
-    }
-
-    Header::Collection& headers() {
-        return headers_;
-    }
-
-    const CookieJar& cookies() const {
-        return cookies_;
-    }
-
-    CookieJar& cookies() {
-        return cookies_;
-    }
-
-    Code code() const {
-        return code_;
-    }
-
-    std::string body() const {
-        return body_;
-    }
-
-    Version version() const {
-        return version_;
-    }
-
 };
 
 class ResponseWriter : public Response {
