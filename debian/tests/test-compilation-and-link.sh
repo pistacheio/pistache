@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 #   Pistache.
-#   Copyright (C) 2015-2019 Mathieu Stefani. Released under the terms of the
+#   Copyright (C) 2015-2020 Mathieu Stefani. Released under the terms of the
 #   Apache License 2.0.
 #
 
@@ -21,7 +21,7 @@ cat <<EOF > pistache_test.cpp
 
 int main()
 {
-    Pistache::Http::Endpoint endpoint("*:9080");
+    Pistache::Http::Endpoint endpoint(Pistache::Address("*:9080"));
     return 0;
 }
 

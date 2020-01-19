@@ -57,10 +57,10 @@ if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
         set(CMAKE_CXX_STANDARD 14)
     endif()
 else()
-    # Clang exports C++17 in std::experimental namespace (tested on Clang 5 and 6).
+    # Old versions of Clang export C++17 in std::experimental namespace (tested on Clang 5 and 6).
     # This gives an error on date.h external library.
-    # Following workaround forces Clang to compile at best with C++14
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    # Following workaround forces Clang <= 6 to compile at best with C++14
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0.0))
         set(CMAKE_CXX_STANDARD 14)
     elseif (CMAKE_COMPILER_IS_GNUCC)
         if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
@@ -75,6 +75,9 @@ endif()
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 
 if (PISTACHE_USE_SSL)
     add_definitions(-DPISTACHE_USE_SSL)
@@ -218,7 +221,7 @@ endif()
 
     # Set filename...
     set(CPACK_SOURCE_PACKAGE_FILE_NAME
-        "${CMAKE_PROJECT_NAME}-${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}-git${VERSION_GIT_DATE}")
+        "${CMAKE_PROJECT_NAME}-${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}")
 
     # Don't include these files in the archive...
     set(CPACK_SOURCE_IGNORE_FILES

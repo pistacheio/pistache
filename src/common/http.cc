@@ -489,9 +489,6 @@ void ParserBase::reset() {
 
 } // namespace Private
 
-Message::Message()
-    : version_(Version::Http11), code_(), body_(), cookies_(), headers_() {}
-
 namespace Uri {
 
 Query::Query() : params() {}
@@ -529,23 +526,33 @@ bool Query::has(const std::string &name) const {
 
 } // namespace Uri
 
-Request::Request() = default;
+Message::Message(Version version) : version_(version) {}
 
-Version Request::version() const { return version_; }
+Version Message::version() const { return version_; }
+
+Code Message::code() const { return code_; }
+
+std::string Message::body() const { return body_; }
+
+const Header::Collection &Message::headers() const { return headers_; }
+
+Header::Collection &Message::headers() { return headers_; }
+
+const CookieJar &Message::cookies() const { return cookies_; }
+
+CookieJar &Message::cookies() { return cookies_; }
 
 Method Request::method() const { return method_; }
 
 std::string Request::resource() const { return resource_; }
 
-std::string Request::body() const { return body_; }
-
-const Header::Collection &Request::headers() const { return headers_; }
-
 const Uri::Query &Request::query() const { return query_; }
 
-const CookieJar &Request::cookies() const { return cookies_; }
-
 const Address &Request::address() const { return address_; }
+
+std::chrono::milliseconds Request::timeout() const { return timeout_; }
+
+Response::Response(Version version) : Message(version) {}
 
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
 std::shared_ptr<Tcp::Peer> Request::peer() const {

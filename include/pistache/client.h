@@ -40,13 +40,60 @@ struct Connection : public std::enable_shared_from_this<Connection> {
 
   struct RequestData {
 
-    RequestData(Async::Resolver resolve, Async::Rejection reject,
-                const Http::Request &request, std::chrono::milliseconds timeout,
+        RequestData(
+                Async::Resolver resolve, Async::Rejection reject,
+                const Http::Request& request,
                 OnDone onDone)
-        : resolve(std::move(resolve)), reject(std::move(reject)),
-          request(request), timeout(timeout), onDone(std::move(onDone)) {}
-    Async::Resolver resolve;
-    Async::Rejection reject;
+            : resolve(std::move(resolve))
+            , reject(std::move(reject))
+            , request(request)
+            , onDone(std::move(onDone))
+        { }
+        Async::Resolver resolve;
+        Async::Rejection reject;
+
+        Http::Request request;
+        OnDone onDone;
+    };
+
+    enum State : uint32_t {
+        Idle,
+        Used
+    };
+
+    enum ConnectionState {
+        NotConnected,
+        Connecting,
+        Connected
+    };
+
+    void connect(const Address& addr);
+    void close();
+    bool isIdle() const;
+    bool isConnected() const;
+    bool hasTransport() const;
+    void associateTransport(const std::shared_ptr<Transport>& transport);
+
+    Async::Promise<Response> perform(
+            const Http::Request& request,
+            OnDone onDone);
+
+    Async::Promise<Response> asyncPerform(
+            const Http::Request& request,
+            OnDone onDone);
+
+    void performImpl(
+            const Http::Request& request,
+            Async::Resolver resolve,
+            Async::Rejection reject,
+            OnDone onDone);
+
+    Fd fd() const;
+    void handleResponsePacket(const char* buffer, size_t totalBytes);
+    void handleError(const char* error);
+    void handleTimeout();
+
+    std::string dump() const;
 
     Http::Request request;
     std::chrono::milliseconds timeout;
@@ -238,28 +285,24 @@ public:
   RequestBuilder &params(const Uri::Query &query);
   RequestBuilder &header(const std::shared_ptr<Header::Header> &header);
 
-  template <typename H, typename... Args>
-  typename std::enable_if<Header::IsHeader<H>::value, RequestBuilder &>::type
-  header(Args &&... args) {
-    return header(std::make_shared<H>(std::forward<Args>(args)...));
-  }
-
-  RequestBuilder &cookie(const Cookie &cookie);
-  RequestBuilder &body(const std::string &val);
-  RequestBuilder &body(std::string &&val);
+    RequestBuilder& cookie(const Cookie& cookie);
+    RequestBuilder& body(const std::string& val);
+    RequestBuilder& body(std::string&& val);
+    RequestBuilder& timeout(std::chrono::milliseconds val);
 
   RequestBuilder &timeout(std::chrono::milliseconds val);
 
   Async::Promise<Response> send();
 
 private:
-  explicit RequestBuilder(Client *const client)
-      : client_(client), request_(), timeout_(std::chrono::milliseconds(0)) {}
+    explicit RequestBuilder(Client* const client)
+        : client_(client)
+        , request_()
+    { }
 
   Client *const client_;
 
-  Request request_;
-  std::chrono::milliseconds timeout_;
+    Request request_;
 };
 
 class Client {
@@ -315,8 +358,7 @@ private:
       requestsQueues;
   bool stopProcessPequestsQueues;
 
-  RequestBuilder prepareRequest(const std::string &resource,
-                                Http::Method method);
+  Async::Promise<Response> doRequest(Http::Request request);
 
   Async::Promise<Response> doRequest(Http::Request request,
                                      std::chrono::milliseconds timeout);

@@ -11,6 +11,8 @@
 #include <stdexcept>
 #include <string>
 
+#include <netinet/in.h>
+#include <sys/socket.h>
 #include <netdb.h>
 #include <sys/socket.h>
 
