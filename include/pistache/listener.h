@@ -1,25 +1,24 @@
 /* listener.h
    Mathieu Stefani, 12 August 2015
-   
+
   A TCP Listener
 */
 
 #pragma once
 
-#include <pistache/tcp.h>
+#include <pistache/async.h>
+#include <pistache/config.h>
+#include <pistache/flags.h>
 #include <pistache/net.h>
 #include <pistache/os.h>
-#include <pistache/flags.h>
-#include <pistache/async.h>
 #include <pistache/reactor.h>
-#include <pistache/config.h>
+#include <pistache/tcp.h>
 
 #include <sys/resource.h>
 
-#include <vector>
 #include <memory>
 #include <thread>
-
+#include <vector>
 
 #ifdef PISTACHE_USE_SSL
 #include <openssl/ssl.h>
@@ -35,71 +34,71 @@ void setSocketOptions(Fd fd, Flags<Options> options);
 
 class Listener {
 public:
+  struct Load {
+    using TimePoint = std::chrono::system_clock::time_point;
+    double global;
+    std::vector<double> workers;
 
-    struct Load {
-        using TimePoint = std::chrono::system_clock::time_point;
-        double global;
-        std::vector<double> workers;
+    std::vector<rusage> raw;
+    TimePoint tick;
+  };
 
-        std::vector<rusage> raw;
-        TimePoint tick;
-    };
+  Listener();
+  ~Listener();
 
-    Listener();
-    ~Listener();
-
-    explicit Listener(const Address& address);
-    void init(
-            size_t workers,
+  explicit Listener(const Address &address);
+  void init(size_t workers,
             Flags<Options> options = Flags<Options>(Options::None),
-            const std::string& workersName = "",
+            const std::string &workersName = "",
             int backlog = Const::MaxBacklog);
-    void setHandler(const std::shared_ptr<Handler>& handler);
+  void setHandler(const std::shared_ptr<Handler> &handler);
 
-    void bind();
-    void bind(const Address& address);
+  void bind();
+  void bind(const Address &address);
 
-    bool isBound() const;
-    Port getPort() const;
+  bool isBound() const;
+  Port getPort() const;
 
-    void run();
-    void runThreaded();
+  void run();
+  void runThreaded();
 
-    void shutdown();
+  void shutdown();
 
-    Async::Promise<Load> requestLoad(const Load& old);
+  Async::Promise<Load> requestLoad(const Load &old);
 
-    Options options() const;
-    Address address() const;
+  Options options() const;
+  Address address() const;
 
-    void pinWorker(size_t worker, const CpuSet& set);
+  void pinWorker(size_t worker, const CpuSet &set);
 
-    void setupSSL(const std::string &cert_path, const std::string &key_path, bool use_compression);
-    void setupSSLAuth(const std::string &ca_file, const std::string &ca_path, int (*cb)(int, void *));
+  void setupSSL(const std::string &cert_path, const std::string &key_path,
+                bool use_compression);
+  void setupSSLAuth(const std::string &ca_file, const std::string &ca_path,
+                    int (*cb)(int, void *));
 
-private: 
-    Address addr_;
-    int listen_fd;
-    int backlog_;
-    NotifyFd shutdownFd;
-    Polling::Epoll poller;
+private:
+  Address addr_;
+  int listen_fd;
+  int backlog_;
+  NotifyFd shutdownFd;
+  Polling::Epoll poller;
 
-    Flags<Options> options_;
-    std::thread acceptThread;
+  Flags<Options> options_;
+  std::thread acceptThread;
 
-    size_t workers_;
-    std::string workersName_;
-    std::shared_ptr<Handler> handler_;
+  size_t workers_;
+  std::string workersName_;
+  std::shared_ptr<Handler> handler_;
 
-    Aio::Reactor reactor_;
-    Aio::Reactor::Key transportKey;
+  Aio::Reactor reactor_;
+  Aio::Reactor::Key transportKey;
 
-    void handleNewConnection();
-    int acceptConnection(struct sockaddr_in& peer_addr) const;
-    void dispatchPeer(const std::shared_ptr<Peer>& peer);
+  void handleNewConnection();
+  int acceptConnection(struct sockaddr_in &peer_addr) const;
+  void dispatchPeer(const std::shared_ptr<Peer> &peer);
 
-    bool useSSL_;
-    void *ssl_ctx_;
+  bool useSSL_;
+  void *ssl_ctx_;
 };
 
 } // namespace Tcp

@@ -6,17 +6,16 @@
 
 #pragma once
 
-#include <pistache/config.h>
 #include <pistache/common.h>
+#include <pistache/config.h>
 #include <pistache/flags.h>
 
-#include <memory>
-#include <chrono>
-#include <vector>
 #include <bitset>
+#include <chrono>
+#include <memory>
+#include <vector>
 
 #include <sched.h>
-
 
 namespace Pistache {
 
@@ -27,114 +26,111 @@ bool make_non_blocking(int fd);
 
 class CpuSet {
 public:
-    static constexpr size_t Size = 1024;
+  static constexpr size_t Size = 1024;
 
-    CpuSet();
-    explicit CpuSet(std::initializer_list<size_t> cpus);
+  CpuSet();
+  explicit CpuSet(std::initializer_list<size_t> cpus);
 
-    void clear();
-    CpuSet& set(size_t cpu);
-    CpuSet& unset(size_t cpu);
+  void clear();
+  CpuSet &set(size_t cpu);
+  CpuSet &unset(size_t cpu);
 
-    CpuSet& set(std::initializer_list<size_t> cpus);
-    CpuSet& unset(std::initializer_list<size_t> cpus);
+  CpuSet &set(std::initializer_list<size_t> cpus);
+  CpuSet &unset(std::initializer_list<size_t> cpus);
 
-    CpuSet& setRange(size_t begin, size_t end);
-    CpuSet& unsetRange(size_t begin, size_t end);
+  CpuSet &setRange(size_t begin, size_t end);
+  CpuSet &unsetRange(size_t begin, size_t end);
 
-    bool isSet(size_t cpu) const;
-    size_t count() const;
+  bool isSet(size_t cpu) const;
+  size_t count() const;
 
-    cpu_set_t toPosix() const;
+  cpu_set_t toPosix() const;
 
 private:
-    std::bitset<Size> bits;
+  std::bitset<Size> bits;
 };
 
 namespace Polling {
 
-enum class Mode {
-    Level,
-    Edge
-};
+enum class Mode { Level, Edge };
 
 enum class NotifyOn {
-    None = 0,
+  None = 0,
 
-    Read     = 1,
-    Write    = Read << 1,
-    Hangup   = Read << 2,
-    Shutdown = Read << 3
+  Read = 1,
+  Write = Read << 1,
+  Hangup = Read << 2,
+  Shutdown = Read << 3
 };
 
 DECLARE_FLAGS_OPERATORS(NotifyOn)
 
 struct Tag {
-    friend class Epoll;
+  friend class Epoll;
 
-    explicit constexpr Tag(uint64_t value)
-      : value_(value)
-    { }
+  explicit constexpr Tag(uint64_t value) : value_(value) {}
 
-    constexpr uint64_t value() const { return value_; }
+  constexpr uint64_t value() const { return value_; }
 
-    friend constexpr bool operator==(Tag lhs, Tag rhs);
+  friend constexpr bool operator==(Tag lhs, Tag rhs);
 
 private:
-    uint64_t value_;
+  uint64_t value_;
 };
 
 inline constexpr bool operator==(Tag lhs, Tag rhs) {
-    return lhs.value_ == rhs.value_;
+  return lhs.value_ == rhs.value_;
 }
 
 struct Event {
-    explicit Event(Tag _tag);
+  explicit Event(Tag _tag);
 
-    Flags<NotifyOn> flags;
-    Fd fd;
-    Tag tag;
+  Flags<NotifyOn> flags;
+  Fd fd;
+  Tag tag;
 };
 
 class Epoll {
 public:
-    Epoll();
-    ~Epoll();
+  Epoll();
+  ~Epoll();
 
-    void addFd(Fd fd, Flags<NotifyOn> interest, Tag tag, Mode mode = Mode::Level);
-    void addFdOneShot(Fd fd, Flags<NotifyOn> interest, Tag tag, Mode mode = Mode::Level);
+  void addFd(Fd fd, Flags<NotifyOn> interest, Tag tag, Mode mode = Mode::Level);
+  void addFdOneShot(Fd fd, Flags<NotifyOn> interest, Tag tag,
+                    Mode mode = Mode::Level);
 
-    void removeFd(Fd fd);
-    void rearmFd(Fd fd, Flags<NotifyOn> interest, Tag tag, Mode mode = Mode::Level);
+  void removeFd(Fd fd);
+  void rearmFd(Fd fd, Flags<NotifyOn> interest, Tag tag,
+               Mode mode = Mode::Level);
 
-    int poll(std::vector<Event>& events,
-             const std::chrono::milliseconds timeout = std::chrono::milliseconds(-1)) const;
+  int poll(std::vector<Event> &events, const std::chrono::milliseconds timeout =
+                                           std::chrono::milliseconds(-1)) const;
 
 private:
-    static int toEpollEvents(const Flags<NotifyOn>& interest);
-    static Flags<NotifyOn> toNotifyOn(int events);
-    Fd epoll_fd;
+  static int toEpollEvents(const Flags<NotifyOn> &interest);
+  static Flags<NotifyOn> toNotifyOn(int events);
+  Fd epoll_fd;
 };
 
 } // namespace Polling
 
 class NotifyFd {
 public:
-    NotifyFd();
+  NotifyFd();
 
-    Polling::Tag bind(Polling::Epoll& poller);
+  Polling::Tag bind(Polling::Epoll &poller);
 
-    bool isBound() const;
+  bool isBound() const;
 
-    Polling::Tag tag() const;
+  Polling::Tag tag() const;
 
-    void notify() const;
+  void notify() const;
 
-    void read() const;
-    bool tryRead() const;
+  void read() const;
+  bool tryRead() const;
 
 private:
-    Fd event_fd;
+  Fd event_fd;
 };
 
 } // namespace Pistache
