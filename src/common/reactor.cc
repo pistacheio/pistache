@@ -342,11 +342,11 @@ public:
   std::vector<std::shared_ptr<Handler>>
   handlers(const Reactor::Key &key) const override {
 
-    const auto [idx, marker] = decodeKey(key);
-    if (marker != KeyMarker)
+    const std::pair<uint32_t, uint32_t> idx_marker = decodeKey(key);
+    if (idx_marker.second != KeyMarker)
       throw std::runtime_error("Invalid key");
 
-    Reactor::Key originalKey(idx);
+    Reactor::Key originalKey(idx_marker.first);
 
     std::vector<std::shared_ptr<Handler>> res;
     res.reserve(workers_.size());
