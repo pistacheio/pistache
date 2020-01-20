@@ -1,0 +1,113 @@
+# SUSE uses a different set of license namings and enforces 0 after lib name;
+%define suse_build %{lua:if(string.find(rpm.expand("%{disturl}"),"/openSUSE_")) then print "1"; else print "0"; end;}
+
+%if %{suse_build}
+Name:   libpistache0
+License: Apache-2.0
+%else
+Name: libpistache
+License: ASL 2.0
+%endif
+Version: @shortvers@
+Release: 1%{?dist}
+Summary: An elegant C++ REST framework
+
+Group: Development/Libraries/C and C++
+URL: https://github.com/oktal/pistache
+
+%define NVdir   %{name}-%{version}
+ExclusiveArch: x86_64 aarch64 i586 ppc64le s390x
+Source0: pistache-%{version}.tar.bz2
+
+BuildRequires: cmake, openssl-devel, libcurl-devel, gcc-c++
+
+%description
+Pistache is a modern and elegant HTTP and REST framework for C++.
+It is entirely written in pure-C++14 and provides a clear and pleasant API.
+
+%package devel
+Summary: Header files and libraries for pistache development
+Requires: %{name}%{?_isa} = %{version}-%{release}
+Group: Development/Languages/C and C++
+
+%description devel
+The pistache-devel package contains the header files and libraries needed
+to develop programs that use pistache server.
+
+%package devel-static
+Summary: Static libraries for pistache development
+Requires: %{name}-devel%{?_isa} = %{version}-%{release}
+Group: Development/Languages/C and C++
+Provides: %{name}-devel:%{_libdir}/libpistache.a
+
+%description devel-static
+The pistache-static package includes static libraries needed
+to develop programs that use pistache server.
+
+%prep
+%setup -q -n pistache-%{version}
+
+%build
+%cmake -DPISTACHE_USE_SSL=ON -DPISTACHE_BUILD_TESTS=ON
+# force CPU limit for CircleCI builds
+EXTRA_BUILD_FLAGS=$( if [ -f ~/build_opts ] ; then cat ~/build_opts ; fi )
+%make_build $EXTRA_BUILD_FLAGS
+
+%check
+
+%if %{suse_build}
+    # SUSE detected - enter actual build dir and lib path; will fix properly later
+    cd build
+    export LD_LIBRARY_PATH=$RPM_BUILD_ROOT/build/third-party/googletest:$LD_LIBRARY_PATH
+%endif
+# resolver test (net_test.address_creation) and  REST test (rest_server_test.basic_test) fail
+# because of unprepared build environment (no net, strange /etc/hosts)
+# exclude tests from running
+make test ARGS="-VV -output-on-failure -E 'net_test|rest_server_test'"
+
+%install
+# tx! https://backreference.org/2011/09/17/some-tips-on-rpm-conditional-macros/
+%if %{suse_build}
+export CMAKE_CXX_FLAGS=-ffat-lto-objects
+%endif
+%if 0%{?cmake_install:1}
+    %cmake_install
+%else
+    %make_install
+%endif
+
+# temporary - until cmake/install does the same
+install -d $RPM_BUILD_ROOT/%{_docdir}/pistache/examples
+cp examples/* $RPM_BUILD_ROOT/%{_docdir}/pistache/examples/
+
+install -d $RPM_BUILD_ROOT/%{_includedir}/pistache/thirdparty/serializer
+cp -R include/pistache $RPM_BUILD_ROOT/%{_includedir}/
+LIB_BASENAME=$(basename $RPM_BUILD_ROOT/%{_libdir}/libpistache-0.0.002-git*.so)
+
+ln -s %{_libdir}/$LIB_BASENAME $RPM_BUILD_ROOT/%{_libdir}/libpistache.so
+
+%files
+%license LICENSE
+%{_libdir}/libpistache.so
+%{_libdir}/libpistache-0.0.002-git*
+
+%files devel
+%doc README.md
+%dir %{_includedir}/pistache
+%dir %{_libdir}/cmake/pistache
+%dir %{_docdir}/pistache
+%dir %{_docdir}/pistache/examples
+%{_docdir}/pistache/examples/*
+%{_includedir}/pistache/*
+%{_includedir}/pistache/thirdparty/serializer/*
+%{_libdir}/pkgconfig/libpistache.pc
+%{_libdir}/cmake/pistache/*
+
+%files devel-static
+%{_libdir}/libpistache.a
+
+%changelog
+
+* Mon Jan 20 2020 Vladimir Bespalov <vlad.bespalov@jetstreamsoft.com>
+- 0.0.2
+- Initial version of RPM packaging

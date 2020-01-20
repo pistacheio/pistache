@@ -226,3 +226,11 @@ endif()
     include(CPack)
     add_custom_target(dist COMMAND ${CMAKE_MAKE_PROGRAM} package_source)
 
+# Generate spec file for current version
+
+    set(shortvers      ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
+    configure_file (
+        "centos/libpistache.spec.in"
+        "libpistache.spec"
+        @ONLY
+    )
