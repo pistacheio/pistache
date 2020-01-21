@@ -28,7 +28,7 @@ static constexpr const char *UA = "pistache/0.1";
 
 namespace {
 std::pair<StringView, StringView> splitUrl(const std::string &url) {
-  RawStreamBuf<char> buf(const_cast<char *>(&url[0]), url.size());
+  RawStreamBuf<char> buf(const_cast<char *>(url.data()), url.size());
   StreamCursor cursor(&buf);
 
   match_string("http://", cursor);

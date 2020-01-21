@@ -159,12 +159,12 @@ public:
   }
 
   RawBuffer buffer() const {
-    return RawBuffer((const char *)data_.data(), pptr() - &data_[0]);
+    return RawBuffer(data_.data(), pptr() - data_.data());
   }
 
   void clear() {
-    data_.clear();
-    this->setp(&data_[0], &data_[0] + data_.capacity());
+    // reset stream buffer to the whole backing storage.
+    this->setp(data_.data(), data_.data() + data_.size());
   }
 
 protected:

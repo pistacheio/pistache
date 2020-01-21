@@ -95,7 +95,7 @@ void DynamicStreamBuf::reserve(size_t size) {
     size = maxSize;
   const size_t oldSize = data_.size();
   data_.resize(size);
-  this->setp(&data_[0] + oldSize, &data_[0] + size);
+  this->setp(data_.data() + oldSize, data_.data() + size);
 }
 
 bool StreamCursor::advance(size_t count) {
