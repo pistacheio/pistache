@@ -38,7 +38,6 @@ Currently Pistache is built and tested on a number of [architectures](https://wi
 - ppc64el
 - s390x
 
-
 ### Ubuntu PPA (Unstable)
 The project builds [daily unstable snapshots](https://launchpad.net/~pistache+team/+archive/ubuntu/unstable) in a separate unstable PPA. To use it, run the following:
 
@@ -57,11 +56,15 @@ $ sudo apt update
 $ sudo apt install libpistache-dev
 ```
 
-## Use via pkg-config
+## Other Distributions
+Package maintainers, please insert instructions for users to install pre-compiled packages from your respective repositories here.
 
-If you would like to automatically have your project's build environment use the appropriate compiler and linker build flags, [pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/) can greatly simplify things. It is the portable international _de facto_ standard for determining build flags. The `libpistache-dev` package includes a pkg-config manifest.
+# Use via pkg-config
 
-To use with the GNU Autotools, as an example, include the following snippet in your project's `configure.ac`:
+If you would like to automatically have your project's build environment use the appropriate compiler and linker build flags, [pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/) can greatly simplify things. It is the portable international _de facto_ standard for determining build flags. The development packages include a pkg-config manifest.
+
+## GNU Autotools
+To [use](https://autotools.io/pkgconfig/pkg_check_modules.html) with the GNU Autotools, as an example, include the following snippet in your project's `configure.ac`:
 
 ```
 
@@ -74,27 +77,54 @@ To use with the GNU Autotools, as an example, include the following snippet in y
     
 ```
 
+## CMake
+To use with a CMake build environment, use the [FindPkgConfig](https://cmake.org/cmake/help/latest/module/FindPkgConfig.html) module. Here is an example:
+
+```
+    cmake_minimum_required(2.8 FATAL_ERROR)
+    project("MyPistacheProject")
+    
+    # Tell CMake to add support for pkg-config, then use it to find the library...
+    include(FindPkgConfig)
+    pkg_search_module(PISTACHE REQUIRED libpistache>=0.0.2)
+    
+    include_directories(${PISTACHE_INCLUDE_DIRS})
+    add_executable(${PROJECT_NAME} main.cpp)
+    target_link_libraries(${PROJECT_NAME} ${PISTACHE_LIBRARIES})
+```
+
+## Makefile
+To use within a vanilla makefile, you can call `pkg-config` directly to supply compiler and linker flags using shell substitution.
+
+```
+    CFLAGS=-g3 -Wall -Wextra -Werror ...
+    LDFLAGS=-lfoo ...
+    ...
+    CFLAGS+= $(pkg-config --cflags libpistache)
+    LDFLAGS+= $(pkg-config --libs libpistache)
+```
+
 # Building from source
 
 To download the latest available release, clone the repository over github.
 
 ```console
-    git clone https://github.com/oktal/pistache.git
+    $ git clone https://github.com/oktal/pistache.git
 ```
 
 Then, init the submodules:
 
 ```console
-    git submodule update --init
+    $ git submodule update --init
 ```
 
 Now, compile the sources:
 
 ```console
-    cd pistache
-    mkdir -p {build,prefix}
-    cd build
-    cmake -G "Unix Makefiles" \
+    $ cd pistache
+    $ mkdir -p {build,prefix}
+    $ cd build
+    $ cmake -G "Unix Makefiles" \
         -DCMAKE_BUILD_TYPE=Release \
         -DPISTACHE_BUILD_EXAMPLES=true \
         -DPISTACHE_BUILD_TESTS=true \
@@ -102,21 +132,21 @@ Now, compile the sources:
         -DPISTACHE_USE_SSL=true \
         -DCMAKE_INSTALL_PREFIX=$PWD/../prefix \
         ../
-    make -j
-    make install
+    $ make -j
+    $ make install
 ```
 
 If you chose to build the examples, then perform the following to build the examples.
 ```console
-    cd examples
-    make -j
+    $ cd examples
+    $ make -j
 ```
 
 Optionally, you can also build and run the tests (tests require the examples):
 
 ```console
-    cmake -G "Unix Makefiles" -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_TESTS=true ..
-    make test test_memcheck
+    $ cmake -G "Unix Makefiles" -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_TESTS=true ..
+    $ make test test_memcheck
 ```
 
 Be patient, async_test can take some time before completing. And that's it, now you can start playing with your newly installed Pistache framework.
@@ -129,6 +159,42 @@ Some other CMAKE defines:
 | PISTACHE_BUILD_TESTS          | False       | Build all of the unit tests                    |
 | PISTACHE_ENABLE_NETWORK_TESTS | True        | Run unit tests requiring remote network access |
 | PISTACHE_USE_SSL              | False       | Build server with SSL support                  |
+
+# Continuous Integration Testing
+
+It is important that all patches pass unit testing. Unfortunately developers make all kinds of changes to their local development environment that can have unintended consequences. This can means sometimes tests on the developer's computer pass when they should not, and other times failing when they should not have. 
+
+To properly validate that things are working, continuous integration (CI) is required. This means compiling, performing local in-tree unit tests, installing through the system package manager, and finally testing the actually installed build artifacts to ensure they do what the user expects them to do.
+
+The key thing to remember is that in order to do this properly, this all needs to be done within a realistic end user system that hasn't been unintentionally modified by a developer. This might mean a chroot container with the help of QEMU and KVM to verify that everything is working as expected. The hermetically sealed test environment validates that the developer's expected steps for compilation, linking, unit testing, and post installation testing are actually replicable.
+
+There are [different ways](https://wiki.debian.org/qa.debian.org#Other_distributions) of performing CI on different distros. The most common one is via the international [DEP-8](https://dep-team.pages.debian.net/deps/dep8/) standard as used by hundreds of different operating systems.
+
+## Autopkgtest
+On Debian based distributions, `autopkgtest` implements the DEP-8 standard. To create and use a build image environment for Ubuntu, follow these steps. First install the autopkgtest(1) tools:
+```
+$ sudo apt install autopkgtest
+```
+
+Next create the test image, substituting `eoan` or `amd64` for other releases or architectures:
+```
+$ autopkgtest-buildvm-ubuntu-cloud -r eoan -a amd64
+```
+
+Generate a Pistache source package in the parent directory of `pistache_source`:
+```
+$ cd pistache_source
+$ sudo apt build-dep pistache
+$ ./debian/rules get-orig-source
+$ debuild -S -sa
+```
+
+Test the source package on the host architecture in QEMU with KVM support and 8GB of RAM and four CPUs:
+```
+$ autopkgtest --shell-fail --apt-upgrade ../pistache_(...).dsc -- \
+      qemu --ram-size=8192 --cpus=4 --show-boot path_to_build_image.img \
+      --qemu-options='-enable-kvm'
+```
 
 # Example
 
