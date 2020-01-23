@@ -109,22 +109,22 @@ To use within a vanilla makefile, you can call `pkg-config` directly to supply c
 To download the latest available release, clone the repository over github.
 
 ```console
-    git clone https://github.com/oktal/pistache.git
+    $ git clone https://github.com/oktal/pistache.git
 ```
 
 Then, init the submodules:
 
 ```console
-    git submodule update --init
+    $ git submodule update --init
 ```
 
 Now, compile the sources:
 
 ```console
-    cd pistache
-    mkdir -p {build,prefix}
-    cd build
-    cmake -G "Unix Makefiles" \
+    $ cd pistache
+    $ mkdir -p {build,prefix}
+    $ cd build
+    $ cmake -G "Unix Makefiles" \
         -DCMAKE_BUILD_TYPE=Release \
         -DPISTACHE_BUILD_EXAMPLES=true \
         -DPISTACHE_BUILD_TESTS=true \
@@ -132,21 +132,21 @@ Now, compile the sources:
         -DPISTACHE_USE_SSL=true \
         -DCMAKE_INSTALL_PREFIX=$PWD/../prefix \
         ../
-    make -j
-    make install
+    $ make -j
+    $ make install
 ```
 
 If you chose to build the examples, then perform the following to build the examples.
 ```console
-    cd examples
-    make -j
+    $ cd examples
+    $ make -j
 ```
 
 Optionally, you can also build and run the tests (tests require the examples):
 
 ```console
-    cmake -G "Unix Makefiles" -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_TESTS=true ..
-    make test test_memcheck
+    $ cmake -G "Unix Makefiles" -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_TESTS=true ..
+    $ make test test_memcheck
 ```
 
 Be patient, async_test can take some time before completing. And that's it, now you can start playing with your newly installed Pistache framework.
