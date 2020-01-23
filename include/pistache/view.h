@@ -142,7 +142,7 @@ template <typename T, size_t N> struct ViewBuilder<std::array<T, N>> {
     if (size > arr.size())
       throw std::invalid_argument("out of bounds size");
 
-    return View<T>(&arr[0], size);
+    return View<T>(arr.data(), size);
   }
 };
 
@@ -170,7 +170,7 @@ template <typename T> struct ViewBuilder<std::vector<T>> {
     if (size > vec.size())
       throw std::invalid_argument("out of bounds size");
 
-    return View<T>(&vec[0], size);
+    return View<T>(vec.data(), size);
   }
 };
 
