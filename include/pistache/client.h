@@ -27,12 +27,9 @@
 namespace Pistache {
 namespace Http {
 
-class ConnectionPool;
 class Transport;
 
 struct Connection : public std::enable_shared_from_this<Connection> {
-
-  friend class ConnectionPool;
 
   using OnDone = std::function<void()>;
 
@@ -58,6 +55,8 @@ struct Connection : public std::enable_shared_from_this<Connection> {
   void connect(const Address &addr);
   void close();
   bool isIdle() const;
+  bool tryUse();
+  void setAsIdle();
   bool isConnected() const;
   bool hasTransport() const;
   void associateTransport(const std::shared_ptr<Transport> &transport);

@@ -425,6 +425,16 @@ bool Connection::isIdle() const {
          Connection::State::Idle;
 }
 
+bool Connection::tryUse() {
+  auto curState = static_cast<uint32_t>(Connection::State::Idle);
+  auto newState = static_cast<uint32_t>(Connection::State::Used);
+  return state_.compare_exchange_strong(curState, newState);
+}
+
+void Connection::setAsIdle() {
+  state_.store(static_cast<uint32_t>(Connection::State::Idle));
+}
+
 bool Connection::isConnected() const {
   return connectionState_.load() == Connected;
 }
@@ -583,10 +593,7 @@ ConnectionPool::pickConnection(const std::string &domain) {
   }
 
   for (auto &conn : pool) {
-    auto &state = conn->state_;
-    auto curState = static_cast<uint32_t>(Connection::State::Idle);
-    auto newState = static_cast<uint32_t>(Connection::State::Used);
-    if (state.compare_exchange_strong(curState, newState)) {
+    if (conn->tryUse()) {
       return conn;
     }
   }
@@ -596,7 +603,7 @@ ConnectionPool::pickConnection(const std::string &domain) {
 
 void ConnectionPool::releaseConnection(
     const std::shared_ptr<Connection> &connection) {
-  connection->state_.store(static_cast<uint32_t>(Connection::State::Idle));
+  connection->setAsIdle();
 }
 
 size_t ConnectionPool::usedConnections(const std::string &domain) const {
