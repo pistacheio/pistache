@@ -152,8 +152,6 @@ public:
   friend class Private::Parser<Http::Request>;
 
   friend class RequestBuilder;
-  // @Todo: try to remove the need for friend-ness here
-  friend class Client;
 
   Request() = default;
 
