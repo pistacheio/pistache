@@ -12,6 +12,8 @@
 
 #include <netdb.h>
 #include <sys/sendfile.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 #include <algorithm>
 #include <memory>
@@ -122,6 +124,88 @@ void writeRequest(std::stringstream &streamBuf, const Http::Request &request) {
   }
 }
 } // namespace
+
+class Transport : public Aio::Handler {
+public:
+  PROTOTYPE_OF(Aio::Handler, Transport)
+
+  Transport() = default;
+  Transport(const Transport &)
+      : requestsQueue(), connectionsQueue(), connections(), timeouts(),
+        timeoutsLock() {}
+
+  void onReady(const Aio::FdSet &fds) override;
+  void registerPoller(Polling::Epoll &poller) override;
+
+  Async::Promise<void> asyncConnect(std::shared_ptr<Connection> connection,
+                                    const struct sockaddr *address,
+                                    socklen_t addr_len);
+
+  Async::Promise<ssize_t>
+  asyncSendRequest(std::shared_ptr<Connection> connection,
+                   std::shared_ptr<TimerPool::Entry> timer, std::string buffer);
+
+private:
+  enum WriteStatus { FirstTry, Retry };
+
+  struct ConnectionEntry {
+    ConnectionEntry(Async::Resolver resolve, Async::Rejection reject,
+                    std::shared_ptr<Connection> connection,
+                    const struct sockaddr *_addr, socklen_t _addr_len)
+        : resolve(std::move(resolve)), reject(std::move(reject)),
+          connection(connection), addr_len(_addr_len) {
+      memcpy(&addr, _addr, addr_len);
+    }
+
+    const sockaddr *getAddr() const {
+      return reinterpret_cast<const sockaddr *>(&addr);
+    }
+
+    Async::Resolver resolve;
+    Async::Rejection reject;
+    std::weak_ptr<Connection> connection;
+    sockaddr_storage addr;
+    socklen_t addr_len;
+  };
+
+  struct RequestEntry {
+    RequestEntry(Async::Resolver resolve, Async::Rejection reject,
+                 std::shared_ptr<Connection> connection,
+                 std::shared_ptr<TimerPool::Entry> timer, std::string buf)
+        : resolve(std::move(resolve)), reject(std::move(reject)),
+          connection(connection), timer(timer), buffer(std::move(buf)) {}
+
+    Async::Resolver resolve;
+    Async::Rejection reject;
+    std::weak_ptr<Connection> connection;
+    std::shared_ptr<TimerPool::Entry> timer;
+    std::string buffer;
+  };
+
+  PollableQueue<RequestEntry> requestsQueue;
+  PollableQueue<ConnectionEntry> connectionsQueue;
+
+  std::unordered_map<Fd, ConnectionEntry> connections;
+  std::unordered_map<Fd, std::weak_ptr<Connection>> timeouts;
+
+  using Lock = std::mutex;
+  using Guard = std::lock_guard<Lock>;
+  Lock timeoutsLock;
+
+private:
+  void asyncSendRequestImpl(const RequestEntry &req,
+                            WriteStatus status = FirstTry);
+
+  void handleRequestsQueue();
+  void handleConnectionQueue();
+  void handleReadableEntry(const Aio::FdSet::Entry &entry);
+  void handleWritableEntry(const Aio::FdSet::Entry &entry);
+  void handleHangupEntry(const Aio::FdSet::Entry &entry);
+  void handleIncoming(std::shared_ptr<Connection> connection);
+  void handleResponsePacket(const std::shared_ptr<Connection> &connection,
+                            const char *buffer, size_t totalBytes);
+  void handleTimeout(const std::shared_ptr<Connection> &connection);
+};
 
 void Transport::onReady(const Aio::FdSet &fds) {
   for (const auto &entry : fds) {
