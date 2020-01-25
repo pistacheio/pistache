@@ -845,7 +845,7 @@ RequestBuilder Client::prepareRequest(const std::string &resource,
 
 Async::Promise<Response> Client::doRequest(Http::Request request) {
   // request.headers_.add<Header::Connection>(ConnectionControl::KeepAlive);
-  request.headers_.remove<Header::UserAgent>();
+  request.headers().remove<Header::UserAgent>();
   auto resourceData = request.resource();
 
   auto resource = splitUrl(resourceData);
