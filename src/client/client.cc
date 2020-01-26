@@ -565,8 +565,7 @@ void Connection::handleResponsePacket(const char *buffer, size_t totalBytes) {
           onDone();
       }
     }
-  }
-  catch (const std::exception &ex) {
+  } catch (const std::exception &ex) {
     handleError(ex.what());
   }
 }
