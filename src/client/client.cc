@@ -545,25 +545,29 @@ Fd Connection::fd() const {
 }
 
 void Connection::handleResponsePacket(const char *buffer, size_t totalBytes) {
+  try {
+    parser.feed(buffer, totalBytes);
+    if (parser.parse() == Private::State::Done) {
+      if (requestEntry) {
+        if (requestEntry->timer) {
+          requestEntry->timer->disarm();
+          timerPool_.releaseTimer(requestEntry->timer);
+        }
 
-  parser.feed(buffer, totalBytes);
-  if (parser.parse() == Private::State::Done) {
-    if (requestEntry) {
-      if (requestEntry->timer) {
-        requestEntry->timer->disarm();
-        timerPool_.releaseTimer(requestEntry->timer);
+        requestEntry->resolve(std::move(parser.response));
+        parser.reset();
+
+        auto onDone = requestEntry->onDone;
+
+        requestEntry.reset(nullptr);
+
+        if (onDone)
+          onDone();
       }
-
-      requestEntry->resolve(std::move(parser.response));
-      parser.reset();
-
-      auto onDone = requestEntry->onDone;
-
-      requestEntry.reset(nullptr);
-
-      if (onDone)
-        onDone();
     }
+  }
+  catch (const std::exception &ex) {
+    handleError(ex.what());
   }
 }
 
