@@ -202,9 +202,6 @@ private:
   void handleWritableEntry(const Aio::FdSet::Entry &entry);
   void handleHangupEntry(const Aio::FdSet::Entry &entry);
   void handleIncoming(std::shared_ptr<Connection> connection);
-  void handleResponsePacket(const std::shared_ptr<Connection> &connection,
-                            const char *buffer, size_t totalBytes);
-  void handleTimeout(const std::shared_ptr<Connection> &connection);
 };
 
 void Transport::onReady(const Aio::FdSet &fds) {
@@ -270,10 +267,9 @@ void Transport::asyncSendRequestImpl(const RequestEntry &req,
 
   ssize_t totalWritten = 0;
   for (;;) {
-    ssize_t bytesWritten = 0;
-    ssize_t len = buffer.size() - totalWritten;
-    auto ptr = buffer.data() + totalWritten;
-    bytesWritten = ::send(fd, ptr, len, 0);
+    const char *data = buffer.data() + totalWritten;
+    const ssize_t len = buffer.size() - totalWritten;
+    const ssize_t bytesWritten = ::send(fd, data, len, 0);
     if (bytesWritten < 0) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         if (status == FirstTry) {
@@ -357,7 +353,7 @@ void Transport::handleReadableEntry(const Aio::FdSet::Entry &entry) {
     if (timerIt != std::end(timeouts)) {
       auto connection = timerIt->second.lock();
       if (connection) {
-        handleTimeout(connection);
+        connection->handleTimeout();
         timeouts.erase(fd);
       }
     }
@@ -410,7 +406,7 @@ void Transport::handleIncoming(std::shared_ptr<Connection> connection) {
     if (bytes == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         if (totalBytes > 0) {
-          handleResponsePacket(connection, buffer, totalBytes);
+          connection->handleResponsePacket(buffer, totalBytes);
         }
       } else {
         connection->handleError(strerror(errno));
@@ -418,7 +414,7 @@ void Transport::handleIncoming(std::shared_ptr<Connection> connection) {
       break;
     } else if (bytes == 0) {
       if (totalBytes > 0) {
-        handleResponsePacket(connection, buffer, totalBytes);
+        connection->handleResponsePacket(buffer, totalBytes);
       } else {
         connection->handleError("Remote closed connection");
       }
@@ -435,16 +431,6 @@ void Transport::handleIncoming(std::shared_ptr<Connection> connection) {
       }
     }
   }
-}
-
-void Transport::handleResponsePacket(
-    const std::shared_ptr<Connection> &connection, const char *buffer,
-    size_t totalBytes) {
-  connection->handleResponsePacket(buffer, totalBytes);
-}
-
-void Transport::handleTimeout(const std::shared_ptr<Connection> &connection) {
-  connection->handleTimeout();
 }
 
 Connection::Connection() : fd_(-1), requestEntry(nullptr) {
