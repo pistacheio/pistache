@@ -71,3 +71,100 @@ TEST(stream, test_dyn_buffer) {
   ASSERT_EQ(rawbuf.data().size(), 128u);
   ASSERT_EQ(strlen(rawbuf.data().c_str()), 128u);
 }
+
+TEST(stream, test_cursor_advance_for_array) {
+  ArrayStreamBuf<char> buffer;
+  StreamCursor cursor{&buffer};
+
+  const char* part1 = "abcd";
+  buffer.feed(part1, strlen(part1));
+
+  ASSERT_EQ(cursor.current(), 'a');
+
+  ASSERT_TRUE(cursor.advance(1));
+  ASSERT_EQ(cursor.current(), 'b');
+
+  ASSERT_TRUE(cursor.advance(0));
+  ASSERT_EQ(cursor.current(), 'b');
+
+  ASSERT_TRUE(cursor.advance(1));
+  ASSERT_EQ(cursor.current(), 'c');
+
+  const char* part2 = "efgh";
+  buffer.feed(part2, strlen(part2));
+
+  ASSERT_TRUE(cursor.advance(2));
+  ASSERT_EQ(cursor.current(), 'e');
+
+  ASSERT_FALSE(cursor.advance(5));
+}
+
+TEST(stream, test_cursor_remaining_for_array) {
+  ArrayStreamBuf<char> buffer;
+  StreamCursor cursor{&buffer};
+
+  const char* data = "abcd";
+  buffer.feed(data, strlen(data));
+  ASSERT_EQ(cursor.remaining(), 4u);
+
+  cursor.advance(2);
+  ASSERT_EQ(cursor.remaining(), 2u);
+
+  cursor.advance(1);
+  ASSERT_EQ(cursor.remaining(), 1u);
+
+  cursor.advance(1);
+  ASSERT_EQ(cursor.remaining(), 0u);
+}
+
+TEST(stream, test_cursor_eol_eof_for_array) {
+  ArrayStreamBuf<char> buffer;
+  StreamCursor cursor{&buffer};
+
+  const char* data = "abcd\r\nefgh";
+  buffer.feed(data, strlen(data));
+
+  cursor.advance(4);
+  ASSERT_TRUE(cursor.eol());
+  ASSERT_FALSE(cursor.eof());
+
+  cursor.advance(2);
+  ASSERT_FALSE(cursor.eol());
+  ASSERT_FALSE(cursor.eof());
+
+  cursor.advance(4);
+  ASSERT_FALSE(cursor.eol());
+  ASSERT_TRUE(cursor.eof());
+}
+
+TEST(stream, test_cursor_offset_for_array) {
+  ArrayStreamBuf<char> buffer;
+  StreamCursor cursor{&buffer};
+
+  const char* data = "abcdefgh";
+  buffer.feed(data, strlen(data));
+
+  cursor.advance(4);
+
+  ASSERT_TRUE(strcmp(cursor.offset(), "efgh"));
+}
+
+TEST(stream, test_cursor_diff_for_array) {
+  ArrayStreamBuf<char> buffer1;
+  StreamCursor first_cursor{&buffer1};
+  ArrayStreamBuf<char> buffer2;
+  StreamCursor second_cursor{&buffer2};
+
+  const char* data = "abcdefgh";
+  buffer1.feed(data, strlen(data));
+  buffer2.feed(data, strlen(data));
+
+  ASSERT_EQ(first_cursor.diff(second_cursor), 0u);
+  ASSERT_EQ(second_cursor.diff(first_cursor), 0u);
+
+  first_cursor.advance(4);
+  ASSERT_EQ(second_cursor.diff(first_cursor), 4u);
+
+  second_cursor.advance(4);
+  ASSERT_EQ(second_cursor.diff(first_cursor), 0u);
+}
