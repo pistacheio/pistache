@@ -144,9 +144,11 @@ TEST(stream, test_cursor_offset_for_array) {
   const char* data = "abcdefgh";
   buffer.feed(data, strlen(data));
 
-  cursor.advance(4);
+  size_t shift = 4u;
+  cursor.advance(shift);
 
-  ASSERT_TRUE(strcmp(cursor.offset(), "efgh"));
+  std::string result{cursor.offset(), strlen(data) - shift};
+  ASSERT_EQ(result, "efgh");
 }
 
 TEST(stream, test_cursor_diff_for_array) {
