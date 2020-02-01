@@ -70,7 +70,6 @@ class Message {
 public:
   friend class Private::HeadersStep;
   friend class Private::BodyStep;
-  friend class Private::ParserBase;
 
   Message() = default;
   explicit Message(Version version);
@@ -385,7 +384,6 @@ public:
   ResponseWriter &operator=(const ResponseWriter &other) = delete;
 
   friend class Private::ResponseLineStep;
-  friend class Private::Parser<Http::Response>;
 
   //
   // C++11: std::weak_ptr move constructor is C++14 only so the default
@@ -536,7 +534,7 @@ namespace Private {
 enum class State { Again, Next, Done };
 
 struct Step {
-  explicit Step(Message *request) : message(request) {}
+  explicit Step(Message *request);
 
   virtual ~Step() = default;
 
@@ -544,6 +542,7 @@ struct Step {
 
   static void raise(const char *msg, Code code = Code::Bad_Request);
 
+protected:
   Message *message;
 };
 
