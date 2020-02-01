@@ -115,6 +115,8 @@ static constexpr const char *ParserData = "__Parser";
 
 namespace Private {
 
+Step::Step(Message *request) : message(request) {}
+
 void Step::raise(const char *msg, Code code /* = Code::Bad_Request */) {
   throw HttpError(code, msg);
 }
