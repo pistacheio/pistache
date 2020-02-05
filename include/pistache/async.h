@@ -47,7 +47,7 @@ namespace Async {
 
     class BadAnyCast : public std::bad_cast {
     public:
-        virtual const char* what() const noexcept { return "Bad any cast"; }
+        const char* what() const noexcept override { return "Bad any cast"; }
         virtual ~BadAnyCast() { }
     };
 
@@ -378,11 +378,11 @@ namespace Async {
                     , reject_(reject)
                 { }
 
-                void doResolve(const std::shared_ptr<CoreT<T>>& core) {
+                void doResolve(const std::shared_ptr<CoreT<T>>& core) override {
                     finishResolve(resolve_(detail::tryMove<Resolve>(core->value())));
                 }
 
-                void doReject(const std::shared_ptr<CoreT<T>>& core) {
+                void doReject(const std::shared_ptr<CoreT<T>>& core) override {
                     reject_(core->exc);
                     for (const auto& req: this->chain_->requests) {
                         req->reject(this->chain_);
@@ -466,11 +466,11 @@ namespace Async {
                         "Incompatible types detected");
 
 
-                void doResolve(const std::shared_ptr<CoreT<T>>& core) {
+                void doResolve(const std::shared_ptr<CoreT<T>>& core) override {
                     resolve_(core->value());
                 }
 
-                void doReject(const std::shared_ptr<CoreT<T>>& core) {
+                void doReject(const std::shared_ptr<CoreT<T>>& core) override {
                     reject_(core->exc);
                 }
 
@@ -495,11 +495,11 @@ namespace Async {
                 static_assert(sizeof...(Args) == 0,
                         "Can not attach a non-void continuation to a void-Promise");
 
-                void doResolve(const std::shared_ptr<CoreT<void>>& /*core*/) {
+                void doResolve(const std::shared_ptr<CoreT<void>>& /*core*/) override {
                     resolve_();
                 }
 
-                void doReject(const std::shared_ptr<CoreT<void>>& core) {
+                void doReject(const std::shared_ptr<CoreT<void>>& core) override {
                     reject_(core->exc);
                 }
 
@@ -531,12 +531,12 @@ namespace Async {
                     , reject_(reject)
                 { }
 
-                void doResolve(const std::shared_ptr<CoreT<T>>& core) {
+                void doResolve(const std::shared_ptr<CoreT<T>>& core) override {
                     auto promise = resolve_(detail::tryMove<Resolve>(core->value()));
                     finishResolve(promise);
                 }
 
-                void doReject(const std::shared_ptr<CoreT<T>>& core) {
+                void doReject(const std::shared_ptr<CoreT<T>>& core) override {
                     reject_(core->exc);
                     for (const auto& req: core->requests) {
                         req->reject(core);

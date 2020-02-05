@@ -168,7 +168,7 @@ public:
   }
 
 protected:
-  int_type overflow(int_type ch);
+  int_type overflow(int_type ch) override;
 
 private:
   void reserve(size_t size);
