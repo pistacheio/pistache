@@ -215,7 +215,7 @@ struct HttpError : public std::exception {
 
   ~HttpError() noexcept {}
 
-  const char *what() const noexcept { return reason_.c_str(); }
+  const char *what() const noexcept override { return reason_.c_str(); }
 
   int code() const { return code_; }
   std::string reason() const { return reason_; }

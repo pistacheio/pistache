@@ -255,7 +255,7 @@ public:
    */
   explicit RouterHandler(std::shared_ptr<Rest::Router> router);
 
-  void onRequest(const Http::Request &req, Http::ResponseWriter response);
+  void onRequest(const Http::Request &req, Http::ResponseWriter response) override;
 
 private:
   std::shared_ptr<Tcp::Handler> clone() const final {

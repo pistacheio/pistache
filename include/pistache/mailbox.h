@@ -250,7 +250,7 @@ public:
     }
   }
 
-  Entry *pop() {
+  Entry *pop() override {
     auto ret = Queue<T>::pop();
 
     if (isBound()) {
