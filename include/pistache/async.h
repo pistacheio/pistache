@@ -47,7 +47,7 @@ namespace Async {
 
     class BadAnyCast : public std::bad_cast {
     public:
-        virtual const char* what() const noexcept override { return "Bad any cast"; }
+        const char* what() const noexcept override { return "Bad any cast"; }
         virtual ~BadAnyCast() { }
     };
 
