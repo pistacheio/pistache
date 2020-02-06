@@ -280,7 +280,7 @@ private:
   std::weak_ptr<Tcp::Peer> peer;
 };
 
-class ResponseStream {
+class ResponseStream final {
 public:
   friend class ResponseWriter;
 
