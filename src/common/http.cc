@@ -619,8 +619,9 @@ std::streamsize ResponseStream::write(const char *data, std::streamsize sz) {
 }
 
 std::shared_ptr<Tcp::Peer> ResponseStream::peer() const {
-  if (peer_.expired())
+  if (peer_.expired()) {
     throw std::runtime_error("Write failed: Broken pipe");
+  }
 
   return peer_.lock();
 }
@@ -672,10 +673,12 @@ ResponseWriter &ResponseWriter::operator=(ResponseWriter &&other) {
 
 void ResponseWriter::setMime(const Mime::MediaType &mime) {
   auto ct = response_.headers().tryGet<Header::ContentType>();
-  if (ct)
+  if (ct) {
     ct->setMime(mime);
-  else
+  }
+  else {
     response_.headers().add(std::make_shared<Header::ContentType>(mime));
+  }
 }
 
 Async::Promise<ssize_t> ResponseWriter::sendMethodNotAllowed(
@@ -706,10 +709,12 @@ Async::Promise<ssize_t> ResponseWriter::sendImpl(Code code, const char *data,
 
   if (mime.isValid()) {
     auto contentType = headers().tryGet<Header::ContentType>();
-    if (contentType)
+    if (contentType) {
       contentType->setMime(mime);
-    else
+    }
+    else {
       headers().add(std::make_shared<Header::ContentType>(mime));
+    }
   }
 
   return putOnWire(data, size);
@@ -735,8 +740,9 @@ Header::Collection &ResponseWriter::headers() { return response_.headers(); }
 Timeout &ResponseWriter::timeout() { return timeout_; }
 
 std::shared_ptr<Tcp::Peer> ResponseWriter::peer() const {
-  if (peer_.expired())
+  if (peer_.expired()) {
     throw std::runtime_error("Write failed: Broken pipe");
+  }
 
   return peer_.lock();
 }
