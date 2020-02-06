@@ -567,19 +567,24 @@ std::shared_ptr<Tcp::Peer> Request::peer() const {
 }
 #endif
 
+ResponseStream::ResponseStream(ResponseStream &&other)
+    : response_(std::move(other.response_)), peer_(std::move(other.peer_)),
+      buf_(std::move(other.buf_)), transport_(other.transport_),
+      timeout_(std::move(other.timeout_)) {}
+
 ResponseStream::ResponseStream(Message &&other, std::weak_ptr<Tcp::Peer> peer,
                                Tcp::Transport *transport, Timeout timeout,
                                size_t streamSize)
-    : Message(std::move(other)), peer_(std::move(peer)), buf_(streamSize),
+    : response_(std::move(other)), peer_(std::move(peer)), buf_(streamSize),
       transport_(transport), timeout_(std::move(timeout)) {
-  if (!writeStatusLine(version_, code_, buf_))
+  if (!writeStatusLine(response_.version(), response_.code(), buf_))
     throw Error("Response exceeded buffer size");
 
-  if (!writeCookies(cookies_, buf_)) {
+  if (!writeCookies(response_.cookies(), buf_)) {
     throw Error("Response exceeded buffer size");
   }
 
-  if (writeHeaders(headers_, buf_)) {
+  if (writeHeaders(response_.headers(), buf_)) {
     std::ostream os(&buf_);
     /* @Todo @Major:
      * Correctly handle non-keep alive requests
@@ -593,6 +598,31 @@ ResponseStream::ResponseStream(Message &&other, std::weak_ptr<Tcp::Peer> peer,
       throw Error("Response exceeded buffer size");
     os << crlf;
   }
+}
+
+ResponseStream &ResponseStream::operator=(ResponseStream &&other) {
+  response_ = std::move(other.response_);
+  peer_ = std::move(other.peer_);
+  buf_ = std::move(other.buf_);
+  transport_ = other.transport_;
+  timeout_ = std::move(other.timeout_);
+
+  return *this;
+}
+
+std::streamsize ResponseStream::write(const char *data, std::streamsize sz) {
+  std::ostream os(&buf_);
+  os << std::hex << sz << crlf;
+  os.write(data, sz);
+  os << crlf;
+  return sz;
+}
+
+std::shared_ptr<Tcp::Peer> ResponseStream::peer() const {
+  if (peer_.expired())
+    throw std::runtime_error("Write failed: Broken pipe");
+
+  return peer_.lock();
 }
 
 void ResponseStream::flush() {
@@ -617,6 +647,109 @@ void ResponseStream::ends() {
   flush();
 }
 
+ResponseWriter::ResponseWriter(ResponseWriter &&other)
+    : response_(std::move(other.response_)), peer_(other.peer_),
+      buf_(std::move(other.buf_)), transport_(other.transport_),
+      timeout_(std::move(other.timeout_)) {}
+
+ResponseWriter::ResponseWriter(Tcp::Transport *transport, Request request,
+                               Handler *handler)
+    : response_(request.version()), peer_(), buf_(DefaultStreamSize),
+      transport_(transport), timeout_(transport, handler, std::move(request)) {}
+
+ResponseWriter::ResponseWriter(const ResponseWriter &other)
+    : response_(other.response_), peer_(other.peer_), buf_(DefaultStreamSize),
+      transport_(other.transport_), timeout_(other.timeout_) {}
+
+ResponseWriter &ResponseWriter::operator=(ResponseWriter &&other) {
+  response_ = std::move(other.response_);
+  peer_ = std::move(other.peer_);
+  transport_ = other.transport_;
+  buf_ = std::move(other.buf_);
+  timeout_ = std::move(other.timeout_);
+  return *this;
+}
+
+void ResponseWriter::setMime(const Mime::MediaType &mime) {
+  auto ct = response_.headers().tryGet<Header::ContentType>();
+  if (ct)
+    ct->setMime(mime);
+  else
+    response_.headers().add(std::make_shared<Header::ContentType>(mime));
+}
+
+Async::Promise<ssize_t> ResponseWriter::sendMethodNotAllowed(
+    const std::vector<Http::Method> &supportedMethods) {
+  response_.code_ = Http::Code::Method_Not_Allowed;
+  response_.headers().add(
+      std::make_shared<Http::Header::Allow>(supportedMethods));
+  const std::string &body =
+      codeString(Pistache::Http::Code::Method_Not_Allowed);
+  return putOnWire(body.c_str(), body.size());
+}
+
+Async::Promise<ssize_t> ResponseWriter::send(Code code, const std::string &body,
+                                             const Mime::MediaType &mime) {
+  return sendImpl(code, body.c_str(), body.size(), mime);
+}
+
+Async::Promise<ssize_t> ResponseWriter::send(Code code, const char *data,
+                                             const size_t size,
+                                             const Mime::MediaType &mime) {
+  return sendImpl(code, data, size, mime);
+}
+
+Async::Promise<ssize_t> ResponseWriter::sendImpl(Code code, const char *data,
+                                                 const size_t size,
+                                                 const Mime::MediaType &mime) {
+  response_.code_ = code;
+
+  if (mime.isValid()) {
+    auto contentType = headers().tryGet<Header::ContentType>();
+    if (contentType)
+      contentType->setMime(mime);
+    else
+      headers().add(std::make_shared<Header::ContentType>(mime));
+  }
+
+  return putOnWire(data, size);
+}
+
+ResponseStream ResponseWriter::stream(Code code, size_t streamSize) {
+  response_.code_ = code;
+
+  return ResponseStream(std::move(response_), peer_, transport_,
+                        std::move(timeout_), streamSize);
+}
+
+const CookieJar &ResponseWriter::cookies() const { return response_.cookies(); }
+
+CookieJar &ResponseWriter::cookies() { return response_.cookies(); }
+
+const Header::Collection &ResponseWriter::headers() const {
+  return response_.headers();
+}
+
+Header::Collection &ResponseWriter::headers() { return response_.headers(); }
+
+Timeout &ResponseWriter::timeout() { return timeout_; }
+
+std::shared_ptr<Tcp::Peer> ResponseWriter::peer() const {
+  if (peer_.expired())
+    throw std::runtime_error("Write failed: Broken pipe");
+
+  return peer_.lock();
+}
+
+DynamicStreamBuf *ResponseWriter::rdbuf() { return &buf_; }
+
+DynamicStreamBuf *ResponseWriter::rdbuf(DynamicStreamBuf *other) {
+  UNUSED(other)
+  throw std::domain_error("Unimplemented");
+}
+
+ResponseWriter ResponseWriter::clone() const { return ResponseWriter(*this); }
+
 Async::Promise<ssize_t> ResponseWriter::putOnWire(const char *data,
                                                   size_t len) {
   try {
@@ -631,9 +764,9 @@ Async::Promise<ssize_t> ResponseWriter::putOnWire(const char *data,
     }                                                                          \
   } while (0);
 
-    OUT(writeStatusLine(version_, code_, buf_));
-    OUT(writeHeaders(headers_, buf_));
-    OUT(writeCookies(cookies_, buf_));
+    OUT(writeStatusLine(response_.version(), response_.code(), buf_));
+    OUT(writeHeaders(response_.headers(), buf_));
+    OUT(writeCookies(response_.cookies(), buf_));
 
     /* @Todo @Major:
      * Correctly handle non-keep alive requests
@@ -676,7 +809,7 @@ Async::Promise<ssize_t> ResponseWriter::putOnWire(const char *data,
   }
 }
 
-Async::Promise<ssize_t> serveFile(ResponseWriter &response,
+Async::Promise<ssize_t> serveFile(ResponseWriter &writer,
                                   const std::string &fileName,
                                   const Mime::MediaType &contentType) {
   struct stat sb;
@@ -702,7 +835,7 @@ Async::Promise<ssize_t> serveFile(ResponseWriter &response,
     throw HttpError(Code::Internal_Server_Error, "");
   }
 
-  auto *buf = response.rdbuf();
+  auto *buf = writer.rdbuf();
 
   std::ostream os(buf);
 
@@ -716,7 +849,7 @@ Async::Promise<ssize_t> serveFile(ResponseWriter &response,
   } while (0);
 
   auto setContentType = [&](const Mime::MediaType &contentType) {
-    auto &headers = response.headers();
+    auto &headers = writer.headers();
     auto ct = headers.tryGet<Header::ContentType>();
     if (ct)
       ct->setMime(contentType);
@@ -724,7 +857,7 @@ Async::Promise<ssize_t> serveFile(ResponseWriter &response,
       headers.add<Header::ContentType>(contentType);
   };
 
-  OUT(writeStatusLine(response.version(), Http::Code::Ok, *buf));
+  OUT(writeStatusLine(writer.response_.version(), Http::Code::Ok, *buf));
   if (contentType.isValid()) {
     setContentType(contentType);
   } else {
@@ -733,7 +866,7 @@ Async::Promise<ssize_t> serveFile(ResponseWriter &response,
       setContentType(mime);
   }
 
-  OUT(writeHeaders(response.headers(), *buf));
+  OUT(writeHeaders(writer.headers(), *buf));
 
   const size_t len = sb.st_size;
 
@@ -741,8 +874,8 @@ Async::Promise<ssize_t> serveFile(ResponseWriter &response,
 
   OUT(os << crlf);
 
-  auto *transport = response.transport_;
-  auto peer = response.peer();
+  auto *transport = writer.transport_;
+  auto peer = writer.peer();
   auto sockFd = peer->fd();
 
   auto buffer = buf->buffer();
