@@ -351,3 +351,4 @@ Route::Handler bind(Result (*func)(Args...)) {
 } // namespace Routes
 } // namespace Rest
 } // namespace Pistache
+
