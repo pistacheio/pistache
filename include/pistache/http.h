@@ -527,7 +527,7 @@ private:
 
 class ParserBase {
 public:
-  ParserBase() : buffer(), cursor(&buffer), allSteps(), currentStep(0) {}
+  ParserBase();
 
   ParserBase(const ParserBase &other) = delete;
   ParserBase(ParserBase &&other) = default;
@@ -535,18 +535,19 @@ public:
   bool feed(const char *data, size_t len);
   virtual void reset();
 
-  virtual ~ParserBase() {}
+  virtual ~ParserBase() = default;
 
   State parse();
-
-  ArrayStreamBuf<char> buffer;
-  StreamCursor cursor;
 
 protected:
   static constexpr size_t StepsCount = 3;
 
   std::array<std::unique_ptr<Step>, StepsCount> allSteps;
-  size_t currentStep;
+  size_t currentStep = 0;
+
+private:
+  ArrayStreamBuf<char> buffer;
+  StreamCursor cursor;
 };
 
 template <typename Message> class Parser;
