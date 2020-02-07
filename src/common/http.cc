@@ -464,6 +464,8 @@ State BodyStep::parseTransferEncoding(
   return State::Done;
 }
 
+ParserBase::ParserBase() : cursor(&buffer) {}
+
 State ParserBase::parse() {
   State state;
   do {
@@ -675,8 +677,7 @@ void ResponseWriter::setMime(const Mime::MediaType &mime) {
   auto ct = response_.headers().tryGet<Header::ContentType>();
   if (ct) {
     ct->setMime(mime);
-  }
-  else {
+  } else {
     response_.headers().add(std::make_shared<Header::ContentType>(mime));
   }
 }
@@ -711,8 +712,7 @@ Async::Promise<ssize_t> ResponseWriter::sendImpl(Code code, const char *data,
     auto contentType = headers().tryGet<Header::ContentType>();
     if (contentType) {
       contentType->setMime(mime);
-    }
-    else {
+    } else {
       headers().add(std::make_shared<Header::ContentType>(mime));
     }
   }
