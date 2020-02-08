@@ -249,7 +249,7 @@ Address Address::fromUnix(struct sockaddr *addr) {
 }
 
 Address Address::fromUnix(struct sockaddr_in *addr) {
-  return Address::fromUnix((struct sockaddr *)&addr);
+  return Address::fromUnix(reinterpret_cast<struct sockaddr *>(addr));
 }
 
 std::string Address::host() const { return ip_.toString(); }
