@@ -142,6 +142,7 @@ public:
   Address &operator=(Address &&other) = default;
 
   static Address fromUnix(struct sockaddr *addr);
+  static Address fromUnix(struct sockaddr_in *addr);
 
   std::string host() const;
   Port port() const;

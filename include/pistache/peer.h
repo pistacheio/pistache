@@ -36,14 +36,12 @@ class Peer {
 public:
   friend class Transport;
 
-  Peer();
-  explicit Peer(const Address &addr);
   ~Peer();
+
+  static std::shared_ptr<Peer> Create(Fd fd, const Address &addr);
 
   const Address &address() const;
   const std::string &hostname();
-
-  void associateFd(Fd fd);
   Fd fd() const;
 
   void associateSSL(void *ssl);
@@ -58,20 +56,23 @@ public:
 
   Async::Promise<ssize_t> send(const RawBuffer &buffer, int flags = 0);
 
+protected:
+  Peer(Fd fd, const Address &addr);
+
 private:
   void associateTransport(Transport *transport);
   Transport *transport() const;
 
-  Transport *transport_;
+  Transport *transport_ = nullptr;
+  Fd fd_ = -1;
   Address addr;
-  Fd fd_;
 
   std::string hostname_;
   std::unordered_map<std::string,
                      std::shared_ptr<Pistache::Http::Private::ParserBase>>
       data_;
 
-  void *ssl_;
+  void *ssl_ = nullptr;
 };
 
 std::ostream &operator<<(std::ostream &os, Peer &peer);

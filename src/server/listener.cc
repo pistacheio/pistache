@@ -316,8 +316,10 @@ void Listener::handleNewConnection() {
   if (this->useSSL_) {
 
     ssl = SSL_new((SSL_CTX *)this->ssl_ctx_);
-    if (ssl == NULL)
+    if (ssl == NULL) {
+      close(client_fd);
       throw std::runtime_error("Cannot create SSL connection");
+    }
 
     SSL_set_fd(ssl, client_fd);
     SSL_set_accept_state(ssl);
@@ -334,8 +336,7 @@ void Listener::handleNewConnection() {
   make_non_blocking(client_fd);
 
   auto peer =
-      std::make_shared<Peer>(Address::fromUnix((struct sockaddr *)&peer_addr));
-  peer->associateFd(client_fd);
+      Peer::Create(client_fd, Address::fromUnix(&peer_addr));
 
 #ifdef PISTACHE_USE_SSL
   if (this->useSSL_)
