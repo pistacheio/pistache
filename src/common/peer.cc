@@ -18,16 +18,24 @@
 namespace Pistache {
 namespace Tcp {
 
-Peer::Peer() : transport_(nullptr), fd_(-1), ssl_(NULL) {}
+namespace {
+struct ConcretePeer : Peer {
+  ConcretePeer() = default;
+  ConcretePeer(Fd fd, const Address &addr) : Peer(fd, addr) {}
+};
+} // namespace
 
-Peer::Peer(const Address &addr)
-    : transport_(nullptr), addr(addr), fd_(-1), ssl_(NULL) {}
+Peer::Peer(Fd fd, const Address &addr) : fd_(fd), addr(addr) {}
 
 Peer::~Peer() {
 #ifdef PISTACHE_USE_SSL
   if (ssl_)
     SSL_free((SSL *)ssl_);
 #endif /* PISTACHE_USE_SSL */
+}
+
+std::shared_ptr<Peer> Peer::Create(Fd fd, const Address &addr) {
+  return std::make_shared<ConcretePeer>(fd, addr);
 }
 
 const Address &Peer::address() const { return addr; }
@@ -51,8 +59,6 @@ const std::string &Peer::hostname() {
   }
   return hostname_;
 }
-
-void Peer::associateFd(int fd) { fd_ = fd; }
 
 #ifdef PISTACHE_USE_SSL
 void Peer::associateSSL(void *ssl) { ssl_ = ssl; }
