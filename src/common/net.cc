@@ -248,6 +248,10 @@ Address Address::fromUnix(struct sockaddr *addr) {
   throw Error("Not an IP socket");
 }
 
+Address Address::fromUnix(struct sockaddr_in *addr) {
+  return Address::fromUnix((struct sockaddr *)&addr);
+}
+
 std::string Address::host() const { return ip_.toString(); }
 
 Port Address::port() const { return port_; }

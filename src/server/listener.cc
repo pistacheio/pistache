@@ -336,7 +336,7 @@ void Listener::handleNewConnection() {
   make_non_blocking(client_fd);
 
   auto peer =
-      Peer::Create(client_fd, Address::fromUnix((struct sockaddr *)&peer_addr));
+      Peer::Create(client_fd, Address::fromUnix(&peer_addr));
 
 #ifdef PISTACHE_USE_SSL
   if (this->useSSL_)
