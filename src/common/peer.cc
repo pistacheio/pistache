@@ -21,21 +21,26 @@ namespace Tcp {
 namespace {
 struct ConcretePeer : Peer {
   ConcretePeer() = default;
-  ConcretePeer(Fd fd, const Address &addr) : Peer(fd, addr) {}
+  ConcretePeer(Fd fd, const Address &addr, void *ssl) : Peer(fd, addr, ssl) {}
 };
 } // namespace
 
-Peer::Peer(Fd fd, const Address &addr) : fd_(fd), addr(addr) {}
+Peer::Peer(Fd fd, const Address &addr, void *ssl)
+    : fd_(fd), addr(addr), ssl_(ssl) {}
 
 Peer::~Peer() {
 #ifdef PISTACHE_USE_SSL
   if (ssl_)
-    SSL_free((SSL *)ssl_);
+    SSL_free(static_cast<SSL *>(ssl_));
 #endif /* PISTACHE_USE_SSL */
 }
 
 std::shared_ptr<Peer> Peer::Create(Fd fd, const Address &addr) {
-  return std::make_shared<ConcretePeer>(fd, addr);
+  return std::make_shared<ConcretePeer>(fd, addr, nullptr);
+}
+
+std::shared_ptr<Peer> Peer::CreateSSL(Fd fd, const Address &addr, void *ssl) {
+  return std::make_shared<ConcretePeer>(fd, addr, ssl);
 }
 
 const Address &Peer::address() const { return addr; }
@@ -60,11 +65,7 @@ const std::string &Peer::hostname() {
   return hostname_;
 }
 
-#ifdef PISTACHE_USE_SSL
-void Peer::associateSSL(void *ssl) { ssl_ = ssl; }
-
-void *Peer::ssl(void) const { return ssl_; }
-#endif /* PISTACHE_USE_SSL */
+void *Peer::ssl() const { return ssl_; }
 
 int Peer::fd() const {
   if (fd_ == -1) {

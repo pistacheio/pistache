@@ -39,13 +39,13 @@ public:
   ~Peer();
 
   static std::shared_ptr<Peer> Create(Fd fd, const Address &addr);
+  static std::shared_ptr<Peer> CreateSSL(Fd fd, const Address &addr, void *ssl);
 
   const Address &address() const;
   const std::string &hostname();
   Fd fd() const;
 
-  void associateSSL(void *ssl);
-  void *ssl(void) const;
+  void *ssl() const;
 
   void putData(std::string name,
                std::shared_ptr<Pistache::Http::Private::ParserBase> data);
@@ -57,7 +57,7 @@ public:
   Async::Promise<ssize_t> send(const RawBuffer &buffer, int flags = 0);
 
 protected:
-  Peer(Fd fd, const Address &addr);
+  Peer(Fd fd, const Address &addr, void *ssl);
 
 private:
   void associateTransport(Transport *transport);
