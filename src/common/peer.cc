@@ -65,9 +65,7 @@ const std::string &Peer::hostname() {
   return hostname_;
 }
 
-#ifdef PISTACHE_USE_SSL
 void *Peer::ssl() const { return ssl_; }
-#endif /* PISTACHE_USE_SSL */
 
 int Peer::fd() const {
   if (fd_ == -1) {
