@@ -165,13 +165,6 @@ void Transport::handlePeerDisconnection(const std::shared_ptr<Peer> &peer) {
   if (it == std::end(peers))
     throw std::runtime_error("Could not find peer to erase");
 
-#ifdef PISTACHE_USE_SSL
-  if (peer->ssl() != NULL) {
-    SSL_free((SSL *)peer->ssl());
-    peer->associateSSL(NULL);
-  }
-#endif /* PISTACHE_USE_SSL */
-
   peers.erase(it->first);
 
   {

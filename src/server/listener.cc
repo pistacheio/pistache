@@ -335,13 +335,12 @@ void Listener::handleNewConnection() {
 
   make_non_blocking(client_fd);
 
-  auto peer =
-      Peer::Create(client_fd, Address::fromUnix(&peer_addr));
-
-#ifdef PISTACHE_USE_SSL
-  if (this->useSSL_)
-    peer->associateSSL(ssl);
-#endif /* PISTACHE_USE_SSL */
+  std::shared_ptr<Peer> peer;
+  if (this->useSSL_) {
+    peer = Peer::CreateSSL(client_fd, Address::fromUnix(&peer_addr), ssl);
+  } else {
+    peer = Peer::Create(client_fd, Address::fromUnix(&peer_addr));
+  }
 
   dispatchPeer(peer);
 }
