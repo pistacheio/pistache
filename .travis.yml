@@ -1,6 +1,6 @@
 language: cpp
 
-dist: trusty
+dist: bionic
 sudo: true
 
 branches:
@@ -71,6 +71,18 @@ matrix:
       apt:
         sources: ['ubuntu-toolchain-r-test']
         packages: ['apport', 'g++-8', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck']
+
+  - os: linux
+    compiler: gcc
+    env:
+      - COMPILER=g++-9
+      - COV_TOOL=gcov-9
+      - COV_TOOL_ARGS=
+    addons:
+      apt:
+        sources: ['ubuntu-toolchain-r-test']
+        packages: ['apport', 'g++-9', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck']
+
 
 install:
   - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
