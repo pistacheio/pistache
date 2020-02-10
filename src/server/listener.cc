@@ -330,7 +330,7 @@ void Listener::handleNewConnection() {
       close(client_fd);
       return;
     }
-    ssl = static_cast<void*>(ssl);
+    ssl = static_cast<void*>(ssl_data);
   }
 #endif /* PISTACHE_USE_SSL */
 
