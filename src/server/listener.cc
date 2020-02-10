@@ -310,9 +310,9 @@ void Listener::handleNewConnection() {
   struct sockaddr_in peer_addr;
   int client_fd = acceptConnection(peer_addr);
 
-#ifdef PISTACHE_USE_SSL
-  SSL *ssl = nullptr;
+  void *ssl = nullptr;
 
+#ifdef PISTACHE_USE_SSL
   if (this->useSSL_) {
 
     ssl = SSL_new((SSL_CTX *)this->ssl_ctx_);
