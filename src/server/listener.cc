@@ -316,17 +316,17 @@ void Listener::handleNewConnection() {
   if (this->useSSL_) {
 
     SSL* ssl_data = SSL_new((SSL_CTX *)this->ssl_ctx_);
-    if (ssl == NULL) {
+    if (ssl_data == nullptr) {
       close(client_fd);
       throw std::runtime_error("Cannot create SSL connection");
     }
 
-    SSL_set_fd(ssl, client_fd);
-    SSL_set_accept_state(ssl);
+    SSL_set_fd(ssl_data, client_fd);
+    SSL_set_accept_state(ssl_data);
 
     if (SSL_accept(ssl) <= 0) {
       ERR_print_errors_fp(stderr);
-      SSL_free(ssl);
+      SSL_free(ssl_data);
       close(client_fd);
       return;
     }
