@@ -1,11 +1,17 @@
 language: cpp
 
-dist: trusty
+dist: bionic
 sudo: true
 
 branches:
   only:
     - master
+
+arch:
+  - amd64
+  - ppc64le
+  - s390x
+  - arm64
 
 matrix:
   include:
@@ -19,7 +25,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-4.0']
-        packages: [ 'cmake', 'clang-4.0', 'llvm-4.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck' ]
+        packages: [ 'apport', 'cmake', 'clang-4.0', 'llvm-4.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck' ]
 
   - os: linux
     compiler: clang
@@ -30,7 +36,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-5.0']
-        packages: [ 'cmake', 'clang-5.0', 'llvm-5.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck' ]
+        packages: [ 'apport', 'cmake', 'clang-5.0', 'llvm-5.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck' ]
 
   - os: linux
     compiler: clang
@@ -41,7 +47,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
-        packages: [ 'cmake', 'clang-6.0', 'llvm-6.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck' ]
+        packages: [ 'apport', 'cmake', 'clang-6.0', 'llvm-6.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck' ]
 
   # Linux GCC builds
   - os: linux
@@ -53,7 +59,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-7', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck']
+        packages: ['apport', 'g++-7', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck']
 
   - os: linux
     compiler: gcc
@@ -64,7 +70,7 @@ matrix:
     addons:
       apt:
         sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-8', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck']
+        packages: ['apport', 'g++-8', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck']
 
 install:
   - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
@@ -81,7 +87,7 @@ before_script:
 
   # Print debug system information
   - cat /proc/sys/kernel/core_pattern
-  - cat /etc/default/apport
+  - cat /etc/default/apport || true
   - service --status-all || true
   - initctl list || true
 
