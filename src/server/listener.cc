@@ -315,7 +315,7 @@ void Listener::handleNewConnection() {
 #ifdef PISTACHE_USE_SSL
   if (this->useSSL_) {
 
-    ssl = SSL_new((SSL_CTX *)this->ssl_ctx_);
+    SSL* ssl_data = SSL_new((SSL_CTX *)this->ssl_ctx_);
     if (ssl == NULL) {
       close(client_fd);
       throw std::runtime_error("Cannot create SSL connection");
@@ -330,6 +330,7 @@ void Listener::handleNewConnection() {
       close(client_fd);
       return;
     }
+    ssl = static_cast<void*>(ssl);
   }
 #endif /* PISTACHE_USE_SSL */
 
