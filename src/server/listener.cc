@@ -324,7 +324,7 @@ void Listener::handleNewConnection() {
     SSL_set_fd(ssl_data, client_fd);
     SSL_set_accept_state(ssl_data);
 
-    if (SSL_accept(ssl) <= 0) {
+    if (SSL_accept(ssl_data) <= 0) {
       ERR_print_errors_fp(stderr);
       SSL_free(ssl_data);
       close(client_fd);
