@@ -87,7 +87,7 @@ before_script:
 
   # Print debug system information
   - cat /proc/sys/kernel/core_pattern
-  - cat /etc/default/apport
+  - cat /etc/default/apport || true
   - service --status-all || true
   - initctl list || true
 
