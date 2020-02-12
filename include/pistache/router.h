@@ -241,6 +241,9 @@ namespace Private {
 
 class RouterHandler : public Http::Handler {
 public:
+
+  HTTP_PROTOTYPE(RouterHandler)
+
   /**
    * Used for immutable router. Useful if all the routes are
    * defined at compile time (and for backward compatibility)
@@ -259,10 +262,6 @@ public:
                  Http::ResponseWriter response) override;
 
 private:
-  std::shared_ptr<Tcp::Handler> clone() const final {
-    return std::make_shared<RouterHandler>(router);
-  }
-
   std::shared_ptr<Rest::Router> router;
 };
 } // namespace Private
