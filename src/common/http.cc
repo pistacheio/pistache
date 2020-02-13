@@ -656,9 +656,11 @@ ResponseWriter::ResponseWriter(ResponseWriter &&other)
       timeout_(std::move(other.timeout_)) {}
 
 ResponseWriter::ResponseWriter(Tcp::Transport *transport, Request request,
-                               Handler *handler)
-    : response_(request.version()), peer_(), buf_(DefaultStreamSize),
-      transport_(transport), timeout_(transport, handler, std::move(request)) {}
+                               Handler *handler, std::weak_ptr<Tcp::Peer> peer)
+    : response_(request.version()), peer_(peer), buf_(DefaultStreamSize),
+      transport_(transport), timeout_(transport, handler, std::move(request)) {
+  timeout_.associatePeer(peer);
+}
 
 ResponseWriter::ResponseWriter(const ResponseWriter &other)
     : response_(other.response_), peer_(other.peer_), buf_(DefaultStreamSize),
@@ -908,8 +910,7 @@ void Handler::onInput(const char *buffer, size_t len,
     auto state = parser.parse();
 
     if (state == Private::State::Done) {
-      ResponseWriter response(transport(), parser.request, this);
-      response.associatePeer(peer);
+      ResponseWriter response(transport(), parser.request, this, peer);
 
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
       parser.request.associatePeer(peer);
@@ -931,15 +932,13 @@ void Handler::onInput(const char *buffer, size_t len,
     }
 
   } catch (const HttpError &err) {
-    ResponseWriter response(transport(), parser.request, this);
-    response.associatePeer(peer);
+    ResponseWriter response(transport(), parser.request, this, peer);
     response.send(static_cast<Code>(err.code()), err.reason());
     parser.reset();
   }
 
   catch (const std::exception &e) {
-    ResponseWriter response(transport(), parser.request, this);
-    response.associatePeer(peer);
+    ResponseWriter response(transport(), parser.request, this, peer);
     response.send(Code::Internal_Server_Error, e.what());
     parser.reset();
   }
@@ -961,8 +960,7 @@ void Timeout::onTimeout(uint64_t numWakeup) {
   if (!peer.lock())
     return;
 
-  ResponseWriter response(transport, request, handler);
-  response.associatePeer(peer);
+  ResponseWriter response(transport, request, handler, peer);
 
   handler->onTimeout(request, std::move(response));
 }
