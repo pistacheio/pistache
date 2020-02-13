@@ -421,21 +421,14 @@ public:
   ResponseWriter clone() const;
 
 private:
-  ResponseWriter(Tcp::Transport *transport, Request request, Handler *handler);
+  ResponseWriter(Tcp::Transport *transport, Request request, Handler *handler,
+                 std::weak_ptr<Tcp::Peer> peer);
 
   ResponseWriter(const ResponseWriter &other);
 
   Async::Promise<ssize_t> sendImpl(Code code, const char *data,
                                    const size_t size,
                                    const Mime::MediaType &mime);
-
-  template <typename Ptr> void associatePeer(const Ptr &peer) {
-    if (peer_.use_count() > 0)
-      throw std::runtime_error("A peer was already associated to the response");
-
-    peer_ = peer;
-    timeout_.associatePeer(peer_);
-  }
 
   Async::Promise<ssize_t> putOnWire(const char *data, size_t len);
 
