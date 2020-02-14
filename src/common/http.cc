@@ -658,22 +658,12 @@ ResponseWriter::ResponseWriter(ResponseWriter &&other)
 ResponseWriter::ResponseWriter(Tcp::Transport *transport, Request request,
                                Handler *handler, std::weak_ptr<Tcp::Peer> peer)
     : response_(request.version()), peer_(peer), buf_(DefaultStreamSize),
-      transport_(transport), timeout_(transport, handler, std::move(request)) {
-  timeout_.associatePeer(peer);
-}
+      transport_(transport),
+      timeout_(transport, handler, std::move(request), peer) {}
 
 ResponseWriter::ResponseWriter(const ResponseWriter &other)
     : response_(other.response_), peer_(other.peer_), buf_(DefaultStreamSize),
       transport_(other.transport_), timeout_(other.timeout_) {}
-
-ResponseWriter &ResponseWriter::operator=(ResponseWriter &&other) {
-  response_ = std::move(other.response_);
-  peer_ = std::move(other.peer_);
-  transport_ = other.transport_;
-  buf_ = std::move(other.buf_);
-  timeout_ = std::move(other.timeout_);
-  return *this;
-}
 
 void ResponseWriter::setMime(const Mime::MediaType &mime) {
   auto ct = response_.headers().tryGet<Header::ContentType>();
@@ -950,10 +940,24 @@ void Handler::onConnection(const std::shared_ptr<Tcp::Peer> &peer) {
 
 void Handler::onDisconnection(const std::shared_ptr<Tcp::Peer> & /*peer*/) {}
 
-void Handler::onTimeout(const Request &request, ResponseWriter response) {
-  UNUSED(request)
-  UNUSED(response)
+void Handler::onTimeout(const Request& /*request*/, ResponseWriter /*response*/) {}
+
+Timeout::~Timeout() {
+  disarm();
 }
+
+void Timeout::disarm() {
+  if (transport && armed) {
+    transport->disarmTimer(timerFd);
+  }
+}
+
+bool Timeout::isArmed() const { return armed; }
+
+Timeout::Timeout(Tcp::Transport *transport_, Handler *handler_,
+                 Request request_, std::weak_ptr<Tcp::Peer> peer_)
+    : handler(handler_), request(std::move(request_)), transport(transport_),
+      armed(false), timerFd(-1), peer(peer_) {}
 
 void Timeout::onTimeout(uint64_t numWakeup) {
   UNUSED(numWakeup)
