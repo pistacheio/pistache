@@ -99,6 +99,14 @@ before_script:
     -DPISTACHE_BUILD_TESTS=true
     -DPISTACHE_USE_SSL=true
 
+  # Debug build, no SSL
+  - cmake -H.
+    -BBuild-Debug-nossl
+    -DCMAKE_BUILD_TYPE=Debug
+    -DPISTACHE_BUILD_EXAMPLES=true
+    -DPISTACHE_BUILD_TESTS=true
+    -DPISTACHE_USE_SSL=false
+
   # Release build
   - cmake -H.
     -BBuild-Release
@@ -108,6 +116,10 @@ before_script:
 script:
   # Debug build
   - cd Build-Debug
+  - make -j 2 all test ARGS="-V"
+
+  # Debug build, no SSL
+  - cd Build-Debug-nossl
   - make -j 2 all test ARGS="-V"
 
   # Release build
