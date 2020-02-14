@@ -220,8 +220,6 @@ public:
     other.timerFd = -1;
   }
 
-  ~Timeout() { disarm(); }
-
   Timeout &operator=(Timeout &&other) {
     handler = other.handler;
     transport = other.transport;
@@ -232,6 +230,8 @@ public:
     peer = std::move(other.peer);
     return *this;
   }
+
+  ~Timeout();
 
   template <typename Duration> void arm(Duration duration) {
     Async::Promise<uint64_t> p([=](Async::Deferred<uint64_t> deferred) {
@@ -250,25 +250,15 @@ public:
     armed = true;
   }
 
-  void disarm() {
-    if (armed) {
-      transport->disarmTimer(timerFd);
-    }
-  }
+  void disarm();
 
-  bool isArmed() const { return armed; }
+  bool isArmed() const;
 
 private:
-  Timeout(const Timeout &other)
-      : handler(other.handler), request(other.request),
-        transport(other.transport), armed(other.armed), timerFd(other.timerFd),
-        peer() {}
+  Timeout(const Timeout &other) = default;
 
-  Timeout(Tcp::Transport *transport_, Handler *handler_, Request request_)
-      : handler(handler_), request(std::move(request_)), transport(transport_),
-        armed(false), timerFd(-1), peer() {}
-
-  template <typename Ptr> void associatePeer(const Ptr &ptr) { peer = ptr; }
+  Timeout(Tcp::Transport *transport_, Handler *handler_, Request request_,
+          std::weak_ptr<Tcp::Peer> peer_);
 
   void onTimeout(uint64_t numWakeup);
 
@@ -371,7 +361,7 @@ public:
   // have to define it ourself
   ResponseWriter(ResponseWriter &&other);
 
-  ResponseWriter &operator=(ResponseWriter &&other);
+  ResponseWriter &operator=(ResponseWriter &&other) = default;
 
   void setMime(const Mime::MediaType &mime);
 
