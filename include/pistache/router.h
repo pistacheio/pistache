@@ -325,30 +325,22 @@ template <typename Result, typename Cls, typename... Args, typename Obj>
 Route::Handler bind(Result (Cls::*func)(Args...), Obj obj) {
   details::static_checks<Args...>();
 
-#define CALL_MEMBER_FN(obj, pmf) ((obj)->*(pmf))
-
   return [=](const Rest::Request &request, Http::ResponseWriter response) {
-    CALL_MEMBER_FN(obj, func)(request, std::move(response));
+    (obj->*func)(request, std::move(response));
 
     return Route::Result::Ok;
   };
-
-#undef CALL_MEMBER_FN
 }
 
 template <typename Result, typename Cls, typename... Args, typename Obj>
 Route::Handler bind(Result (Cls::*func)(Args...), std::shared_ptr<Obj> objPtr) {
   details::static_checks<Args...>();
 
-#define CALL_SHARED_PTR_MEMBER_FN(objPtr, pmf) (((objPtr).get())->*(pmf))
-
   return [=](const Rest::Request &request, Http::ResponseWriter response) {
-    CALL_SHARED_PTR_MEMBER_FN(objPtr, func)(request, std::move(response));
+    (objPtr.get()->*func)(request, std::move(response));
 
     return Route::Result::Ok;
   };
-
-#undef CALL_SHARED_PTR_MEMBER_FN
 }
 
 template <typename Result, typename... Args>
