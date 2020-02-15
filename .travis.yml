@@ -119,7 +119,7 @@ script:
   - make -j 2 all test ARGS="-V"
 
   # Debug build, no SSL
-  - cd Build-Debug-nossl
+  - cd ../Build-Debug-nossl
   - make -j 2 all test ARGS="-V"
 
   # Release build
