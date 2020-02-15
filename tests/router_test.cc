@@ -230,3 +230,51 @@ TEST(router_test, test_route_head_request) {
 
   endpoint->shutdown();
 }
+
+class MyHandler {
+public:
+
+  MyHandler()
+  : count_(0)
+  {}
+  ~MyHandler() {}
+
+  void handle(
+    const Pistache::Rest::Request &,
+    Pistache::Http::ResponseWriter response) {
+    count_++;
+    response.send(Pistache::Http::Code::Ok);
+  }
+
+  int getCount() { return count_; }
+
+private:
+
+  int count_;
+
+};
+
+TEST(router_test, test_bind_shared_ptr) {
+  Address addr(Ipv4::any(), 0);
+  auto endpoint = std::make_shared<Http::Endpoint>(addr);
+
+  auto opts = Http::Endpoint::options().threads(1).maxRequestSize(4096);
+  endpoint->init(opts);
+
+  std::shared_ptr<MyHandler> sharedPtr = std::make_shared<MyHandler>();
+
+  Rest::Router router;
+
+  Routes::Head(router, "/tinkywinky", Routes::bind(&MyHandler::handle, sharedPtr));
+
+  endpoint->setHandler(router.handler());
+  endpoint->serveThreaded();
+  const auto bound_port = endpoint->getPort();
+  httplib::Client client("localhost", bound_port);
+
+  ASSERT_EQ(sharedPtr->getCount(), 0);
+  client.Head("/tinkywinky");
+  ASSERT_EQ(sharedPtr->getCount(), 1);
+
+  endpoint->shutdown();
+}
