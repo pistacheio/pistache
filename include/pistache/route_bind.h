@@ -49,6 +49,19 @@ Route::Handler bind(Result (Cls::*func)(Args...), Obj obj) {
 #undef CALL_MEMBER_FN
 }
 
+template <typename Result, typename Cls, typename... Args, typename Obj>
+Route::Handler bind(Result (Cls::*func)(Args...), std::shared_ptr<Obj> objPtr) {
+  details::static_checks<Args...>();
+
+#define CALL_SHARED_PTR_MEMBER_FN(objPtr, pmf) (((objPtr).get())->*(pmf))
+
+  return [=](const Rest::Request &request, Http::ResponseWriter response) {
+    CALL_SHARED_PTR_MEMBER_FN(objPtr, func)(request, std::move(response));
+  };
+
+#undef CALL_SHARED_PTR_MEMBER_FN
+}
+
 template <typename Result, typename... Args>
 Route::Handler bind(Result (*func)(Args...)) {
   details::static_checks<Args...>();
