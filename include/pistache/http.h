@@ -402,6 +402,18 @@ public:
 
   std::shared_ptr<Tcp::Peer> peer() const;
 
+  // Expose the response size and code so that user-supplied logger can
+  // access them.  Perhaps we should fully expose the response_ instead?
+  //     const Response& getResponse() const { return respose_; }
+
+  size_t getResponseSize() const {
+    return response_.body().size();
+  }
+
+  Code getResponseCode() const {
+    return response_.code();
+  }
+
   // Unsafe API
 
   DynamicStreamBuf *rdbuf();
