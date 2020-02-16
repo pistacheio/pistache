@@ -653,17 +653,17 @@ void ResponseStream::ends() {
 ResponseWriter::ResponseWriter(ResponseWriter &&other)
     : response_(std::move(other.response_)), peer_(other.peer_),
       buf_(std::move(other.buf_)), transport_(other.transport_),
-      timeout_(std::move(other.timeout_)) {}
+      timeout_(std::move(other.timeout_)), sent_bytes_(0) {}
 
 ResponseWriter::ResponseWriter(Tcp::Transport *transport, Request request,
                                Handler *handler, std::weak_ptr<Tcp::Peer> peer)
     : response_(request.version()), peer_(peer), buf_(DefaultStreamSize),
       transport_(transport),
-      timeout_(transport, handler, std::move(request), peer) {}
+      timeout_(transport, handler, std::move(request), peer), sent_bytes_(0) {}
 
 ResponseWriter::ResponseWriter(const ResponseWriter &other)
     : response_(other.response_), peer_(other.peer_), buf_(DefaultStreamSize),
-      transport_(other.transport_), timeout_(other.timeout_) {}
+      transport_(other.transport_), timeout_(other.timeout_), sent_bytes_(0) {}
 
 void ResponseWriter::setMime(const Mime::MediaType &mime) {
   auto ct = response_.headers().tryGet<Header::ContentType>();
@@ -781,6 +781,7 @@ Async::Promise<ssize_t> ResponseWriter::putOnWire(const char *data,
     }
 
     auto buffer = buf_.buffer();
+    sent_bytes_ += buffer.size();
 
     timeout_.disarm();
 
@@ -940,11 +941,10 @@ void Handler::onConnection(const std::shared_ptr<Tcp::Peer> &peer) {
 
 void Handler::onDisconnection(const std::shared_ptr<Tcp::Peer> & /*peer*/) {}
 
-void Handler::onTimeout(const Request& /*request*/, ResponseWriter /*response*/) {}
+void Handler::onTimeout(const Request & /*request*/,
+                        ResponseWriter /*response*/) {}
 
-Timeout::~Timeout() {
-  disarm();
-}
+Timeout::~Timeout() { disarm(); }
 
 void Timeout::disarm() {
   if (transport && armed) {
