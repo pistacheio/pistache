@@ -310,37 +310,38 @@ void Listener::handleNewConnection() {
   struct sockaddr_in peer_addr;
   int client_fd = acceptConnection(peer_addr);
 
-#ifdef PISTACHE_USE_SSL
-  SSL *ssl = nullptr;
+  void *ssl = nullptr;
 
+#ifdef PISTACHE_USE_SSL
   if (this->useSSL_) {
 
-    ssl = SSL_new((SSL_CTX *)this->ssl_ctx_);
-    if (ssl == NULL)
+    SSL* ssl_data = SSL_new((SSL_CTX *)this->ssl_ctx_);
+    if (ssl_data == nullptr) {
+      close(client_fd);
       throw std::runtime_error("Cannot create SSL connection");
+    }
 
-    SSL_set_fd(ssl, client_fd);
-    SSL_set_accept_state(ssl);
+    SSL_set_fd(ssl_data, client_fd);
+    SSL_set_accept_state(ssl_data);
 
-    if (SSL_accept(ssl) <= 0) {
+    if (SSL_accept(ssl_data) <= 0) {
       ERR_print_errors_fp(stderr);
-      SSL_free(ssl);
+      SSL_free(ssl_data);
       close(client_fd);
       return;
     }
+    ssl = static_cast<void*>(ssl_data);
   }
 #endif /* PISTACHE_USE_SSL */
 
   make_non_blocking(client_fd);
 
-  auto peer =
-      std::make_shared<Peer>(Address::fromUnix((struct sockaddr *)&peer_addr));
-  peer->associateFd(client_fd);
-
-#ifdef PISTACHE_USE_SSL
-  if (this->useSSL_)
-    peer->associateSSL(ssl);
-#endif /* PISTACHE_USE_SSL */
+  std::shared_ptr<Peer> peer;
+  if (this->useSSL_) {
+    peer = Peer::CreateSSL(client_fd, Address::fromUnix(&peer_addr), ssl);
+  } else {
+    peer = Peer::Create(client_fd, Address::fromUnix(&peer_addr));
+  }
 
   dispatchPeer(peer);
 }

@@ -70,6 +70,7 @@ class Message {
 public:
   friend class Private::HeadersStep;
   friend class Private::BodyStep;
+  friend class ResponseWriter;
 
   Message() = default;
   explicit Message(Version version);
@@ -219,8 +220,6 @@ public:
     other.timerFd = -1;
   }
 
-  ~Timeout() { disarm(); }
-
   Timeout &operator=(Timeout &&other) {
     handler = other.handler;
     transport = other.transport;
@@ -231,6 +230,8 @@ public:
     peer = std::move(other.peer);
     return *this;
   }
+
+  ~Timeout();
 
   template <typename Duration> void arm(Duration duration) {
     Async::Promise<uint64_t> p([=](Async::Deferred<uint64_t> deferred) {
@@ -249,25 +250,15 @@ public:
     armed = true;
   }
 
-  void disarm() {
-    if (armed) {
-      transport->disarmTimer(timerFd);
-    }
-  }
+  void disarm();
 
-  bool isArmed() const { return armed; }
+  bool isArmed() const;
 
 private:
-  Timeout(const Timeout &other)
-      : handler(other.handler), request(other.request),
-        transport(other.transport), armed(other.armed), timerFd(other.timerFd),
-        peer() {}
+  Timeout(const Timeout &other) = default;
 
-  Timeout(Tcp::Transport *transport_, Handler *handler_, Request request_)
-      : handler(handler_), request(std::move(request_)), transport(transport_),
-        armed(false), timerFd(-1), peer() {}
-
-  template <typename Ptr> void associatePeer(const Ptr &ptr) { peer = ptr; }
+  Timeout(Tcp::Transport *transport_, Handler *handler_, Request request_,
+          std::weak_ptr<Tcp::Peer> peer_);
 
   void onTimeout(uint64_t numWakeup);
 
@@ -279,35 +270,18 @@ private:
   std::weak_ptr<Tcp::Peer> peer;
 };
 
-class ResponseStream : public Message {
+class ResponseStream final {
 public:
   friend class ResponseWriter;
 
-  ResponseStream(ResponseStream &&other)
-      : Message(std::move(other)), peer_(std::move(other.peer_)),
-        buf_(std::move(other.buf_)), transport_(other.transport_),
-        timeout_(std::move(other.timeout_)) {}
+  ResponseStream(ResponseStream &&other);
 
-  ResponseStream &operator=(ResponseStream &&other) {
-    Message::operator=(std::move(other));
-    peer_ = std::move(other.peer_);
-    buf_ = std::move(other.buf_);
-    transport_ = other.transport_;
-    timeout_ = std::move(other.timeout_);
-
-    return *this;
-  }
+  ResponseStream &operator=(ResponseStream &&other);
 
   template <typename T>
   friend ResponseStream &operator<<(ResponseStream &stream, const T &val);
 
-  std::streamsize write(const char *data, std::streamsize sz) {
-    std::ostream os(&buf_);
-    os << std::hex << sz << crlf;
-    os.write(data, sz);
-    os << crlf;
-    return sz;
-  }
+  std::streamsize write(const char *data, std::streamsize sz);
 
   void flush();
   void ends();
@@ -316,13 +290,9 @@ private:
   ResponseStream(Message &&other, std::weak_ptr<Tcp::Peer> peer,
                  Tcp::Transport *transport, Timeout timeout, size_t streamSize);
 
-  std::shared_ptr<Tcp::Peer> peer() const {
-    if (peer_.expired())
-      throw std::runtime_error("Write failed: Broken pipe");
+  std::shared_ptr<Tcp::Peer> peer() const;
 
-    return peer_.lock();
-  }
-
+  Message response_;
   std::weak_ptr<Tcp::Peer> peer_;
   DynamicStreamBuf buf_;
   Tcp::Transport *transport_;
@@ -371,7 +341,7 @@ public:
   Response &operator=(Response &&other) = default;
 };
 
-class ResponseWriter : public Response {
+class ResponseWriter final {
 public:
   static constexpr size_t DefaultStreamSize = 512;
 
@@ -389,26 +359,11 @@ public:
   // C++11: std::weak_ptr move constructor is C++14 only so the default
   // version of move constructor / assignement operator does not work and we
   // have to define it ourself
-  ResponseWriter(ResponseWriter &&other)
-      : Response(std::move(other)), peer_(other.peer_),
-        buf_(std::move(other.buf_)), transport_(other.transport_),
-        timeout_(std::move(other.timeout_)) {}
-  ResponseWriter &operator=(ResponseWriter &&other) {
-    Response::operator=(std::move(other));
-    peer_ = std::move(other.peer_);
-    transport_ = other.transport_;
-    buf_ = std::move(other.buf_);
-    timeout_ = std::move(other.timeout_);
-    return *this;
-  }
+  ResponseWriter(ResponseWriter &&other);
 
-  void setMime(const Mime::MediaType &mime) {
-    auto ct = headers_.tryGet<Header::ContentType>();
-    if (ct)
-      ct->setMime(mime);
-    else
-      headers_.add(std::make_shared<Header::ContentType>(mime));
-  }
+  ResponseWriter &operator=(ResponseWriter &&other) = default;
+
+  void setMime(const Mime::MediaType &mime);
 
   /* @Feature: add helper functions for common http return code:
    * - halt() -> 404
@@ -416,109 +371,58 @@ public:
    * - moved() -> 302
    */
   Async::Promise<ssize_t>
-  sendMethodNotAllowed(const std::vector<Http::Method> &supportedMethods) {
-    code_ = Http::Code::Method_Not_Allowed;
-    headers_.add(std::make_shared<Http::Header::Allow>(supportedMethods));
-    std::string body = codeString(Pistache::Http::Code::Method_Not_Allowed);
-    return putOnWire(body.c_str(), body.size());
-  }
+  sendMethodNotAllowed(const std::vector<Http::Method> &supportedMethods);
 
-  Async::Promise<ssize_t> send(Code code) {
-    code_ = code;
-    return putOnWire(nullptr, 0);
-  }
-
-  Async::Promise<ssize_t>
-  send(Code code, const std::string &body,
-       const Mime::MediaType &mime = Mime::MediaType()) {
-    code_ = code;
-
-    if (mime.isValid()) {
-      auto contentType = headers_.tryGet<Header::ContentType>();
-      if (contentType)
-        contentType->setMime(mime);
-      else
-        headers_.add(std::make_shared<Header::ContentType>(mime));
-    }
-
-    return putOnWire(body.c_str(), body.size());
-  }
+  Async::Promise<ssize_t> send(Code code, const std::string &body = "",
+                               const Mime::MediaType &mime = Mime::MediaType());
 
   template <size_t N>
   Async::Promise<ssize_t>
   send(Code code, const char (&arr)[N],
        const Mime::MediaType &mime = Mime::MediaType()) {
-    return send(code, arr, N - 1, std::forward<const Mime::MediaType &>(mime));
+    return sendImpl(code, arr, N - 1, mime);
   }
 
-  Async::Promise<ssize_t>
-  send(Code code, const char *data, const size_t size,
-       const Mime::MediaType &mime = Mime::MediaType()) {
-    /* @Refactor: code duplication */
-    code_ = code;
+  Async::Promise<ssize_t> send(Code code, const char *data, const size_t size,
+                               const Mime::MediaType &mime = Mime::MediaType());
 
-    if (mime.isValid()) {
-      auto contentType = headers_.tryGet<Header::ContentType>();
-      if (contentType)
-        contentType->setMime(mime);
-      else
-        headers_.add(std::make_shared<Header::ContentType>(mime));
-    }
-
-    return putOnWire(data, size);
-  }
-
-  ResponseStream stream(Code code, size_t streamSize = DefaultStreamSize) {
-    code_ = code;
-
-    return ResponseStream(std::move(*this), peer_, transport_,
-                          std::move(timeout_), streamSize);
-  }
+  ResponseStream stream(Code code, size_t streamSize = DefaultStreamSize);
 
   template <typename Duration> void timeoutAfter(Duration duration) {
     timeout_.arm(duration);
   }
 
-  Timeout &timeout() { return timeout_; }
+  const CookieJar &cookies() const;
+  CookieJar &cookies();
 
-  std::shared_ptr<Tcp::Peer> peer() const {
-    if (peer_.expired())
-      throw std::runtime_error("Write failed: Broken pipe");
+  const Header::Collection &headers() const;
+  Header::Collection &headers();
 
-    return peer_.lock();
-  }
+  Timeout &timeout();
+
+  std::shared_ptr<Tcp::Peer> peer() const;
 
   // Unsafe API
 
-  DynamicStreamBuf *rdbuf() { return &buf_; }
+  DynamicStreamBuf *rdbuf();
 
-  DynamicStreamBuf *rdbuf(DynamicStreamBuf *other) {
-    UNUSED(other)
-    throw std::domain_error("Unimplemented");
-  }
+  DynamicStreamBuf *rdbuf(DynamicStreamBuf *other);
 
-  ResponseWriter clone() const { return ResponseWriter(*this); }
+  ResponseWriter clone() const;
 
 private:
-  ResponseWriter(Tcp::Transport *transport, Request request, Handler *handler)
-      : Response(request.version()), peer_(), buf_(DefaultStreamSize),
-        transport_(transport),
-        timeout_(transport, handler, std::move(request)) {}
+  ResponseWriter(Tcp::Transport *transport, Request request, Handler *handler,
+                 std::weak_ptr<Tcp::Peer> peer);
 
-  ResponseWriter(const ResponseWriter &other)
-      : Response(other), peer_(other.peer_), buf_(DefaultStreamSize),
-        transport_(other.transport_), timeout_(other.timeout_) {}
+  ResponseWriter(const ResponseWriter &other);
 
-  template <typename Ptr> void associatePeer(const Ptr &peer) {
-    if (peer_.use_count() > 0)
-      throw std::runtime_error("A peer was already associated to the response");
-
-    peer_ = peer;
-    timeout_.associatePeer(peer_);
-  }
+  Async::Promise<ssize_t> sendImpl(Code code, const char *data,
+                                   const size_t size,
+                                   const Mime::MediaType &mime);
 
   Async::Promise<ssize_t> putOnWire(const char *data, size_t len);
 
+  Response response_;
   std::weak_ptr<Tcp::Peer> peer_;
   DynamicStreamBuf buf_;
   Tcp::Transport *transport_;
@@ -526,7 +430,7 @@ private:
 };
 
 Async::Promise<ssize_t>
-serveFile(ResponseWriter &response, const std::string &fileName,
+serveFile(ResponseWriter &writer, const std::string &fileName,
           const Mime::MediaType &contentType = Mime::MediaType());
 
 namespace Private {
@@ -606,7 +510,7 @@ private:
 
 class ParserBase {
 public:
-  ParserBase() : buffer(), cursor(&buffer), allSteps(), currentStep(0) {}
+  ParserBase();
 
   ParserBase(const ParserBase &other) = delete;
   ParserBase(ParserBase &&other) = default;
@@ -614,18 +518,19 @@ public:
   bool feed(const char *data, size_t len);
   virtual void reset();
 
-  virtual ~ParserBase() {}
+  virtual ~ParserBase() = default;
 
   State parse();
-
-  ArrayStreamBuf<char> buffer;
-  StreamCursor cursor;
 
 protected:
   static constexpr size_t StepsCount = 3;
 
   std::array<std::unique_ptr<Step>, StepsCount> allSteps;
-  size_t currentStep;
+  size_t currentStep = 0;
+
+private:
+  ArrayStreamBuf<char> buffer;
+  StreamCursor cursor;
 };
 
 template <typename Message> class Parser;
