@@ -340,3 +340,71 @@ TEST(http_server_test, server_request_copies_address) {
 
   ASSERT_EQ("127.0.0.1", resultData);
 }
+
+struct ResponseSizeHandler : public Http::Handler {
+  HTTP_PROTOTYPE(ResponseSizeHandler)
+
+  explicit ResponseSizeHandler(size_t &rsize, Http::Code &rcode)
+      : rsize_(rsize), rcode_(rcode) {}
+
+  void onRequest(const Http::Request &request,
+                 Http::ResponseWriter writer) override {
+    std::string requestAddress = request.address().host();
+    writer.send(Http::Code::Ok, requestAddress);
+    std::cout << "[server] Sent: " << requestAddress << std::endl;
+    rsize_ = writer.getResponseSize();
+    rcode_ = writer.getResponseCode();
+  }
+
+  size_t &rsize_;
+  Http::Code &rcode_;
+};
+
+TEST(http_server_test, response_size_captured) {
+  const Pistache::Address address("localhost", Pistache::Port(0));
+
+  size_t rsize = 0;
+  Http::Code rcode;
+
+  Http::Endpoint server(address);
+  auto flags = Tcp::Options::ReuseAddr;
+  auto server_opts = Http::Endpoint::options().flags(flags);
+  server.init(server_opts);
+  server.setHandler(Http::make_handler<ResponseSizeHandler>(rsize, rcode));
+  server.serveThreaded();
+
+  const std::string server_address = "localhost:" + server.getPort().toString();
+  std::cout << "Server address: " << server_address << "\n";
+
+  // Use the built-in http client, but this test is interested in testing
+  // that the ResponseWriter in the server stashed the correct size and code
+  // values.
+  Http::Client client;
+  client.init();
+  auto rb = client.get(server_address);
+  auto response = rb.send();
+  std::string resultData;
+  response.then(
+      [&resultData](Http::Response resp) {
+        std::cout << "Response code is " << resp.code() << std::endl;
+        if (resp.code() == Http::Code::Ok) {
+          resultData = resp.body();
+        }
+      },
+      Async::Throw);
+
+  const int WAIT_TIME = 2;
+  Async::Barrier<Http::Response> barrier(response);
+  barrier.wait_for(std::chrono::seconds(WAIT_TIME));
+
+  client.shutdown();
+  server.shutdown();
+
+  // Sanity check (stolen from AddressEchoHandler test).
+  ASSERT_EQ("127.0.0.1", resultData);
+
+  std::cout << "Response size is " << rsize << "\n";
+  ASSERT_GT(rsize, 1);
+  ASSERT_LT(rsize, 300);
+  ASSERT_EQ(rcode, Http::Code::Ok);
+}

@@ -402,17 +402,12 @@ public:
 
   std::shared_ptr<Tcp::Peer> peer() const;
 
-  // Expose the response size and code so that user-supplied logger can
-  // access them.  Perhaps we should fully expose the response_ instead?
-  //     const Response& getResponse() const { return respose_; }
+  // Returns total count of HTTP bytes (headers, cookies, body) written when
+  // sending the response.  Result valid AFTER ResponseWriter.send() is called.
+  ssize_t getResponseSize() const { return sent_bytes_; }
 
-  size_t getResponseSize() const {
-    return response_.body().size();
-  }
-
-  Code getResponseCode() const {
-    return response_.code();
-  }
+  // Returns HTTP result code that was sent with the response.
+  Code getResponseCode() const { return response_.code(); }
 
   // Unsafe API
 
@@ -439,6 +434,7 @@ private:
   DynamicStreamBuf buf_;
   Tcp::Transport *transport_;
   Timeout timeout_;
+  ssize_t sent_bytes_;
 };
 
 Async::Promise<ssize_t>
