@@ -49,7 +49,6 @@ template <typename P> struct IsHttpPrototype {
   typedef Pistache::Http::details::prototype_tag tag;
 
 namespace Private {
-class ParserBase;
 template <typename T> class Parser;
 class RequestLineStep;
 class ResponseLineStep;
@@ -288,7 +287,8 @@ public:
 
 private:
   ResponseStream(Message &&other, std::weak_ptr<Tcp::Peer> peer,
-                 Tcp::Transport *transport, Timeout timeout, size_t streamSize);
+                 Tcp::Transport *transport, Timeout timeout, size_t streamSize,
+                 size_t maxResponseSize);
 
   std::shared_ptr<Tcp::Peer> peer() const;
 
@@ -518,16 +518,17 @@ private:
 
 class ParserBase {
 public:
-  ParserBase();
+  explicit ParserBase(size_t maxDataSize);
 
-  ParserBase(const ParserBase &other) = delete;
-  ParserBase(ParserBase &&other) = default;
-
-  bool feed(const char *data, size_t len);
-  virtual void reset();
+  ParserBase(const ParserBase &) = delete;
+  ParserBase &operator=(const ParserBase &) = delete;
+  ParserBase(ParserBase &&) = default;
+  ParserBase &operator=(ParserBase &&) = default;
 
   virtual ~ParserBase() = default;
 
+  bool feed(const char *data, size_t len);
+  virtual void reset();
   State parse();
 
 protected:
@@ -546,47 +547,16 @@ template <typename Message> class Parser;
 template <> class Parser<Http::Request> : public ParserBase {
 
 public:
-  Parser() : ParserBase(), request() {
-    allSteps[0].reset(new RequestLineStep(&request));
-    allSteps[1].reset(new HeadersStep(&request));
-    allSteps[2].reset(new BodyStep(&request));
-  }
+  explicit Parser(size_t maxDataSize);
 
-  Parser(const char *data, size_t len) : ParserBase(), request() {
-    allSteps[0].reset(new RequestLineStep(&request));
-    allSteps[1].reset(new HeadersStep(&request));
-    allSteps[2].reset(new BodyStep(&request));
-
-    feed(data, len);
-  }
-
-  void reset() override {
-    ParserBase::reset();
-
-    request.headers_.clear();
-    request.body_.clear();
-    request.resource_.clear();
-    request.query_.clear();
-  }
+  void reset() override;
 
   Request request;
 };
 
 template <> class Parser<Http::Response> : public ParserBase {
 public:
-  Parser() : ParserBase(), response() {
-    allSteps[0].reset(new ResponseLineStep(&response));
-    allSteps[1].reset(new HeadersStep(&response));
-    allSteps[2].reset(new BodyStep(&response));
-  }
-
-  Parser(const char *data, size_t len) : ParserBase(), response() {
-    allSteps[0].reset(new ResponseLineStep(&response));
-    allSteps[1].reset(new HeadersStep(&response));
-    allSteps[2].reset(new BodyStep(&response));
-
-    feed(data, len);
-  }
+  explicit Parser(size_t maxDataSize);
 
   Response response;
 };
@@ -605,11 +575,20 @@ public:
 
   virtual void onTimeout(const Request &request, ResponseWriter response);
 
+  void setMaxRequestSize(size_t value);
+  size_t getMaxRequestSize() const;
+  void setMaxResponseSize(size_t value);
+  size_t getMaxResponseSize() const;
+
   virtual ~Handler() override {}
 
 private:
   Private::Parser<Http::Request> &
   getParser(const std::shared_ptr<Tcp::Peer> &peer) const;
+
+private:
+  size_t maxRequestSize_ = Const::DefaultMaxRequestSize;
+  size_t maxResponseSize_ = Const::DefaultMaxResponseSize;
 };
 
 template <typename H, typename... Args>

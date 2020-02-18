@@ -57,12 +57,14 @@ Endpoint::Endpoint(const Address &addr) : listener(addr) {}
 
 void Endpoint::init(const Endpoint::Options &options) {
   listener.init(options.threads_, options.flags_, options.threadsName_);
-  ArrayStreamBuf<char>::maxSize = options.maxRequestSize_;
-  DynamicStreamBuf::maxSize = options.maxResponseSize_;
+  maxRequestSize_ = options.maxRequestSize_;
+  maxResponseSize_ = options.maxResponseSize_;
 }
 
 void Endpoint::setHandler(const std::shared_ptr<Handler> &handler) {
   handler_ = handler;
+  handler_->setMaxRequestSize(maxRequestSize_);
+  handler_->setMaxResponseSize(maxResponseSize_);
 }
 
 void Endpoint::bind() { listener.bind(); }

@@ -130,6 +130,7 @@ TEST(streaming, from_description) {
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION,
                      static_cast<CURL_WRITEFUNCTION_PTR>(curl_callback));
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ss);
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
     res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
   }

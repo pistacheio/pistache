@@ -54,7 +54,8 @@ TEST(stream, test_file_buffer) {
 }
 
 TEST(stream, test_dyn_buffer) {
-  DynamicStreamBuf buf(128);
+  DynamicStreamBuf buf(128, Const::MaxBuffer);
+  ASSERT_EQ(buf.maxSize(), Const::MaxBuffer);
 
   {
     std::ostream os(&buf);
@@ -72,11 +73,21 @@ TEST(stream, test_dyn_buffer) {
   ASSERT_EQ(strlen(rawbuf.data().c_str()), 128u);
 }
 
+TEST(stream, test_array_buffer) {
+  ArrayStreamBuf<char> buffer(4);
+
+  const char *part1 = "abcd";
+  ASSERT_TRUE(buffer.feed(part1, strlen(part1)));
+
+  const char *part2 = "efgh";
+  ASSERT_FALSE(buffer.feed(part2, strlen(part2)));
+}
+
 TEST(stream, test_cursor_advance_for_array) {
-  ArrayStreamBuf<char> buffer;
+  ArrayStreamBuf<char> buffer(Const::MaxBuffer);
   StreamCursor cursor{&buffer};
 
-  const char* part1 = "abcd";
+  const char *part1 = "abcd";
   buffer.feed(part1, strlen(part1));
 
   ASSERT_EQ(cursor.current(), 'a');
@@ -90,7 +101,7 @@ TEST(stream, test_cursor_advance_for_array) {
   ASSERT_TRUE(cursor.advance(1));
   ASSERT_EQ(cursor.current(), 'c');
 
-  const char* part2 = "efgh";
+  const char *part2 = "efgh";
   buffer.feed(part2, strlen(part2));
 
   ASSERT_TRUE(cursor.advance(2));
@@ -100,11 +111,11 @@ TEST(stream, test_cursor_advance_for_array) {
 }
 
 TEST(stream, test_cursor_remaining_for_array) {
-  ArrayStreamBuf<char> buffer;
+  ArrayStreamBuf<char> buffer(Const::MaxBuffer);
   StreamCursor cursor{&buffer};
 
-  const char* data = "abcd";
-  buffer.feed(data, strlen(data));
+  const char *data = "abcd";
+  ASSERT_TRUE(buffer.feed(data, strlen(data)));
   ASSERT_EQ(cursor.remaining(), 4u);
 
   cursor.advance(2);
@@ -118,11 +129,11 @@ TEST(stream, test_cursor_remaining_for_array) {
 }
 
 TEST(stream, test_cursor_eol_eof_for_array) {
-  ArrayStreamBuf<char> buffer;
+  ArrayStreamBuf<char> buffer(Const::MaxBuffer);
   StreamCursor cursor{&buffer};
 
-  const char* data = "abcd\r\nefgh";
-  buffer.feed(data, strlen(data));
+  const char *data = "abcd\r\nefgh";
+  ASSERT_TRUE(buffer.feed(data, strlen(data)));
 
   cursor.advance(4);
   ASSERT_TRUE(cursor.eol());
@@ -138,13 +149,13 @@ TEST(stream, test_cursor_eol_eof_for_array) {
 }
 
 TEST(stream, test_cursor_offset_for_array) {
-  ArrayStreamBuf<char> buffer;
+  ArrayStreamBuf<char> buffer(Const::MaxBuffer);
   StreamCursor cursor{&buffer};
 
-  const char* data = "abcdefgh";
-  buffer.feed(data, strlen(data));
+  const char *data = "abcdefgh";
+  ASSERT_TRUE(buffer.feed(data, strlen(data)));
 
-  size_t shift = 4u;
+  const size_t shift = 4u;
   cursor.advance(shift);
 
   std::string result{cursor.offset(), strlen(data) - shift};
@@ -152,14 +163,14 @@ TEST(stream, test_cursor_offset_for_array) {
 }
 
 TEST(stream, test_cursor_diff_for_array) {
-  ArrayStreamBuf<char> buffer1;
+  ArrayStreamBuf<char> buffer1(Const::MaxBuffer);
   StreamCursor first_cursor{&buffer1};
-  ArrayStreamBuf<char> buffer2;
+  ArrayStreamBuf<char> buffer2(Const::MaxBuffer);
   StreamCursor second_cursor{&buffer2};
 
-  const char* data = "abcdefgh";
-  buffer1.feed(data, strlen(data));
-  buffer2.feed(data, strlen(data));
+  const char *data = "abcdefgh";
+  ASSERT_TRUE(buffer1.feed(data, strlen(data)));
+  ASSERT_TRUE(buffer2.feed(data, strlen(data)));
 
   ASSERT_EQ(first_cursor.diff(second_cursor), 0u);
   ASSERT_EQ(second_cursor.diff(first_cursor), 0u);
