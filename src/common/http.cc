@@ -655,19 +655,19 @@ void ResponseStream::ends() {
 ResponseWriter::ResponseWriter(ResponseWriter &&other)
     : response_(std::move(other.response_)), peer_(other.peer_),
       buf_(std::move(other.buf_)), transport_(other.transport_),
-      timeout_(std::move(other.timeout_)) {}
+      timeout_(std::move(other.timeout_)), sent_bytes_(0) {}
 
 ResponseWriter::ResponseWriter(Tcp::Transport *transport, Request request,
                                Handler *handler, std::weak_ptr<Tcp::Peer> peer)
     : response_(request.version()), peer_(peer),
       buf_(DefaultStreamSize, handler->getMaxResponseSize()),
       transport_(transport),
-      timeout_(transport, handler, std::move(request), peer) {}
+      timeout_(transport, handler, std::move(request), peer), sent_bytes_(0) {}
 
 ResponseWriter::ResponseWriter(const ResponseWriter &other)
     : response_(other.response_), peer_(other.peer_),
       buf_(DefaultStreamSize, other.buf_.maxSize()),
-      transport_(other.transport_), timeout_(other.timeout_) {}
+      transport_(other.transport_), timeout_(other.timeout_), sent_bytes_(0) {}
 
 void ResponseWriter::setMime(const Mime::MediaType &mime) {
   auto ct = response_.headers().tryGet<Header::ContentType>();
