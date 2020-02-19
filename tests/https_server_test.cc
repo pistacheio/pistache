@@ -10,7 +10,8 @@
 
 using namespace Pistache;
 
-/* _ALL_ those tests should fail around 2020, when the certificates will expire
+/* Should these tests fail, please re-run "./new-certs.sh" from the "./certs"
+ * directory.
  */
 
 static size_t write_cb(void *contents, size_t size, size_t nmemb, void *userp) {
