@@ -40,13 +40,18 @@ template <typename Result, typename Cls, typename... Args, typename Obj>
 Route::Handler bind(Result (Cls::*func)(Args...), Obj obj) {
   details::static_checks<Args...>();
 
-#define CALL_MEMBER_FN(obj, pmf) ((obj)->*(pmf))
+  return [=](const Rest::Request &request, Http::ResponseWriter response) {
+    (obj->*func)(request, std::move(response));
+  };
+}
+
+template <typename Result, typename Cls, typename... Args, typename Obj>
+Route::Handler bind(Result (Cls::*func)(Args...), std::shared_ptr<Obj> objPtr) {
+  details::static_checks<Args...>();
 
   return [=](const Rest::Request &request, Http::ResponseWriter response) {
-    CALL_MEMBER_FN(obj, func)(request, std::move(response));
+    (objPtr.get()->*func)(request, std::move(response));
   };
-
-#undef CALL_MEMBER_FN
 }
 
 template <typename Result, typename... Args>

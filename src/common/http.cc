@@ -653,25 +653,17 @@ void ResponseStream::ends() {
 ResponseWriter::ResponseWriter(ResponseWriter &&other)
     : response_(std::move(other.response_)), peer_(other.peer_),
       buf_(std::move(other.buf_)), transport_(other.transport_),
-      timeout_(std::move(other.timeout_)) {}
+      timeout_(std::move(other.timeout_)), sent_bytes_(0) {}
 
 ResponseWriter::ResponseWriter(Tcp::Transport *transport, Request request,
-                               Handler *handler)
-    : response_(request.version()), peer_(), buf_(DefaultStreamSize),
-      transport_(transport), timeout_(transport, handler, std::move(request)) {}
+                               Handler *handler, std::weak_ptr<Tcp::Peer> peer)
+    : response_(request.version()), peer_(peer), buf_(DefaultStreamSize),
+      transport_(transport),
+      timeout_(transport, handler, std::move(request), peer), sent_bytes_(0) {}
 
 ResponseWriter::ResponseWriter(const ResponseWriter &other)
     : response_(other.response_), peer_(other.peer_), buf_(DefaultStreamSize),
-      transport_(other.transport_), timeout_(other.timeout_) {}
-
-ResponseWriter &ResponseWriter::operator=(ResponseWriter &&other) {
-  response_ = std::move(other.response_);
-  peer_ = std::move(other.peer_);
-  transport_ = other.transport_;
-  buf_ = std::move(other.buf_);
-  timeout_ = std::move(other.timeout_);
-  return *this;
-}
+      transport_(other.transport_), timeout_(other.timeout_), sent_bytes_(0) {}
 
 void ResponseWriter::setMime(const Mime::MediaType &mime) {
   auto ct = response_.headers().tryGet<Header::ContentType>();
@@ -789,6 +781,7 @@ Async::Promise<ssize_t> ResponseWriter::putOnWire(const char *data,
     }
 
     auto buffer = buf_.buffer();
+    sent_bytes_ += buffer.size();
 
     timeout_.disarm();
 
@@ -908,8 +901,7 @@ void Handler::onInput(const char *buffer, size_t len,
     auto state = parser.parse();
 
     if (state == Private::State::Done) {
-      ResponseWriter response(transport(), parser.request, this);
-      response.associatePeer(peer);
+      ResponseWriter response(transport(), parser.request, this, peer);
 
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
       parser.request.associatePeer(peer);
@@ -931,15 +923,13 @@ void Handler::onInput(const char *buffer, size_t len,
     }
 
   } catch (const HttpError &err) {
-    ResponseWriter response(transport(), parser.request, this);
-    response.associatePeer(peer);
+    ResponseWriter response(transport(), parser.request, this, peer);
     response.send(static_cast<Code>(err.code()), err.reason());
     parser.reset();
   }
 
   catch (const std::exception &e) {
-    ResponseWriter response(transport(), parser.request, this);
-    response.associatePeer(peer);
+    ResponseWriter response(transport(), parser.request, this, peer);
     response.send(Code::Internal_Server_Error, e.what());
     parser.reset();
   }
@@ -951,18 +941,30 @@ void Handler::onConnection(const std::shared_ptr<Tcp::Peer> &peer) {
 
 void Handler::onDisconnection(const std::shared_ptr<Tcp::Peer> & /*peer*/) {}
 
-void Handler::onTimeout(const Request &request, ResponseWriter response) {
-  UNUSED(request)
-  UNUSED(response)
+void Handler::onTimeout(const Request & /*request*/,
+                        ResponseWriter /*response*/) {}
+
+Timeout::~Timeout() { disarm(); }
+
+void Timeout::disarm() {
+  if (transport && armed) {
+    transport->disarmTimer(timerFd);
+  }
 }
+
+bool Timeout::isArmed() const { return armed; }
+
+Timeout::Timeout(Tcp::Transport *transport_, Handler *handler_,
+                 Request request_, std::weak_ptr<Tcp::Peer> peer_)
+    : handler(handler_), request(std::move(request_)), transport(transport_),
+      armed(false), timerFd(-1), peer(peer_) {}
 
 void Timeout::onTimeout(uint64_t numWakeup) {
   UNUSED(numWakeup)
   if (!peer.lock())
     return;
 
-  ResponseWriter response(transport, request, handler);
-  response.associatePeer(peer);
+  ResponseWriter response(transport, request, handler, peer);
 
   handler->onTimeout(request, std::move(response));
 }
