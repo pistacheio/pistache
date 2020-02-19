@@ -53,6 +53,19 @@ struct QueryBounceHandler : public Http::Handler {
   }
 };
 
+namespace {
+std::string largeContent(4097, 'a');
+}
+
+struct LargeContentHandler : public Http::Handler {
+  HTTP_PROTOTYPE(LargeContentHandler)
+
+  void onRequest(const Http::Request & /*request*/,
+                 Http::ResponseWriter writer) override {
+    writer.send(Http::Code::Ok, largeContent);
+  }
+};
+
 TEST(http_client_test, one_client_with_one_request) {
   const Pistache::Address address("localhost", Pistache::Port(0));
 
@@ -418,12 +431,14 @@ TEST(http_client_test, client_sends_query) {
   Async::Barrier<Http::Response> barrier(response);
   barrier.wait_for(std::chrono::seconds(5));
 
+  server.shutdown();
+  client.shutdown();
+
   EXPECT_EQ(queryStr[0], '?');
 
   std::unordered_map<std::string, std::string> results;
   bool key = true;
   std::string keyStr, valueStr;
-  ;
 
   for (auto it = std::next(queryStr.begin()); it != queryStr.end(); it++) {
     if (*it == '&' || std::next(it) == queryStr.end()) {
@@ -448,7 +463,77 @@ TEST(http_client_test, client_sends_query) {
     ASSERT_TRUE(query.has(entry.first));
     EXPECT_EQ(entry.second, query.get(entry.first).get());
   }
+}
+
+TEST(http_client_test, client_get_large_content) {
+  const Pistache::Address address("localhost", Pistache::Port(0));
+
+  Http::Endpoint server(address);
+  auto flags = Tcp::Options::ReuseAddr;
+  auto server_opts = Http::Endpoint::options().flags(flags);
+  server.init(server_opts);
+  server.setHandler(Http::make_handler<LargeContentHandler>());
+  server.serveThreaded();
+
+  const std::string server_address = "localhost:" + server.getPort().toString();
+  std::cout << "Server address: " << server_address << "\n";
+
+  Http::Client client;
+  auto opts = Http::Client::options().maxResponseSize(8192);
+  client.init(opts);
+
+  auto response = client.get(server_address).send();
+  bool done = false;
+  std::string rcvContent;
+  response.then(
+      [&done, &rcvContent](Http::Response rsp) {
+        if (rsp.code() == Http::Code::Ok) {
+          done = true;
+          rcvContent = rsp.body();
+        }
+      },
+      Async::IgnoreException);
+
+  Async::Barrier<Http::Response> barrier(response);
+  barrier.wait_for(std::chrono::seconds(5));
 
   server.shutdown();
   client.shutdown();
+
+  ASSERT_TRUE(done);
+  ASSERT_EQ(largeContent, rcvContent);
+}
+
+TEST(http_client_test, client_do_not_get_large_content) {
+  const Pistache::Address address("localhost", Pistache::Port(0));
+
+  Http::Endpoint server(address);
+  auto flags = Tcp::Options::ReuseAddr;
+  auto server_opts = Http::Endpoint::options().flags(flags);
+  server.init(server_opts);
+  server.setHandler(Http::make_handler<LargeContentHandler>());
+  server.serveThreaded();
+
+  const std::string server_address = "localhost:" + server.getPort().toString();
+  std::cout << "Server address: " << server_address << "\n";
+
+  Http::Client client;
+  auto opts = Http::Client::options().maxResponseSize(4096);
+  client.init(opts);
+
+  auto response = client.get(server_address).send();
+  bool ok_flag = false;
+  bool exception_flag = false;
+  response.then(
+      [&ok_flag](Http::Response /*rsp*/) { ok_flag = true; },
+      [&exception_flag](std::exception_ptr /*ptr*/) { exception_flag = true; });
+
+  Async::Barrier<Http::Response> barrier(response);
+  barrier.wait_for(std::chrono::seconds(5));
+
+  server.shutdown();
+  client.shutdown();
+
+  ASSERT_FALSE(ok_flag);
+  ASSERT_TRUE(exception_flag);
 }

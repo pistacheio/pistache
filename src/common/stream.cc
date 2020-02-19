@@ -6,6 +6,7 @@
 #include <pistache/stream.h>
 
 #include <algorithm>
+#include <cassert>
 #include <iostream>
 #include <string>
 
@@ -73,13 +74,46 @@ Fd FileBuffer::fd() const { return fd_; }
 
 size_t FileBuffer::size() const { return size_; }
 
-size_t DynamicStreamBuf::maxSize = Const::DefaultMaxResponseSize;
+DynamicStreamBuf::DynamicStreamBuf(size_t size, size_t maxSize)
+    : data_(), maxSize_(maxSize) {
+  assert(size <= maxSize);
+
+  reserve(size);
+}
+
+DynamicStreamBuf::DynamicStreamBuf(DynamicStreamBuf &&other)
+    : data_(std::move(other.data_)), maxSize_(std::move(other.maxSize_)) {
+  setp(other.pptr(), other.epptr());
+  other.setp(nullptr, nullptr);
+}
+
+DynamicStreamBuf &DynamicStreamBuf::operator=(DynamicStreamBuf &&other) {
+  if (&other != this) {
+    data_ = std::move(other.data_);
+    maxSize_ = std::move(other.maxSize_);
+    setp(other.pptr(), other.epptr());
+    other.setp(nullptr, nullptr);
+  }
+
+  return *this;
+}
+
+RawBuffer DynamicStreamBuf::buffer() const {
+  return RawBuffer(data_.data(), pptr() - data_.data());
+}
+
+size_t DynamicStreamBuf::maxSize() const { return maxSize_; }
+
+void DynamicStreamBuf::clear() {
+  // reset stream buffer to the whole backing storage.
+  this->setp(data_.data(), data_.data() + data_.size());
+}
 
 DynamicStreamBuf::int_type
 DynamicStreamBuf::overflow(DynamicStreamBuf::int_type ch) {
   if (!traits_type::eq_int_type(ch, traits_type::eof())) {
     const auto size = data_.size();
-    if (size < maxSize) {
+    if (size < maxSize_) {
       reserve((size ? size : 1u) * 2);
       *pptr() = ch;
       pbump(1);
@@ -91,8 +125,10 @@ DynamicStreamBuf::overflow(DynamicStreamBuf::int_type ch) {
 }
 
 void DynamicStreamBuf::reserve(size_t size) {
-  if (size > maxSize)
-    size = maxSize;
+  if (size > maxSize_) {
+    size = maxSize_;
+  }
+
   const size_t oldSize = data_.size();
   data_.resize(size);
   this->setp(data_.data() + oldSize, data_.data() + size);

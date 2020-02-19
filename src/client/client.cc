@@ -396,44 +396,34 @@ void Transport::handleHangupEntry(const Aio::FdSet::Entry &entry) {
 }
 
 void Transport::handleIncoming(std::shared_ptr<Connection> connection) {
-  char buffer[Const::MaxBuffer] = {0};
-
   ssize_t totalBytes = 0;
 
   for (;;) {
-    ssize_t bytes = recv(connection->fd(), buffer + totalBytes,
-                         Const::MaxBuffer - totalBytes, 0);
+    char buffer[Const::MaxBuffer] = {
+        0,
+    };
+    const ssize_t bytes = recv(connection->fd(), buffer, Const::MaxBuffer, 0);
     if (bytes == -1) {
-      if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        if (totalBytes > 0) {
-          connection->handleResponsePacket(buffer, totalBytes);
-        }
-      } else {
+      if (errno != EAGAIN && errno != EWOULDBLOCK) {
         connection->handleError(strerror(errno));
       }
       break;
     } else if (bytes == 0) {
-      if (totalBytes > 0) {
-        connection->handleResponsePacket(buffer, totalBytes);
-      } else {
+      if (totalBytes == 0) {
         connection->handleError("Remote closed connection");
       }
       connections.erase(connection->fd());
       connection->close();
       break;
-    }
-
-    else {
+    } else {
       totalBytes += bytes;
-      if (static_cast<size_t>(totalBytes) > Const::MaxBuffer) {
-        std::cerr << "Client: Too long packet" << std::endl;
-        break;
-      }
+      connection->handleResponsePacket(buffer, bytes);
     }
   }
 }
 
-Connection::Connection() : fd_(-1), requestEntry(nullptr) {
+Connection::Connection(size_t maxResponseSize)
+    : fd_(-1), requestEntry(nullptr), parser(maxResponseSize) {
   state_.store(static_cast<uint32_t>(State::Idle));
   connectionState_.store(NotConnected);
 }
@@ -532,7 +522,11 @@ Fd Connection::fd() const {
 
 void Connection::handleResponsePacket(const char *buffer, size_t totalBytes) {
   try {
-    parser.feed(buffer, totalBytes);
+    const bool result = parser.feed(buffer, totalBytes);
+    if (!result) {
+      handleError("Client: Too long packet");
+      return;
+    }
     if (parser.parse() == Private::State::Done) {
       if (requestEntry) {
         if (requestEntry->timer) {
@@ -642,8 +636,10 @@ void Connection::processRequestQueue() {
   }
 }
 
-void ConnectionPool::init(size_t maxConnsPerHost) {
-  maxConnectionsPerHost = maxConnsPerHost;
+void ConnectionPool::init(size_t maxConnectionsPerHost,
+                          size_t maxResponseSize) {
+  this->maxConnectionsPerHost = maxConnectionsPerHost;
+  this->maxResponseSize = maxResponseSize;
 }
 
 std::shared_ptr<Connection>
@@ -656,7 +652,7 @@ ConnectionPool::pickConnection(const std::string &domain) {
     if (poolIt == std::end(conns)) {
       Connections connections;
       for (size_t i = 0; i < maxConnectionsPerHost; ++i) {
-        connections.push_back(std::make_shared<Connection>());
+        connections.push_back(std::make_shared<Connection>(maxResponseSize));
       }
 
       poolIt =
@@ -780,6 +776,11 @@ Client::Options &Client::Options::maxConnectionsPerHost(int val) {
   return *this;
 }
 
+Client::Options &Client::Options::maxResponseSize(size_t val) {
+  maxResponseSize_ = val;
+  return *this;
+}
+
 Client::Client()
     : reactor_(Aio::Reactor::create()), pool(), transportKey(), ioIndex(0),
       queuesLock(), requestsQueues(), stopProcessPequestsQueues(false) {}
@@ -792,7 +793,7 @@ Client::~Client() {
 Client::Options Client::options() { return Client::Options(); }
 
 void Client::init(const Client::Options &options) {
-  pool.init(options.maxConnectionsPerHost_);
+  pool.init(options.maxConnectionsPerHost_, options.maxResponseSize_);
   reactor_->init(Aio::AsyncContext(options.threads_));
   transportKey = reactor_->addHandler(std::make_shared<Transport>());
   reactor_->run();

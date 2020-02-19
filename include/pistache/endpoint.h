@@ -149,6 +149,8 @@ private:
 
   std::shared_ptr<Handler> handler_;
   Tcp::Listener listener;
+  size_t maxRequestSize_ = Const::DefaultMaxRequestSize;
+  size_t maxResponseSize_ = Const::DefaultMaxResponseSize;
 };
 
 template <typename Handler>

@@ -11,7 +11,7 @@ using namespace Pistache;
 // @Todo: Add an easy to use fixture to inject data for parsing tests.
 
 TEST(http_parsing_test, should_parse_http_request_in_two_packets_issue_160) {
-  Http::Private::Parser<Http::Request> parser;
+  Http::Private::Parser<Http::Request> parser(Const::DefaultMaxRequestSize);
 
   auto feed = [&parser](const char *data) {
     parser.feed(data, std::strlen(data));

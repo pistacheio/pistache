@@ -66,10 +66,10 @@ public:
 template <typename CharT = char>
 class ArrayStreamBuf : public StreamBuf<CharT> {
 public:
-  typedef StreamBuf<CharT> Base;
-  static size_t maxSize;
+  using Base = StreamBuf<CharT>;
 
-  ArrayStreamBuf() : StreamBuf<CharT>(), bytes() {
+  explicit ArrayStreamBuf(size_t maxSize)
+      : StreamBuf<CharT>(), bytes(), maxSize(maxSize) {
     bytes.clear();
     Base::setg(bytes.data(), bytes.data(), bytes.data() + bytes.size());
   }
@@ -100,10 +100,8 @@ public:
 
 private:
   std::vector<CharT> bytes;
+  size_t maxSize = Const::MaxBuffer;
 };
-
-template <typename CharT>
-size_t ArrayStreamBuf<CharT>::maxSize = Const::DefaultMaxRequestSize;
 
 struct RawBuffer {
   RawBuffer();
@@ -135,37 +133,23 @@ private:
 
 class DynamicStreamBuf : public StreamBuf<char> {
 public:
-  typedef StreamBuf<char> Base;
-  typedef typename Base::traits_type traits_type;
-  typedef typename Base::int_type int_type;
+  using Base = StreamBuf<char>;
+  using traits_type = typename Base::traits_type;
+  using int_type = typename Base::int_type;
 
-  static size_t maxSize;
-
-  explicit DynamicStreamBuf(size_t size) : data_() { reserve(size); }
+  DynamicStreamBuf(size_t size, size_t maxSize);
 
   DynamicStreamBuf(const DynamicStreamBuf &other) = delete;
   DynamicStreamBuf &operator=(const DynamicStreamBuf &other) = delete;
 
-  DynamicStreamBuf(DynamicStreamBuf &&other) : data_(std::move(other.data_)) {
-    setp(other.pptr(), other.epptr());
-    other.setp(nullptr, nullptr);
-  }
+  DynamicStreamBuf(DynamicStreamBuf &&other);
+  DynamicStreamBuf &operator=(DynamicStreamBuf &&other);
 
-  DynamicStreamBuf &operator=(DynamicStreamBuf &&other) {
-    data_ = std::move(other.data_);
-    setp(other.pptr(), other.epptr());
-    other.setp(nullptr, nullptr);
-    return *this;
-  }
+  RawBuffer buffer() const;
 
-  RawBuffer buffer() const {
-    return RawBuffer(data_.data(), pptr() - data_.data());
-  }
+  void clear();
 
-  void clear() {
-    // reset stream buffer to the whole backing storage.
-    this->setp(data_.data(), data_.data() + data_.size());
-  }
+  size_t maxSize() const;
 
 protected:
   int_type overflow(int_type ch) override;
@@ -174,6 +158,7 @@ private:
   void reserve(size_t size);
 
   std::vector<char> data_;
+  size_t maxSize_ = Const::MaxBuffer;
 };
 
 class StreamCursor {

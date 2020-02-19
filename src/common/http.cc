@@ -464,7 +464,8 @@ State BodyStep::parseTransferEncoding(
   return State::Done;
 }
 
-ParserBase::ParserBase() : cursor(&buffer) {}
+ParserBase::ParserBase(size_t maxDataSize)
+    : buffer(maxDataSize), cursor(&buffer) {}
 
 State ParserBase::parse() {
   State state;
@@ -576,9 +577,10 @@ ResponseStream::ResponseStream(ResponseStream &&other)
 
 ResponseStream::ResponseStream(Message &&other, std::weak_ptr<Tcp::Peer> peer,
                                Tcp::Transport *transport, Timeout timeout,
-                               size_t streamSize)
-    : response_(std::move(other)), peer_(std::move(peer)), buf_(streamSize),
-      transport_(transport), timeout_(std::move(timeout)) {
+                               size_t streamSize, size_t maxResponseSize)
+    : response_(std::move(other)), peer_(std::move(peer)),
+      buf_(streamSize, maxResponseSize), transport_(transport),
+      timeout_(std::move(timeout)) {
   if (!writeStatusLine(response_.version(), response_.code(), buf_))
     throw Error("Response exceeded buffer size");
 
@@ -657,12 +659,14 @@ ResponseWriter::ResponseWriter(ResponseWriter &&other)
 
 ResponseWriter::ResponseWriter(Tcp::Transport *transport, Request request,
                                Handler *handler, std::weak_ptr<Tcp::Peer> peer)
-    : response_(request.version()), peer_(peer), buf_(DefaultStreamSize),
+    : response_(request.version()), peer_(peer),
+      buf_(DefaultStreamSize, handler->getMaxResponseSize()),
       transport_(transport),
       timeout_(transport, handler, std::move(request), peer), sent_bytes_(0) {}
 
 ResponseWriter::ResponseWriter(const ResponseWriter &other)
-    : response_(other.response_), peer_(other.peer_), buf_(DefaultStreamSize),
+    : response_(other.response_), peer_(other.peer_),
+      buf_(DefaultStreamSize, other.buf_.maxSize()),
       transport_(other.transport_), timeout_(other.timeout_), sent_bytes_(0) {}
 
 void ResponseWriter::setMime(const Mime::MediaType &mime) {
@@ -716,7 +720,7 @@ ResponseStream ResponseWriter::stream(Code code, size_t streamSize) {
   response_.code_ = code;
 
   return ResponseStream(std::move(response_), peer_, transport_,
-                        std::move(timeout_), streamSize);
+                        std::move(timeout_), streamSize, buf_.maxSize());
 }
 
 const CookieJar &ResponseWriter::cookies() const { return response_.cookies(); }
@@ -888,6 +892,29 @@ Async::Promise<ssize_t> serveFile(ResponseWriter &writer,
 #undef OUT
 }
 
+Private::Parser<Http::Request>::Parser(size_t maxDataSize)
+    : ParserBase(maxDataSize), request() {
+  allSteps[0].reset(new RequestLineStep(&request));
+  allSteps[1].reset(new HeadersStep(&request));
+  allSteps[2].reset(new BodyStep(&request));
+}
+
+void Private::Parser<Http::Request>::reset() {
+  ParserBase::reset();
+
+  request.headers_.clear();
+  request.body_.clear();
+  request.resource_.clear();
+  request.query_.clear();
+}
+
+Private::Parser<Http::Response>::Parser(size_t maxDataSize)
+    : ParserBase(maxDataSize), response() {
+  allSteps[0].reset(new ResponseLineStep(&response));
+  allSteps[1].reset(new HeadersStep(&response));
+  allSteps[2].reset(new BodyStep(&response));
+}
+
 void Handler::onInput(const char *buffer, size_t len,
                       const std::shared_ptr<Tcp::Peer> &peer) {
   auto &parser = getParser(peer);
@@ -936,7 +963,8 @@ void Handler::onInput(const char *buffer, size_t len,
 }
 
 void Handler::onConnection(const std::shared_ptr<Tcp::Peer> &peer) {
-  peer->putData(ParserData, std::make_shared<Private::Parser<Http::Request>>());
+  peer->putData(ParserData, std::make_shared<Private::Parser<Http::Request>>(
+                                maxRequestSize_));
 }
 
 void Handler::onDisconnection(const std::shared_ptr<Tcp::Peer> & /*peer*/) {}
@@ -968,6 +996,14 @@ void Timeout::onTimeout(uint64_t numWakeup) {
 
   handler->onTimeout(request, std::move(response));
 }
+
+void Handler::setMaxRequestSize(size_t value) { maxRequestSize_ = value; }
+
+size_t Handler::getMaxRequestSize() const { return maxRequestSize_; }
+
+void Handler::setMaxResponseSize(size_t value) { maxResponseSize_ = value; }
+
+size_t Handler::getMaxResponseSize() const { return maxResponseSize_; }
 
 Private::Parser<Http::Request> &
 Handler::getParser(const std::shared_ptr<Tcp::Peer> &peer) const {

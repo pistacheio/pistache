@@ -24,13 +24,20 @@
 namespace Pistache {
 namespace Http {
 
+namespace Default {
+constexpr int Threads = 1;
+constexpr int MaxConnectionsPerHost = 8;
+constexpr bool KeepAlive = true;
+constexpr size_t MaxResponseSize = std::numeric_limits<uint32_t>::max();
+} // namespace Default
+
 class Transport;
 
 struct Connection : public std::enable_shared_from_this<Connection> {
 
   using OnDone = std::function<void()>;
 
-  Connection();
+  explicit Connection(size_t maxResponseSize);
 
   struct RequestData {
 
@@ -103,9 +110,9 @@ private:
 
 class ConnectionPool {
 public:
-  ConnectionPool() : connsLock(), conns(), maxConnectionsPerHost() {}
+  ConnectionPool() = default;
 
-  void init(size_t maxConnsPerHost);
+  void init(size_t maxConnsPerHost, size_t maxResponseSize);
 
   std::shared_ptr<Connection> pickConnection(const std::string &domain);
   static void releaseConnection(const std::shared_ptr<Connection> &connection);
@@ -125,13 +132,8 @@ private:
   mutable Lock connsLock;
   std::unordered_map<std::string, Connections> conns;
   size_t maxConnectionsPerHost;
+  size_t maxResponseSize;
 };
-
-namespace Default {
-constexpr int Threads = 1;
-constexpr int MaxConnectionsPerHost = 8;
-constexpr bool KeepAlive = true;
-} // namespace Default
 
 class Client;
 
@@ -175,16 +177,19 @@ public:
     Options()
         : threads_(Default::Threads),
           maxConnectionsPerHost_(Default::MaxConnectionsPerHost),
-          keepAlive_(Default::KeepAlive) {}
+          keepAlive_(Default::KeepAlive),
+          maxResponseSize_(Default::MaxResponseSize) {}
 
     Options &threads(int val);
     Options &keepAlive(bool val);
     Options &maxConnectionsPerHost(int val);
+    Options &maxResponseSize(size_t val);
 
   private:
     int threads_;
     int maxConnectionsPerHost_;
     bool keepAlive_;
+    size_t maxResponseSize_;
   };
 
   Client();
