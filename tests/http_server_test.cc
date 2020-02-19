@@ -404,7 +404,7 @@ TEST(http_server_test, response_size_captured) {
   ASSERT_EQ("127.0.0.1", resultData);
 
   std::cout << "Response size is " << rsize << "\n";
-  ASSERT_GT(rsize, 1);
-  ASSERT_LT(rsize, 300);
+  ASSERT_GT(rsize, 1u);
+  ASSERT_LT(rsize, 300u);
   ASSERT_EQ(rcode, Http::Code::Ok);
 }
