@@ -170,10 +170,6 @@ void Listener::bind(const Address &address) {
     throw std::runtime_error(strerror(errno));
   }
 
-  if (fd == -1) {
-    throw SocketError(strerror(errno));
-  }
-
   make_non_blocking(fd);
   poller.addFd(fd, Flags<Polling::NotifyOn>(Polling::NotifyOn::Read),
                Polling::Tag(fd));
