@@ -73,13 +73,14 @@ TEST(http_client_test, basic_tls_request) {
   curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 
   res = curl_easy_perform(curl);
-  ASSERT_EQ(res, CURLE_OK);
-  ASSERT_EQ(buffer, "Hello, World!");
 
   curl_easy_cleanup(curl);
   curl_global_cleanup();
 
   server.shutdown();
+
+  ASSERT_EQ(res, CURLE_OK);
+  ASSERT_EQ(buffer, "Hello, World!");
 }
 
 TEST(http_client_test, basic_tls_request_with_auth) {
@@ -115,13 +116,14 @@ TEST(http_client_test, basic_tls_request_with_auth) {
   curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 
   res = curl_easy_perform(curl);
-  ASSERT_EQ(res, CURLE_OK);
-  ASSERT_EQ(buffer, "Hello, World!");
 
   curl_easy_cleanup(curl);
   curl_global_cleanup();
 
   server.shutdown();
+
+  ASSERT_EQ(res, CURLE_OK);
+  ASSERT_EQ(buffer, "Hello, World!");
 }
 
 TEST(http_client_test, basic_tls_request_with_auth_no_client_cert) {
@@ -155,12 +157,13 @@ TEST(http_client_test, basic_tls_request_with_auth_no_client_cert) {
   curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 
   res = curl_easy_perform(curl);
-  ASSERT_NE(res, CURLE_OK);
 
   curl_easy_cleanup(curl);
   curl_global_cleanup();
 
   server.shutdown();
+
+  ASSERT_NE(res, CURLE_OK);
 }
 
 TEST(http_client_test, basic_tls_request_with_auth_client_cert_not_signed) {
@@ -196,12 +199,13 @@ TEST(http_client_test, basic_tls_request_with_auth_client_cert_not_signed) {
   curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 
   res = curl_easy_perform(curl);
-  ASSERT_NE(res, CURLE_OK);
 
   curl_easy_cleanup(curl);
   curl_global_cleanup();
 
   server.shutdown();
+
+  ASSERT_NE(res, CURLE_OK);
 }
 
 static bool callback_called = false;
@@ -246,15 +250,16 @@ TEST(http_client_test, basic_tls_request_with_auth_with_cb) {
   curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 
   res = curl_easy_perform(curl);
-  ASSERT_EQ(res, CURLE_OK);
-  ASSERT_EQ(buffer, "Hello, World!");
-  ASSERT_EQ(callback_called, true);
 
   curl_easy_cleanup(curl);
   curl_global_cleanup();
-  callback_called = false;
 
   server.shutdown();
+
+  ASSERT_EQ(res, CURLE_OK);
+  ASSERT_EQ(buffer, "Hello, World!");
+  ASSERT_EQ(callback_called, true);
+  callback_called = false;
 }
 
 TEST(http_client_test, basic_tls_request_with_servefile) {
@@ -291,14 +296,15 @@ TEST(http_client_test, basic_tls_request_with_servefile) {
 
   res = curl_easy_perform(curl);
 
-  if (res != CURLE_OK)
+  if (res != CURLE_OK) {
     std::cerr << errorstring.data() << std::endl;
-
-  ASSERT_EQ(res, CURLE_OK);
-  ASSERT_EQ(buffer.rfind("-----BEGIN CERTIFICATE-----", 0), 0);
+  }
 
   curl_easy_cleanup(curl);
   curl_global_cleanup();
 
   server.shutdown();
+
+  ASSERT_EQ(res, CURLE_OK);
+  ASSERT_EQ(buffer.rfind("-----BEGIN CERTIFICATE-----", 0), 0u);
 }
