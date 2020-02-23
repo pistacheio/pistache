@@ -16,7 +16,9 @@ using namespace Pistache;
 struct HelloHandlerWithDelay : public Http::Handler {
   HTTP_PROTOTYPE(HelloHandlerWithDelay)
 
-  explicit HelloHandlerWithDelay(int delay = 0) : delay_(delay) {}
+  explicit HelloHandlerWithDelay(int delay = 0) : delay_(delay) {
+    std::cout << "Init Hello handler with " << delay_ << " seconds delay\n";
+  }
 
   void onRequest(const Http::Request & /*request*/,
                  Http::ResponseWriter writer) override {
@@ -187,11 +189,12 @@ TEST(http_server_test, multiple_client_with_requests_to_multithreaded_server) {
   auto flags = Tcp::Options::ReuseAddr;
   auto server_opts = Http::Endpoint::options().flags(flags).threads(3);
   server.init(server_opts);
+  std::cout << "Trying to run server...\n";
   server.setHandler(Http::make_handler<HelloHandlerWithDelay>());
-  server.serveThreaded();
+  ASSERT_NO_THROW(server.serveThreaded());
 
   const std::string server_address = "localhost:" + server.getPort().toString();
-  std::cout << "Server address: " << server_address << "\n";
+  std::cout << "Server is running: " << server_address << "\n";
 
   const int NO_TIMEOUT = 0;
   const int SIX_SECONDS_TIMOUT = 6;

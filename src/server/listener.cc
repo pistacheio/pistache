@@ -315,7 +315,7 @@ void Listener::handleNewConnection() {
 #ifdef PISTACHE_USE_SSL
   if (this->useSSL_) {
 
-    SSL* ssl_data = SSL_new((SSL_CTX *)this->ssl_ctx_);
+    SSL *ssl_data = SSL_new((SSL_CTX *)this->ssl_ctx_);
     if (ssl_data == nullptr) {
       close(client_fd);
       throw std::runtime_error("Cannot create SSL connection");
@@ -330,7 +330,7 @@ void Listener::handleNewConnection() {
       close(client_fd);
       return;
     }
-    ssl = static_cast<void*>(ssl_data);
+    ssl = static_cast<void *>(ssl_data);
   }
 #endif /* PISTACHE_USE_SSL */
 
@@ -391,7 +391,7 @@ static SSL_CTX *ssl_create_context(const std::string &cert,
     }
   }
 
-  /* Function introduced in 1.0.2 */
+/* Function introduced in 1.0.2 */
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
   SSL_CTX_set_ecdh_auto(ctx, 1);
 #endif /* OPENSSL_VERSION_NUMBER */
@@ -438,13 +438,13 @@ void Listener::setupSSLAuth(const std::string &ca_file,
   SSL_CTX_set_verify((SSL_CTX *)this->ssl_ctx_,
                      SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT |
                          SSL_VERIFY_CLIENT_ONCE,
-  /* Callback type did change in 1.0.1 */
+/* Callback type did change in 1.0.1 */
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
                      (int (*)(int, X509_STORE_CTX *))cb
 #else
                      (SSL_verify_cb)cb
 #endif /* OPENSSL_VERSION_NUMBER */
-  );
+                     );
 }
 
 void Listener::setupSSL(const std::string &cert_path,
