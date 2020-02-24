@@ -105,7 +105,7 @@ private:
   Queue<RequestData> requestsQueue;
 
   TimerPool timerPool_;
-  Private::Parser<Http::Response> parser;
+  ResponseParser parser;
 };
 
 class ConnectionPool {

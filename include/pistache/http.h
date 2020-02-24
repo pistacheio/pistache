@@ -23,13 +23,15 @@
 #include <pistache/http_headers.h>
 #include <pistache/mime.h>
 #include <pistache/net.h>
-#include <pistache/peer.h>
 #include <pistache/stream.h>
 #include <pistache/tcp.h>
 #include <pistache/transport.h>
 #include <pistache/view.h>
 
 namespace Pistache {
+namespace Tcp {
+class Peer;
+}
 namespace Http {
 
 namespace details {
@@ -49,7 +51,6 @@ template <typename P> struct IsHttpPrototype {
   typedef Pistache::Http::details::prototype_tag tag;
 
 namespace Private {
-template <typename T> class Parser;
 class RequestLineStep;
 class ResponseLineStep;
 class HeadersStep;
@@ -148,7 +149,6 @@ private:
 class Request : public Message {
 public:
   friend class Private::RequestLineStep;
-  friend class Private::Parser<Http::Request>;
 
   friend class RequestBuilder;
 
@@ -165,14 +165,14 @@ public:
 
   const Uri::Query &query() const;
 
-  /* @Investigate: this is disabled because of a lock in the shared_ptr /
-     weak_ptr implementation of libstdc++. Under contention, we experience a
-     performance drop of 5x with that lock
+/* @Investigate: this is disabled because of a lock in the shared_ptr /
+   weak_ptr implementation of libstdc++. Under contention, we experience a
+   performance drop of 5x with that lock
 
-      If this turns out to be a problem, we might be able to replace the
-     weak_ptr trick to detect peer disconnection by a plain old "observer"
-     pointer to a tcp connection with a "stale" state
-  */
+   If this turns out to be a problem, we might be able to replace the
+   weak_ptr trick to detect peer disconnection by a plain old "observer"
+   pointer to a tcp connection with a "stale" state
+*/
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
   std::shared_ptr<Tcp::Peer> peer() const;
 #endif
@@ -330,7 +330,6 @@ inline ResponseStream &operator<<(ResponseStream &stream,
 class Response : public Message {
 public:
   friend class Private::ResponseLineStep;
-  friend class Private::Parser<Http::Response>;
 
   Response() = default;
   explicit Response(Version version);
@@ -542,26 +541,30 @@ private:
   StreamCursor cursor;
 };
 
-template <typename Message> class Parser;
+template <typename Message> class ParserImpl;
 
-template <> class Parser<Http::Request> : public ParserBase {
+template <> class ParserImpl<Http::Request> : public ParserBase {
 
 public:
-  explicit Parser(size_t maxDataSize);
+  explicit ParserImpl(size_t maxDataSize);
 
   void reset() override;
 
   Request request;
 };
 
-template <> class Parser<Http::Response> : public ParserBase {
+template <> class ParserImpl<Http::Response> : public ParserBase {
 public:
-  explicit Parser(size_t maxDataSize);
+  explicit ParserImpl(size_t maxDataSize);
 
   Response response;
 };
 
 } // namespace Private
+
+using Parser = Private::ParserBase;
+using RequestParser = Private::ParserImpl<Http::Request>;
+using ResponseParser = Private::ParserImpl<Http::Response>;
 
 class Handler : public Tcp::Handler {
 public:
@@ -583,8 +586,7 @@ public:
   virtual ~Handler() override {}
 
 private:
-  Private::Parser<Http::Request> &
-  getParser(const std::shared_ptr<Tcp::Peer> &peer) const;
+  RequestParser &getParser(const std::shared_ptr<Tcp::Peer> &peer) const;
 
 private:
   size_t maxRequestSize_ = Const::DefaultMaxRequestSize;
