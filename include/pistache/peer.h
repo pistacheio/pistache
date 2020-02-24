@@ -12,6 +12,7 @@
 #include <unordered_map>
 
 #include <pistache/async.h>
+#include <pistache/http.h>
 #include <pistache/net.h>
 #include <pistache/os.h>
 #include <pistache/stream.h>
@@ -23,11 +24,6 @@
 #endif /* PISTACHE_USE_SSL */
 
 namespace Pistache {
-namespace Http {
-namespace Private {
-class ParserBase;
-}
-} // namespace Http
 namespace Tcp {
 
 class Transport;
@@ -47,12 +43,9 @@ public:
 
   void *ssl() const;
 
-  void putData(std::string name,
-               std::shared_ptr<Pistache::Http::Private::ParserBase> data);
-  std::shared_ptr<Pistache::Http::Private::ParserBase>
-  getData(std::string name) const;
-  std::shared_ptr<Pistache::Http::Private::ParserBase>
-  tryGetData(std::string name) const;
+  void putData(std::string name, std::shared_ptr<Http::Parser> data);
+  std::shared_ptr<Http::Parser> getData(std::string name) const;
+  std::shared_ptr<Http::Parser> tryGetData(std::string name) const;
 
   Async::Promise<ssize_t> send(const RawBuffer &buffer, int flags = 0);
 
@@ -68,9 +61,7 @@ private:
   Address addr;
 
   std::string hostname_;
-  std::unordered_map<std::string,
-                     std::shared_ptr<Pistache::Http::Private::ParserBase>>
-      data_;
+  std::unordered_map<std::string, std::shared_ptr<Http::Parser>> data_;
 
   void *ssl_ = nullptr;
 };

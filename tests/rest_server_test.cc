@@ -8,6 +8,7 @@
 
 #include <pistache/endpoint.h>
 #include <pistache/http.h>
+#include <pistache/peer.h>
 #include <pistache/router.h>
 
 #include "httplib.h"

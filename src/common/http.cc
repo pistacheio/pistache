@@ -797,10 +797,8 @@ Async::Promise<ssize_t> ResponseWriter::putOnWire(const char *data,
         .then<std::function<Async::Promise<ssize_t>(int)>,
               std::function<void(std::exception_ptr &)>>(
             [=](int /*l*/) {
-              return Async::Promise<ssize_t>(
-                  [=](Async::Deferred<ssize_t> /*deferred*/) mutable {
-                    return;
-                  });
+              return Async::Promise<ssize_t>([=](
+                  Async::Deferred<ssize_t> /*deferred*/) mutable { return; });
             },
 
             [=](std::exception_ptr &eptr) {
@@ -892,23 +890,20 @@ Async::Promise<ssize_t> serveFile(ResponseWriter &writer,
 #undef OUT
 }
 
-Private::Parser<Http::Request>::Parser(size_t maxDataSize)
+Private::ParserImpl<Http::Request>::ParserImpl(size_t maxDataSize)
     : ParserBase(maxDataSize), request() {
   allSteps[0].reset(new RequestLineStep(&request));
   allSteps[1].reset(new HeadersStep(&request));
   allSteps[2].reset(new BodyStep(&request));
 }
 
-void Private::Parser<Http::Request>::reset() {
+void Private::ParserImpl<Http::Request>::reset() {
   ParserBase::reset();
 
-  request.headers_.clear();
-  request.body_.clear();
-  request.resource_.clear();
-  request.query_.clear();
+  request = Request();
 }
 
-Private::Parser<Http::Response>::Parser(size_t maxDataSize)
+Private::ParserImpl<Http::Response>::ParserImpl(size_t maxDataSize)
     : ParserBase(maxDataSize), response() {
   allSteps[0].reset(new ResponseLineStep(&response));
   allSteps[1].reset(new HeadersStep(&response));
@@ -963,8 +958,7 @@ void Handler::onInput(const char *buffer, size_t len,
 }
 
 void Handler::onConnection(const std::shared_ptr<Tcp::Peer> &peer) {
-  peer->putData(ParserData, std::make_shared<Private::Parser<Http::Request>>(
-                                maxRequestSize_));
+  peer->putData(ParserData, std::make_shared<RequestParser>(maxRequestSize_));
 }
 
 void Handler::onDisconnection(const std::shared_ptr<Tcp::Peer> & /*peer*/) {}
@@ -1005,10 +999,9 @@ void Handler::setMaxResponseSize(size_t value) { maxResponseSize_ = value; }
 
 size_t Handler::getMaxResponseSize() const { return maxResponseSize_; }
 
-Private::Parser<Http::Request> &
+RequestParser &
 Handler::getParser(const std::shared_ptr<Tcp::Peer> &peer) const {
-  return static_cast<Private::Parser<Http::Request> &>(
-      *peer->getData(ParserData));
+  return static_cast<RequestParser &>(*peer->getData(ParserData));
 }
 
 } // namespace Http

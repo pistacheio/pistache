@@ -11,7 +11,7 @@ using namespace Pistache;
 // @Todo: Add an easy to use fixture to inject data for parsing tests.
 
 TEST(http_parsing_test, should_parse_http_request_in_two_packets_issue_160) {
-  Http::Private::Parser<Http::Request> parser(Const::DefaultMaxRequestSize);
+  Http::RequestParser parser(Const::DefaultMaxRequestSize);
 
   auto feed = [&parser](const char *data) {
     parser.feed(data, std::strlen(data));
@@ -36,6 +36,36 @@ TEST(http_parsing_test, should_parse_http_request_in_two_packets_issue_160) {
   // Finally, we finish the body
   feed("HELLO");
   ASSERT_EQ(parser.parse(), Http::Private::State::Done);
+}
+
+TEST(http_parsing_test, parser_reset) {
+  Http::RequestParser parser(Const::DefaultMaxRequestSize);
+
+  auto feed = [&parser](const char *data) {
+    parser.feed(data, std::strlen(data));
+  };
+
+  feed("GET /hello?parameter=value HTTP/1.1\r\n");
+  feed("User-Agent: Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, "
+       "like Gecko) Chrome/41.0.2228.0 Safari/537.36\r\n");
+  feed("Host: localhost\r\n");
+  feed("Content-Length: 5\r\n");
+  feed("\r\n");
+  feed("HELLO");
+
+  ASSERT_EQ(parser.parse(), Http::Private::State::Done);
+
+  ASSERT_EQ(parser.request.query().as_str(), "?parameter=value");
+  ASSERT_EQ(parser.request.resource(), "/hello");
+  ASSERT_EQ(parser.request.headers().list().size(), 3u);
+  ASSERT_EQ(parser.request.body(), "HELLO");
+
+  parser.reset();
+
+  ASSERT_EQ(parser.request.query().as_str(), "");
+  ASSERT_EQ(parser.request.resource(), "");
+  ASSERT_EQ(parser.request.headers().list().size(), 0u);
+  ASSERT_EQ(parser.request.body(), "");
 }
 
 TEST(http_parsing_test, succ_response_line_step) {

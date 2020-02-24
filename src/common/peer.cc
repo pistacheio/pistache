@@ -75,8 +75,7 @@ int Peer::fd() const {
   return fd_;
 }
 
-void Peer::putData(std::string name,
-                   std::shared_ptr<Pistache::Http::Private::ParserBase> data) {
+void Peer::putData(std::string name, std::shared_ptr<Http::Parser> data) {
   auto it = data_.find(name);
   if (it != std::end(data_)) {
     throw std::runtime_error("The data already exists");
@@ -85,8 +84,7 @@ void Peer::putData(std::string name,
   data_.insert(std::make_pair(std::move(name), std::move(data)));
 }
 
-std::shared_ptr<Pistache::Http::Private::ParserBase>
-Peer::getData(std::string name) const {
+std::shared_ptr<Http::Parser> Peer::getData(std::string name) const {
   auto data = tryGetData(std::move(name));
   if (data == nullptr) {
     throw std::runtime_error("The data does not exist");
@@ -95,8 +93,7 @@ Peer::getData(std::string name) const {
   return data;
 }
 
-std::shared_ptr<Pistache::Http::Private::ParserBase>
-Peer::tryGetData(std::string(name)) const {
+std::shared_ptr<Http::Parser> Peer::tryGetData(std::string(name)) const {
   auto it = data_.find(name);
   if (it == std::end(data_))
     return nullptr;
