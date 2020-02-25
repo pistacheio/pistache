@@ -125,12 +125,12 @@ public:
   }
 
   template <typename U>
-  explicit Optional(types::Some<U> some) : none_flag(NoneMarker) {
+  Optional(types::Some<U> some) : none_flag(NoneMarker) {
     static_assert(std::is_same<T, U>::value || std::is_convertible<U, T>::value,
                   "Types mismatch");
     from_some_helper(std::move(some), types::is_move_constructible<U>());
   }
-  explicit Optional(types::None) { none_flag = NoneMarker; }
+  Optional(types::None) { none_flag = NoneMarker; }
 
   template <typename U> Optional<T> &operator=(types::Some<U> some) {
     static_assert(std::is_same<T, U>::value || std::is_convertible<U, T>::value,
