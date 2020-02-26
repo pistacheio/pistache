@@ -80,7 +80,7 @@ To [use](https://autotools.io/pkgconfig/pkg_check_modules.html) with the GNU Aut
 ## CMake
 To use with a CMake build environment, use the [FindPkgConfig](https://cmake.org/cmake/help/latest/module/FindPkgConfig.html) module. Here is an example:
 
-```
+```cmake
     cmake_minimum_required(2.8 FATAL_ERROR)
     project("MyPistacheProject")
     
