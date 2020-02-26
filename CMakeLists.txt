@@ -39,6 +39,7 @@ if (PISTACHE_BUILD_TESTS)
                 "-DCPPCHECK"
                 "--suppress=*:${PROJECT_SOURCE_DIR}/third-party*"
                 "--suppress=*:${PROJECT_SOURCE_DIR}/tests*"
+                "--suppress=noExplicitConstructor:include/pistache/optional.h"
         )
     else()
         message("-- Cppcheck not found")
