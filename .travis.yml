@@ -114,6 +114,9 @@ before_script:
     -DPISTACHE_USE_SSL=true
 
 script:
+  # Set the ulimit
+  - ulimit -c unlimited -S
+
   # Debug build
   - cd Build-Debug
   - make -j 2 all test ARGS="-V"
