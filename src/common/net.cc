@@ -20,24 +20,41 @@
 namespace Pistache {
 
 namespace {
-bool IsIPv4HostName(const std::string &host) {
+IP GetIPv4(const std::string &host) {
   in_addr addr;
-  char buff[INET_ADDRSTRLEN + 1] = {
-      0,
-  };
-  std::copy(host.begin(), host.end(), buff);
-  int res = inet_pton(AF_INET, buff, &addr);
-  return res;
+  int res = inet_pton(AF_INET, host.c_str(), &addr);
+  if (res == 0) {
+      throw std::invalid_argument("Invalid IPv4 network address");
+  } else if (res < 0) {
+      throw std::invalid_argument(strerror(errno));
+  } else {
+    struct sockaddr_in s_addr = {0};
+    s_addr.sin_family = AF_INET;
+
+    static_assert(sizeof(s_addr.sin_addr.s_addr) >= sizeof(uint32_t));
+    memcpy(&(s_addr.sin_addr.s_addr), &addr.s_addr, sizeof(uint32_t));
+
+    return IP(reinterpret_cast<struct sockaddr *>(&s_addr));
+  }
 }
 
-bool IsIPv6HostName(const std::string &host) {
+IP GetIPv6(const std::string &host) {
   in6_addr addr6;
-  char buff6[INET6_ADDRSTRLEN + 1] = {
-      0,
-  };
-  std::copy(host.begin(), host.end(), buff6);
-  int res = inet_pton(AF_INET6, buff6, &(addr6.s6_addr16));
-  return res;
+  int res = inet_pton(AF_INET6, host.c_str(), &(addr6.s6_addr16));
+  if (res == 0) {
+      throw std::invalid_argument("Invalid IPv6 network address");
+  } else if (res < 0) {
+      throw std::invalid_argument(strerror(errno));
+  } else {
+  struct sockaddr_in6 s_addr = {0};
+  s_addr.sin6_family = AF_INET6;
+
+  static_assert(sizeof(s_addr.sin6_addr.s6_addr16) >= 8 * sizeof(uint16_t));
+  memcpy(&(s_addr.sin6_addr.s6_addr16), &addr6.s6_addr16,
+         8 * sizeof(uint16_t));
+
+  return IP(reinterpret_cast<struct sockaddr *>(&s_addr));
+  }
 }
 } // namespace
 
@@ -267,17 +284,7 @@ void Address::init(const std::string &addr) {
     assert(raw_host.size() > 2);
     host_ = addr.substr(1, raw_host.size() - 2);
 
-    if (!IsIPv6HostName(host_)) {
-      throw std::invalid_argument("Invalid IPv6 address");
-    }
-
-    struct in6_addr addr;
-    inet_pton(AF_INET6, host_.c_str(), &addr);
-    struct sockaddr_in6 s_addr = {0};
-    s_addr.sin6_family = AF_INET6;
-    memcpy(&(s_addr.sin6_addr.s6_addr16), &addr.s6_addr16,
-           8 * sizeof(uint16_t));
-    ip_ = IP(reinterpret_cast<struct sockaddr *>(&s_addr));
+    ip_ = GetIPv6(host_);
   } else if (family_ == AF_INET) {
     host_ = parser.rawHost();
 
@@ -290,25 +297,14 @@ void Address::init(const std::string &addr) {
     struct hostent *hp = ::gethostbyname(host_.c_str());
 
     if (hp) {
-      struct in_addr **addr_list;
-      addr_list = (struct in_addr **)hp->h_addr_list;
-      for (int i = 0; addr_list[i] != NULL; i++) {
-        // Just take the first IP address
-        host_ = std::string(inet_ntoa(*addr_list[i]));
-        break;
-      }
+        char **addr = hp->h_addr_list;
+        while (*addr) {
+            host_ = std::string(inet_ntoa(*reinterpret_cast<struct in_addr *>(*addr)));
+            break;
+        }
     }
 
-    if (!IsIPv4HostName(host_)) {
-      throw std::invalid_argument("Invalid IPv4 address");
-    }
-
-    struct in_addr addr;
-    inet_pton(AF_INET, host_.c_str(), &addr);
-    struct sockaddr_in s_addr = {0};
-    s_addr.sin_family = AF_INET;
-    memcpy(&(s_addr.sin_addr.s_addr), &addr.s_addr, sizeof(uint32_t));
-    ip_ = IP(reinterpret_cast<struct sockaddr *>(&s_addr));
+    ip_ = GetIPv4(host_);
   } else {
     assert(false);
   }
