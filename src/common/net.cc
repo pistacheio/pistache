@@ -24,9 +24,9 @@ IP GetIPv4(const std::string &host) {
   in_addr addr;
   int res = inet_pton(AF_INET, host.c_str(), &addr);
   if (res == 0) {
-      throw std::invalid_argument("Invalid IPv4 network address");
+    throw std::invalid_argument("Invalid IPv4 network address");
   } else if (res < 0) {
-      throw std::invalid_argument(strerror(errno));
+    throw std::invalid_argument(strerror(errno));
   } else {
     struct sockaddr_in s_addr = {0};
     s_addr.sin_family = AF_INET;
@@ -42,18 +42,18 @@ IP GetIPv6(const std::string &host) {
   in6_addr addr6;
   int res = inet_pton(AF_INET6, host.c_str(), &(addr6.s6_addr16));
   if (res == 0) {
-      throw std::invalid_argument("Invalid IPv6 network address");
+    throw std::invalid_argument("Invalid IPv6 network address");
   } else if (res < 0) {
-      throw std::invalid_argument(strerror(errno));
+    throw std::invalid_argument(strerror(errno));
   } else {
-  struct sockaddr_in6 s_addr = {0};
-  s_addr.sin6_family = AF_INET6;
+    struct sockaddr_in6 s_addr = {0};
+    s_addr.sin6_family = AF_INET6;
 
-  static_assert(sizeof(s_addr.sin6_addr.s6_addr16) >= 8 * sizeof(uint16_t));
-  memcpy(&(s_addr.sin6_addr.s6_addr16), &addr6.s6_addr16,
-         8 * sizeof(uint16_t));
+    static_assert(sizeof(s_addr.sin6_addr.s6_addr16) >= 8 * sizeof(uint16_t));
+    memcpy(&(s_addr.sin6_addr.s6_addr16), &addr6.s6_addr16,
+           8 * sizeof(uint16_t));
 
-  return IP(reinterpret_cast<struct sockaddr *>(&s_addr));
+    return IP(reinterpret_cast<struct sockaddr *>(&s_addr));
   }
 }
 } // namespace
@@ -297,11 +297,12 @@ void Address::init(const std::string &addr) {
     struct hostent *hp = ::gethostbyname(host_.c_str());
 
     if (hp) {
-        char **addr = hp->h_addr_list;
-        while (*addr) {
-            host_ = std::string(inet_ntoa(*reinterpret_cast<struct in_addr *>(*addr)));
-            break;
-        }
+      char **addr = hp->h_addr_list;
+      while (*addr) {
+        host_ =
+            std::string(inet_ntoa(*reinterpret_cast<struct in_addr *>(*addr)));
+        break;
+      }
     }
 
     ip_ = GetIPv4(host_);
