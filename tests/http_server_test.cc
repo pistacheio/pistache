@@ -136,6 +136,8 @@ TEST(http_server_test,
   auto flags = Tcp::Options::ReuseAddr;
   auto server_opts = Http::Endpoint::options().flags(flags);
   server.init(server_opts);
+
+  std::cout << "Trying to run server...\n";
   const int ONE_SECOND_TIMEOUT = 1;
   const int SIX_SECONDS_DELAY = 6;
   server.setHandler(
@@ -164,6 +166,7 @@ TEST(
   auto server_opts = Http::Endpoint::options().flags(flags);
   server.init(server_opts);
 
+  std::cout << "Trying to run server...\n";
   const int ONE_SECOND_TIMEOUT = 1;
   const int SIX_SECONDS_DELAY = 6;
   server.setHandler(
