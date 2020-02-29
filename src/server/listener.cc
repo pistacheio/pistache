@@ -133,6 +133,7 @@ void Listener::bind(const Address &address) {
   addr_ = address;
 
   struct addrinfo hints;
+  memset(&hints, 0, sizeof(struct addrinfo));
   hints.ai_family = address.family();
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;
