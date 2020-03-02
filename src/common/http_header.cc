@@ -285,130 +285,124 @@ void ContentLength::parse(const std::string &data) {
 void ContentLength::write(std::ostream &os) const { os << value_; }
 
 // What type of authorization method was used?
-Authorization::Method Authorization::getMethod() const noexcept
-{
-    // Basic...
-    if(hasMethod<Method::Basic>())
-        return Method::Basic;
+Authorization::Method Authorization::getMethod() const noexcept {
+  // Basic...
+  if (hasMethod<Method::Basic>())
+    return Method::Basic;
 
-    // Bearer...
-    else if(hasMethod<Method::Bearer>())
-        return Method::Bearer;
+  // Bearer...
+  else if (hasMethod<Method::Bearer>())
+    return Method::Bearer;
 
-    // Unknown...
-    else
-        return Method::Unknown;
+  // Unknown...
+  else
+    return Method::Unknown;
 }
 
 // Authorization is basic method...
 template <>
-bool Authorization::hasMethod<Authorization::Method::Basic>() const noexcept
-{
-    // Method should begin with "Basic: "
-    if(value().rfind("Basic ", 0) == std::string::npos)
-        return false;
+bool Authorization::hasMethod<Authorization::Method::Basic>() const noexcept {
+  // Method should begin with "Basic: "
+  if (value().rfind("Basic ", 0) == std::string::npos)
+    return false;
 
-    // Verify value is long enough to contain basic method's credentials...
-    if(value().length() <= std::string("Basic ").length())
-        return false;
+  // Verify value is long enough to contain basic method's credentials...
+  if (value().length() <= std::string("Basic ").length())
+    return false;
 
-    // Looks good...
-    return true;
+  // Looks good...
+  return true;
 }
 
 // Authorization is bearer method...
 template <>
-bool Authorization::hasMethod<Authorization::Method::Bearer>() const noexcept
-{
-    // Method should begin with "Bearer: "
-    if(value().rfind("Bearer ", 0) == std::string::npos)
-        return false;
+bool Authorization::hasMethod<Authorization::Method::Bearer>() const noexcept {
+  // Method should begin with "Bearer: "
+  if (value().rfind("Bearer ", 0) == std::string::npos)
+    return false;
 
-    // Verify value is long enough to contain basic method's credentials...
-    if(value().length() <= std::string("Bearer ").length())
-        return false;
+  // Verify value is long enough to contain basic method's credentials...
+  if (value().length() <= std::string("Bearer ").length())
+    return false;
 
-    // Looks good...
-    return true;
+  // Looks good...
+  return true;
 }
 
 // Get decoded user ID if basic method was used...
-std::string Authorization::getBasicUser() const
-{
-    // Verify basic authorization method was used...
-    if(!hasMethod<Authorization::Method::Basic>())
-        throw std::runtime_error("Authorization header does not use Basic method.");
+std::string Authorization::getBasicUser() const {
+  // Verify basic authorization method was used...
+  if (!hasMethod<Authorization::Method::Basic>())
+    throw std::runtime_error("Authorization header does not use Basic method.");
 
-    // Extract encoded credentials...
-    const std::string EncodedCredentials(
-        value_.begin() + std::string("Basic ").length(), value_.end());
+  // Extract encoded credentials...
+  const std::string EncodedCredentials(
+      value_.begin() + std::string("Basic ").length(), value_.end());
 
-    // Decode them...
-    Base64Decoder Decoder(EncodedCredentials);
-    const std::vector<std::byte> &BinaryDecodedCredentials = Decoder.Decode();
+  // Decode them...
+  Base64Decoder Decoder(EncodedCredentials);
+  const std::vector<std::byte> &BinaryDecodedCredentials = Decoder.Decode();
 
-    // Transform to string...
-    std::string DecodedCredentials;
-    for(std::byte CurrentByte : BinaryDecodedCredentials)
-        DecodedCredentials.push_back(static_cast<char>(CurrentByte));
+  // Transform to string...
+  std::string DecodedCredentials;
+  for (std::byte CurrentByte : BinaryDecodedCredentials)
+    DecodedCredentials.push_back(static_cast<char>(CurrentByte));
 
-    // Find user ID and password delimiter...
-    const auto Delimiter = DecodedCredentials.find_first_of(':');
+  // Find user ID and password delimiter...
+  const auto Delimiter = DecodedCredentials.find_first_of(':');
 
-        // None detected. Assume this is a malformed header...
-        if(Delimiter == std::string::npos)
-            return std::string();
+  // None detected. Assume this is a malformed header...
+  if (Delimiter == std::string::npos)
+    return std::string();
 
-    // Extract and return just the user ID...
-    return std::string(
-        DecodedCredentials.begin(), DecodedCredentials.begin() + Delimiter);
+  // Extract and return just the user ID...
+  return std::string(DecodedCredentials.begin(),
+                     DecodedCredentials.begin() + Delimiter);
 }
 
 // Get decoded password if basic method was used...
-std::string Authorization::getBasicPassword() const
-{
-    // Verify basic authorization method was used...
-    if(!hasMethod<Authorization::Method::Basic>())
-        throw std::runtime_error("Authorization header does not use Basic method.");
+std::string Authorization::getBasicPassword() const {
+  // Verify basic authorization method was used...
+  if (!hasMethod<Authorization::Method::Basic>())
+    throw std::runtime_error("Authorization header does not use Basic method.");
 
-    // Extract encoded credentials...
-    const std::string EncodedCredentials(
-        value_.begin() + std::string("Basic ").length(), value_.end());
+  // Extract encoded credentials...
+  const std::string EncodedCredentials(
+      value_.begin() + std::string("Basic ").length(), value_.end());
 
-    // Decode them...
-    Base64Decoder Decoder(EncodedCredentials);
-    const std::vector<std::byte> &BinaryDecodedCredentials = Decoder.Decode();
+  // Decode them...
+  Base64Decoder Decoder(EncodedCredentials);
+  const std::vector<std::byte> &BinaryDecodedCredentials = Decoder.Decode();
 
-    // Transform to string...
-    std::string DecodedCredentials;
-    for(std::byte CurrentByte : BinaryDecodedCredentials)
-        DecodedCredentials.push_back(static_cast<char>(CurrentByte));
+  // Transform to string...
+  std::string DecodedCredentials;
+  for (std::byte CurrentByte : BinaryDecodedCredentials)
+    DecodedCredentials.push_back(static_cast<char>(CurrentByte));
 
-    // Find user ID and password delimiter...
-    const auto Delimiter = DecodedCredentials.find_first_of(':');
+  // Find user ID and password delimiter...
+  const auto Delimiter = DecodedCredentials.find_first_of(':');
 
-        // None detected. Assume this is a malformed header...
-        if(Delimiter == std::string::npos)
-            return std::string();
+  // None detected. Assume this is a malformed header...
+  if (Delimiter == std::string::npos)
+    return std::string();
 
-    // Extract and return just the password...
-    return std::string(
-        DecodedCredentials.begin() + Delimiter + 1, DecodedCredentials.end());
+  // Extract and return just the password...
+  return std::string(DecodedCredentials.begin() + Delimiter + 1,
+                     DecodedCredentials.end());
 }
 
 // Set encoded user ID and password for basic method...
-void Authorization::setBasicUserPassword(
-    const std::string &User, const std::string &Password)
-{
-    // Verify user ID does not contain a colon...
-    if(User.find_first_of(':') != std::string::npos)
-        throw std::runtime_error("User ID cannot contain a colon.");
+void Authorization::setBasicUserPassword(const std::string &User,
+                                         const std::string &Password) {
+  // Verify user ID does not contain a colon...
+  if (User.find_first_of(':') != std::string::npos)
+    throw std::runtime_error("User ID cannot contain a colon.");
 
-    // Format credentials string...
-    const std::string Credentials = User + std::string(":") + Password;
+  // Format credentials string...
+  const std::string Credentials = User + std::string(":") + Password;
 
-    // Encode credentials...
-    value_ = std::string("Basic ") + Base64Encoder::EncodeString(Credentials);
+  // Encode credentials...
+  value_ = std::string("Basic ") + Base64Encoder::EncodeString(Credentials);
 }
 
 void Authorization::parse(const std::string &data) {

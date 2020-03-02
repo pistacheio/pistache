@@ -337,15 +337,15 @@ public:
   Method getMethod() const noexcept;
 
   // Check if a particular authorization method was used...
-  template <Method M>
-  bool hasMethod() const noexcept { return hasMethod<M>(); }
+  template <Method M> bool hasMethod() const noexcept { return hasMethod<M>(); }
 
   // Get decoded user ID and password if basic method was used...
   std::string getBasicUser() const;
   std::string getBasicPassword() const;
 
   // Set encoded user ID and password for basic method...
-  void setBasicUserPassword(const std::string &User, const std::string &Password);
+  void setBasicUserPassword(const std::string &User,
+                            const std::string &Password);
 
   void parse(const std::string &data) override;
   void write(std::ostream &os) const override;

@@ -289,8 +289,10 @@ TEST(headers_test, authorization_basic_test) {
   oss = std::ostringstream();
 
   // Verify authorization header recognizes it is basic method and no other...
-  ASSERT_TRUE(au.hasMethod<Pistache::Http::Header::Authorization::Method::Basic>());
-  ASSERT_FALSE(au.hasMethod<Pistache::Http::Header::Authorization::Method::Bearer>());
+  ASSERT_TRUE(
+      au.hasMethod<Pistache::Http::Header::Authorization::Method::Basic>());
+  ASSERT_FALSE(
+      au.hasMethod<Pistache::Http::Header::Authorization::Method::Bearer>());
 
   // Set credentials from decoded user and password...
   au.setBasicUserPassword("Aladdin", "OpenSesame");
@@ -315,8 +317,10 @@ TEST(headers_test, authorization_bearer_test) {
            "d0131JxqX4xSZLlO5xMRrCPBgn_00OxKJ9CQdnpjpuzblNQd2-A");
   au.write(oss);
 
-  ASSERT_TRUE(au.hasMethod<Pistache::Http::Header::Authorization::Method::Bearer>());
-  ASSERT_FALSE(au.hasMethod<Pistache::Http::Header::Authorization::Method::Basic>());
+  ASSERT_TRUE(
+      au.hasMethod<Pistache::Http::Header::Authorization::Method::Bearer>());
+  ASSERT_FALSE(
+      au.hasMethod<Pistache::Http::Header::Authorization::Method::Basic>());
 
   ASSERT_TRUE(
       "Bearer "
