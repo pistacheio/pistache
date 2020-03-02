@@ -14,7 +14,6 @@
 
 // Standard C++ / POSIX system headers...
 #include <cstddef>
-#include <filesystem>
 #include <string>
 #include <vector>
 
