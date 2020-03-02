@@ -326,10 +326,26 @@ class Authorization : public Header {
 public:
   NAME("Authorization");
 
+  enum class Method { Basic, Bearer, Unknown };
+
   Authorization() : value_("NONE") {}
 
   explicit Authorization(std::string &&val) : value_(std::move(val)) {}
   explicit Authorization(const std::string &val) : value_(val) {}
+
+  // What type of authorization method was used?
+  Method getMethod() const noexcept;
+
+  // Check if a particular authorization method was used...
+  template <Method M> bool hasMethod() const noexcept { return hasMethod<M>(); }
+
+  // Get decoded user ID and password if basic method was used...
+  std::string getBasicUser() const;
+  std::string getBasicPassword() const;
+
+  // Set encoded user ID and password for basic method...
+  void setBasicUserPassword(const std::string &User,
+                            const std::string &Password);
 
   void parse(const std::string &data) override;
   void write(std::ostream &os) const override;
@@ -339,6 +355,12 @@ public:
 private:
   std::string value_;
 };
+
+template <>
+bool Authorization::hasMethod<Authorization::Method::Basic>() const noexcept;
+
+template <>
+bool Authorization::hasMethod<Authorization::Method::Bearer>() const noexcept;
 
 class ContentType : public Header {
 public:

@@ -271,7 +271,43 @@ TEST(headers_test, content_length) {
   ASSERT_TRUE(cl.value() == 3495U);
 }
 
-TEST(headers_test, authorization_test) {
+// Verify authorization header with basic method works correctly...
+TEST(headers_test, authorization_basic_test) {
+  Pistache::Http::Header::Authorization au;
+  std::ostringstream oss;
+
+  // Sample basic method authorization header for credentials
+  //  Aladdin:OpenSesame base 64 encoded...
+  const std::string BasicEncodedValue = "Basic QWxhZGRpbjpPcGVuU2VzYW1l";
+
+  // Try parsing the raw basic authorization value...
+  au.parse(BasicEncodedValue);
+
+  // Verify what went in is what came out...
+  au.write(oss);
+  ASSERT_TRUE(BasicEncodedValue == oss.str());
+  oss = std::ostringstream();
+
+  // Verify authorization header recognizes it is basic method and no other...
+  ASSERT_TRUE(
+      au.hasMethod<Pistache::Http::Header::Authorization::Method::Basic>());
+  ASSERT_FALSE(
+      au.hasMethod<Pistache::Http::Header::Authorization::Method::Bearer>());
+
+  // Set credentials from decoded user and password...
+  au.setBasicUserPassword("Aladdin", "OpenSesame");
+
+  // Verify it encoded correctly...
+  au.write(oss);
+  ASSERT_TRUE(BasicEncodedValue == oss.str());
+  oss = std::ostringstream();
+
+  // Verify it decoded correctly...
+  ASSERT_TRUE(au.getBasicUser() == "Aladdin");
+  ASSERT_TRUE(au.getBasicPassword() == "OpenSesame");
+}
+
+TEST(headers_test, authorization_bearer_test) {
   Pistache::Http::Header::Authorization au;
   std::ostringstream oss;
   au.parse("Bearer "
@@ -280,6 +316,11 @@ TEST(headers_test, authorization_test) {
            "hbWUiLCJzYW1wbGUiOiJUZXN0In0.zLTAAnBftlqccsU-4mL69P4tQl3VhcglMg-"
            "d0131JxqX4xSZLlO5xMRrCPBgn_00OxKJ9CQdnpjpuzblNQd2-A");
   au.write(oss);
+
+  ASSERT_TRUE(
+      au.hasMethod<Pistache::Http::Header::Authorization::Method::Bearer>());
+  ASSERT_FALSE(
+      au.hasMethod<Pistache::Http::Header::Authorization::Method::Basic>());
 
   ASSERT_TRUE(
       "Bearer "
