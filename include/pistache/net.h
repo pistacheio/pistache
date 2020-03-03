@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <pistache/view.h>
+
 #include <cstring>
 #include <limits>
 #include <stdexcept>
@@ -153,6 +155,13 @@ private:
   IP ip_;
   Port port_;
 };
+
+namespace helpers {
+inline Address httpAddr(const StringView &view) {
+  auto const str = view.toString();
+  return Address(str);
+}
+} // namespace helpers
 
 class Error : public std::runtime_error {
 public:

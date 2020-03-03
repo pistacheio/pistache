@@ -26,7 +26,6 @@
 #include <pistache/stream.h>
 #include <pistache/tcp.h>
 #include <pistache/transport.h>
-#include <pistache/view.h>
 
 namespace Pistache {
 namespace Tcp {
@@ -568,9 +567,6 @@ using ResponseParser = Private::ParserImpl<Http::Response>;
 
 class Handler : public Tcp::Handler {
 public:
-  void onConnection(const std::shared_ptr<Tcp::Peer> &peer) override;
-  void onDisconnection(const std::shared_ptr<Tcp::Peer> &peer) override;
-
   virtual void onRequest(const Request &request, ResponseWriter response) = 0;
 
   virtual void onTimeout(const Request &request, ResponseWriter response);
@@ -583,6 +579,8 @@ public:
   virtual ~Handler() override {}
 
 private:
+  void onConnection(const std::shared_ptr<Tcp::Peer> &peer) override;
+  void onDisconnection(const std::shared_ptr<Tcp::Peer> &peer) override;
   void onInput(const char *buffer, size_t len,
                const std::shared_ptr<Tcp::Peer> &peer) override;
   RequestParser &getParser(const std::shared_ptr<Tcp::Peer> &peer) const;
@@ -603,11 +601,5 @@ std::shared_ptr<H> make_handler(Args &&... args) {
   return std::make_shared<H>(std::forward<Args>(args)...);
 }
 
-namespace helpers {
-inline Address httpAddr(const StringView &view) {
-  auto const str = view.toString();
-  return Address(str);
-}
-} // namespace helpers
 } // namespace Http
 } // namespace Pistache
