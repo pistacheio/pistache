@@ -31,7 +31,7 @@ IP GetIPv4(const std::string &host) {
     struct sockaddr_in s_addr = {0};
     s_addr.sin_family = AF_INET;
 
-    static_assert(sizeof(s_addr.sin_addr.s_addr) >= sizeof(uint32_t));
+    static_assert(sizeof(s_addr.sin_addr.s_addr) >= sizeof(uint32_t), "Incompatible s_addr.sin_addr.s_addr size");
     memcpy(&(s_addr.sin_addr.s_addr), &addr.s_addr, sizeof(uint32_t));
 
     return IP(reinterpret_cast<struct sockaddr *>(&s_addr));
@@ -49,7 +49,7 @@ IP GetIPv6(const std::string &host) {
     struct sockaddr_in6 s_addr = {0};
     s_addr.sin6_family = AF_INET6;
 
-    static_assert(sizeof(s_addr.sin6_addr.s6_addr16) >= 8 * sizeof(uint16_t));
+    static_assert(sizeof(s_addr.sin6_addr.s6_addr16) >= 8 * sizeof(uint16_t), "Incompatible s_addr.sin6_addr.s6_addr16 size");
     memcpy(&(s_addr.sin6_addr.s6_addr16), &addr6.s6_addr16,
            8 * sizeof(uint16_t));
 
