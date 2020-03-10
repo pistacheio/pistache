@@ -52,7 +52,7 @@ if (PISTACHE_BUILD_TESTS)
     add_custom_target(coverage COMMAND ${CMAKE_CTEST_COMMAND}  --force-new-ctest-process --test-action coverage)
 endif()
 
-# CMAKE Fixe cxx compiler to CXX14 until update to CXX17
+# CMAKE Pin cxx compiler to CXX14 until update to CXX17
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
 set(CMAKE_CXX_STANDARD 14)
