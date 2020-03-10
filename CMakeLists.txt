@@ -52,32 +52,10 @@ if (PISTACHE_BUILD_TESTS)
     add_custom_target(coverage COMMAND ${CMAKE_CTEST_COMMAND}  --force-new-ctest-process --test-action coverage)
 endif()
 
-# CMAKE version less than 3.8 does not understand the CMAKE_CXX_FLAGS
-# set to 17, so a manual check if performed on older version
-if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
-    include(CheckCXXCompilerFlag)
-    CHECK_CXX_COMPILER_FLAG("-std=c++17" COMPILER_SUPPORTS_CXX17)
-    if(COMPILER_SUPPORTS_CXX17)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
-    else()
-        set(CMAKE_CXX_STANDARD 14)
-    endif()
-else()
-    # Old versions of Clang export C++17 in std::experimental namespace (tested on Clang 5 and 6).
-    # This gives an error on date.h external library.
-    # Following workaround forces Clang <= 6 to compile at best with C++14
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND NOT (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0.0))
-        set(CMAKE_CXX_STANDARD 14)
-    elseif (CMAKE_COMPILER_IS_GNUCC)
-        if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
-            set(CMAKE_CXX_STANDARD 17)
-        else()
-            set(CMAKE_CXX_STANDARD 14)
-        endif()
-    else()
-        set(CMAKE_CXX_STANDARD 17)
-    endif()
-endif()
+# CMAKE Pin cxx compiler to CXX14 until update to CXX17
+include(CheckCXXCompilerFlag)
+CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
+set(CMAKE_CXX_STANDARD 14)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
