@@ -74,7 +74,7 @@ void Transport::onReady(const Aio::FdSet &fds) {
         auto &peer = getPeer(tag);
         handleIncoming(peer);
       } else if (isTimerFd(tag)) {
-        auto it = timers.find(tag.value());
+        auto it = timers.find(static_cast<decltype(timers)::key_type>(tag.value()));
         auto &entry_ = it->second;
         handleTimer(std::move(entry_));
         timers.erase(it->first);
@@ -84,7 +84,7 @@ void Transport::onReady(const Aio::FdSet &fds) {
 
     } else if (entry.isWritable()) {
       auto tag = entry.getTag();
-      auto fd = tag.value();
+      auto fd = static_cast<Fd>(tag.value());
 
       {
         Guard guard(toWriteLock);
@@ -418,7 +418,7 @@ void Transport::handleNotify() {
 void Transport::handleTimer(TimerEntry entry) {
   if (entry.isActive()) {
     uint64_t numWakeups;
-    int res = ::read(entry.fd, &numWakeups, sizeof numWakeups);
+    auto res = ::read(entry.fd, &numWakeups, sizeof numWakeups);
     if (res == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK)
         return;
@@ -446,10 +446,10 @@ bool Transport::isTimerFd(Fd fd) const {
 }
 
 bool Transport::isPeerFd(Polling::Tag tag) const {
-  return isPeerFd(tag.value());
+  return isPeerFd(static_cast<Fd>(tag.value()));
 }
 bool Transport::isTimerFd(Polling::Tag tag) const {
-  return isTimerFd(tag.value());
+  return isTimerFd(static_cast<Fd>(tag.value()));
 }
 
 std::shared_ptr<Peer> &Transport::getPeer(Fd fd) {
@@ -461,7 +461,7 @@ std::shared_ptr<Peer> &Transport::getPeer(Fd fd) {
 }
 
 std::shared_ptr<Peer> &Transport::getPeer(Polling::Tag tag) {
-  return getPeer(tag.value());
+  return getPeer(static_cast<Fd>(tag.value()));
 }
 
 } // namespace Tcp
