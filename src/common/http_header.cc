@@ -138,7 +138,7 @@ void CacheControl::parseRaw(const char *str, size_t len) {
           // @Security: if str is not \0 terminated, there might be a situation
           // where strtol can overflow. Double-check that it's harmless and fix
           // if not
-          int secs = strtol(beg, &end, 10);
+          auto secs = strtol(beg, &end, 10);
           cursor.advance(end - beg);
           if (!cursor.eof() && cursor.current() != ',') {
             throw std::runtime_error(

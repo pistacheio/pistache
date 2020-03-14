@@ -328,7 +328,7 @@ public:
 
       auto cl = handler->clone();
       auto key = wrk->sync->addHandler(cl, false /* setKey */);
-      auto newKey = encodeKey(key, i);
+      auto newKey = encodeKey(key, static_cast<uint32_t>(i));
       cl->key_ = newKey;
 
       keys.at(i) = key;
@@ -398,8 +398,8 @@ private:
   static std::pair<uint32_t, uint32_t>
   decodeKey(const Reactor::Key &encodedKey) {
     auto data = encodedKey.data();
-    uint32_t hi = data >> 32;
-    uint32_t lo = data & 0xFFFFFFFF;
+    auto hi = static_cast<uint32_t>(data >> 32);
+    auto lo = static_cast<uint32_t>(data & 0xFFFFFFFF);
     return std::make_pair(hi, lo);
   }
 

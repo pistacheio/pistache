@@ -258,7 +258,7 @@ Address::Address(IP ip, Port port) : ip_(ip), port_(port) {}
 Address Address::fromUnix(struct sockaddr *addr) {
   if ((addr->sa_family == AF_INET) or (addr->sa_family == AF_INET6)) {
     IP ip = IP(addr);
-    Port port = Port(ip.getPort());
+    Port port = Port(static_cast<uint16_t>(ip.getPort()));
     assert(addr);
     return Address(ip, port);
   }
@@ -324,7 +324,7 @@ void Address::init(const std::string &addr) {
     long port = strtol(portPart.c_str(), &end, 10);
     if (*end != 0 || port < Port::min() || port > Port::max())
       throw std::invalid_argument("Invalid port");
-    port_ = Port(port);
+    port_ = Port(static_cast<uint16_t>(port));
   }
 }
 

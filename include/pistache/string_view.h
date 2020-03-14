@@ -187,7 +187,7 @@ private:
 
 public:
   string_view::size_type operator()(const string_view &str) const {
-    const size_t len = str.length();
+    const uint32_t len = static_cast<uint32_t>(str.length());
     const uint8_t *data = reinterpret_cast<const uint8_t *>(str.data());
     const int nblocks = static_cast<int>(len / 4);
 
