@@ -63,7 +63,7 @@ void dumpData(const Rest::Request & /*req*/, Http::ResponseWriter response) {
       auto job = [&stream, &responseLock, i]() -> void {
         constexpr size_t nchunks = 10;
         constexpr size_t chunk_size = LETTER_REPEATS / nchunks;
-        const std::string payload(chunk_size, letter + i);
+        const std::string payload(chunk_size, static_cast<char>(letter + i));
         {
           Guard guard(responseLock);
           for (size_t chunk = 0; chunk < nchunks; ++chunk) {

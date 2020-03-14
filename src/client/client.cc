@@ -337,7 +337,7 @@ void Transport::handleReadableEntry(const Aio::FdSet::Entry &entry) {
   assert(entry.isReadable() && "Entry must be readable");
 
   auto tag = entry.getTag();
-  const Fd fd = tag.value();
+  auto fd = static_cast<const Fd>(tag.value());
   auto connIt = connections.find(fd);
   if (connIt != std::end(connections)) {
     auto connection = connIt->second.connection.lock();
@@ -364,7 +364,7 @@ void Transport::handleWritableEntry(const Aio::FdSet::Entry &entry) {
   assert(entry.isWritable() && "Entry must be writable");
 
   auto tag = entry.getTag();
-  const Fd fd = tag.value();
+  auto fd = static_cast<const Fd>(tag.value());
   auto connIt = connections.find(fd);
   if (connIt != std::end(connections)) {
     auto &connectionEntry = connIt->second;
@@ -385,7 +385,7 @@ void Transport::handleHangupEntry(const Aio::FdSet::Entry &entry) {
   assert(entry.isHangup() && "Entry must be hangup");
 
   auto tag = entry.getTag();
-  const Fd fd = tag.value();
+  auto fd = static_cast<const Fd>(tag.value());
   auto connIt = connections.find(fd);
   if (connIt != std::end(connections)) {
     auto &connectionEntry = connIt->second;

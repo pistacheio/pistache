@@ -4832,7 +4832,7 @@ void read(std::basic_istream<CharT, Traits> &is, int a0, Args &&... args) {
     CharT buf[std::numeric_limits<unsigned>::digits10 + 2] = {};
     auto e = buf;
     do {
-      *e++ = CharT(u % 10) + CharT{'0'};
+      *e++ = static_cast<CharT>((u % 10) + '0');
       u /= 10;
     } while (u > 0);
     std::reverse(buf, e);
@@ -4915,7 +4915,7 @@ from_stream(std::basic_istream<CharT, Traits> &is, const CharT *fmt,
           auto nm = detail::weekday_names();
           auto i = detail::scan_keyword(is, nm.first, nm.second) - nm.first;
           if (!is.fail())
-            wd = i % 7;
+            wd = static_cast<int>(i % 7);
 #endif
           command = nullptr;
           width = -1;
@@ -4937,7 +4937,7 @@ from_stream(std::basic_istream<CharT, Traits> &is, const CharT *fmt,
           auto nm = detail::month_names();
           auto i = detail::scan_keyword(is, nm.first, nm.second) - nm.first;
           if (!is.fail())
-            m = i % 12 + 1;
+            m = static_cast<int>(i % 12 + 1);
 #endif
           command = nullptr;
           width = -1;
@@ -4964,13 +4964,13 @@ from_stream(std::basic_istream<CharT, Traits> &is, const CharT *fmt,
           auto i = detail::scan_keyword(is, nm.first, nm.second) - nm.first;
           if (is.fail())
             goto broken;
-          wd = i % 7;
+          wd = static_cast<int>(i % 7);
           ws(is);
           nm = detail::month_names();
           i = detail::scan_keyword(is, nm.first, nm.second) - nm.first;
           if (is.fail())
             goto broken;
-          m = i % 12 + 1;
+          m = static_cast<int>(i % 12 + 1);
           ws(is);
           read(is, rs{d, 1, 2});
           if (is.fail())

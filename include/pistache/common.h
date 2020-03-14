@@ -24,7 +24,7 @@
       std::ostringstream oss;                                                  \
       oss << str << ": ";                                                      \
       if (errno == 0) {                                                        \
-        oss << gai_strerror(ret);                                              \
+        oss << gai_strerror(static_cast<int>(ret));                                              \
       } else {                                                                 \
         oss << strerror(errno);                                                \
       }                                                                        \

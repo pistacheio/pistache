@@ -171,7 +171,7 @@ int Epoll::poll(std::vector<Event> &events,
 
   int ready_fds = -1;
   do {
-    ready_fds = ::epoll_wait(epoll_fd, evs, Const::MaxEvents, timeout.count());
+    ready_fds = ::epoll_wait(epoll_fd, evs, Const::MaxEvents, static_cast<int>(timeout.count()));
   } while (ready_fds < 0 && errno == EINTR);
 
   for (int i = 0; i < ready_fds; ++i) {

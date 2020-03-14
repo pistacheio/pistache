@@ -433,7 +433,7 @@ TEST(async_test, stress_multithreaded_test) {
 
   for (size_t i = 0; i < Ops; ++i) {
     auto &wrk = workers[wrkIndex];
-    wrk->doWork(i).then(
+    wrk->doWork(static_cast<int>(i)).then(
         [&](int seq) {
           UNUSED(seq)
           ++resolved;
