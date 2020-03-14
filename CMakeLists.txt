@@ -3,7 +3,7 @@ project (pistache)
 
 include(GNUInstallDirs)
 
-set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -pedantic -Wextra -Wno-missing-field-initializers")
+set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -Wconversion -pedantic -Wextra -Wno-missing-field-initializers")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/CMakeModules)
 
 if(NOT CMAKE_BUILD_TYPE)
