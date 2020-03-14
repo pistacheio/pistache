@@ -115,7 +115,7 @@ DynamicStreamBuf::overflow(DynamicStreamBuf::int_type ch) {
     const auto size = data_.size();
     if (size < maxSize_) {
       reserve((size ? size : 1u) * 2);
-      *pptr() = ch;
+      *pptr() = static_cast<char>(ch);
       pbump(1);
       return traits_type::not_eof(ch);
     }
@@ -156,7 +156,7 @@ int StreamCursor::next() const {
   return buf->snext();
 }
 
-char StreamCursor::current() const { return buf->sgetc(); }
+char StreamCursor::current() const { return static_cast<char>(buf->sgetc()); }
 
 const char *StreamCursor::offset() const { return buf->curptr(); }
 
@@ -201,8 +201,8 @@ bool match_string(const char *str, size_t len, StreamCursor &cursor,
   } else {
     const char *off = cursor.offset();
     for (size_t i = 0; i < len; ++i) {
-      const char lhs = std::tolower(str[i]);
-      const char rhs = std::tolower(off[i]);
+      const char lhs = static_cast<char>(std::tolower(str[i]));
+      const char rhs = static_cast<char>(std::tolower(off[i]));
       if (lhs != rhs)
         return false;
     }
@@ -218,10 +218,10 @@ bool match_literal(char c, StreamCursor &cursor, CaseSensitivity cs) {
   if (cursor.eof())
     return false;
 
-  char lhs = (cs == CaseSensitivity::Sensitive ? c : std::tolower(c));
+  char lhs = (cs == CaseSensitivity::Sensitive ? c : static_cast<char>(std::tolower(c)));
   char rhs =
       (cs == CaseSensitivity::Sensitive ? cursor.current()
-                                        : std::tolower(cursor.current()));
+                                        : static_cast<char>(std::tolower(cursor.current())));
 
   if (lhs == rhs) {
     cursor.advance(1);
@@ -242,8 +242,8 @@ bool match_until(std::initializer_list<char> chars, StreamCursor &cursor,
 
   auto find = [&](char val) {
     for (auto c : chars) {
-      char lhs = cs == CaseSensitivity::Sensitive ? c : std::tolower(c);
-      char rhs = cs == CaseSensitivity::Insensitive ? val : std::tolower(val);
+      char lhs = cs == CaseSensitivity::Sensitive ? c : static_cast<char>(std::tolower(c));
+      char rhs = cs == CaseSensitivity::Insensitive ? val : static_cast<char>(std::tolower(val));
 
       if (lhs == rhs)
         return true;
