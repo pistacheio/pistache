@@ -28,7 +28,7 @@ ssize_t SSL_sendfile(SSL *out, int in, off_t *offset, size_t count) {
   if (ret == -1)
     return -1;
 
-  written = SSL_write(out, buffer, ret);
+  written = SSL_write(out, buffer, static_cast<int>(ret));
   if (offset != NULL)
     *offset += written;
 

@@ -125,7 +125,7 @@ void Transport::handleIncoming(const std::shared_ptr<Peer> &peer) {
 #ifdef PISTACHE_USE_SSL
     if (peer->ssl() != NULL) {
       bytes = SSL_read((SSL *)peer->ssl(), buffer + totalBytes,
-                       Const::MaxBuffer - totalBytes);
+                       static_cast<int>(Const::MaxBuffer - totalBytes));
     } else {
 #endif /* PISTACHE_USE_SSL */
       bytes = recv(fd, buffer + totalBytes, Const::MaxBuffer - totalBytes, 0);
@@ -228,7 +228,7 @@ void Transport::asyncWriteImpl(Fd fd) {
 
         if (it_->second->ssl() != NULL) {
           auto ssl_ = static_cast<SSL *>(it_->second->ssl());
-          bytesWritten = SSL_write(ssl_, ptr, len);
+          bytesWritten = SSL_write(ssl_, ptr, static_cast<int>(len));
         } else {
 #endif /* PISTACHE_USE_SSL */
           bytesWritten = ::send(fd, ptr, len, flags);
