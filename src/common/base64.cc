@@ -81,15 +81,15 @@ const vector<byte> &Base64Decoder::Decode() {
   // While there is at least one set of three octets remaining to decode...
   for (string::size_type Index = 2; Index < DecodedSize; Index += 3) {
     // Construct octets from sextets...
-    m_DecodedData.at(OutputOffset + 0) =
+    m_DecodedData.at(OutputOffset + 0) = static_cast<byte>(
         DecodeCharacter(m_Base64EncodedString.at(InputOffset + 0)) << 2 |
-        DecodeCharacter(m_Base64EncodedString.at(InputOffset + 1)) >> 4;
-    m_DecodedData.at(OutputOffset + 1) =
+        DecodeCharacter(m_Base64EncodedString.at(InputOffset + 1)) >> 4);
+    m_DecodedData.at(OutputOffset + 1) = static_cast<byte>(
         DecodeCharacter(m_Base64EncodedString.at(InputOffset + 1)) << 4 |
-        DecodeCharacter(m_Base64EncodedString.at(InputOffset + 2)) >> 2;
-    m_DecodedData.at(OutputOffset + 2) =
+        DecodeCharacter(m_Base64EncodedString.at(InputOffset + 2)) >> 2);
+    m_DecodedData.at(OutputOffset + 2) = static_cast<byte>(
         DecodeCharacter(m_Base64EncodedString.at(InputOffset + 2)) << 6 |
-        DecodeCharacter(m_Base64EncodedString.at(InputOffset + 3));
+        DecodeCharacter(m_Base64EncodedString.at(InputOffset + 3)));
 
     // Reseek i/o pointers...
     InputOffset += 4;
@@ -100,19 +100,19 @@ const vector<byte> &Base64Decoder::Decode() {
   switch (DecodedSize % 3) {
   // One octet left to construct...
   case 1:
-    m_DecodedData.at(OutputOffset + 0) =
+    m_DecodedData.at(OutputOffset + 0) = static_cast<byte>(
         DecodeCharacter(m_Base64EncodedString.at(InputOffset + 0)) << 2 |
-        DecodeCharacter(m_Base64EncodedString.at(InputOffset + 1)) >> 4;
+        DecodeCharacter(m_Base64EncodedString.at(InputOffset + 1)) >> 4);
     break;
 
   // Two octets left to construct...
   case 2:
-    m_DecodedData.at(OutputOffset + 0) =
+    m_DecodedData.at(OutputOffset + 0) = static_cast<byte>(
         DecodeCharacter(m_Base64EncodedString.at(InputOffset + 0)) << 2 |
-        DecodeCharacter(m_Base64EncodedString.at(InputOffset + 1)) >> 4;
-    m_DecodedData.at(OutputOffset + 1) =
+        DecodeCharacter(m_Base64EncodedString.at(InputOffset + 1)) >> 4);
+    m_DecodedData.at(OutputOffset + 1) = static_cast<byte>(
         DecodeCharacter(m_Base64EncodedString.at(InputOffset + 1)) << 4 |
-        DecodeCharacter(m_Base64EncodedString.at(InputOffset + 2)) >> 2;
+        DecodeCharacter(m_Base64EncodedString.at(InputOffset + 2)) >> 2);
     break;
   }
 
@@ -175,17 +175,17 @@ const string &Base64Encoder::Encode() noexcept {
   for (string::size_type Index = 0; Index < OctetTriplets; ++Index) {
     // Encode first sextet from first octet...
     m_Base64EncodedString.at(OutputOffset + 0) =
-        EncodeByte(m_InputBuffer.at(InputOffset + 0) >> 2);
+        EncodeByte(static_cast<byte>(m_InputBuffer.at(InputOffset + 0) >> 2));
 
     // Encode second sextet from first and second octet....
-    m_Base64EncodedString.at(OutputOffset + 1) = EncodeByte(
+    m_Base64EncodedString.at(OutputOffset + 1) = EncodeByte(static_cast<byte>(
         (m_InputBuffer.at(InputOffset + 0) & static_cast<byte>(0x03)) << 4 |
-        m_InputBuffer.at(InputOffset + 1) >> 4);
+        m_InputBuffer.at(InputOffset + 1) >> 4));
 
     // Encode third sextet from second and third octet...
-    m_Base64EncodedString.at(OutputOffset + 2) = EncodeByte(
+    m_Base64EncodedString.at(OutputOffset + 2) = EncodeByte(static_cast<byte>(
         (m_InputBuffer.at(InputOffset + 1) & static_cast<byte>(0x0F)) << 2 |
-        m_InputBuffer.at(InputOffset + 2) >> 6);
+        m_InputBuffer.at(InputOffset + 2) >> 6));
 
     // Encode fourth sextet from third octet...
     m_Base64EncodedString.at(OutputOffset + 3) =
@@ -205,7 +205,7 @@ const string &Base64Encoder::Encode() noexcept {
 
     // Encode first sextet from remaining octet...
     m_Base64EncodedString.at(OutputOffset + 0) =
-        EncodeByte(m_InputBuffer.at(InputOffset + 0) >> 2);
+        EncodeByte(static_cast<byte>(m_InputBuffer.at(InputOffset + 0) >> 2));
 
     // Encode second sextet from remaining octet and empty second one...
     m_Base64EncodedString.at(OutputOffset + 1) = EncodeByte(
@@ -222,12 +222,12 @@ const string &Base64Encoder::Encode() noexcept {
 
     // Encode first sextet from first octet...
     m_Base64EncodedString.at(OutputOffset + 0) =
-        EncodeByte(m_InputBuffer.at(InputOffset + 0) >> 2);
+        EncodeByte(static_cast<byte>(m_InputBuffer.at(InputOffset + 0) >> 2));
 
     // Encode second sextet from first and second octet...
-    m_Base64EncodedString.at(OutputOffset + 1) = EncodeByte(
+    m_Base64EncodedString.at(OutputOffset + 1) = EncodeByte(static_cast<byte>(
         (m_InputBuffer.at(InputOffset + 0) & static_cast<byte>(0x03)) << 4 |
-        m_InputBuffer.at(InputOffset + 1) >> 4);
+        m_InputBuffer.at(InputOffset + 1) >> 4));
 
     // Encode third sextet from second and dummy third octet...
     m_Base64EncodedString.at(OutputOffset + 2) = EncodeByte(
@@ -246,23 +246,24 @@ const string &Base64Encoder::Encode() noexcept {
 // Encode single binary byte to 6-bit base 64 character...
 inline unsigned char Base64Encoder::EncodeByte(const byte Byte) const {
   // Capital letter 'A' is ASCII 65 and zero in base 64...
-  if (static_cast<unsigned char>(Byte) < 26)
-    return static_cast<unsigned char>(Byte) + 'A';
+  auto ch = static_cast<unsigned char>(Byte);
+  if ( ch < 26)
+    return static_cast<unsigned char>(ch + 'A');
 
   // Lowercase letter 'a' is ASCII 97 and 26 in base 64...
-  if (static_cast<unsigned char>(Byte) < 52)
-    return static_cast<unsigned char>(Byte) + 71;
+  if (ch < 52)
+    return static_cast<unsigned char>(ch + 71);
 
   // Numeric digit '0' is ASCII 48 and 52 in base 64...
-  if (static_cast<unsigned char>(Byte) < 62)
-    return static_cast<unsigned char>(Byte) - 4;
+  if (ch < 62)
+    return static_cast<unsigned char>(ch - 4);
 
   // '+' is ASCII 43 and 62 in base 64...
-  if (static_cast<unsigned char>(Byte) == 62)
+  if (ch == 62)
     return '+';
 
   // '/' is ASCII 47 and 63 in base 64...
-  if (static_cast<unsigned char>(Byte) == 63)
+  if (ch == 63)
     return '/';
 
   // And lastly anything that can't be represented in 6-bits we return 64...
