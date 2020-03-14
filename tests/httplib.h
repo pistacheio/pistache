@@ -957,26 +957,26 @@ inline size_t to_utf8(int code, char* buff)
         buff[0] = (code & 0x7F);
         return 1;
     } else if (code < 0x0800) {
-        buff[0] = (0xC0 | ((code >> 6) & 0x1F));
-        buff[1] = (0x80 | (code & 0x3F));
+        buff[0] = static_cast<char>(0xC0 | ((code >> 6) & 0x1F));
+        buff[1] = static_cast<char>(0x80 | (code & 0x3F));
         return 2;
     } else if (code < 0xD800) {
-        buff[0] = (0xE0 | ((code >> 12) & 0xF));
-        buff[1] = (0x80 | ((code >> 6) & 0x3F));
-        buff[2] = (0x80 | (code & 0x3F));
+        buff[0] = static_cast<char>(0xE0 | ((code >> 12) & 0xF));
+        buff[1] = static_cast<char>(0x80 | ((code >> 6) & 0x3F));
+        buff[2] = static_cast<char>(0x80 | (code & 0x3F));
         return 3;
     } else if (code < 0xE000)  { // D800 - DFFF is invalid...
         return 0;
     } else if (code < 0x10000) {
-        buff[0] = (0xE0 | ((code >> 12) & 0xF));
-        buff[1] = (0x80 | ((code >> 6) & 0x3F));
-        buff[2] = (0x80 | (code & 0x3F));
+        buff[0] = static_cast<char>(0xE0 | ((code >> 12) & 0xF));
+        buff[1] = static_cast<char>(0x80 | ((code >> 6) & 0x3F));
+        buff[2] = static_cast<char>(0x80 | (code & 0x3F));
         return 3;
     } else if (code < 0x110000) {
-        buff[0] = (0xF0 | ((code >> 18) & 0x7));
-        buff[1] = (0x80 | ((code >> 12) & 0x3F));
-        buff[2] = (0x80 | ((code >> 6) & 0x3F));
-        buff[3] = (0x80 | (code & 0x3F));
+        buff[0] = static_cast<char>(0xF0 | ((code >> 18) & 0x7));
+        buff[1] = static_cast<char>(0x80 | ((code >> 12) & 0x3F));
+        buff[2] = static_cast<char>(0x80 | ((code >> 6) & 0x3F));
+        buff[3] = static_cast<char>(0x80 | (code & 0x3F));
         return 4;
     }
 
@@ -1007,7 +1007,7 @@ inline std::string decode_url(const std::string& s)
                 int val = 0;
                 if (from_hex_to_i(s, i + 1, 2, val)) {
                     // 2 digits hex codes
-                    result += val;
+                    result += static_cast<char>(val);
                     i += 2; // '00'
                 } else {
                     result += s[i];
@@ -1140,7 +1140,7 @@ inline std::string to_lower(const char* beg, const char* end)
     std::string out;
     auto it = beg;
     while (it != end) {
-        out += ::tolower(*it);
+        out += static_cast<char>(::tolower(*it));
         it++;
     }
     return out;
@@ -1391,12 +1391,12 @@ inline SocketStream::~SocketStream()
 
 inline int SocketStream::read(char* ptr, size_t size)
 {
-    return recv(sock_, ptr, size, 0);
+    return static_cast<int>(recv(sock_, ptr, size, 0));
 }
 
 inline int SocketStream::write(const char* ptr, size_t size)
 {
-    return send(sock_, ptr, size, 0);
+    return static_cast<int>(send(sock_, ptr, size, 0));
 }
 
 inline int SocketStream::write(const char* ptr)
