@@ -273,8 +273,8 @@ Listener::requestLoad(const Listener::Load &old) {
             } else {
 
               auto totalElapsed = [](rusage usage) {
-                return (usage.ru_stime.tv_sec * 1e6 + usage.ru_stime.tv_usec) +
-                       (usage.ru_utime.tv_sec * 1e6 + usage.ru_utime.tv_usec);
+                return static_cast<double>((usage.ru_stime.tv_sec * 1000000 + usage.ru_stime.tv_usec) +
+                                           (usage.ru_utime.tv_sec * 1000000 + usage.ru_utime.tv_usec));
               };
 
               auto now = std::chrono::system_clock::now();
@@ -290,12 +290,12 @@ Listener::requestLoad(const Listener::Load &old) {
                 auto nowElapsed = totalElapsed(usage);
                 auto timeElapsed = nowElapsed - totalElapsed(last);
 
-                auto loadPct = (timeElapsed * 100.0) / tick.count();
+                auto loadPct = (timeElapsed * 100.0) / static_cast<double>(tick.count());
                 res.workers.push_back(loadPct);
                 res.global += loadPct;
               }
 
-              res.global /= usages.size();
+              res.global /= static_cast<double>(usages.size());
             }
 
             return res;
