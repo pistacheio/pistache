@@ -427,7 +427,7 @@ public:
   std::string rawBasePath() const { return basePath_; }
   std::vector<Scheme> rawSchemes() const { return schemes_; }
   Schema::ProduceConsume rawPC() const { return pc; }
-  Schema::PathGroup rawPaths() const { return paths_; }
+  const Schema::PathGroup &rawPaths() const { return paths_; }
 
 private:
   Schema::Info info_;
