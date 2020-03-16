@@ -33,7 +33,8 @@ struct FastEvenPagesHandler : public Http::Handler {
 
   void onRequest(const Http::Request &request,
                  Http::ResponseWriter writer) override {
-    std::string page = request.resource().erase(0, 1);
+    std::string page = request.resource();
+    page.erase(0, 1);
     int num = std::stoi(page);
     if (num % 2 != 0) {
       std::this_thread::sleep_for(std::chrono::milliseconds(2500));
