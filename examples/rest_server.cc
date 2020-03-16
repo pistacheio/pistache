@@ -33,7 +33,7 @@ void handleReady(const Rest::Request&, Http::ResponseWriter response) {
 
 class StatsEndpoint {
 public:
-    StatsEndpoint(Address addr)
+    explicit StatsEndpoint(Address addr)
         : httpEndpoint(std::make_shared<Http::Endpoint>(addr))
     { }
 
@@ -112,7 +112,7 @@ private:
 
     class Metric {
     public:
-        Metric(std::string name, int initialValue = 1)
+        explicit Metric(std::string name, int initialValue = 1)
             : name_(std::move(name))
             , value_(initialValue)
         { }
@@ -127,7 +127,7 @@ private:
             return value_;
         }
 
-        std::string name() const {
+        const std::string& name() const {
             return name_;
         }
     private:
@@ -135,8 +135,8 @@ private:
         int value_;
     };
 
-    typedef std::mutex Lock;
-    typedef std::lock_guard<Lock> Guard;
+    using Lock = std::mutex;
+    using Guard = std::lock_guard<Lock>;
     Lock metricsLock;
     std::vector<Metric> metrics;
 
