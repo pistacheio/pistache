@@ -77,7 +77,7 @@ void Endpoint::serveThreaded() { serveImpl(&Tcp::Listener::runThreaded); }
 
 void Endpoint::shutdown() { listener.shutdown(); }
 
-void Endpoint::useSSL(std::string cert, std::string key, bool use_compression) {
+void Endpoint::useSSL(const std::string &cert, const std::string &key, bool use_compression) {
 #ifndef PISTACHE_USE_SSL
   (void)cert;
   (void)key;
