@@ -80,7 +80,7 @@ public:
    * [1] https://en.wikipedia.org/wiki/BREACH
    * [2] https://en.wikipedia.org/wiki/CRIME
    */
-  void useSSL(std::string cert, std::string key, bool use_compression = false);
+  void useSSL(const std::string &cert, const std::string &key, bool use_compression = false);
 
   /*!
    * \brief Use SSL certificate authentication on this endpoint

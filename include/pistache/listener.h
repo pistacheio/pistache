@@ -12,6 +12,7 @@
 #include <pistache/net.h>
 #include <pistache/os.h>
 #include <pistache/reactor.h>
+#include <pistache/ssl_wrappers.h>
 #include <pistache/tcp.h>
 
 #include <sys/resource.h>
@@ -97,8 +98,8 @@ private:
   int acceptConnection(struct sockaddr_in &peer_addr) const;
   void dispatchPeer(const std::shared_ptr<Peer> &peer);
 
-  bool useSSL_;
-  void *ssl_ctx_;
+  bool useSSL_ = false;
+  ssl::SSLCtxPtr ssl_ctx_ = nullptr;
 };
 
 } // namespace Tcp
