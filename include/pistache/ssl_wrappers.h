@@ -27,5 +27,12 @@ struct SSLCtxDeleter {
 };
 
 using SSLCtxPtr = std::unique_ptr<void, SSLCtxDeleter>;
+
+#ifdef PISTACHE_USE_SSL
+inline SSL_CTX* GetSSLContext(ssl::SSLCtxPtr &ctx) {
+    return reinterpret_cast<SSL_CTX *>(ctx.get());
+}
+#endif
+
 }
 }
