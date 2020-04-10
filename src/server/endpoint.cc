@@ -105,6 +105,10 @@ Endpoint::requestLoad(const Tcp::Listener::Load &old) {
   return listener.requestLoad(old);
 }
 
+bool Endpoint::setSessionIdContext(const std::string &s_id_ctx) {
+  return listener.setSessionIdContext(s_id_ctx);
+}
+
 Endpoint::Options Endpoint::options() { return Options(); }
 
 } // namespace Http
