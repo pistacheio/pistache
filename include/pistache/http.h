@@ -160,7 +160,7 @@ public:
   Request &operator=(Request &&other) = default;
 
   Method method() const;
-  std::string resource() const;
+  const std::string &resource() const;
 
   const Uri::Query &query() const;
 

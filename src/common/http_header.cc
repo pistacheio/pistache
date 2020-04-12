@@ -146,7 +146,6 @@ void CacheControl::parseRaw(const char *str, size_t len) {
           }
           directives_.push_back(
               CacheDirective(d.repr, std::chrono::seconds(secs)));
-          found = true;
           break;
         }
       }
@@ -406,10 +405,7 @@ void Authorization::setBasicUserPassword(const std::string &User,
 }
 
 void Authorization::parse(const std::string &data) {
-  try {
     value_ = data;
-  } catch (const std::invalid_argument &e) {
-  }
 }
 
 void Authorization::write(std::ostream &os) const { os << value_; }

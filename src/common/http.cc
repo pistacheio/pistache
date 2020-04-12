@@ -549,7 +549,7 @@ CookieJar &Message::cookies() { return cookies_; }
 
 Method Request::method() const { return method_; }
 
-std::string Request::resource() const { return resource_; }
+const std::string &Request::resource() const { return resource_; }
 
 const Uri::Query &Request::query() const { return query_; }
 

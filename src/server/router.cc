@@ -361,7 +361,7 @@ void Router::del(const std::string &resource, Route::Handler handler) {
 }
 
 void Router::options(const std::string &resource, Route::Handler handler) {
-  addRoute(Http::Method::Options, resource, handler);
+  addRoute(Http::Method::Options, resource, std::move(handler));
 }
 
 void Router::removeRoute(Http::Method method, const std::string &resource) {
