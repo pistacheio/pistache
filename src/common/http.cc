@@ -794,7 +794,7 @@ Async::Promise<ssize_t> ResponseWriter::putOnWire(const char *data,
     auto fd = peer()->fd();
 
     return transport_->asyncWrite(fd, buffer)
-        .then<std::function<Async::Promise<ssize_t>(int)>,
+        .then<std::function<Async::Promise<ssize_t>(ssize_t)>,
               std::function<void(std::exception_ptr &)>>(
             [=](int /*l*/) {
               return Async::Promise<ssize_t>([=](
