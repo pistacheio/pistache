@@ -204,7 +204,8 @@ Port Listener::getPort() const {
 }
 
 void Listener::run() {
-  shutdownFd.bind(poller);
+  if (!shutdownFd.isBound())
+    shutdownFd.bind(poller);
   reactor_.run();
 
   for (;;) {
@@ -236,6 +237,7 @@ void Listener::run() {
 }
 
 void Listener::runThreaded() {
+  shutdownFd.bind(poller);
   acceptThread = std::thread([=]() { this->run(); });
 }
 
