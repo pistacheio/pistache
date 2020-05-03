@@ -8,7 +8,14 @@
 #include <iostream>
 
 #include <pistache/common.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#endif
 #include <pistache/date.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 #include <pistache/http_defs.h>
 
 namespace Pistache {
