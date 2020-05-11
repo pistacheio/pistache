@@ -68,6 +68,7 @@ if (PISTACHE_USE_SSL)
     link_libraries(-lssl -lcrypto)
 endif (PISTACHE_USE_SSL)
 
+link_libraries(-latomic)
 include_directories (${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # Set version...
@@ -113,7 +114,7 @@ include_directories (${CMAKE_CURRENT_SOURCE_DIR}/include)
 # Set libraries...
 
     # Minimum...
-    set(LIBS "-lpistache -lpthread")
+    set(LIBS "-lpistache -lpthread -latomic")
 
     # If building with OpenSSL support...
     if(PISTACHE_USE_SSL)
