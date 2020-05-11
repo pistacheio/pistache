@@ -24,7 +24,7 @@ matrix:
       - COV_TOOL_ARGS=gcov
     addons:
       apt:
-        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-4.0']
+        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-bionic-4.0']
         packages: [ 'apport', 'cmake', 'clang-4.0', 'llvm-4.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck' ]
 
   - os: linux
@@ -35,7 +35,7 @@ matrix:
       - COV_TOOL_ARGS=gcov
     addons:
       apt:
-        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-5.0']
+        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-bionic-5.0']
         packages: [ 'apport', 'cmake', 'clang-5.0', 'llvm-5.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck' ]
 
   - os: linux
@@ -46,7 +46,7 @@ matrix:
       - COV_TOOL_ARGS=gcov
     addons:
       apt:
-        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-6.0']
+        sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-bionic-6.0']
         packages: [ 'apport', 'cmake', 'clang-6.0', 'llvm-6.0-tools', 'libstdc++-6-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'gdb', 'lcov', 'cppcheck' ]
 
   # Linux GCC builds
