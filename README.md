@@ -4,11 +4,21 @@
 [![N|Solid](http://pistache.io/assets/images/logo.png)](https://www.github.com/oktal/pistache)
 [![Travis Build Status](https://travis-ci.org/oktal/pistache.svg?branch=master)](https://travis-ci.org/oktal/pistache)
 
-Pistache is a modern and elegant HTTP and REST framework for C++. It is entirely written in pure-C++14 and provides a clear and pleasant API. 
+Pistache is a modern and elegant HTTP and REST framework for C++. It is entirely written in pure-C++14 and provides a clear and pleasant API.
 
 # Documentation
 
 We are still looking for a volunteer to document fully the API. In the mean time, partial documentation is available at [http://pistache.io](http://pistache.io). If you are interested in helping with this, please open an issue ticket.
+
+# Dependencies
+
+Pistache has the following third party dependencies
+
+- [CMake](https://cmake.org)
+- [Doxygen](https://www.doxygen.nl/)
+- [Googletest](https://github.com/google/googletest)
+- [OpenSSL](https://www.openssl.org/)
+- [RapidJSON](https://rapidjson.org/)
 
 # Contributing
 
