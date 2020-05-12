@@ -14,10 +14,11 @@ We are still looking for a volunteer to document fully the API. In the mean time
 
 Pistache has the following third party dependencies
 
-- [Doxygen](http://www.doxygen.nl/)
+- [CMake](https://cmake.org)
+- [Doxygen](https://www.doxygen.nl/)
 - [Googletest](https://github.com/google/googletest)
 - [OpenSSL](https://www.openssl.org/)
-- [RapidJSON](http://rapidjson.org/)
+- [RapidJSON](https://rapidjson.org/)
 
 # Contributing
 
