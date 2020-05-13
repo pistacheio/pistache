@@ -390,7 +390,7 @@ ssl::SSLCtxPtr ssl_create_context(const std::string &cert,
 
 /* Function introduced in 1.0.2 */
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
-  SSL_CTX_set_ecdh_auto(ctx, 1);
+  SSL_CTX_set_ecdh_auto(GetSSLContext(ctx), 1);
 #endif /* OPENSSL_VERSION_NUMBER */
 
   if (SSL_CTX_use_certificate_file(GetSSLContext(ctx), cert.c_str(), SSL_FILETYPE_PEM) <= 0) {
