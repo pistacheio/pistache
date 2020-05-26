@@ -28,7 +28,7 @@ openssl req -new -sha256 -key server.key \
   -out server.csr || exit $?
 
 log "Create server.crt"
-openssl x509 -req -in server.csr -days ${DAYS} -sha256 \
+openssl x509 -req -in server.csr -days ${DAYS} -sha256 -extfile openssl.conf \
   -CA rootCA.crt -CAkey rootCA.key -set_serial 01 \
   -extensions server -out server.crt || exit $?
 
@@ -43,7 +43,7 @@ openssl req -new -sha256 -key client.key \
   -out client.csr || exit $?
 
 log "Create client.crt"
-openssl x509 -req -in client.csr -days ${DAYS} -sha256 \
+openssl x509 -req -in client.csr -days ${DAYS} -sha256 -extfile openssl.conf \
   -CA rootCA.crt -CAkey rootCA.key -set_serial 02 \
   -extensions client -out client.crt || exit $?
 
