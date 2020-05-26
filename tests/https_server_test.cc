@@ -83,6 +83,46 @@ TEST(http_client_test, basic_tls_request) {
   ASSERT_EQ(buffer, "Hello, World!");
 }
 
+TEST(http_client_test, basic_tls_request_with_chained_server_cert) {
+  Http::Endpoint server(Address("localhost", Pistache::Port(0)));
+  auto flags = Tcp::Options::ReuseAddr;
+  auto server_opts = Http::Endpoint::options().flags(flags);
+
+  server.init(server_opts);
+  server.setHandler(Http::make_handler<HelloHandler>());
+  server.useSSL("./certs/server_from_intermediate_with_chain.crt",
+      "./certs/server_from_intermediate.key");
+  server.serveThreaded();
+
+  CURL *curl;
+  CURLcode res;
+  std::string buffer;
+
+  curl_global_init(CURL_GLOBAL_DEFAULT);
+  curl = curl_easy_init();
+  ASSERT_NE(curl, nullptr);
+
+  const auto url = getServerUrl(server);
+  curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+  curl_easy_setopt(curl, CURLOPT_CAINFO, "./certs/rootCA.crt");
+  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1);
+  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &write_cb);
+  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
+
+  /* Skip hostname check */
+  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+
+  res = curl_easy_perform(curl);
+
+  curl_easy_cleanup(curl);
+  curl_global_cleanup();
+
+  server.shutdown();
+
+  ASSERT_EQ(res, CURLE_OK);
+  ASSERT_EQ(buffer, "Hello, World!");
+}
+
 TEST(http_client_test, basic_tls_request_with_auth) {
   Http::Endpoint server(Address("localhost", Pistache::Port(0)));
   auto flags = Tcp::Options::ReuseAddr;

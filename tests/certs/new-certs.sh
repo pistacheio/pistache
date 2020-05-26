@@ -28,7 +28,7 @@ openssl req -new -sha256 -key server.key \
   -out server.csr || exit $?
 
 log "Create server.crt"
-openssl x509 -req -in server.csr -days ${DAYS} -sha256 \
+openssl x509 -req -in server.csr -days ${DAYS} -sha256 -extfile openssl.conf \
   -CA rootCA.crt -CAkey rootCA.key -set_serial 01 \
   -extensions server -out server.crt || exit $?
 
@@ -43,16 +43,55 @@ openssl req -new -sha256 -key client.key \
   -out client.csr || exit $?
 
 log "Create client.crt"
-openssl x509 -req -in client.csr -days ${DAYS} -sha256 \
+openssl x509 -req -in client.csr -days ${DAYS} -sha256 -extfile openssl.conf \
   -CA rootCA.crt -CAkey rootCA.key -set_serial 02 \
   -extensions client -out client.crt || exit $?
 
 rm -f client.csr || exit $?
+
+log "Create intermediateCA.key"
+openssl genrsa -out intermediateCA.key ${BITS} || exit $?
+
+log "Create intermediateCA.csr"
+openssl req -new -sha256 -key intermediateCA.key \
+  -subj "/C=US/ST=WA/O=Pistache/CN=intermediateCA" \
+  -out intermediateCA.csr || exit $?
+
+log "Create intermediateCA.crt"
+openssl x509 -req -in intermediateCA.csr -days ${DAYS} -sha256 -extfile openssl.conf \
+  -CA rootCA.crt -CAkey rootCA.key -set_serial 01 \
+  -extensions intermediateCA -out intermediateCA.crt || exit $?
+
+rm -f intermediateCA.csr || exit $?
+
+log "Create server_from_intermediate.key"
+openssl genrsa -out server_from_intermediate.key ${BITS} || exit $?
+
+log "Create server_from_intermediate.csr"
+openssl req -new -sha256 -key server_from_intermediate.key \
+  -subj "/C=US/ST=WA/O=Pistache/CN=server_from_intermediate" \
+  -out server_from_intermediate.csr || exit $?
+
+log "Create server_from_intermediate.crt"
+openssl x509 -req -in server_from_intermediate.csr -days ${DAYS} -sha256 -extfile openssl.conf \
+  -CA intermediateCA.crt -CAkey intermediateCA.key -set_serial 01 \
+  -extensions server -out server_from_intermediate.crt || exit $?
+
+rm -f server_from_intermediate.csr || exit $?
 
 log "Verify server certificate"
 openssl verify -purpose sslserver -CAfile rootCA.crt server.crt || exit $?
 
 log "Verify client certificate"
 openssl verify -purpose sslclient -CAfile rootCA.crt client.crt || exit $?
+
+log "Verify server_from_intermediate certificate against intermediate"
+openssl verify -purpose sslserver -partial_chain -CAfile intermediateCA.crt server_from_intermediate.crt || exit $?
+
+log "Verify server_from_intermediate certificate against root using intermediate"
+openssl verify -purpose sslserver -untrusted intermediateCA.crt -CAfile rootCA.crt server_from_intermediate.crt || exit $?
+
+log "Create server_from_intermediate_with_chain.crt"
+cat server_from_intermediate.crt intermediateCA.crt > server_from_intermediate_with_chain.crt
 
 log "done"
