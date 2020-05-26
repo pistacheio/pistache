@@ -393,7 +393,7 @@ ssl::SSLCtxPtr ssl_create_context(const std::string &cert,
   SSL_CTX_set_ecdh_auto(GetSSLContext(ctx), 1);
 #endif /* OPENSSL_VERSION_NUMBER */
 
-  if (SSL_CTX_use_certificate_file(GetSSLContext(ctx), cert.c_str(), SSL_FILETYPE_PEM) <= 0) {
+  if (SSL_CTX_use_certificate_chain_file(GetSSLContext(ctx), cert.c_str()) <= 0) {
     ERR_print_errors_fp(stderr);
     throw std::runtime_error("Cannot load SSL certificate");
   }
