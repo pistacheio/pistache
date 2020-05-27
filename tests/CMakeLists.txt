@@ -34,6 +34,7 @@ pistache_test(stream_test)
 pistache_test(reactor_test)
 pistache_test(threadname_test)
 pistache_test(optional_test)
+pistache_test(logger_test)
 
 if (PISTACHE_USE_SSL)
 
