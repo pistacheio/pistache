@@ -15,7 +15,17 @@ public:
   }
 
   bool isEnabledFor(Log::Level level) const override {
-    return static_cast<int>(level) >= static_cast<int>(level_);
+    switch(level) {
+      case Log::Level::FATAL:
+      case Log::Level::ERROR:
+      case Log::Level::WARN:
+        return true;
+      case Log::Level::INFO:
+      case Log::Level::DEBUG:
+      case Log::Level::TRACE:
+      default:
+        return false;
+    }
   }
 
   TestLogHandler(Log::Level level) : level_(level) {}
@@ -26,19 +36,20 @@ public:
   std::vector<Log::Level>  levels_;
 };
 
-TEST(logger_test, basic_log_handler) {
-  auto logger_subclass = std::make_unique<TestLogHandler>(Log::Level::WARN);
+// Test that isEnabledFor is called when using the PISTACHE_LOG_* macros.
+TEST(logger_test, macros_guard_by_level) {
+  auto logger_subclass = std::make_shared<TestLogHandler>(Log::Level::WARN);
   auto& actual_messages = logger_subclass->messages_;
   auto& actual_levels = logger_subclass->levels_;
 
-  DECLARE_PISTACHE_LOGGER(logger) = std::move(logger_subclass);
+  std::shared_ptr<::Pistache::Log::LogHandler> logger = logger_subclass;
 
-  PISTACHE_LOG(FATAL, logger, "test_message_1_fatal");
-  PISTACHE_LOG(ERROR, logger, "test_message_2_error");
-  PISTACHE_LOG(WARN,  logger, "test_message_3_warn");
-  PISTACHE_LOG(INFO,  logger, "test_message_4_info");
-  PISTACHE_LOG(DEBUG, logger, "test_message_5_debug");
-  PISTACHE_LOG(TRACE, logger, "test_message_6_trace");
+  PISTACHE_LOG_FATAL(logger, "test_message_1_fatal");
+  PISTACHE_LOG_ERROR(logger, "test_message_2_error");
+  PISTACHE_LOG_WARN(logger,  "test_message_3_warn");
+  PISTACHE_LOG_INFO(logger,  "test_message_4_info");
+  PISTACHE_LOG_DEBUG(logger, "test_message_5_debug");
+  PISTACHE_LOG_TRACE(logger, "test_message_6_trace");
 
   std::vector<std::string> expected_messages;
   expected_messages.push_back("test_message_1_fatal");
@@ -54,15 +65,32 @@ TEST(logger_test, basic_log_handler) {
   ASSERT_EQ(actual_levels, expected_levels);
 }
 
-TEST(logger_test, basic_log_handler_uninitialized) {
-  DECLARE_PISTACHE_LOGGER(logger) = nullptr;
+// Test that the PISTACHE_LOG_* macros guard against accessing a null logger.
+TEST(logger_test, macros_guard_null_logger) {
+  PISTACHE_LOGGER_T logger = PISTACHE_NULL_LOGGER;
 
-  PISTACHE_LOG(FATAL, logger, "test_message_1_fatal");
-  PISTACHE_LOG(ERROR, logger, "test_message_2_error");
-  PISTACHE_LOG(WARN,  logger, "test_message_3_warn");
-  PISTACHE_LOG(INFO,  logger, "test_message_4_info");
-  PISTACHE_LOG(DEBUG, logger, "test_message_5_debug");
-  PISTACHE_LOG(TRACE, logger, "test_message_6_trace");
+  PISTACHE_LOG_FATAL(logger, "test_message_1_fatal");
+  PISTACHE_LOG_ERROR(logger, "test_message_2_error");
+  PISTACHE_LOG_WARN(logger,  "test_message_3_warn");
+  PISTACHE_LOG_INFO(logger,  "test_message_4_info");
+  PISTACHE_LOG_DEBUG(logger, "test_message_5_debug");
+  PISTACHE_LOG_TRACE(logger, "test_message_6_trace");
 
-  // Expect no death from accessing the nullptr.
+  // Expect no death from accessing the default logger.
 }
+
+// Test that the PISTACHE_LOG_* macros access a default logger.
+TEST(logger_test, macros_access_default_logger) {
+  PISTACHE_LOGGER_T logger = PISTACHE_DEFAULT_LOGGER;
+
+  PISTACHE_LOG_FATAL(logger, "test_message_1_fatal");
+  PISTACHE_LOG_ERROR(logger, "test_message_2_error");
+  PISTACHE_LOG_WARN(logger,  "test_message_3_warn");
+  PISTACHE_LOG_INFO(logger,  "test_message_4_info");
+  PISTACHE_LOG_DEBUG(logger, "test_message_5_debug");
+  PISTACHE_LOG_TRACE(logger, "test_message_6_trace");
+
+  // Expect no death from using the default handler. The only output of the 
+  // default logger is to stdout, so output cannot be confirmed by gtest.
+}
+

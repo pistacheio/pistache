@@ -21,15 +21,6 @@ bool DefaultLogHandler::isEnabledFor(Level level) const {
   return static_cast<int>(level) >= static_cast<int>(level_);
 }
 
-#ifndef PISTACHE_LOG
-#define PISTACHE_LOG(level, logger, message) do {\
-  if (logger->isEnabledFor(level)) { \
-    std::ostringstream oss_; \
-    logger->log(level, oss_.str(oss_ << message)); \
-  } \
-} while (0)
-#endif
-
 } // namespace Log
 } // namespace Pistache
 

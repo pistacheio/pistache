@@ -43,18 +43,88 @@ private:
 } // namespace Log
 } // namespace Pistache
 
-#ifndef PISTACHE_LOG
-#define PISTACHE_LOG(level, logger_ptr, message) do {\
-  if (logger_ptr && logger_ptr->isEnabledFor(::Pistache::Log::Level::level)) { \
+#ifndef PISTACHE_LOG_FATAL
+#define PISTACHE_LOG_FATAL(logger, message) do {\
+  if (logger && logger->isEnabledFor(::Pistache::Log::Level::FATAL)) { \
     std::ostringstream oss_; \
     oss_ << message; \
-    logger_ptr->log(::Pistache::Log::Level::level, oss_.str()); \
+    logger->log(::Pistache::Log::Level::FATAL, oss_.str()); \
   } \
 } while (0)
 #endif
 
-#ifndef DECLARE_PISTACHE_LOGGER
-#define DECLARE_PISTACHE_LOGGER(logger_ptr) \
-  std::unique_ptr<::Pistache::Log::LogHandler> logger_ptr
+#ifndef PISTACHE_LOG_ERROR
+#define PISTACHE_LOG_ERROR(logger, message) do {\
+  if (logger && logger->isEnabledFor(::Pistache::Log::Level::ERROR)) { \
+    std::ostringstream oss_; \
+    oss_ << message; \
+    logger->log(::Pistache::Log::Level::ERROR, oss_.str()); \
+  } \
+} while (0)
+#endif
+
+#ifndef PISTACHE_LOG_WARN
+#define PISTACHE_LOG_WARN(logger, message) do {\
+  if (logger && logger->isEnabledFor(::Pistache::Log::Level::WARN)) { \
+    std::ostringstream oss_; \
+    oss_ << message; \
+    logger->log(::Pistache::Log::Level::WARN, oss_.str()); \
+  } \
+} while (0)
+#endif
+
+#ifndef PISTACHE_LOG_INFO
+#define PISTACHE_LOG_INFO(logger, message) do {\
+  if (logger && logger->isEnabledFor(::Pistache::Log::Level::INFO)) { \
+    std::ostringstream oss_; \
+    oss_ << message; \
+    logger->log(::Pistache::Log::Level::INFO, oss_.str()); \
+  } \
+} while (0)
+#endif
+
+#ifndef PISTACHE_LOG_DEBUG
+#define PISTACHE_LOG_DEBUG(logger, message) do {\
+  if (logger && logger->isEnabledFor(::Pistache::Log::Level::DEBUG)) { \
+    std::ostringstream oss_; \
+    oss_ << message; \
+    logger->log(::Pistache::Log::Level::DEBUG, oss_.str()); \
+  } \
+} while (0)
+#endif
+
+#ifndef PISTACHE_LOG_TRACE
+#ifndef NDEBUG // Only enable trace logging in debug builds.
+#define PISTACHE_LOG_TRACE(logger, message) do {\
+  if (logger && logger->isEnabledFor(::Pistache::Log::Level::TRACE)) { \
+    std::ostringstream oss_; \
+    oss_ << message; \
+    logger->log(::Pistache::Log::Level::TRACE, oss_.str()); \
+  } \
+} while (0)
+#else
+#define PISTACHE_LOG_TRACE(logger, message) do {\
+  if (0) { \
+    std::ostringstream oss_; \
+    oss_ << message; \
+    logger->log(::Pistache::Log::Level::TRACE, oss_.str()); \
+  } \
+} while (0)
+#endif
+#endif
+
+#ifndef PISTACHE_LOGGER_T
+#define PISTACHE_LOGGER_T \
+  std::shared_ptr<::Pistache::Log::LogHandler>
+#endif
+
+#ifndef PISTACHE_DEFAULT_LOGGER
+#define PISTACHE_DEFAULT_LOGGER \
+  std::make_shared<::Pistache::Log::DefaultLogHandler>(::Pistache::Log::Level::WARN)
+#endif
+
+#ifndef PISTACHE_NULL_LOGGER
+#define PISTACHE_NULL_LOGGER \
+  nullptr
 #endif
 
