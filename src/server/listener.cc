@@ -88,7 +88,8 @@ Listener::~Listener() {
 }
 
 void Listener::init(size_t workers, Flags<Options> options,
-                    const std::string &workersName, int backlog) {
+                    const std::string &workersName, int backlog,
+                    PISTACHE_LOGGER_T logger) {
   if (workers > hardware_concurrency()) {
     // Log::warning() << "More workers than available cores"
   }
@@ -98,6 +99,7 @@ void Listener::init(size_t workers, Flags<Options> options,
   useSSL_ = false;
   workers_ = workers;
   workersName_ = workersName;
+  logger_ = logger;
 }
 
 void Listener::setHandler(const std::shared_ptr<Handler> &handler) {
@@ -225,9 +227,9 @@ void Listener::run() {
           try {
             handleNewConnection();
           } catch (SocketError &ex) {
-            std::cerr << "Server: " << ex.what() << std::endl;
+            PISTACHE_LOG_WARN(logger_, "Socket error: " << ex.what());
           } catch (ServerError &ex) {
-            std::cerr << "Server: " << ex.what() << std::endl;
+            PISTACHE_LOG_FATAL(logger_, "Server error: " << ex.what());
             throw;
           }
         }
