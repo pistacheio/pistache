@@ -15,7 +15,8 @@ namespace Http {
 Endpoint::Options::Options()
     : threads_(1), flags_(), backlog_(Const::MaxBacklog),
       maxRequestSize_(Const::DefaultMaxRequestSize),
-      maxResponseSize_(Const::DefaultMaxResponseSize) {}
+      maxResponseSize_(Const::DefaultMaxResponseSize),
+      logger_(PISTACHE_NULL_STRING_LOGGER) {}
 
 Endpoint::Options &Endpoint::Options::threads(int val) {
   threads_ = val;
@@ -51,6 +52,11 @@ Endpoint::Options &Endpoint::Options::maxResponseSize(size_t val) {
   return *this;
 }
 
+Endpoint::Options &Endpoint::Options::logger(PISTACHE_STRING_LOGGER_T logger) {
+  logger_ = logger;
+  return *this;
+}
+
 Endpoint::Endpoint() {}
 
 Endpoint::Endpoint(const Address &addr) : listener(addr) {}
@@ -59,6 +65,7 @@ void Endpoint::init(const Endpoint::Options &options) {
   listener.init(options.threads_, options.flags_, options.threadsName_);
   maxRequestSize_ = options.maxRequestSize_;
   maxResponseSize_ = options.maxResponseSize_;
+  logger_ = options.logger_;
 }
 
 void Endpoint::setHandler(const std::shared_ptr<Handler> &handler) {

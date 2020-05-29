@@ -26,11 +26,25 @@ struct SSLCtxDeleter {
   }
 };
 
+struct SSLBioDeleter {
+  void operator()(void *ptr) {
+#ifdef PISTACHE_USE_SSL
+    BIO_free(reinterpret_cast<BIO *>(ptr));
+#else
+    (void)ptr;
+#endif
+  }
+};
+
 using SSLCtxPtr = std::unique_ptr<void, SSLCtxDeleter>;
+using SSLBioPtr = std::unique_ptr<void, SSLBioDeleter>;
 
 #ifdef PISTACHE_USE_SSL
 inline SSL_CTX* GetSSLContext(ssl::SSLCtxPtr &ctx) {
     return reinterpret_cast<SSL_CTX *>(ctx.get());
+}
+inline BIO* GetSSLBio(ssl::SSLBioPtr &ctx) {
+    return reinterpret_cast<BIO *>(ctx.get());
 }
 #endif
 

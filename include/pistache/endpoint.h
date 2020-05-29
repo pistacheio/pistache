@@ -28,6 +28,7 @@ public:
     Options &backlog(int val);
     Options &maxRequestSize(size_t val);
     Options &maxResponseSize(size_t val);
+    Options &logger(PISTACHE_STRING_LOGGER_T logger);
 
     [[deprecated("Replaced by maxRequestSize(val)")]] Options &
     maxPayload(size_t val);
@@ -39,6 +40,7 @@ public:
     int backlog_;
     size_t maxRequestSize_;
     size_t maxResponseSize_;
+    PISTACHE_STRING_LOGGER_T logger_;
     Options();
   };
   Endpoint();
@@ -151,6 +153,7 @@ private:
   Tcp::Listener listener;
   size_t maxRequestSize_ = Const::DefaultMaxRequestSize;
   size_t maxResponseSize_ = Const::DefaultMaxResponseSize;
+  PISTACHE_STRING_LOGGER_T logger_ = PISTACHE_NULL_STRING_LOGGER;
 };
 
 template <typename Handler>
