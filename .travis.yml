@@ -84,6 +84,9 @@ before_script:
   - ulimit -c
   - ulimit -a -S
   - ulimit -a -H
+    # Make sure that crash reports are generated for all executables.
+  - mkdir -p ~/.config/apport
+  - printf '[main]\nunpackaged=true\n' >> ~/.config/apport/settings
 
   # Print debug system information
   - cat /proc/sys/kernel/core_pattern
@@ -130,12 +133,13 @@ script:
   - make -j 2
 
 after_failure:
-  - ls -lta /var/crash
-  - COREFILE=$(find ./ -maxdepth 1 -name "core*" -print | head -n 1) 
-  - if [[ -f "$COREFILE" ]]; then
-    gdb -c "$COREFILE" -ex "thread apply all bt" -ex "set pagination 0" -batch;
-    fi
-
+  - CRASHFILES=$(find /var/crash/ -mindepth 1 -maxdepth 1 -print)
+  - echo "$CRASHFILES"
+    # Unpack the apport crash file into a temporary directory and get the
+    # executable and core dump to pass to GDB.
+    # Call gdb with the absolute path since it isn't on the PATH.
+  - |
+    if [ -n "$CRASHFILES" ]; then echo "$CRASHFILES" | while IFS= read -r CRASH; do echo "Crash report: $CRASH"; DIR="/tmp/$(basename $CRASH).d"; apport-unpack "$CRASH" "$DIR"; EXE=$(cat $DIR/ExecutablePath); CORE="$DIR/CoreDump"; echo "Coredump $CORE for $EXE"; /usr/bin/gdb $EXE $CORE -ex "thread apply all bt" -ex "set pagination 0" -batch; done; fi
 
 after_success:
 - cd ../Build-Debug
