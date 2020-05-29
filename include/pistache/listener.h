@@ -53,7 +53,7 @@ public:
             Flags<Options> options = Flags<Options>(Options::None),
             const std::string &workersName = "",
             int backlog = Const::MaxBacklog,
-            PISTACHE_LOGGER_T logger = PISTACHE_NULL_LOGGER);
+            PISTACHE_STRING_LOGGER_T logger = PISTACHE_NULL_STRING_LOGGER);
   void setHandler(const std::shared_ptr<Handler> &handler);
 
   void bind();
@@ -103,7 +103,7 @@ private:
   bool useSSL_ = false;
   ssl::SSLCtxPtr ssl_ctx_ = nullptr;
 
-  PISTACHE_LOGGER_T logger_ = PISTACHE_NULL_LOGGER;
+  PISTACHE_STRING_LOGGER_T logger_ = PISTACHE_NULL_STRING_LOGGER;
 };
 
 } // namespace Tcp

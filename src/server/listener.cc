@@ -172,7 +172,7 @@ Listener::~Listener() {
 
 void Listener::init(size_t workers, Flags<Options> options,
                     const std::string &workersName, int backlog,
-                    PISTACHE_LOGGER_T logger) {
+                    PISTACHE_STRING_LOGGER_T logger) {
   if (workers > hardware_concurrency()) {
     // Log::warning() << "More workers than available cores"
   }
@@ -310,9 +310,9 @@ void Listener::run() {
           try {
             handleNewConnection();
           } catch (SocketError &ex) {
-            PISTACHE_LOG_WARN(logger_, "Socket error: " << ex.what());
+            PISTACHE_LOG_STRING_WARN(logger_, "Socket error: " << ex.what());
           } catch (ServerError &ex) {
-            PISTACHE_LOG_FATAL(logger_, "Server error: " << ex.what());
+            PISTACHE_LOG_STRING_FATAL(logger_, "Server error: " << ex.what());
             throw;
           }
         }
@@ -412,7 +412,7 @@ void Listener::handleNewConnection() {
     if (SSL_accept(ssl_data) <= 0) {
       std::string err = "SSL connection error: "
                         + ssl_print_errors_to_string();
-      PISTACHE_LOG_INFO(logger_, err);
+      PISTACHE_LOG_STRING_INFO(logger_, err);
       SSL_free(ssl_data);
       close(client_fd);
       return;
@@ -464,7 +464,7 @@ void Listener::setupSSLAuth(const std::string &ca_file,
 
   if (ssl_ctx_ == nullptr) {
     std::string err = "SSL Context is not initialized";
-    PISTACHE_LOG_FATAL(logger_, err);
+    PISTACHE_LOG_STRING_FATAL(logger_, err);
     throw std::runtime_error(err);
   }
 
@@ -477,7 +477,7 @@ void Listener::setupSSLAuth(const std::string &ca_file,
                                     __ca_path) <= 0) {
     std::string err = "SSL error - Cannot verify SSL locations: "
                       + ssl_print_errors_to_string();
-    PISTACHE_LOG_FATAL(logger_, err);
+    PISTACHE_LOG_STRING_FATAL(logger_, err);
     throw std::runtime_error(err);
   }
 
@@ -501,7 +501,7 @@ void Listener::setupSSL(const std::string &cert_path,
   try {
     ssl_ctx_ = ssl_create_context(cert_path, key_path, use_compression);
   } catch (std::exception &e) {
-    PISTACHE_LOG_FATAL(logger_, e.what());
+    PISTACHE_LOG_STRING_FATAL(logger_, e.what());
     throw;
   }
   useSSL_ = true;

@@ -16,7 +16,7 @@ Endpoint::Options::Options()
     : threads_(1), flags_(), backlog_(Const::MaxBacklog),
       maxRequestSize_(Const::DefaultMaxRequestSize),
       maxResponseSize_(Const::DefaultMaxResponseSize),
-      logger_(PISTACHE_NULL_LOGGER) {}
+      logger_(PISTACHE_NULL_STRING_LOGGER) {}
 
 Endpoint::Options &Endpoint::Options::threads(int val) {
   threads_ = val;
@@ -52,7 +52,7 @@ Endpoint::Options &Endpoint::Options::maxResponseSize(size_t val) {
   return *this;
 }
 
-Endpoint::Options &Endpoint::Options::logger(PISTACHE_LOGGER_T logger) {
+Endpoint::Options &Endpoint::Options::logger(PISTACHE_STRING_LOGGER_T logger) {
   logger_ = logger;
   return *this;
 }

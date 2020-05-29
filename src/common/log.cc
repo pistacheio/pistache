@@ -11,13 +11,13 @@
 namespace Pistache {
 namespace Log {
 
-void DefaultLogHandler::log(Level level, const std::string &message) {
+void DefaultStringLogger::log(Level level, const std::string &message) {
   if (isEnabledFor(level)) {
     std::cerr << message << std::endl;
   }
 }
 
-bool DefaultLogHandler::isEnabledFor(Level level) const {
+bool DefaultStringLogger::isEnabledFor(Level level) const {
   return static_cast<int>(level) >= static_cast<int>(level_);
 }
 
