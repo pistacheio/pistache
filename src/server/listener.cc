@@ -37,6 +37,89 @@
 namespace Pistache {
 namespace Tcp {
 
+#ifdef PISTACHE_USE_SSL
+
+namespace {
+
+std::string ssl_print_errors_to_string() {
+  ssl::SSLBioPtr bio{BIO_new(BIO_s_mem())};
+  ERR_print_errors(GetSSLBio(bio));
+
+  static const int buffer_length = 512;
+
+  bool continue_reading = true;
+  char buffer[buffer_length];
+  std::string result;
+
+  while (continue_reading) {
+    int ret = BIO_gets(GetSSLBio(bio), buffer, buffer_length);
+    switch (ret) {
+      case  0:
+      case -1:
+        // Reached the end of the BIO, or it is unreadable for some reason.
+        continue_reading = false;
+        break;
+      case -2:
+        throw std::logic_error("Trying to call PopStringFromBio on a BIO that "
+                               "does not support the BIO_gets method");
+        break;
+      default:  // >0
+        result.append(buffer);
+        break;
+    }
+  }
+
+  return result;
+}
+
+ssl::SSLCtxPtr ssl_create_context(const std::string &cert,
+                                         const std::string &key,
+                                         bool use_compression) {
+  const SSL_METHOD* method = SSLv23_server_method();
+
+  ssl::SSLCtxPtr ctx{SSL_CTX_new(method)};
+  if (ctx == nullptr) {
+    throw std::runtime_error("Cannot setup SSL context");
+  }
+
+  if (!use_compression) {
+    /* Disable compression to prevent BREACH and CRIME vulnerabilities. */
+    if (!SSL_CTX_set_options(GetSSLContext(ctx), SSL_OP_NO_COMPRESSION)) {
+      std::string err = "SSL error - cannot disable compression: "
+                        + ssl_print_errors_to_string();
+      throw std::runtime_error(err);
+    }
+  }
+
+/* Function introduced in 1.0.2 */
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+  SSL_CTX_set_ecdh_auto(GetSSLContext(ctx), 1);
+#endif /* OPENSSL_VERSION_NUMBER */
+
+  if (SSL_CTX_use_certificate_chain_file(GetSSLContext(ctx), cert.c_str()) <= 0) {
+    std::string err = "SSL error - cannot load SSL certificate: "
+                      + ssl_print_errors_to_string();
+    throw std::runtime_error(err);
+  }
+
+  if (SSL_CTX_use_PrivateKey_file(GetSSLContext(ctx), key.c_str(), SSL_FILETYPE_PEM) <= 0) {
+    std::string err = "SSL error - cannot load SSL private key: "
+                      + ssl_print_errors_to_string();
+    throw std::runtime_error(err);
+  }
+
+  if (!SSL_CTX_check_private_key(GetSSLContext(ctx))) {
+    std::string err = "SSL error - Private key does not match certificate public key: "
+                      + ssl_print_errors_to_string();
+    throw std::runtime_error(err);
+  }
+
+  return ctx;
+}
+
+}
+#endif /* PISTACHE_USE_SSL */
+
 void setSocketOptions(Fd fd, Flags<Options> options) {
   if (options.hasFlag(Options::ReuseAddr)) {
     int one = 1;
@@ -318,14 +401,18 @@ void Listener::handleNewConnection() {
     SSL *ssl_data = SSL_new(GetSSLContext(ssl_ctx_));
     if (ssl_data == nullptr) {
       close(client_fd);
-      throw std::runtime_error("Cannot create SSL connection");
+      std::string err = "SSL error - cannot create SSL connection: "
+                        + ssl_print_errors_to_string();
+      throw ServerError(err.c_str());
     }
 
     SSL_set_fd(ssl_data, client_fd);
     SSL_set_accept_state(ssl_data);
 
     if (SSL_accept(ssl_data) <= 0) {
-      ERR_print_errors_fp(stderr);
+      std::string err = "SSL connection error: "
+                        + ssl_print_errors_to_string();
+      PISTACHE_LOG_INFO(logger_, err);
       SSL_free(ssl_data);
       close(client_fd);
       return;
@@ -369,61 +456,17 @@ void Listener::dispatchPeer(const std::shared_ptr<Peer> &peer) {
 
 #ifdef PISTACHE_USE_SSL
 
-namespace {
-
-ssl::SSLCtxPtr ssl_create_context(const std::string &cert,
-                                         const std::string &key,
-                                         bool use_compression) {
-  const SSL_METHOD* method = SSLv23_server_method();
-
-  ssl::SSLCtxPtr ctx{SSL_CTX_new(method)};
-  if (ctx == nullptr) {
-    ERR_print_errors_fp(stderr);
-    throw std::runtime_error("Cannot setup SSL context");
-  }
-
-  if (!use_compression) {
-    /* Disable compression to prevent BREACH and CRIME vulnerabilities. */
-    if (!SSL_CTX_set_options(GetSSLContext(ctx), SSL_OP_NO_COMPRESSION)) {
-      ERR_print_errors_fp(stderr);
-      throw std::runtime_error("Cannot disable compression");
-    }
-  }
-
-/* Function introduced in 1.0.2 */
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-  SSL_CTX_set_ecdh_auto(GetSSLContext(ctx), 1);
-#endif /* OPENSSL_VERSION_NUMBER */
-
-  if (SSL_CTX_use_certificate_chain_file(GetSSLContext(ctx), cert.c_str()) <= 0) {
-    ERR_print_errors_fp(stderr);
-    throw std::runtime_error("Cannot load SSL certificate");
-  }
-
-  if (SSL_CTX_use_PrivateKey_file(GetSSLContext(ctx), key.c_str(), SSL_FILETYPE_PEM) <= 0) {
-    ERR_print_errors_fp(stderr);
-    throw std::runtime_error("Cannot load SSL private key");
-  }
-
-  if (!SSL_CTX_check_private_key(GetSSLContext(ctx))) {
-    ERR_print_errors_fp(stderr);
-    throw std::runtime_error(
-        "Private key does not match public key in the certificate");
-  }
-
-  return ctx;
-}
-
-}
-
 void Listener::setupSSLAuth(const std::string &ca_file,
                             const std::string &ca_path,
                             int (*cb)(int, void *) = NULL) {
   const char *__ca_file = NULL;
   const char *__ca_path = NULL;
 
-  if (ssl_ctx_ == nullptr)
-    throw std::runtime_error("SSL Context is not initialized");
+  if (ssl_ctx_ == nullptr) {
+    std::string err = "SSL Context is not initialized";
+    PISTACHE_LOG_FATAL(logger_, err);
+    throw std::runtime_error(err);
+  }
 
   if (!ca_file.empty())
     __ca_file = ca_file.c_str();
@@ -432,8 +475,10 @@ void Listener::setupSSLAuth(const std::string &ca_file,
 
   if (SSL_CTX_load_verify_locations(GetSSLContext(ssl_ctx_), __ca_file,
                                     __ca_path) <= 0) {
-    ERR_print_errors_fp(stderr);
-    throw std::runtime_error("Cannot verify SSL locations");
+    std::string err = "SSL error - Cannot verify SSL locations: "
+                      + ssl_print_errors_to_string();
+    PISTACHE_LOG_FATAL(logger_, err);
+    throw std::runtime_error(err);
   }
 
   SSL_CTX_set_verify(GetSSLContext(ssl_ctx_),
@@ -453,7 +498,12 @@ void Listener::setupSSL(const std::string &cert_path,
   SSL_load_error_strings();
   OpenSSL_add_ssl_algorithms();
 
-  ssl_ctx_ = ssl_create_context(cert_path, key_path, use_compression);
+  try {
+    ssl_ctx_ = ssl_create_context(cert_path, key_path, use_compression);
+  } catch (std::exception &e) {
+    PISTACHE_LOG_FATAL(logger_, e.what());
+    throw;
+  }
   useSSL_ = true;
 }
 
