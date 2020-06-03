@@ -1,47 +1,12 @@
 /* log.h
    Michael Ellison, 27 May 2020
 
-   Logging API definitions
+   Logging macro definitions - use these to log messages in Pistache.
 */
 
 #pragma once
 
-#include <memory>
-#include <sstream>
-
-namespace Pistache {
-namespace Log {
-
-enum class Level {
-  TRACE,
-  DEBUG,
-  INFO,
-  WARN,
-  ERROR,
-  FATAL
-};
-
-class StringLogger {
-public:
-  virtual void log(Level level, const std::string &message) = 0;
-  virtual bool isEnabledFor(Level level) const = 0;
-
-  virtual ~StringLogger() {}
-};
-
-class DefaultStringLogger : public StringLogger {
-public:
-  explicit DefaultStringLogger(Level level) : level_(level) {}
-  ~DefaultStringLogger() override {}
-
-  void log(Level level, const std::string &message) override;
-  bool isEnabledFor(Level level) const override;
-private:
-  Level level_;
-};
-
-} // namespace Log
-} // namespace Pistache
+#include <pistache/string_logger.h>
 
 #ifndef PISTACHE_LOG_STRING_FATAL
 #define PISTACHE_LOG_STRING_FATAL(logger, message) do {\
@@ -120,7 +85,7 @@ private:
 
 #ifndef PISTACHE_DEFAULT_STRING_LOGGER
 #define PISTACHE_DEFAULT_STRING_LOGGER \
-  std::make_shared<::Pistache::Log::DefaultStringLogger>(::Pistache::Log::Level::WARN)
+  std::make_shared<::Pistache::Log::StringToStreamLogger>(::Pistache::Log::Level::WARN)
 #endif
 
 #ifndef PISTACHE_NULL_STRING_LOGGER
