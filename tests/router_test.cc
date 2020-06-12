@@ -278,3 +278,97 @@ TEST(router_test, test_bind_shared_ptr) {
 
   endpoint->shutdown();
 }
+
+class HandlerWithAuthMiddleware :public MyHandler {
+public:
+  HandlerWithAuthMiddleware()
+  : MyHandler(), auth_count(0), auth_succ_count(0) {}
+
+  bool do_auth(Pistache::Http::Request &request, Pistache::Http::ResponseWriter &response) {
+  	auth_count++;
+  	try {
+  		auto auth = request.headers().get<Pistache::Http::Header::Authorization>();
+  		if (auth->getMethod() == Pistache::Http::Header::Authorization::Method::Basic) {
+  			auth_succ_count++;
+  			return true;
+  		} else {
+  			response.send(Pistache::Http::Code::Unauthorized);
+  			return false;
+  		}
+  	} catch (std::runtime_error&) {
+		  return false;
+  	}
+  }
+
+  int getAuthCount() { return auth_count; }
+  int getSuccAuthCount() { return auth_succ_count; }
+
+private:
+  int auth_count;
+  int auth_succ_count;
+};
+
+bool fill_auth_header(Pistache::Http::Request &request, Pistache::Http::ResponseWriter &response) {
+  auto au = Pistache::Http::Header::Authorization();
+  au.setBasicUserPassword("foo", "bar");
+  request.headers().add<decltype(au)>(au);
+  return true;
+}
+
+
+bool stop_processing(Pistache::Http::Request &request, Pistache::Http::ResponseWriter &response) {
+	response.send(Pistache::Http::Code::No_Content);
+	return false;
+}
+
+TEST(router_test, test_middleware_stop_processing) {
+	Address addr(Ipv4::any(), 0);
+	auto endpoint = std::make_shared<Http::Endpoint>(addr);
+
+	auto opts = Http::Endpoint::options().threads(1);
+	endpoint->init(opts);
+
+	auto sharedPtr = std::make_shared<HandlerWithAuthMiddleware>();
+
+	Rest::Router router;
+	router.addMiddleware(Routes::middleware(&stop_processing));
+	Routes::Head(router, "/tinkywinky", Routes::bind(&HandlerWithAuthMiddleware::handle, sharedPtr));
+	endpoint->setHandler(router.handler());
+	endpoint->serveThreaded();
+
+	const auto bound_port = endpoint->getPort();
+	httplib::Client client("localhost", bound_port);
+
+	ASSERT_EQ(sharedPtr->getCount(), 0);
+	auto response = client.Head("/tinkywinky");
+	ASSERT_EQ(sharedPtr->getCount(), 0);
+	ASSERT_EQ(response->status, int(Pistache::Http::Code::No_Content));
+}
+
+TEST(router_test, test_auth_middleware) {
+	Address addr(Ipv4::any(), 0);
+	auto endpoint = std::make_shared<Http::Endpoint>(addr);
+
+	auto opts = Http::Endpoint::options().threads(1);
+	endpoint->init(opts);
+
+	HandlerWithAuthMiddleware handler;
+
+	Rest::Router router;
+	router.addMiddleware(Routes::middleware(&fill_auth_header));
+	router.addMiddleware(Routes::middleware(&HandlerWithAuthMiddleware::do_auth, &handler));
+
+	Routes::Head(router, "/tinkywinky", Routes::bind(&HandlerWithAuthMiddleware::handle, &handler));
+	endpoint->setHandler(router.handler());
+	endpoint->serveThreaded();
+
+	const auto bound_port = endpoint->getPort();
+	httplib::Client client("localhost", bound_port);
+
+	ASSERT_EQ(handler.getCount(), 0);
+	auto response = client.Head("/tinkywinky");
+	ASSERT_EQ(handler.getCount(), 1);
+	ASSERT_EQ(handler.getAuthCount(), 1);
+	ASSERT_EQ(handler.getSuccAuthCount(), 1);
+	ASSERT_EQ(response->status, int(Pistache::Http::Code::Ok));
+}
