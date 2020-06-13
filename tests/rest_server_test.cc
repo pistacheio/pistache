@@ -84,7 +84,14 @@ TEST(rest_server_test, basic_test) {
 
   res = client.Get("/read/hostname");
   ASSERT_EQ(res->status, 200);
-  ASSERT_EQ(res->body, "localhost");
+
+  // TODO: Clean this up to use proper gtest macros.
+  // NOTE: res->body is "ip6-localhost" on some architectures.
+  if (res->body == "ip6-localhost") {
+    ASSERT_EQ(res->body, "ip6-localhost");  // count the passing test.
+  } else {
+    ASSERT_EQ(res->body, "localhost");
+  }
   stats.shutdown();
 }
 
