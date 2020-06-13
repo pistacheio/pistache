@@ -381,6 +381,10 @@ void Router::addCustomHandler(Route::Handler handler) {
   customHandlers.push_back(std::move(handler));
 }
 
+void Router::addMiddleware(Route::Middleware middleware) {
+    middlewares.push_back(std::move(middleware));
+}
+
 void Router::addNotFoundHandler(Route::Handler handler) {
   notFoundHandler = std::move(handler);
 }
@@ -392,11 +396,22 @@ void Router::invokeNotFoundHandler(const Http::Request &req,
                   std::move(resp));
 }
 
-Route::Status Router::route(const Http::Request &req,
+Route::Status Router::route(const Http::Request &http_req,
                             Http::ResponseWriter response) {
-  const auto resource = req.resource();
+  const auto resource = http_req.resource();
   if (resource.empty())
     throw std::runtime_error("Invalid zero-length URL.");
+
+  auto req = http_req;
+  auto resp = response.clone();
+
+  for (const auto &middleware : middlewares) {
+    auto result = middleware(req, resp);
+
+    // Handler returns true, go to the next piped handler, otherwise break and return
+    if (! result)
+      return Route::Status::Match;
+  }
 
   auto &r = routes[req.method()];
   const auto sanitized = SegmentTreeNode::sanitizeResource(resource);
@@ -408,7 +423,7 @@ Route::Status Router::route(const Http::Request &req,
     auto params = std::get<1>(result);
     auto splats = std::get<2>(result);
     route->invokeHandler(Request(req, std::move(params), std::move(splats)),
-                         std::move(response));
+                         std::move(resp));
     return Route::Status::Match;
   }
 

@@ -65,6 +65,8 @@ struct Route {
 
   typedef std::function<Result(const Request, Http::ResponseWriter)> Handler;
 
+  typedef std::function<bool(Http::Request& req, Http::ResponseWriter& resp)> Middleware;
+
   explicit Route(Route::Handler handler) : handler_(std::move(handler)) {}
 
   template <typename... Args> void invokeHandler(Args &&... args) const {
@@ -218,6 +220,7 @@ public:
   void head(const std::string &resource, Route::Handler handler);
 
   void addCustomHandler(Route::Handler handler);
+  void addMiddleware(Route::Middleware middleware);
 
   void addNotFoundHandler(Route::Handler handler);
   inline bool hasNotFoundHandler() { return notFoundHandler != nullptr; }
@@ -227,12 +230,14 @@ public:
   Route::Status route(const Http::Request &request,
                       Http::ResponseWriter response);
 
-  Router() : routes(), customHandlers(), notFoundHandler() {}
+  Router() : routes(), customHandlers(), middlewares(), notFoundHandler() {}
 
 private:
   std::unordered_map<Http::Method, SegmentTreeNode> routes;
 
   std::vector<Route::Handler> customHandlers;
+
+  std::vector<Route::Middleware> middlewares;
 
   Route::Handler notFoundHandler;
 };
@@ -352,6 +357,33 @@ Route::Handler bind(Result (*func)(Args...)) {
 
     return Route::Result::Ok;
   };
+}
+
+template <typename Cls, typename... Args, typename Obj>
+Route::Middleware middleware(bool (Cls::*func)(Args...), Obj obj) {
+	details::static_checks<Args...>();
+
+	return [=](Http::Request &request, Http::ResponseWriter &response) {
+		return (obj->*func)(request, response);
+	};
+}
+
+template <typename Cls, typename... Args, typename Obj>
+Route::Middleware middleware(bool (Cls::*func)(Args...), std::shared_ptr<Obj> objPtr) {
+	details::static_checks<Args...>();
+
+	return [=](Http::Request &request, Http::ResponseWriter &response) {
+		return (objPtr.get()->*func)(request, response);
+	};
+}
+
+template <typename... Args>
+Route::Middleware middleware(bool (*func)(Args...)) {
+	details::static_checks<Args...>();
+
+	return [=](Http::Request &request, Http::ResponseWriter &response) {
+		return func(request, response);
+	};
 }
 
 } // namespace Routes
