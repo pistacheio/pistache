@@ -142,7 +142,7 @@ void Transport::handleIncoming(const std::shared_ptr<Peer> &peer) {
         if (errno == ECONNRESET) {
           handlePeerDisconnection(peer);
         } else {
-          throw std::runtime_error(strerror(errno));
+            handlePeerDisconnection(peer);
         }
       }
       break;
