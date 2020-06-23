@@ -139,7 +139,7 @@ void Transport::handleIncoming(const std::shared_ptr<Peer> &peer) {
           handler_->onInput(buffer, totalBytes, peer);
         }
       } else {
-          handlePeerDisconnection(peer);
+        handlePeerDisconnection(peer);
       }
       break;
     } else if (bytes == 0) {
