@@ -148,15 +148,7 @@ void setSocketOptions(Fd fd, Flags<Options> options) {
   }
 }
 
-Listener::Listener()
-    : addr_(), listen_fd(-1), backlog_(Const::MaxBacklog), shutdownFd(),
-      poller(), options_(), workers_(Const::DefaultWorkers), workersName_(),
-      reactor_(), transportKey() {}
-
-Listener::Listener(const Address &address)
-    : addr_(address), listen_fd(-1), backlog_(Const::MaxBacklog), shutdownFd(),
-      poller(), options_(), workers_(Const::DefaultWorkers), workersName_(),
-      reactor_(), transportKey() {}
+Listener::Listener(const Address &address) : addr_(address) {}
 
 Listener::~Listener() {
   if (isBound())

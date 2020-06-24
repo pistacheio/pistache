@@ -45,7 +45,7 @@ public:
     TimePoint tick;
   };
 
-  Listener();
+  Listener() = default;
   ~Listener();
 
   explicit Listener(const Address &address);
@@ -81,15 +81,15 @@ public:
 
 private:
   Address addr_;
-  int listen_fd;
-  int backlog_;
+  int listen_fd = -1;
+  int backlog_ = Const::MaxBacklog;
   NotifyFd shutdownFd;
   Polling::Epoll poller;
 
   Flags<Options> options_;
   std::thread acceptThread;
 
-  size_t workers_;
+  size_t workers_ = Const::DefaultWorkers;
   std::string workersName_;
   std::shared_ptr<Handler> handler_;
 
