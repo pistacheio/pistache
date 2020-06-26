@@ -43,6 +43,8 @@ public:
                         Polling::NotifyOn interest, Polling::Tag tag,
                         Polling::Mode mode = Polling::Mode::Level) = 0;
 
+  virtual void removeFd(const Reactor::Key& key, Fd fd) = 0;
+
   virtual void runOnce() = 0;
   virtual void run() = 0;
 
@@ -110,6 +112,10 @@ public:
 
     auto pollTag = encodeTag(key, tag);
     poller.rearmFd(fd, Flags<Polling::NotifyOn>(interest), pollTag, mode);
+  }
+
+  void removeFd(const Reactor::Key& key, Fd fd) override {
+    poller.removeFd(fd);
   }
 
   void runOnce() override {
@@ -375,6 +381,10 @@ public:
     dispatchCall(key, &SyncImpl::modifyFd, fd, interest, tag, mode);
   }
 
+  void removeFd(const Reactor::Key& key, Fd fd) override {
+    dispatchCall(key, &SyncImpl::removeFd, fd);
+  }
+
   void runOnce() override {}
 
   void run() override {
@@ -509,6 +519,10 @@ void Reactor::modifyFd(const Reactor::Key &key, Fd fd,
 void Reactor::modifyFd(const Reactor::Key &key, Fd fd,
                        Polling::NotifyOn interest, Polling::Mode mode) {
   impl()->modifyFd(key, fd, interest, Polling::Tag(fd), mode);
+}
+
+void Reactor::removeFd(const Reactor::Key& key, Fd fd) {
+  impl()->removeFd(key, fd);
 }
 
 void Reactor::run() { impl()->run(); }

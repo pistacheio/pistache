@@ -173,6 +173,14 @@ void Transport::handlePeerDisconnection(const std::shared_ptr<Peer> &peer) {
     toWrite.erase(fd);
   }
 
+  // Don't rely on close deleting this FD from the epoll "interest" list.
+  // This is needed in case the FD has been shared with another process.
+  // Sharing should no longer happen by accident as SOCK_CLOEXEC is now set on
+  // listener accept. This should then guarantee that the next call to
+  // epoll_wait will not give us any events relating to this FD even if they
+  // have been queued in the kernel since the last call to epoll_wait.
+  reactor()->removeFd(key(), fd);
+
   close(fd);
 }
 
