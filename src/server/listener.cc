@@ -427,8 +427,9 @@ void Listener::handleNewConnection() {
 
 int Listener::acceptConnection(struct sockaddr_in &peer_addr) const {
   socklen_t peer_addr_len = sizeof(peer_addr);
-  int client_fd =
-      ::accept(listen_fd, (struct sockaddr *)&peer_addr, &peer_addr_len);
+  // Do not share open FD with forked processes
+  int client_fd = ::accept4(
+    listen_fd, (struct sockaddr *)&peer_addr, &peer_addr_len, SOCK_CLOEXEC);
   if (client_fd < 0) {
     if (errno == EBADF || errno == ENOTSOCK)
       throw ServerError(strerror(errno));
