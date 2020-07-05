@@ -7,6 +7,7 @@
 #include "gtest/gtest.h"
 #include <algorithm>
 
+#include <pistache/common.h>
 #include <pistache/endpoint.h>
 #include <pistache/http.h>
 #include <pistache/router.h>
@@ -234,10 +235,7 @@ TEST(router_test, test_route_head_request) {
 class MyHandler {
 public:
 
-  MyHandler()
-  : count_(0)
-  {}
-  ~MyHandler() {}
+  MyHandler() = default;
 
   void handle(
     const Pistache::Rest::Request &,
@@ -250,7 +248,7 @@ public:
 
 private:
 
-  int count_;
+  int count_ = 0;
 
 };
 
@@ -279,10 +277,9 @@ TEST(router_test, test_bind_shared_ptr) {
   endpoint->shutdown();
 }
 
-class HandlerWithAuthMiddleware :public MyHandler {
+class HandlerWithAuthMiddleware : public MyHandler {
 public:
-  HandlerWithAuthMiddleware()
-  : MyHandler(), auth_count(0), auth_succ_count(0) {}
+  HandlerWithAuthMiddleware() = default;
 
   bool do_auth(Pistache::Http::Request &request, Pistache::Http::ResponseWriter &response) {
   	auth_count++;
@@ -304,11 +301,12 @@ public:
   int getSuccAuthCount() { return auth_succ_count; }
 
 private:
-  int auth_count;
-  int auth_succ_count;
+  int auth_count = 0;
+  int auth_succ_count = 0;
 };
 
 bool fill_auth_header(Pistache::Http::Request &request, Pistache::Http::ResponseWriter &response) {
+  UNUSED(response);
   auto au = Pistache::Http::Header::Authorization();
   au.setBasicUserPassword("foo", "bar");
   request.headers().add<decltype(au)>(au);
@@ -317,6 +315,7 @@ bool fill_auth_header(Pistache::Http::Request &request, Pistache::Http::Response
 
 
 bool stop_processing(Pistache::Http::Request &request, Pistache::Http::ResponseWriter &response) {
+	UNUSED(request);
 	response.send(Pistache::Http::Code::No_Content);
 	return false;
 }
@@ -371,4 +370,12 @@ TEST(router_test, test_auth_middleware) {
 	ASSERT_EQ(handler.getAuthCount(), 1);
 	ASSERT_EQ(handler.getSuccAuthCount(), 1);
 	ASSERT_EQ(response->status, int(Pistache::Http::Code::Ok));
+}
+
+TEST(segment_tree_node_test, test_resource_sanitize) {
+    ASSERT_EQ(SegmentTreeNode::sanitizeResource("/path"), "path");
+    ASSERT_EQ(SegmentTreeNode::sanitizeResource("/path/to/bar"), "path/to/bar");
+    ASSERT_EQ(SegmentTreeNode::sanitizeResource("/path//to/bar"), "path/to/bar");
+    ASSERT_EQ(SegmentTreeNode::sanitizeResource("/path//to/bar"), "path/to/bar");
+    ASSERT_EQ(SegmentTreeNode::sanitizeResource("/path/to///////:place"), "path/to/:place");
 }
