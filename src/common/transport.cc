@@ -33,6 +33,10 @@ std::shared_ptr<Aio::Handler> Transport::clone() const {
   return std::make_shared<Transport>(handler_->clone());
 }
 
+void Transport::flush() {
+    handleWriteQueue(true);
+}
+
 void Transport::registerPoller(Polling::Epoll &poller) {
   writesQueue.bind(poller);
   timersQueue.bind(poller);
@@ -353,7 +357,7 @@ void Transport::armTimerMsImpl(TimerEntry entry) {
   timers.insert(std::make_pair(entry.fd, std::move(entry)));
 }
 
-void Transport::handleWriteQueue() {
+void Transport::handleWriteQueue(bool flush) {
   // Let's drain the queue
   for (;;) {
     auto write = writesQueue.popSafe();
@@ -371,6 +375,9 @@ void Transport::handleWriteQueue() {
 
     reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write,
                         Polling::Mode::Edge);
+
+    if (flush)
+      asyncWriteImpl(fd);
   }
 }
 

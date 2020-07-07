@@ -69,6 +69,8 @@ public:
 
   std::shared_ptr<Aio::Handler> clone() const override;
 
+  void flush();
+
 private:
   enum WriteStatus { FirstTry, Retry };
 
@@ -195,7 +197,7 @@ private:
 
   void handlePeerDisconnection(const std::shared_ptr<Peer> &peer);
   void handleIncoming(const std::shared_ptr<Peer> &peer);
-  void handleWriteQueue();
+  void handleWriteQueue(bool flush = false);
   void handleTimerQueue();
   void handlePeerQueue();
   void handleNotify();

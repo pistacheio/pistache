@@ -636,6 +636,7 @@ void ResponseStream::flush() {
 
   auto fd = peer()->fd();
   transport_->asyncWrite(fd, buf);
+  transport_->flush();
 
   buf_.clear();
 }
