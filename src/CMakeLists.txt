@@ -46,7 +46,7 @@ if (PISTACHE_INSTALL)
 
     install(
       TARGETS pistache_shared
-      EXPORT ${targets_export_name}
+      EXPORT PistacheTargets
       ARCHIVE DESTINATION ${lib_install_dir}
       LIBRARY DESTINATION ${lib_install_dir}
       RUNTIME DESTINATION ${bin_install_dir}
