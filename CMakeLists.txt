@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.1.3)
+cmake_minimum_required (VERSION 3.4)
 
 set(CMAKE_BUILD_TYPE_INIT Release)
 
@@ -63,12 +63,8 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 if (PISTACHE_USE_SSL)
-    add_definitions(-DPISTACHE_USE_SSL)
-    link_libraries(-lssl -lcrypto)
-endif (PISTACHE_USE_SSL)
-
-link_libraries(-latomic)
-include_directories (${CMAKE_CURRENT_SOURCE_DIR}/include)
+    find_package(OpenSSL REQUIRED COMPONENTS SSL Crypto)
+endif ()
 
 # Set version...
 

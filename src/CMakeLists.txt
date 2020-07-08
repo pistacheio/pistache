@@ -29,6 +29,16 @@ add_library(pistache_static STATIC $<TARGET_OBJECTS:pistache>)
 target_link_libraries(pistache_shared Threads::Threads)
 target_link_libraries(pistache_static Threads::Threads)
 
+if (PISTACHE_USE_SSL)
+    target_compile_definitions(pistache PUBLIC PISTACHE_USE_SSL)
+    target_compile_definitions(pistache_shared PUBLIC PISTACHE_USE_SSL)
+    target_compile_definitions(pistache_static PUBLIC PISTACHE_USE_SSL)
+
+    target_include_directories(pistache PRIVATE ${OPENSSL_INCLUDE_DIR})
+    target_link_libraries(pistache_shared PUBLIC OpenSSL::SSL OpenSSL::Crypto)
+    target_link_libraries(pistache_static PUBLIC OpenSSL::SSL OpenSSL::Crypto)
+endif ()
+
 set(Pistache_OUTPUT_NAME "pistache")
 set_target_properties(pistache_shared PROPERTIES
     OUTPUT_NAME ${Pistache_OUTPUT_NAME}
