@@ -155,11 +155,9 @@ endif()
 
 if (PISTACHE_BUILD_TESTS)
     find_package(GTest)
-    if (GTEST_FOUND)
-        include_directories(${GTEST_INCLUDE_DIRS})
-    else()
+    if (NOT GTEST_FOUND)
         ADD_SUBDIRECTORY (third-party/googletest)
-        include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
+        set(GTEST_INCLUDE_DIRS ${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
     endif()
 
     enable_testing()
