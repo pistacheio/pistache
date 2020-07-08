@@ -15,9 +15,12 @@ add_library(pistache OBJECT ${SOURCE_FILES})
 set_target_properties(pistache PROPERTIES POSITION_INDEPENDENT_CODE 1)
 add_definitions(-DONLY_C_LOCALE=1)
 
-target_include_directories(pistache PUBLIC
+set(PISTACHE_INCLUDE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
-)
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    )
+
+target_include_directories(pistache PUBLIC ${PISTACHE_INCLUDE})
 
 set(include_install_dir ${CMAKE_INSTALL_INCLUDEDIR})
 set(lib_install_dir ${CMAKE_INSTALL_LIBDIR})
@@ -28,6 +31,9 @@ add_library(pistache_static STATIC $<TARGET_OBJECTS:pistache>)
 
 target_link_libraries(pistache_shared Threads::Threads)
 target_link_libraries(pistache_static Threads::Threads)
+
+target_include_directories(pistache_shared INTERFACE ${PISTACHE_INCLUDE})
+target_include_directories(pistache_static INTERFACE ${PISTACHE_INCLUDE})
 
 if (PISTACHE_USE_SSL)
     target_compile_definitions(pistache PUBLIC PISTACHE_USE_SSL)
