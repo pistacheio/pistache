@@ -91,16 +91,14 @@ To [use](https://autotools.io/pkgconfig/pkg_check_modules.html) with the GNU Aut
 To use with a CMake build environment, use the [FindPkgConfig](https://cmake.org/cmake/help/latest/module/FindPkgConfig.html) module. Here is an example:
 
 ```cmake
-    cmake_minimum_required(2.8 FATAL_ERROR)
+    cmake_minimum_required(3.4 FATAL_ERROR)
     project("MyPistacheProject")
-    
-    # Tell CMake to add support for pkg-config, then use it to find the library...
-    include(FindPkgConfig)
-    pkg_search_module(PISTACHE REQUIRED libpistache>=0.0.2)
-    
-    include_directories(${PISTACHE_INCLUDE_DIRS})
+
+    # Find the library.
+    find_package(Pistache 0.0.2 REQUIRED)
+
     add_executable(${PROJECT_NAME} main.cpp)
-    target_link_libraries(${PROJECT_NAME} ${PISTACHE_LIBRARIES})
+    target_link_libraries(${PROJECT_NAME} pistache_shared)
 ```
 
 ## Makefile
