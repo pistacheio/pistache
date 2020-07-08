@@ -1,14 +1,22 @@
-cmake_minimum_required (VERSION 3.1.3)
-project (pistache)
+cmake_minimum_required (VERSION 3.4)
+
+set(CMAKE_BUILD_TYPE_INIT Release)
+
+# CMAKE Pin cxx compiler to CXX14 until update to CXX17
+set(CMAKE_CXX_STANDARD 14)
+
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+project (pistache
+    LANGUAGES CXX)
 
 include(GNUInstallDirs)
 
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -Wconversion -pedantic -Wextra -Wno-missing-field-initializers")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/CMakeModules)
 
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release)
-endif()
+include(CheckAtomic)
 
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
     set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage -fstack-protector-all --param=ssp-buffer-size=4")
@@ -52,24 +60,12 @@ if (PISTACHE_BUILD_TESTS)
     add_custom_target(coverage COMMAND ${CMAKE_CTEST_COMMAND}  --force-new-ctest-process --test-action coverage)
 endif()
 
-# CMAKE Pin cxx compiler to CXX14 until update to CXX17
-include(CheckCXXCompilerFlag)
-CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
-set(CMAKE_CXX_STANDARD 14)
-
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 if (PISTACHE_USE_SSL)
-    add_definitions(-DPISTACHE_USE_SSL)
-    link_libraries(-lssl -lcrypto)
-endif (PISTACHE_USE_SSL)
-
-link_libraries(-latomic)
-include_directories (${CMAKE_CURRENT_SOURCE_DIR}/include)
+    find_package(OpenSSL REQUIRED COMPONENTS SSL Crypto)
+endif ()
 
 # Set version...
 
@@ -114,7 +110,10 @@ include_directories (${CMAKE_CURRENT_SOURCE_DIR}/include)
 # Set libraries...
 
     # Minimum...
-    set(LIBS "-lpistache -lpthread -latomic")
+    set(LIBS "-lpistache -lpthread")
+    if (NOT HAVE_CXX_ATOMICS64_WITHOUT_LIB)
+        set(LIBS "-latomic")
+    endif ()
 
     # If building with OpenSSL support...
     if(PISTACHE_USE_SSL)
@@ -156,11 +155,9 @@ endif()
 
 if (PISTACHE_BUILD_TESTS)
     find_package(GTest)
-    if (GTEST_FOUND)
-        include_directories(${GTEST_INCLUDE_DIRS})
-    else()
+    if (NOT GTEST_FOUND)
         ADD_SUBDIRECTORY (third-party/googletest)
-        include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
+        set(GTEST_INCLUDE_DIRS ${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
     endif()
 
     enable_testing()

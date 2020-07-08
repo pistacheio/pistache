@@ -1,9 +1,12 @@
+find_package(CURL REQUIRED)
+
 function(pistache_test test_name)
     set(TEST_EXECUTABLE run_${test_name})
     set(TEST_SOURCE ${test_name}.cc)
 
     add_executable(${TEST_EXECUTABLE} ${TEST_SOURCE})
-    target_link_libraries(${TEST_EXECUTABLE} gtest gtest_main pistache_static curl pthread)
+    target_include_directories(${TEST_EXECUTABLE} PRIVATE ${GTEST_INCLUDE_DIRS} ${CURL_INCLUDE_DIRS})
+    target_link_libraries(${TEST_EXECUTABLE} gtest gtest_main pistache_static ${CURL_LIBRARIES})
     add_test(${test_name} ${TEST_EXECUTABLE})
 endfunction()
 
