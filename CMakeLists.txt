@@ -2,6 +2,12 @@ cmake_minimum_required (VERSION 3.1.3)
 
 set(CMAKE_BUILD_TYPE_INIT Release)
 
+# CMAKE Pin cxx compiler to CXX14 until update to CXX17
+set(CMAKE_CXX_STANDARD 14)
+
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 project (pistache
     LANGUAGES CXX)
 
@@ -52,14 +58,6 @@ if (PISTACHE_BUILD_TESTS)
     add_custom_target(test_memcheck COMMAND ${CMAKE_CTEST_COMMAND}  --force-new-ctest-process --test-action memcheck)
     add_custom_target(coverage COMMAND ${CMAKE_CTEST_COMMAND}  --force-new-ctest-process --test-action coverage)
 endif()
-
-# CMAKE Pin cxx compiler to CXX14 until update to CXX17
-include(CheckCXXCompilerFlag)
-CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
-set(CMAKE_CXX_STANDARD 14)
-
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
