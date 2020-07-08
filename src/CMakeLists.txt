@@ -29,8 +29,8 @@ set(bin_install_dir ${CMAKE_INSTALL_BINDIR})
 add_library(pistache_shared SHARED $<TARGET_OBJECTS:pistache>)
 add_library(pistache_static STATIC $<TARGET_OBJECTS:pistache>)
 
-target_link_libraries(pistache_shared Threads::Threads)
-target_link_libraries(pistache_static Threads::Threads)
+target_link_libraries(pistache_shared PRIVATE Threads::Threads ${CMAKE_REQUIRED_LIBRARIES})
+target_link_libraries(pistache_static PRIVATE Threads::Threads ${CMAKE_REQUIRED_LIBRARIES})
 
 target_include_directories(pistache_shared INTERFACE ${PISTACHE_INCLUDE})
 target_include_directories(pistache_static INTERFACE ${PISTACHE_INCLUDE})

@@ -16,6 +16,7 @@ include(GNUInstallDirs)
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -Wconversion -pedantic -Wextra -Wno-missing-field-initializers")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/CMakeModules)
 
+include(CheckAtomic)
 
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
     set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage -fstack-protector-all --param=ssp-buffer-size=4")
@@ -109,7 +110,10 @@ endif ()
 # Set libraries...
 
     # Minimum...
-    set(LIBS "-lpistache -lpthread -latomic")
+    set(LIBS "-lpistache -lpthread")
+    if (NOT HAVE_CXX_ATOMICS64_WITHOUT_LIB)
+        set(LIBS "-latomic")
+    endif ()
 
     # If building with OpenSSL support...
     if(PISTACHE_USE_SSL)
