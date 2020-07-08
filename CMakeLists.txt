@@ -2,7 +2,8 @@ cmake_minimum_required (VERSION 3.1.3)
 
 set(CMAKE_BUILD_TYPE_INIT Release)
 
-project (pistache)
+project (pistache
+    LANGUAGES CXX)
 
 include(GNUInstallDirs)
 
