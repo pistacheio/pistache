@@ -6,4 +6,7 @@ include_directories(${Pistache_INCLUDE_DIRS})
 set_and_check ( Pistache_LIBRARIES "@PACKAGE_lib_install_dir@")
 link_directories(${Pistache_LIBRARIES})
 
+#Required for the static library
+find_package(Threads REQUIRED)
+
 include("${CMAKE_CURRENT_LIST_DIR}/PistacheTargets.cmake")
