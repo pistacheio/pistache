@@ -59,6 +59,7 @@ set_target_properties(pistache_static PROPERTIES
 if (PISTACHE_INSTALL)
     set(Pistache_CMAKE_INSTALL_PATH "${CMAKE_INSTALL_LIBDIR}/cmake/pistache")
     set(Pistache_CONFIG_FILE "PistacheConfig.cmake")
+    set(Pistache_CONFIG_VERSION_FILE "PistacheConfigVersion.cmake")
 
     install(
       TARGETS pistache_shared
@@ -88,8 +89,13 @@ if (PISTACHE_INSTALL)
         INSTALL_DESTINATION ${Pistache_CMAKE_INSTALL_PATH}
         PATH_VARS include_install_dir lib_install_dir
     )
+    write_basic_package_version_file(
+        "${CMAKE_CURRENT_BINARY_DIR}/${Pistache_CONFIG_VERSION_FILE}"
+        VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}
+        COMPATIBILITY AnyNewerVersion)
     install(
         FILES "${CMAKE_CURRENT_BINARY_DIR}/${Pistache_CONFIG_FILE}"
+        "${CMAKE_CURRENT_BINARY_DIR}/${Pistache_CONFIG_VERSION_FILE}"
         DESTINATION ${Pistache_CMAKE_INSTALL_PATH}
         COMPONENT cmake-config
     )
