@@ -33,7 +33,7 @@ TEST(stream, test_buffer) {
 }
 
 TEST(stream, test_file_buffer) {
-  const char fileName[PATH_MAX] = "/tmp/pistacheioXXXXXX";
+  char fileName[PATH_MAX] = "/tmp/pistacheioXXXXXX";
   if (!mkstemp(fileName)) {
     std::cerr << "No suitable filename can be generated!" << std::endl;
   }
