@@ -13,8 +13,8 @@
 using namespace Pistache;
 
 TEST(stream, test_buffer) {
-  char str[] = "test_string";
-  size_t len = strlen(str);
+  const char str[] = "test_string";
+  const size_t len = strlen(str);
   RawBuffer buffer1(str, len, false);
 
   RawBuffer buffer2 = buffer1.detach(0);
@@ -29,11 +29,11 @@ TEST(stream, test_buffer) {
   ASSERT_EQ(buffer4.size(), 0u);
   ASSERT_EQ(buffer4.isDetached(), false);
 
-  ASSERT_THROW(buffer1.detach(2 * len);, std::range_error);
+  ASSERT_THROW(buffer1.detach(2 * len), std::range_error);
 }
 
 TEST(stream, test_file_buffer) {
-  char fileName[PATH_MAX] = "/tmp/pistacheioXXXXXX";
+  const char fileName[PATH_MAX] = "/tmp/pistacheioXXXXXX";
   if (!mkstemp(fileName)) {
     std::cerr << "No suitable filename can be generated!" << std::endl;
   }
