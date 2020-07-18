@@ -226,43 +226,11 @@ void Transport::asyncWriteImpl(Fd fd) {
       if (buffer.isRaw()) {
         auto raw = buffer.raw();
         auto ptr = raw.data().c_str() + totalWritten;
-
-#ifdef PISTACHE_USE_SSL
-        auto it_ = peers.find(fd);
-
-        if (it_ == std::end(peers))
-          throw std::runtime_error("No peer found for fd: " +
-                                   std::to_string(fd));
-
-        if (it_->second->ssl() != NULL) {
-          auto ssl_ = static_cast<SSL *>(it_->second->ssl());
-          bytesWritten = SSL_write(ssl_, ptr, static_cast<int>(len));
-        } else {
-#endif /* PISTACHE_USE_SSL */
-          bytesWritten = ::send(fd, ptr, len, flags);
-#ifdef PISTACHE_USE_SSL
-        }
-#endif /* PISTACHE_USE_SSL */
+        bytesWritten = sendRawBuffer(fd, ptr, len, flags);
       } else {
         auto file = buffer.fd();
         off_t offset = totalWritten;
-
-#ifdef PISTACHE_USE_SSL
-        auto it_ = peers.find(fd);
-
-        if (it_ == std::end(peers))
-          throw std::runtime_error("No peer found for fd: " +
-                                   std::to_string(fd));
-
-        if (it_->second->ssl() != NULL) {
-          auto ssl_ = static_cast<SSL *>(it_->second->ssl());
-          bytesWritten = SSL_sendfile(ssl_, file, &offset, len);
-        } else {
-#endif /* PISTACHE_USE_SSL */
-          bytesWritten = ::sendfile(fd, file, &offset, len);
-#ifdef PISTACHE_USE_SSL
-        }
-#endif /* PISTACHE_USE_SSL */
+        bytesWritten = sendFile(fd, file, offset, len);
       }
       if (bytesWritten < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -307,6 +275,52 @@ void Transport::asyncWriteImpl(Fd fd) {
       }
     }
   }
+}
+
+ssize_t Transport::sendRawBuffer(Fd fd, const char* buffer, size_t len, int flags) {
+  ssize_t bytesWritten = 0;
+
+#ifdef PISTACHE_USE_SSL
+  auto it_ = peers.find(fd);
+
+  if (it_ == std::end(peers))
+    throw std::runtime_error("No peer found for fd: " +
+                             std::to_string(fd));
+
+  if (it_->second->ssl() != NULL) {
+    auto ssl_ = static_cast<SSL *>(it_->second->ssl());
+    bytesWritten = SSL_write(ssl_, buffer, static_cast<int>(len));
+  } else {
+#endif /* PISTACHE_USE_SSL */
+    bytesWritten = ::send(fd, buffer, len, flags);
+#ifdef PISTACHE_USE_SSL
+  }
+#endif /* PISTACHE_USE_SSL */
+
+  return bytesWritten;
+}
+
+ssize_t Transport::sendFile(Fd fd, Fd file, off_t offset, size_t len) {
+  ssize_t bytesWritten = 0;
+
+#ifdef PISTACHE_USE_SSL
+  auto it_ = peers.find(fd);
+
+  if (it_ == std::end(peers))
+    throw std::runtime_error("No peer found for fd: " +
+                             std::to_string(fd));
+
+  if (it_->second->ssl() != NULL) {
+    auto ssl_ = static_cast<SSL *>(it_->second->ssl());
+    bytesWritten = SSL_sendfile(ssl_, file, &offset, len);
+  } else {
+#endif /* PISTACHE_USE_SSL */
+    bytesWritten = ::sendfile(fd, file, &offset, len);
+#ifdef PISTACHE_USE_SSL
+  }
+#endif /* PISTACHE_USE_SSL */
+
+  return bytesWritten;
 }
 
 void Transport::armTimerMs(Fd fd, std::chrono::milliseconds value,
