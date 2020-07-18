@@ -36,7 +36,7 @@ public:
   AddrInfo &operator=(const AddrInfo &) = delete;
 
   // Default construction: do nothing.
-  AddrInfo() : addrs(nullptr) {}
+  AddrInfo() = default;
 
   ~AddrInfo() {
     if (addrs) {
@@ -59,7 +59,7 @@ public:
   const struct addrinfo *get_info_ptr() const { return addrs; }
 
 private:
-  struct addrinfo *addrs;
+  struct addrinfo *addrs = nullptr;
 };
 
 class Port {
