@@ -7,19 +7,61 @@
 #include <pistache/config.h>
 #include <pistache/net.h>
 
-#include <cassert>
-#include <cstring>
 #include <limits>
 #include <stdexcept>
+#include <string>
+#include <vector>
+
+#include <cassert>
+#include <cstring>
 
 #include <arpa/inet.h>
 #include <ifaddrs.h>
-#include <iostream>
-#include <netinet/in.h>
+#include <netdb.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 namespace Pistache {
 
 namespace {
+std::vector<std::string> HostToIPv4(const std::string &host,
+                                    const std::string &port) {
+  std::vector<std::string> result;
+
+  struct addrinfo hints;
+  memset(&hints, 0, sizeof(struct addrinfo));
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_STREAM; /* Stream socket */
+  hints.ai_flags = 0;
+  hints.ai_protocol = 0;
+
+  AddrInfo addressInfo;
+
+  try {
+    addressInfo.invoke(host.c_str(), port.c_str(), &hints);
+  } catch (const std::runtime_error &) {
+    throw std::invalid_argument("Failed to get IPv4 addresses");
+  }
+
+  const addrinfo *addrs = addressInfo.get_info_ptr();
+  if (addrs == nullptr) {
+    throw std::invalid_argument("Failed to get IPv4 addresses");
+  }
+
+  for (const addrinfo *addr = addrs; addr; addr = addr->ai_next) {
+    struct sockaddr_in *ipv4 =
+        reinterpret_cast<struct sockaddr_in *>(addr->ai_addr);
+    char buffer[INET_ADDRSTRLEN] = {
+        0,
+    };
+
+    inet_ntop(addr->ai_family, &(ipv4->sin_addr), buffer, sizeof(buffer));
+    result.emplace_back(buffer);
+  }
+
+  return result;
+}
+
 IP GetIPv4(const std::string &host) {
   in_addr addr;
   int res = inet_pton(AF_INET, host.c_str(), &addr);
@@ -31,7 +73,8 @@ IP GetIPv4(const std::string &host) {
     struct sockaddr_in s_addr = {0};
     s_addr.sin_family = AF_INET;
 
-    static_assert(sizeof(s_addr.sin_addr.s_addr) >= sizeof(uint32_t), "Incompatible s_addr.sin_addr.s_addr size");
+    static_assert(sizeof(s_addr.sin_addr.s_addr) >= sizeof(uint32_t),
+                  "Incompatible s_addr.sin_addr.s_addr size");
     memcpy(&(s_addr.sin_addr.s_addr), &addr.s_addr, sizeof(uint32_t));
 
     return IP(reinterpret_cast<struct sockaddr *>(&s_addr));
@@ -49,7 +92,8 @@ IP GetIPv6(const std::string &host) {
     struct sockaddr_in6 s_addr = {0};
     s_addr.sin6_family = AF_INET6;
 
-    static_assert(sizeof(s_addr.sin6_addr.s6_addr16) >= 8 * sizeof(uint16_t), "Incompatible s_addr.sin6_addr.s6_addr16 size");
+    static_assert(sizeof(s_addr.sin6_addr.s6_addr16) >= 8 * sizeof(uint16_t),
+                  "Incompatible s_addr.sin6_addr.s6_addr16 size");
     memcpy(&(s_addr.sin6_addr.s6_addr16), &addr6.s6_addr16,
            8 * sizeof(uint16_t));
 
@@ -277,39 +321,9 @@ int Address::family() const { return ip_.getFamily(); }
 
 void Address::init(const std::string &addr) {
   AddressParser parser(addr);
-  int family_ = parser.family();
-  std::string host_;
-  if (family_ == AF_INET6) {
-    const std::string &raw_host = parser.rawHost();
-    assert(raw_host.size() > 2);
-    host_ = addr.substr(1, raw_host.size() - 2);
+  const int family = parser.family();
 
-    ip_ = GetIPv6(host_);
-  } else if (family_ == AF_INET) {
-    host_ = parser.rawHost();
-
-    if (host_ == "*") {
-      host_ = "0.0.0.0";
-    } else if (host_ == "localhost") {
-      host_ = "127.0.0.1";
-    }
-
-    struct hostent *hp = ::gethostbyname(host_.c_str());
-
-    if (hp) {
-      char **addr = hp->h_addr_list;
-      while (*addr) {
-        host_ =
-            std::string(inet_ntoa(*reinterpret_cast<struct in_addr *>(*addr)));
-        break;
-      }
-    }
-
-    ip_ = GetIPv4(host_);
-  } else {
-    assert(false);
-  }
-
+  // TODO: Need refactoring
   const std::string &portPart = parser.rawPort();
   if (portPart.empty()) {
     if (parser.hasColon()) {
@@ -325,6 +339,31 @@ void Address::init(const std::string &addr) {
     if (*end != 0 || port < Port::min() || port > Port::max())
       throw std::invalid_argument("Invalid port");
     port_ = Port(static_cast<uint16_t>(port));
+  }
+
+  if (family == AF_INET6) {
+    const std::string &raw_host = parser.rawHost();
+    assert(raw_host.size() > 2);
+    const std::string &host = addr.substr(1, raw_host.size() - 2);
+
+    ip_ = GetIPv6(host);
+  } else if (family == AF_INET) {
+    std::string host = parser.rawHost();
+
+    if (host == "*") {
+      host = "0.0.0.0";
+    } else if (host == "localhost") {
+      host = "127.0.0.1";
+    }
+
+    const auto& addresses = HostToIPv4(host, portPart);
+    if (!addresses.empty()) {
+      ip_ = GetIPv4(addresses[0]);
+    } else {
+      assert(false && "No IP addresses found for host");
+    }
+  } else {
+    assert(false);
   }
 }
 
