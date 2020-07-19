@@ -51,7 +51,7 @@ jobs:
       - name: Installing build dependencies...
         run: |
           BUILD_DEPS=$(perl -ne 'next if /^#/; $p=(s/^Build-Depends:\s*/ / or (/^ / and $p)); s/,|\n|\([^)]+\)//mg; print if $p' < debian/control)
-          sudo apt-get install --no-install-recommends $BUILD_DEPS
+          sudo apt-get install --no-install-recommends devscripts $BUILD_DEPS
 
       - name: Building source tarball...
         run: ./debian/rules get-orig-source
