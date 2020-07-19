@@ -53,17 +53,17 @@ jobs:
           BUILD_DEPS=$(perl -ne 'next if /^#/; $p=(s/^Build-Depends:\s*/ / or (/^ / and $p)); s/,|\n|\([^)]+\)//mg; print if $p' < debian/control)
           sudo apt-get install --no-install-recommends devscripts $BUILD_DEPS
 
-      - name: Building source tarball...
+      - name: Building upstream tarball...
         run: ./debian/rules get-orig-source
 
-      - name: Generating Debian source package...
+      - name: Building source package metadata...
         run: debuild -S -sa -us -uc
 
       - name: Collect source artifacts...
         run: |
           PISTACHE_VERSION=$(<PISTACHE_VERSION/PISTACHE_VERSION)
           mkdir ../source
-          mv -v ../pistache_${PISTACHE_VERSION}* ../pistache_*.orig.tar.* ../source
+          mv -v ./pistache_${PISTACHE_VERSION}* ../source
 
       - name: Preserve source artifacts...
         uses: actions/upload-artifact@v1
