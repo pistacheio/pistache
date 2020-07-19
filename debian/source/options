@@ -1,2 +1,2 @@
-extend-diff-ignore = "(^|/)(.github/*)$"
+extend-diff-ignore = "(^|/)(.github/.*)$"
 
