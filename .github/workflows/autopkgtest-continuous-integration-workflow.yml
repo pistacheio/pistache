@@ -1,0 +1,110 @@
+name: DEP-8 Continuous Integration
+
+on:
+  push:
+    branches:
+      - kip-github-workflow-autopkgtest
+  pull_request:
+    branches:
+      - kip-github-workflow-autopkgtest
+
+env:
+  DEBUILD_SOURCE: debuild-source
+
+jobs:
+
+  extract-version:
+    name: Extracting version from debian/changelog...
+    runs-on: ubuntu-20.04
+    steps:
+
+      - name: Checking out HEAD...
+        uses: actions/checkout@v2
+
+      - name: Extract and preserve version string artifact...
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install dpkg-dev
+          PISTACHE_VERSION=$(dpkg-parsechangelog | grep Version | cut -d : -f2 | tr -d '[:space:]')
+          echo $PISTACHE_VERSION > PISTACHE_VERSION
+
+      - name: Preserve version string as artifact...
+        uses: actions/upload-artifact@v2
+        with:
+          name: PISTACHE_VERSION
+          path: PISTACHE_VERSION
+
+  build-source-package:
+    name: Building source package...
+    runs-on: ubuntu-20.04
+    needs: extract-version
+    steps:
+
+      - name: Checking out HEAD...
+        uses: actions/checkout@v2
+
+      - name: Recover version string artifact...
+        uses: actions/download-artifact@v1
+        with:
+          name: PISTACHE_VERSION
+
+      - name: Installing build dependencies...
+        run: |
+          BUILD_DEPS=$(perl -ne 'next if /^#/; $p=(s/^Build-Depends:\s*/ / or (/^ / and $p)); s/,|\n|\([^)]+\)//mg; print if $p' < debian/control)
+          sudo apt-get install --no-install-recommends $BUILD_DEPS
+
+      - name: Building source tarball...
+        run: ./debian/rules get-orig-source
+
+      - name: Generating Debian source package...
+        run: debuild -S -sa -us -uc
+
+      - name: Collect source artifacts...
+        run: |
+          PISTACHE_VERSION=$(<PISTACHE_VERSION/PISTACHE_VERSION)
+          mkdir ../source
+          mv -v ../pistache_${PISTACHE_VERSION}* ../pistache_*.orig.tar.* ../source
+
+      - name: Preserve source artifacts...
+        uses: actions/upload-artifact@v1
+        with:
+          name: debuild-source
+          path: ../source
+
+  autopkgtest:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-18.04, ubuntu-20.04]
+    needs:
+      - build-source-package
+    steps:
+
+      - name: Get version
+        uses: actions/download-artifact@v1
+        with:
+          name: PISTACHE_VERSION
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v1
+        with:
+          name: debuild-source
+
+      - name: Install autopkgtest dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get upgrade -y
+          sudo apt-get install autopkgtest
+
+      - name: Run autopkgtest
+        run: |
+          set +e
+          PISTACHE_VERSION=$(<PISTACHE_VERSION/PISTACHE_VERSION)
+
+          sudo autopkgtest ./${DEBUILD_SOURCE}/pistache_${PISTACHE_VERSION}_source.changes -- null
+
+          # autopkgtest exit code 2 signifies skipped tests
+          if [ $? -gt 2 ]; then
+            exit 1
+          fi
+
