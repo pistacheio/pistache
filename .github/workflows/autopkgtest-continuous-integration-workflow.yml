@@ -63,9 +63,8 @@ jobs:
         run: |
           PISTACHE_VERSION=$(<PISTACHE_VERSION/PISTACHE_VERSION)
           mkdir ../source
-          ls
-          ls ../source
-          mv -v ./pistache_${PISTACHE_VERSION}* ../source
+          ls ../
+          mv -v ../pistache_${PISTACHE_VERSION}* ../source
 
       - name: Preserve source artifacts...
         uses: actions/upload-artifact@v1
