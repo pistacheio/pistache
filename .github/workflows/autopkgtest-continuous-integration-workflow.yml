@@ -97,13 +97,18 @@ jobs:
           sudo apt-get upgrade -y
           sudo apt-get install autopkgtest
 
+          autopkgtest-buildvm-ubuntu-cloud --verbose -r focal -a ppc64el
+          #autopkgtest-buildvm-ubuntu-cloud --verbose -r focal -a amd64
+
       - name: Run autopkgtest
         run: |
           set +e
           PISTACHE_UPSTREAM_VERSION=$(<version-artifacts/PISTACHE_UPSTREAM_VERSION)
           PISTACHE_PACKAGE_VERSION=$(<version-artifacts/PISTACHE_PACKAGE_VERSION)
 
-          sudo autopkgtest ./source-package/pistache_${PISTACHE_PACKAGE_VERSION}_source.changes -- null
+          autopkgtest --shell-fail --apt-upgrade ./source-package/pistache_${PISTACHE_PACKAGE_VERSION}_source.changes -- qemu --qemu-command=qemu-system-ppc64le --ram-size=8192 --cpus=4 --show-boot ubuntu-focal-ppc64el.img --qemu-options='-enable-kvm -machine accel=tcg'
+
+          #sudo autopkgtest ./source-package/pistache_${PISTACHE_PACKAGE_VERSION}_source.changes -- null
 
           # autopkgtest exit code 2 signifies skipped tests
           if [ $? -gt 2 ]; then
