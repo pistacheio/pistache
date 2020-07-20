@@ -25,7 +25,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get -y install dpkg-dev
-          PISTACHE_VERSION=$(dpkg-parsechangelog | grep Version | cut -d : -f2 | tr -d '[:space:]')
+          PISTACHE_VERSION=$(dpkg-parsechangelog | sed -rne 's/^Version: ([0-9.]+)[-+].*$$/\1/p')
           echo $PISTACHE_VERSION > PISTACHE_VERSION
 
       - name: Preserve version string as artifact...
