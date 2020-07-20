@@ -95,7 +95,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get upgrade -y
-          sudo apt-get install autopkgtest
+          sudo apt-get install autopkgtest qemu-system
 
           autopkgtest-buildvm-ubuntu-cloud --verbose -r focal -a ppc64el
           #autopkgtest-buildvm-ubuntu-cloud --verbose -r focal -a amd64
