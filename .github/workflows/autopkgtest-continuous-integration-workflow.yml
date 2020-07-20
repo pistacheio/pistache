@@ -81,26 +81,28 @@ jobs:
       - build-source-package
     steps:
 
-      - name: Get version
+      - name: Get version...
         uses: actions/download-artifact@v1
         with:
           name: version-artifacts
 
-      - name: Download artifacts
+      - name: Recover artifacts...
         uses: actions/download-artifact@v1
         with:
           name: source-package
 
-      - name: Install autopkgtest dependencies
+      - name: Install autopkgtest dependencies...
         run: |
           sudo apt-get update
           sudo apt-get upgrade -y
-          sudo apt-get install autopkgtest qemu-system
+          sudo apt-get install autopkgtest qemu-system genisoimage
 
+      - name: Prepare container images...
+        run: |
           autopkgtest-buildvm-ubuntu-cloud --verbose -r focal -a ppc64el
           #autopkgtest-buildvm-ubuntu-cloud --verbose -r focal -a amd64
 
-      - name: Run autopkgtest
+      - name: Build and test package...
         run: |
           set +e
           PISTACHE_UPSTREAM_VERSION=$(<version-artifacts/PISTACHE_UPSTREAM_VERSION)
