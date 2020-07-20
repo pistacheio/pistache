@@ -8,9 +8,6 @@ on:
     branches:
       - kip-github-workflow-autopkgtest
 
-env:
-  DEBUILD_SOURCE: debuild-source
-
 jobs:
 
   extract-version:
@@ -21,18 +18,22 @@ jobs:
       - name: Checking out HEAD...
         uses: actions/checkout@v2
 
-      - name: Extract and preserve version string artifact...
+      - name: Extract upstream and package versioning strings as artifacts...
         run: |
           sudo apt-get update
           sudo apt-get -y install dpkg-dev
-          PISTACHE_VERSION=$(dpkg-parsechangelog | sed -rne 's/^Version: ([0-9.]+)[-+].*$$/\1/p')
-          echo $PISTACHE_VERSION > PISTACHE_VERSION
+          PISTACHE_UPSTREAM_VERSION=$(dpkg-parsechangelog | sed -rne 's/^Version: ([0-9.]+)[-+].*$$/\1/p')
+          PISTACHE_PACKAGE_VERSION=$(dpkg-parsechangelog --show-field Version)
+          echo $PISTACHE_UPSTREAM_VERSION > PISTACHE_UPSTREAM_VERSION
+          echo $PISTACHE_PACKAGE_VERSION > PISTACHE_PACKAGE_VERSION
 
       - name: Preserve version string as artifact...
         uses: actions/upload-artifact@v2
         with:
-          name: PISTACHE_VERSION
-          path: PISTACHE_VERSION
+          name: version-artifacts
+          path: |
+            PISTACHE_UPSTREAM_VERSION
+            PISTACHE_PACKAGE_VERSION
 
   build-source-package:
     name: Building source package...
@@ -46,7 +47,7 @@ jobs:
       - name: Recover version string artifact...
         uses: actions/download-artifact@v1
         with:
-          name: PISTACHE_VERSION
+          name: version-artifacts
 
       - name: Installing build dependencies...
         run: |
@@ -61,15 +62,14 @@ jobs:
 
       - name: Collect source artifacts...
         run: |
-          PISTACHE_VERSION=$(<PISTACHE_VERSION/PISTACHE_VERSION)
+          PISTACHE_UPSTREAM_VERSION=$(<version-artifacts/PISTACHE_UPSTREAM_VERSION)
           mkdir ../source
-          ls ../
-          mv -v ../pistache_${PISTACHE_VERSION}* ../source
+          mv -v ../pistache_${PISTACHE_UPSTREAM_VERSION}* ../source
 
       - name: Preserve source artifacts...
         uses: actions/upload-artifact@v1
         with:
-          name: debuild-source
+          name: source-package
           path: ../source
 
   autopkgtest:
@@ -84,12 +84,12 @@ jobs:
       - name: Get version
         uses: actions/download-artifact@v1
         with:
-          name: PISTACHE_VERSION
+          name: version-artifacts
 
       - name: Download artifacts
         uses: actions/download-artifact@v1
         with:
-          name: debuild-source
+          name: source-package
 
       - name: Install autopkgtest dependencies
         run: |
@@ -100,9 +100,10 @@ jobs:
       - name: Run autopkgtest
         run: |
           set +e
-          PISTACHE_VERSION=$(<PISTACHE_VERSION/PISTACHE_VERSION)
+          PISTACHE_UPSTREAM_VERSION=$(<version-artifacts/PISTACHE_UPSTREAM_VERSION)
+          PISTACHE_PACKAGE_VERSION=$(<version-artifacts/PISTACHE_PACKAGE_VERSION)
 
-          sudo autopkgtest ./${DEBUILD_SOURCE}/pistache_${PISTACHE_VERSION}_source.changes -- null
+          sudo autopkgtest ./source-package/pistache_${PISTACHE_PACKAGE_VERSION}_source.changes -- null
 
           # autopkgtest exit code 2 signifies skipped tests
           if [ $? -gt 2 ]; then
