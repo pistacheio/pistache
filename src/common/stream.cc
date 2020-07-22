@@ -17,18 +17,16 @@
 
 namespace Pistache {
 
-RawBuffer::RawBuffer() : data_(), length_(0), isDetached_(false) {}
+RawBuffer::RawBuffer(std::string data, size_t length)
+    : data_(std::move(data)), length_(length) {}
 
-RawBuffer::RawBuffer(std::string data, size_t length, bool isDetached)
-    : data_(std::move(data)), length_(length), isDetached_(isDetached) {}
-
-RawBuffer::RawBuffer(const char *data, size_t length, bool isDetached)
-    : data_(), length_(length), isDetached_(isDetached) {
+RawBuffer::RawBuffer(const char *data, size_t length)
+    : data_(), length_(length) {
   // input may come not from a ZTS - copy only length_ characters.
   data_.assign(data, length_);
 }
 
-RawBuffer RawBuffer::detach(size_t fromIndex) {
+RawBuffer RawBuffer::copy(size_t fromIndex) const {
   if (data_.empty())
     return RawBuffer();
 
@@ -39,14 +37,12 @@ RawBuffer RawBuffer::detach(size_t fromIndex) {
   auto newDatalength = length_ - fromIndex;
   std::string newData = data_.substr(fromIndex, newDatalength);
 
-  return RawBuffer(std::move(newData), newDatalength, true);
+  return RawBuffer(std::move(newData), newDatalength);
 }
 
 const std::string &RawBuffer::data() const { return data_; }
 
 size_t RawBuffer::size() const { return length_; }
-
-bool RawBuffer::isDetached() const { return isDetached_; }
 
 FileBuffer::FileBuffer(const std::string &fileName)
     : fileName_(fileName), fd_(-1), size_(0) {
@@ -218,10 +214,11 @@ bool match_literal(char c, StreamCursor &cursor, CaseSensitivity cs) {
   if (cursor.eof())
     return false;
 
-  char lhs = (cs == CaseSensitivity::Sensitive ? c : static_cast<char>(std::tolower(c)));
-  char rhs =
-      (cs == CaseSensitivity::Sensitive ? cursor.current()
-                                        : static_cast<char>(std::tolower(cursor.current())));
+  char lhs = (cs == CaseSensitivity::Sensitive ? c : static_cast<char>(
+                                                         std::tolower(c)));
+  char rhs = (cs == CaseSensitivity::Sensitive
+                  ? cursor.current()
+                  : static_cast<char>(std::tolower(cursor.current())));
 
   if (lhs == rhs) {
     cursor.advance(1);
@@ -242,8 +239,12 @@ bool match_until(std::initializer_list<char> chars, StreamCursor &cursor,
 
   auto find = [&](char val) {
     for (auto c : chars) {
-      char lhs = cs == CaseSensitivity::Sensitive ? c : static_cast<char>(std::tolower(c));
-      char rhs = cs == CaseSensitivity::Insensitive ? val : static_cast<char>(std::tolower(val));
+      char lhs = cs == CaseSensitivity::Sensitive
+                     ? c
+                     : static_cast<char>(std::tolower(c));
+      char rhs = cs == CaseSensitivity::Insensitive
+                     ? val
+                     : static_cast<char>(std::tolower(val));
 
       if (lhs == rhs)
         return true;
