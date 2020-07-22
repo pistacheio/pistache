@@ -15,21 +15,23 @@ using namespace Pistache;
 TEST(stream, test_buffer) {
   const char str[] = "test_string";
   const size_t len = strlen(str);
-  RawBuffer buffer1(str, len, false);
+  RawBuffer buffer1(str, len);
 
-  RawBuffer buffer2 = buffer1.detach(0);
+  ASSERT_THROW(buffer1.copy(2 * len), std::range_error);
+
+  RawBuffer buffer2 = buffer1.copy();
   ASSERT_EQ(buffer2.size(), len);
-  ASSERT_EQ(buffer2.isDetached(), true);
+  ASSERT_EQ(buffer2.data(), "test_string");
 
   RawBuffer buffer3;
   ASSERT_EQ(buffer3.size(), 0u);
-  ASSERT_EQ(buffer3.isDetached(), false);
 
-  RawBuffer buffer4 = buffer3.detach(0);
+  RawBuffer buffer4 = buffer3.copy();
   ASSERT_EQ(buffer4.size(), 0u);
-  ASSERT_EQ(buffer4.isDetached(), false);
 
-  ASSERT_THROW(buffer1.detach(2 * len), std::range_error);
+  RawBuffer buffer5 = buffer1.copy(5u);
+  ASSERT_EQ(buffer5.size(), 6u);
+  ASSERT_EQ(buffer5.data(), "string");
 }
 
 TEST(stream, test_file_buffer) {
@@ -68,7 +70,6 @@ TEST(stream, test_dyn_buffer) {
   auto rawbuf = buf.buffer();
 
   ASSERT_EQ(rawbuf.size(), 128u);
-  ASSERT_EQ(rawbuf.isDetached(), false);
   ASSERT_EQ(rawbuf.data().size(), 128u);
   ASSERT_EQ(strlen(rawbuf.data().c_str()), 128u);
 }

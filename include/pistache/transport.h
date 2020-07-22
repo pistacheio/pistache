@@ -43,10 +43,8 @@ public:
     // context means chunked responses could be sent out of order.
     return Async::Promise<ssize_t>(
         [=](Async::Deferred<ssize_t> deferred) mutable {
-          BufferHolder holder(buffer);
-          auto detached = holder.detach();
-          WriteEntry write(std::move(deferred), detached, flags);
-          write.peerFd = fd;
+          BufferHolder holder{buffer};
+          WriteEntry write(std::move(deferred), std::move(holder), fd, flags);
           writesQueue.push(std::move(write));
         });
   }
@@ -104,10 +102,7 @@ private:
       if (!isRaw())
         return BufferHolder(_fd, size_, offset);
 
-      if (_raw.isDetached())
-        return BufferHolder(_raw, offset);
-
-      auto detached = _raw.detach(offset);
+      auto detached = _raw.copy(offset);
       return BufferHolder(detached);
     }
 
@@ -124,15 +119,15 @@ private:
   };
 
   struct WriteEntry {
-    WriteEntry(Async::Deferred<ssize_t> deferred_, BufferHolder buffer_,
+    WriteEntry(Async::Deferred<ssize_t> deferred_, BufferHolder buffer_, Fd peerFd_,
                int flags_ = 0)
         : deferred(std::move(deferred_)), buffer(std::move(buffer_)),
-          flags(flags_), peerFd(-1) {}
+          flags(flags_), peerFd(peerFd_) {}
 
     Async::Deferred<ssize_t> deferred;
     BufferHolder buffer;
-    int flags;
-    Fd peerFd;
+    int flags = 0;
+    Fd peerFd = -1;
   };
 
   struct TimerEntry {

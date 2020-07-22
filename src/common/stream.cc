@@ -17,18 +17,16 @@
 
 namespace Pistache {
 
-RawBuffer::RawBuffer() : data_(), length_(0), isDetached_(false) {}
+RawBuffer::RawBuffer(std::string data, size_t length)
+    : data_(std::move(data)), length_(length) {}
 
-RawBuffer::RawBuffer(std::string data, size_t length, bool isDetached)
-    : data_(std::move(data)), length_(length), isDetached_(isDetached) {}
-
-RawBuffer::RawBuffer(const char *data, size_t length, bool isDetached)
-    : data_(), length_(length), isDetached_(isDetached) {
+RawBuffer::RawBuffer(const char *data, size_t length)
+    : data_(), length_(length) {
   // input may come not from a ZTS - copy only length_ characters.
   data_.assign(data, length_);
 }
 
-RawBuffer RawBuffer::detach(size_t fromIndex) {
+RawBuffer RawBuffer::copy(size_t fromIndex) const {
   if (data_.empty())
     return RawBuffer();
 
@@ -39,14 +37,12 @@ RawBuffer RawBuffer::detach(size_t fromIndex) {
   auto newDatalength = length_ - fromIndex;
   std::string newData = data_.substr(fromIndex, newDatalength);
 
-  return RawBuffer(std::move(newData), newDatalength, true);
+  return RawBuffer(std::move(newData), newDatalength);
 }
 
 const std::string &RawBuffer::data() const { return data_; }
 
 size_t RawBuffer::size() const { return length_; }
-
-bool RawBuffer::isDetached() const { return isDetached_; }
 
 FileBuffer::FileBuffer(const std::string &fileName)
     : fileName_(fileName), fd_(-1), size_(0) {
