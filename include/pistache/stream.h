@@ -108,10 +108,10 @@ struct RawBuffer final {
   RawBuffer(std::string data, size_t length);
   RawBuffer(const char *data, size_t length);
 
-  RawBuffer(const RawBuffer&) = default;
-  RawBuffer& operator=(const RawBuffer&) = default;
-  RawBuffer(RawBuffer&&) = default;
-  RawBuffer& operator=(RawBuffer&&) = default;
+  RawBuffer(const RawBuffer &) = default;
+  RawBuffer &operator=(const RawBuffer &) = default;
+  RawBuffer(RawBuffer &&) = default;
+  RawBuffer &operator=(RawBuffer &&) = default;
 
   ~RawBuffer() = default;
 

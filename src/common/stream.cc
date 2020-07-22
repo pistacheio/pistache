@@ -214,10 +214,11 @@ bool match_literal(char c, StreamCursor &cursor, CaseSensitivity cs) {
   if (cursor.eof())
     return false;
 
-  char lhs = (cs == CaseSensitivity::Sensitive ? c : static_cast<char>(std::tolower(c)));
-  char rhs =
-      (cs == CaseSensitivity::Sensitive ? cursor.current()
-                                        : static_cast<char>(std::tolower(cursor.current())));
+  char lhs = (cs == CaseSensitivity::Sensitive ? c : static_cast<char>(
+                                                         std::tolower(c)));
+  char rhs = (cs == CaseSensitivity::Sensitive
+                  ? cursor.current()
+                  : static_cast<char>(std::tolower(cursor.current())));
 
   if (lhs == rhs) {
     cursor.advance(1);
@@ -238,8 +239,12 @@ bool match_until(std::initializer_list<char> chars, StreamCursor &cursor,
 
   auto find = [&](char val) {
     for (auto c : chars) {
-      char lhs = cs == CaseSensitivity::Sensitive ? c : static_cast<char>(std::tolower(c));
-      char rhs = cs == CaseSensitivity::Insensitive ? val : static_cast<char>(std::tolower(val));
+      char lhs = cs == CaseSensitivity::Sensitive
+                     ? c
+                     : static_cast<char>(std::tolower(c));
+      char rhs = cs == CaseSensitivity::Insensitive
+                     ? val
+                     : static_cast<char>(std::tolower(val));
 
       if (lhs == rhs)
         return true;

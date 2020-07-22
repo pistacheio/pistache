@@ -119,8 +119,8 @@ private:
   };
 
   struct WriteEntry {
-    WriteEntry(Async::Deferred<ssize_t> deferred_, BufferHolder buffer_, Fd peerFd_,
-               int flags_ = 0)
+    WriteEntry(Async::Deferred<ssize_t> deferred_, BufferHolder buffer_,
+               Fd peerFd_, int flags_ = 0)
         : deferred(std::move(deferred_)), buffer(std::move(buffer_)),
           flags(flags_), peerFd(peerFd_) {}
 
@@ -189,7 +189,7 @@ private:
 
   // This will attempt to drain the write queue for the fd
   void asyncWriteImpl(Fd fd);
-  ssize_t sendRawBuffer(Fd fd, const char* buffer, size_t len, int flags);
+  ssize_t sendRawBuffer(Fd fd, const char *buffer, size_t len, int flags);
   ssize_t sendFile(Fd fd, Fd file, off_t offset, size_t len);
 
   void handlePeerDisconnection(const std::shared_ptr<Peer> &peer);
