@@ -316,55 +316,62 @@ struct TypeList {
   };
 };
 
-template <typename T>
-struct RequestCheck {
-  constexpr static bool value =
-      std::is_const<typename std::remove_reference<T>::type>::value &&
-      std::is_lvalue_reference<typename std::remove_cv<T>::type>::value &&
-      std::is_same<typename std::decay<T>::type, Rest::Request>::value;
+template <typename Request, typename Response>
+struct BindChecks {
+  constexpr static bool request_check =
+      std::is_const<typename std::remove_reference<Request>::type>::value &&
+      std::is_lvalue_reference<typename std::remove_cv<Request>::type>::value &&
+      std::is_same<typename std::decay<Request>::type, Rest::Request>::value;
 
-  static_assert(value, "First argument should be a const Rest::Request&");
+  constexpr static bool response_check =
+      !std::is_const<typename std::remove_reference<Response>::type>::value &&
+      std::is_same<typename std::remove_reference<Response>::type,
+                   Response>::value &&
+      std::is_same<typename std::decay<Response>::type,
+                   Http::ResponseWriter>::value;
+
+  static_assert(
+      request_check && response_check,
+      "Function should accept (const Rest::Request&, HttpResponseWriter)");
 };
 
-template <typename T>
-struct BindResponseCheck {
-  constexpr static bool value =
-      !std::is_const<typename std::remove_reference<T>::type>::value &&
-      std::is_same<typename std::remove_reference<T>::type, T>::value &&
-      std::is_same<typename std::decay<T>::type, Http::ResponseWriter>::value;
+template <typename Request, typename Response>
+struct MiddlewareChecks {
+  constexpr static bool request_check =
+      !std::is_const<typename std::remove_reference<Request>::type>::value &&
+      std::is_lvalue_reference<typename std::remove_cv<Request>::type>::value &&
+      std::is_same<typename std::decay<Request>::type, Http::Request>::value;
 
-  static_assert(value, "Second argument should be a Http::ResponseWriter");
+  constexpr static bool response_check =
+      !std::is_const<typename std::remove_reference<Response>::type>::value &&
+      std::is_lvalue_reference<
+          typename std::remove_cv<Response>::type>::value &&
+      std::is_same<typename std::decay<Response>::type,
+                   Http::ResponseWriter>::value;
+
+  static_assert(request_check && response_check,
+                "Function should accept (Http::Request&, HttpResponseWriter&)");
 };
 
-template <typename T>
-struct MiddlewareResponseCheck {
-  constexpr static bool value =
-      !std::is_const<typename std::remove_reference<T>::type>::value &&
-      std::is_lvalue_reference<typename std::remove_cv<T>::type>::value &&
-      std::is_same<typename std::decay<T>::type, Http::ResponseWriter>::value;
-
-  static_assert(value, "Second argument should be a Http::ResponseWriter&");
-};
-
-template <template <typename> class FirstCheck,
-          template <typename> class SecondCheck, typename... Args>
+template <template <typename, typename> class Checks, typename... Args>
 constexpr void static_checks() {
   static_assert(sizeof...(Args) == 2, "Function should take 2 parameters");
 
   using Arguments = details::TypeList<Args...>;
 
-  using FirstType = typename Arguments::template At<0>::Type;
-  using SecondType = typename Arguments::template At<1>::Type;
+  using Request = typename Arguments::template At<0>::Type;
+  using Response = typename Arguments::template At<1>::Type;
 
-  FirstCheck<FirstType> _1;
-  SecondCheck<SecondType> _2;
+  // instantiate template this way
+  constexpr Checks<Request, Response> checks;
+
+  UNUSED(checks);
 }
 } // namespace details
 
 template <typename Result, typename Cls, typename... Args, typename Obj>
 Route::Handler bind(Result (Cls::*func)(Args...), Obj obj) {
-  details::static_checks<details::RequestCheck, details::BindResponseCheck,
-                         Args...>();
+  details::static_checks<details::BindChecks, Args...>();
 
   return [=](const Rest::Request &request, Http::ResponseWriter response) {
     (obj->*func)(request, std::move(response));
@@ -375,8 +382,7 @@ Route::Handler bind(Result (Cls::*func)(Args...), Obj obj) {
 
 template <typename Result, typename Cls, typename... Args, typename Obj>
 Route::Handler bind(Result (Cls::*func)(Args...), std::shared_ptr<Obj> objPtr) {
-  details::static_checks<details::RequestCheck, details::BindResponseCheck,
-                         Args...>();
+  details::static_checks<details::BindChecks, Args...>();
 
   return [=](const Rest::Request &request, Http::ResponseWriter response) {
     (objPtr.get()->*func)(request, std::move(response));
@@ -387,8 +393,7 @@ Route::Handler bind(Result (Cls::*func)(Args...), std::shared_ptr<Obj> objPtr) {
 
 template <typename Result, typename... Args>
 Route::Handler bind(Result (*func)(Args...)) {
-  details::static_checks<details::RequestCheck, details::BindResponseCheck,
-                         Args...>();
+  details::static_checks<details::BindChecks, Args...>();
 
   return [=](const Rest::Request &request, Http::ResponseWriter response) {
     func(request, std::move(response));
@@ -399,8 +404,7 @@ Route::Handler bind(Result (*func)(Args...)) {
 
 template <typename Cls, typename... Args, typename Obj>
 Route::Middleware middleware(bool (Cls::*func)(Args...), Obj obj) {
-  details::static_checks<details::RequestCheck,
-                         details::MiddlewareResponseCheck, Args...>();
+  details::static_checks<details::MiddlewareChecks, Args...>();
 
   return [=](Http::Request &request, Http::ResponseWriter &response) {
     return (obj->*func)(request, response);
@@ -410,8 +414,7 @@ Route::Middleware middleware(bool (Cls::*func)(Args...), Obj obj) {
 template <typename Cls, typename... Args, typename Obj>
 Route::Middleware middleware(bool (Cls::*func)(Args...),
                              std::shared_ptr<Obj> objPtr) {
-  details::static_checks<details::RequestCheck,
-                         details::MiddlewareResponseCheck, Args...>();
+  details::static_checks<details::MiddlewareChecks, Args...>();
 
   return [=](Http::Request &request, Http::ResponseWriter &response) {
     return (objPtr.get()->*func)(request, response);
@@ -420,8 +423,7 @@ Route::Middleware middleware(bool (Cls::*func)(Args...),
 
 template <typename... Args>
 Route::Middleware middleware(bool (*func)(Args...)) {
-  details::static_checks<details::RequestCheck,
-                         details::MiddlewareResponseCheck, Args...>();
+  details::static_checks<details::MiddlewareChecks, Args...>();
 
   return [=](Http::Request &request, Http::ResponseWriter &response) {
     return func(request, response);
