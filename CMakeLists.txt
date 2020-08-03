@@ -67,7 +67,7 @@ if (PISTACHE_USE_SSL)
     find_package(OpenSSL REQUIRED COMPONENTS SSL Crypto)
 endif ()
 
-# Set version...
+# Set release version...
 
     # Retrieve from external file...
     file(READ "version.txt" VERSION_FILE)
@@ -107,7 +107,19 @@ endif ()
         )
     endif()
 
-# Set libraries...
+# Set public interface version...
+
+    # Major should be incremented every time a non-backward compatible change
+    #  occurs in the ABI...
+    string(REGEX MATCH "SONAME_VERSION_MAJOR *([0-9]*)" _ ${VERSION_FILE})
+    set(SONAME_VERSION_MAJOR ${CMAKE_MATCH_1})
+
+    # Minor should be incremented every time a backward compatible change occurs
+    #  in the ABI...
+    string(REGEX MATCH "SONAME_VERSION_MINOR *([0-9]+)" _ ${VERSION_FILE})
+    set(SONAME_VERSION_MINOR ${CMAKE_MATCH_1})
+
+# Set libraries that we need to link against...
 
     # Minimum...
     set(LIBS "-lpistache -lpthread")

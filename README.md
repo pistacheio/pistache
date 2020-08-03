@@ -30,6 +30,29 @@ For those that prefer IRC over Slack, the rag-tag crew of maintainers idle in `#
 
 The [Launchpad Team](https://launchpad.net/~pistache+team) administers the daily and stable Ubuntu pre-compiled packages.
 
+## Release Versioning
+
+Please update `version.txt` accordingly with each unstable or stable release.
+
+## Interface Versioning
+
+The version of the library's public interface (ABI) is not the same as the release version. The interface version is primarily associated with the _external_ interface of the library. Different platforms handle this differently, such as AIX, GNU/Linux, and Solaris.
+
+GNU Libtool abstracts each platform's idiosyncrasies away because it is more portable than using `ar(1)` or `ranlib(1)` directly. However, it is a pain to integrate with CMake so we made do without it by setting the SONAME directly.
+
+When Pistache is installed it will normally ship:
+- `libpistache-<release>.so.X.Y`: This is the actual shared-library binary file. The _X_ and _Y_ values are the major and minor interface versions respectively.
+
+- `libpistache-<release>.so.X`: This is the _soname_ soft link that points to the binary file. It is what other programs and other libraries reference internally. You should never need to directly reference this file in your build environment.
+
+- `libpistache-<release>.so`: This is the _linker name_ entry. This is also a soft link that refers to the soname with the highest major interface version. This linker name is what is referred to on the linker command line. This file is created by the installation process.
+
+- `libpistache-<release>.a`: This is the _static archive_ form of the library. Since when using a static library all of its symbols are normally resolved before runtime, an interface version in the filename is unnecessary.
+
+If your contribution has modified the interface, you may need to update the major or minor interface versions. Otherwise user applications and build environments will eventually break. This is because they will attempt to link against an incorrect version of the library -- or worse, link correctly but with undefined runtime behaviour.
+
+The major version should be incremented every time a non-backward compatible change occured in the ABI. The minor version should be incremented every time a backward compatible change occurs. This can be done by modifying `version.txt` accordingly.
+
 # Precompiled Packages
 If you have no need to modify the Pistache source, you are strongly recommended to use precompiled packages for your distribution. This will save you time.
 
