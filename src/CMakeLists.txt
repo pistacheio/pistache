@@ -49,7 +49,7 @@ set(Pistache_OUTPUT_NAME "pistache")
 set_target_properties(pistache_shared PROPERTIES
     OUTPUT_NAME ${Pistache_OUTPUT_NAME}
     VERSION ${version}
-    SOVERSION ${VERSION_MAJOR}
+    SOVERSION ${SONAME_VERSION_MAJOR}.${SONAME_VERSION_MINOR}.${SONAME_VERSION_PATCH}
 )
 
 set_target_properties(pistache_static PROPERTIES 
