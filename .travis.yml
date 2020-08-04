@@ -31,6 +31,7 @@ _apt_pkgs: &_apt_pkgs
   - 'gdb'
   - 'lcov'
   - 'cppcheck'
+  - 'clang-format-9'
 
 _apt_srcs: &_apt_srcs
   - 'ubuntu-toolchain-r-test'
@@ -146,6 +147,12 @@ jobs:
         packages: 
           - *_apt_pkgs
           - ['g++-8']
+
+before_install:
+  # Check source code formatting
+  - if [ $TRAVIS_PULL_REQUEST != "false" ]; then changed_src=$(git diff --name-only master...HEAD | egrep "\.(h|cc)$" | grep -v "include/pistache/thirdparty" || [ $? == 1 ]); fi
+  - if [ ! -z "$changed_src" ]; then git-clang-format-9 --quiet --binary $(which clang-format-9) --style llvm --diff master HEAD -- $changed_src > ./clang-format-diff; fi
+  - if [ -s ./clang-format-diff ]; then cat ./clang-format-diff && echo "Format source code according to LLVM style, please" && false; fi
 
 install:
   - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
