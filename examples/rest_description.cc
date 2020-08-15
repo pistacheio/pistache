@@ -8,7 +8,7 @@
 #include <pistache/description.h>
 #include <pistache/endpoint.h>
 
-#include <pistache/serializer/rapidjson.h>
+#include <pistache/thirdparty/serializer/rapidjson.h>
 
 using namespace std;
 using namespace Pistache;
