@@ -360,7 +360,7 @@ State BodyStep::parseContentLength(
     // We have an incomplete body, read what we can
     if (available < size) {
       cursor.advance(available);
-      message->body_->append(token.rawText(), token.size());
+      message->body_.append(token.rawText(), token.size());
 
       bytesRead += available;
 
@@ -368,7 +368,7 @@ State BodyStep::parseContentLength(
     }
 
     cursor.advance(size);
-    message->body_->append(token.rawText(), token.size());
+    message->body_.append(token.rawText(), token.size());
     return true;
   };
 
@@ -381,7 +381,7 @@ State BodyStep::parseContentLength(
   }
   // This is the first time we are reading the payload
   else {
-    message->body_->reserve(contentLength);
+    message->body_.reserve(contentLength);
     if (!readBody(contentLength))
       return State::Again;
   }
@@ -417,21 +417,21 @@ BodyStep::Chunk::Result BodyStep::Chunk::parse(StreamCursor &cursor) {
   if (size == 0)
     return Final;
 
-  message->body_->reserve(size);
+  message->body_.reserve(size);
   StreamCursor::Token chunkData(cursor);
   const ssize_t available = cursor.remaining();
 
-  if (static_cast<ssize_t>(available + message->body_->size()) < size) {
+  if (static_cast<ssize_t>(available + message->body_.size()) < size) {
     cursor.advance(available);
-    message->body_->append(chunkData.rawText(), available);
+    message->body_.append(chunkData.rawText(), available);
     return Incomplete;
   }
-  cursor.advance(size - message->body_->size());
+  cursor.advance(size - message->body_.size());
 
   if (!cursor.advance(2))
     return Incomplete;
 
-  message->body_->append(chunkData.rawText(), size - message->body_->size());
+  message->body_.append(chunkData.rawText(), size - message->body_.size());
 
   return Complete;
 }
@@ -531,35 +531,13 @@ bool Query::has(const std::string &name) const {
 
 } // namespace Uri
 
-Message::Message() : Message(Version::Http11) {}
-
-Message::Message(Version version)
-    : version_(version), body_(std::make_shared<std::string>()) {}
-
-Message::Message(Message &&other)
-    : version_(std::move(other.version_)), code_(std::move(other.code_)),
-      body_(std::move(other.body_)), cookies_(std::move(other.cookies_)),
-      headers_(std::move(other.headers_)) {
-  other.body_ = std::make_shared<std::string>();
-}
-
-Message &Message::operator=(Message &&other) {
-  version_ = std::move(other.version_);
-  code_ = std::move(other.code_);
-  body_ = std::move(other.body_);
-  cookies_ = std::move(other.cookies_);
-  headers_ = std::move(other.headers_);
-
-  other.body_ = std::make_shared<std::string>();
-
-  return *this;
-}
+Message::Message(Version version) : version_(version) {}
 
 Version Message::version() const { return version_; }
 
 Code Message::code() const { return code_; }
 
-std::string Message::body() const { return *body_; }
+std::string Message::body() const { return body_; }
 
 const Header::Collection &Message::headers() const { return headers_; }
 
