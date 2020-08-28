@@ -71,14 +71,14 @@ public:
   friend class Private::BodyStep;
   friend class ResponseWriter;
 
-  Message();
+  Message() = default;
   explicit Message(Version version);
 
   Message(const Message &other) = default;
   Message &operator=(const Message &other) = default;
 
-  Message(Message &&other);
-  Message &operator=(Message &&other);
+  Message(Message &&other) = default;
+  Message &operator=(Message &&other) = default;
 
   Version version() const;
   Code code() const;
@@ -91,10 +91,10 @@ public:
   Header::Collection &headers();
 
 protected:
-  Version version_;
+  Version version_ = Version::Http11;
   Code code_;
 
-  std::shared_ptr<std::string> body_;
+  std::string body_;
 
   CookieJar cookies_;
   Header::Collection headers_;
