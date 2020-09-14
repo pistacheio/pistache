@@ -123,6 +123,7 @@ public:
   size_t availableConnections(const std::string &domain) const;
 
   void closeIdleConnections(const std::string &domain);
+  void shutdown();
 
 private:
   using Connections = std::vector<std::shared_ptr<Connection>>;
