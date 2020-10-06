@@ -719,8 +719,8 @@ void ConnectionPool::closeIdleConnections(const std::string &domain){
 void ConnectionPool::shutdown() {
   // close all connections
   Guard guard(connsLock);
-  for (auto& it : conns) {
-    for (auto& conn: it.second) {
+  for (auto &it : conns) {
+    for (auto &conn : it.second) {
       if (conn->isConnected()) {
         conn->close();
       }
