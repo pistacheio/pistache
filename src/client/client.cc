@@ -716,6 +716,18 @@ size_t ConnectionPool::availableConnections(const std::string &domain) const {
 void ConnectionPool::closeIdleConnections(const std::string &domain){
     UNUSED(domain)}
 
+void ConnectionPool::shutdown() {
+  // close all connections
+  Guard guard(connsLock);
+  for (auto &it : conns) {
+    for (auto &conn : it.second) {
+      if (conn->isConnected()) {
+        conn->close();
+      }
+    }
+  }
+}
+
 RequestBuilder &RequestBuilder::method(Method method) {
   request_.method_ = method;
   return *this;
@@ -801,6 +813,7 @@ void Client::init(const Client::Options &options) {
 
 void Client::shutdown() {
   reactor_->shutdown();
+  pool.shutdown();
   Guard guard(queuesLock);
   stopProcessPequestsQueues = true;
 }
