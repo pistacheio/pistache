@@ -412,6 +412,7 @@ BodyStep::Chunk::Result BodyStep::Chunk::parse(StreamCursor &cursor) {
     revert.ignore();
 
     size = sz;
+    alreadyAppendedChunkBytes = 0;
   }
 
   if (size == 0)
@@ -421,17 +422,18 @@ BodyStep::Chunk::Result BodyStep::Chunk::parse(StreamCursor &cursor) {
   StreamCursor::Token chunkData(cursor);
   const ssize_t available = cursor.remaining();
 
-  if (static_cast<ssize_t>(available + message->body_.size()) < size) {
+  if (available + alreadyAppendedChunkBytes < size + 2) {
     cursor.advance(available);
     message->body_.append(chunkData.rawText(), available);
+    alreadyAppendedChunkBytes +=available;
     return Incomplete;
   }
-  cursor.advance(size - message->body_.size());
+  cursor.advance(size - alreadyAppendedChunkBytes);
+  
+  //trailing EOL
+  cursor.advance(2);
 
-  if (!cursor.advance(2))
-    return Incomplete;
-
-  message->body_.append(chunkData.rawText(), size - message->body_.size());
+  message->body_.append(chunkData.rawText(), size - alreadyAppendedChunkBytes);
 
   return Complete;
 }

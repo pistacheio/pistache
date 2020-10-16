@@ -502,6 +502,7 @@ private:
     Message *message;
     size_t bytesRead;
     ssize_t size;
+    ssize_t alreadyAppendedChunkBytes;
   };
 
   State parseContentLength(StreamCursor &cursor,
