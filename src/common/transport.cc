@@ -290,6 +290,26 @@ ssize_t Transport::sendRawBuffer(Fd fd, const char* buffer, size_t len, int flag
   if (it_->second->ssl() != NULL) {
     auto ssl_ = static_cast<SSL *>(it_->second->ssl());
     bytesWritten = SSL_write(ssl_, buffer, static_cast<int>(len));
+    if (bytesWritten <= 0 && SSL_get_error(ssl_, bytesWritten) == SSL_ERROR_WANT_WRITE)
+    {
+        bytesWritten = SSL_write(ssl_, buffer, static_cast<int>(len));
+
+        auto slept = 0;
+        auto sleeptime = 1u;
+        auto constexpr maxsleep = 30*1000000;
+        while (bytesWritten <= 0 && SSL_get_error(ssl_, bytesWritten) == SSL_ERROR_WANT_WRITE && slept < maxsleep)
+        {
+            sleeptime = std::min(150000u, sleeptime * 2);
+            usleep(sleeptime);
+            slept += sleeptime;
+            bytesWritten = SSL_write(ssl_, buffer, static_cast<int>(len));
+        }
+        if (bytesWritten <=0 && SSL_get_error(ssl_, bytesWritten) == SSL_ERROR_WANT_WRITE )
+        {
+            assert(false && "error in SSL_write");
+        }
+    }
+
   } else {
 #endif /* PISTACHE_USE_SSL */
     bytesWritten = ::send(fd, buffer, len, flags);
