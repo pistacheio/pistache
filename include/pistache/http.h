@@ -581,7 +581,6 @@ public:
 
 private:
   void onConnection(const std::shared_ptr<Tcp::Peer> &peer) override;
-  void onDisconnection(const std::shared_ptr<Tcp::Peer> &peer) override;
   void onInput(const char *buffer, size_t len,
                const std::shared_ptr<Tcp::Peer> &peer) override;
   RequestParser &getParser(const std::shared_ptr<Tcp::Peer> &peer) const;
