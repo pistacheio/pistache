@@ -3,6 +3,7 @@
 #include <pistache/common.h>
 #include <pistache/endpoint.h>
 #include <pistache/http.h>
+#include <pistache/peer.h>
 
 #include "gtest/gtest.h"
 
@@ -413,4 +414,53 @@ TEST(http_server_test, response_size_captured) {
   ASSERT_GT(rsize, 1u);
   ASSERT_LT(rsize, 300u);
   ASSERT_EQ(rcode, Http::Code::Ok);
+}
+
+struct ClientCountingHandler : public Http::Handler {
+  HTTP_PROTOTYPE(ClientCountingHandler)
+
+  ClientCountingHandler(std::atomic<size_t> & counter) : counter_(counter) { std::cout << "INITING" << std::endl;}
+
+  void onRequest(const Http::Request &request,
+                 Http::ResponseWriter writer) override {
+    std::string requestAddress = request.address().host();
+    writer.send(Http::Code::Ok, requestAddress);
+    std::cout << "[server] Sent: " << requestAddress << std::endl;
+  }
+
+  void onDisconnection(const std::shared_ptr<Tcp::Peer> &peer) override {
+    ++counter_;
+    std::cout << "[server] Disconnect from " << peer->address().host() << " now at " << counter_ << std::endl;
+  }
+
+  size_t getClientsServed() const { return counter_; }
+
+  std::atomic<size_t> & counter_;
+};
+
+TEST(
+    http_server_test,
+    client_multiple_requests_disconnects_handled) {
+  const Pistache::Address address("localhost", Pistache::Port(0));
+
+  Http::Endpoint server(address);
+  auto flags = Tcp::Options::ReuseAddr;
+  auto server_opts = Http::Endpoint::options().flags(flags);
+  server.init(server_opts);
+
+  std::cout << "Trying to run server...\n";
+  std::atomic<size_t> counter{0};
+  auto handler = Http::make_handler<ClientCountingHandler>(counter);
+  server.setHandler(handler);
+  server.serveThreaded();
+
+  const std::string server_address = "localhost:" + server.getPort().toString();
+  std::cout << "Server address: " << server_address << "\n";
+
+  const int CLIENT_REQUEST_SIZE = 3;
+  clientLogicFunc(CLIENT_REQUEST_SIZE, server_address, 1, 6);
+
+  server.shutdown();
+
+  ASSERT_EQ(counter, 3UL);
 }
