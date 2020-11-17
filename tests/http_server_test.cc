@@ -129,6 +129,7 @@ int clientLogicFunc(int response_size, const std::string &server_page,
   return resolver_counter;
 }
 
+/*
 TEST(http_server_test,
      client_disconnection_on_timeout_from_single_threaded_server) {
   const Pistache::Address address("localhost", Pistache::Port(0));
@@ -415,6 +416,7 @@ TEST(http_server_test, response_size_captured) {
   ASSERT_LT(rsize, 300u);
   ASSERT_EQ(rcode, Http::Code::Ok);
 }
+*/
 
 struct ClientCountingHandler : public Http::Handler {
   HTTP_PROTOTYPE(ClientCountingHandler)
@@ -423,6 +425,12 @@ struct ClientCountingHandler : public Http::Handler {
 
   void onRequest(const Http::Request &request,
                  Http::ResponseWriter writer) override {
+    auto peer = writer.getPeer();
+    if (peer) {
+        activeConnections.insert(peer->getID());
+    } else {
+        return;
+    }
     std::string requestAddress = request.address().host();
     writer.send(Http::Code::Ok, requestAddress);
     std::cout << "[server] Sent: " << requestAddress << std::endl;
@@ -431,9 +439,13 @@ struct ClientCountingHandler : public Http::Handler {
   void onDisconnection(const std::shared_ptr<Tcp::Peer> &peer) override {
     ++counter_;
     std::cout << "[server] Disconnect from " << peer->address().host() << " now at " << counter_ << std::endl;
+    std::cout << "[server] Disconnect from " << peer->getID() << " now at " << std::endl;
+    activeConnections.erase(peer->getID());
   }
 
   size_t getClientsServed() const { return counter_; }
+
+  std::unordered_set<size_t> activeConnections;
 
   std::atomic<size_t> & counter_;
 };
@@ -457,10 +469,12 @@ TEST(
   const std::string server_address = "localhost:" + server.getPort().toString();
   std::cout << "Server address: " << server_address << "\n";
 
-  const int CLIENT_REQUEST_SIZE = 3;
+  const size_t CLIENT_REQUEST_SIZE = 3;
   clientLogicFunc(CLIENT_REQUEST_SIZE, server_address, 1, 6);
 
   server.shutdown();
+  std::this_thread::sleep_for(std::chrono::seconds(1));
 
-  ASSERT_EQ(counter, 3UL);
+  ASSERT_EQ(counter, CLIENT_REQUEST_SIZE);
+  ASSERT_EQ(handler->activeConnections.size(), 0UL);
 }

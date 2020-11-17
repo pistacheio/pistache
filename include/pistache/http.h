@@ -415,6 +415,12 @@ public:
 
   ResponseWriter clone() const;
 
+  std::shared_ptr<Tcp::Peer> getPeer() const {
+      if (auto sp = peer_.lock())
+          return sp;
+      return nullptr;
+  }
+
 private:
   ResponseWriter(Tcp::Transport *transport, Request request, Handler *handler,
                  std::weak_ptr<Tcp::Peer> peer);
