@@ -438,8 +438,7 @@ struct ClientCountingHandler : public Http::Handler {
 
   void onDisconnection(const std::shared_ptr<Tcp::Peer> &peer) override {
     ++counter_;
-    std::cout << "[server] Disconnect from " << peer->address().host() << " now at " << counter_ << std::endl;
-    std::cout << "[server] Disconnect from " << peer->getID() << " now at " << std::endl;
+    std::cout << "[server] Disconnect from peer ID " << peer->getId() << " connecting from " << peer->address().host() << "; counter now at " << counter_ << std::endl;
     activeConnections.erase(peer->getID());
   }
 
