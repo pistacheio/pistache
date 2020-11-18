@@ -964,6 +964,8 @@ void Handler::onConnection(const std::shared_ptr<Tcp::Peer> &peer) {
   peer->putData(ParserData, std::make_shared<RequestParser>(maxRequestSize_));
 }
 
+void Handler::onDisconnection(const std::shared_ptr<Tcp::Peer> & /*peer*/) {}
+
 void Handler::onTimeout(const Request & /*request*/,
                         ResponseWriter /*response*/) {}
 
