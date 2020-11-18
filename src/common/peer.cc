@@ -18,8 +18,6 @@
 namespace Pistache {
 namespace Tcp {
 
-std::atomic<size_t> idCounter{0};
-
 namespace {
 struct ConcretePeer : Peer {
   ConcretePeer() = default;
@@ -28,7 +26,7 @@ struct ConcretePeer : Peer {
 } // namespace
 
 Peer::Peer(Fd fd, const Address &addr, void *ssl)
-    : fd_(fd), addr(addr), ssl_(ssl), id_(idCounter++) {}
+    : fd_(fd), addr(addr), ssl_(ssl) {}
 
 Peer::~Peer() {
 #ifdef PISTACHE_USE_SSL
@@ -68,7 +66,6 @@ const std::string &Peer::hostname() {
 }
 
 void *Peer::ssl() const { return ssl_; }
-size_t Peer::getID() const { return id_; }
 
 int Peer::fd() const {
   if (fd_ == -1) {
