@@ -924,15 +924,15 @@ void Handler::onInput(const char *buffer, size_t len,
     }
 
     auto state = parser.parse();
+    auto& request = parser.request;
 
     if (state == Private::State::Done) {
-      ResponseWriter response(transport(), parser.request, this, peer);
+      ResponseWriter response(transport(), request, this, peer);
 
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
-      parser.request.associatePeer(peer);
+      request.associatePeer(peer);
 #endif
 
-      auto request = parser.request;
       request.copyAddress(peer->address());
 
       auto connection = request.headers().tryGet<Header::Connection>();
