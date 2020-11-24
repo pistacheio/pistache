@@ -207,9 +207,9 @@ On Debian based distributions, `autopkgtest` implements the DEP-8 standard. To c
 $ sudo apt install autopkgtest
 ```
 
-Next create the test image, substituting `eoan` or `amd64` for other releases or architectures:
+Next create the test image, substituting `groovy` or `amd64` for other releases or architectures:
 ```
-$ autopkgtest-buildvm-ubuntu-cloud -r eoan -a amd64
+$ autopkgtest-buildvm-ubuntu-cloud -r groovy -a amd64
 ```
 
 Generate a Pistache source package in the parent directory of `pistache_source`:
