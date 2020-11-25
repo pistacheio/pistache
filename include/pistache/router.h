@@ -282,7 +282,7 @@ public:
   std::vector<TypedParam> splat() const;
 
 private:
-  explicit Request(const Http::Request &request,
+  explicit Request(Http::Request request,
                    std::vector<TypedParam> &&params,
                    std::vector<TypedParam> &&splats);
 

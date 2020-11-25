@@ -12,9 +12,9 @@
 namespace Pistache {
 namespace Rest {
 
-Request::Request(const Http::Request &request, std::vector<TypedParam> &&params,
+Request::Request(Http::Request request, std::vector<TypedParam> &&params,
                  std::vector<TypedParam> &&splats)
-    : Http::Request(request), params_(std::move(params)),
+    : Http::Request(std::move(request)), params_(std::move(params)),
       splats_(std::move(splats)) {}
 
 bool Request::hasParam(const std::string &name) const {
@@ -303,8 +303,7 @@ RouterHandler::RouterHandler(std::shared_ptr<Rest::Router> router)
 
 void RouterHandler::onRequest(const Http::Request &req,
                               Http::ResponseWriter response) {
-  auto resp = response.clone();
-  router->route(req, std::move(resp));
+  router->route(req, std::move(response));
 }
 
 } // namespace Private
@@ -422,7 +421,7 @@ Route::Status Router::route(const Http::Request &http_req,
   if (route != nullptr) {
     auto params = std::get<1>(result);
     auto splats = std::get<2>(result);
-    route->invokeHandler(Request(req, std::move(params), std::move(splats)),
+    route->invokeHandler(Request(std::move(req), std::move(params), std::move(splats)),
                          std::move(resp));
     return Route::Status::Match;
   }
