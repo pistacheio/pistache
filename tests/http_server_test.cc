@@ -419,7 +419,7 @@ TEST(http_server_test, response_size_captured) {
 struct ClientCountingHandler : public Http::Handler {
   HTTP_PROTOTYPE(ClientCountingHandler)
 
-  ClientCountingHandler(std::atomic<size_t> & counter) : counter_(counter) { std::cout << "INITING" << std::endl;}
+  ClientCountingHandler(std::atomic<size_t> & counter) : counter_(counter) { std::cout << "[server] Ininting.." << std::endl; }
 
   void onRequest(const Http::Request &request,
                  Http::ResponseWriter writer) override {
@@ -440,8 +440,7 @@ struct ClientCountingHandler : public Http::Handler {
     activeConnections.erase(peer->getID());
   }
 
-  size_t getClientsServed() const { return counter_; }
-
+private:
   std::unordered_set<size_t> activeConnections;
 
   std::atomic<size_t> & counter_;
@@ -469,9 +468,8 @@ TEST(
   const size_t CLIENT_REQUEST_SIZE = 3;
   clientLogicFunc(CLIENT_REQUEST_SIZE, server_address, 1, 6);
 
+  std::this_thread::sleep_for(std::chrono::seconds(2));
   server.shutdown();
-  std::this_thread::sleep_for(std::chrono::seconds(1));
 
   ASSERT_EQ(counter, CLIENT_REQUEST_SIZE);
-  ASSERT_EQ(handler->activeConnections.size(), 0UL);
 }
