@@ -419,7 +419,7 @@ TEST(http_server_test, response_size_captured) {
 struct ClientCountingHandler : public Http::Handler {
   HTTP_PROTOTYPE(ClientCountingHandler)
 
-  ClientCountingHandler(std::atomic<size_t> & counter) : counter_(counter) { std::cout << "[server] Ininting.." << std::endl; }
+  ClientCountingHandler(std::atomic<size_t> & counter) : counter_(counter) { std::cout << "[server] Ininting..." << std::endl; }
 
   void onRequest(const Http::Request &request,
                  Http::ResponseWriter writer) override {
