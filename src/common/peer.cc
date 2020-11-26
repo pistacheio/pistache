@@ -78,30 +78,12 @@ int Peer::fd() const {
   return fd_;
 }
 
-void Peer::putData(std::string name, std::shared_ptr<Http::Parser> data) {
-  auto it = data_.find(name);
-  if (it != std::end(data_)) {
-    throw std::runtime_error("The data already exists");
-  }
-
-  data_.insert(std::make_pair(std::move(name), std::move(data)));
+void Peer::setParser(std::shared_ptr<Http::RequestParser> parser) {
+  parser_ = parser;
 }
 
-std::shared_ptr<Http::Parser> Peer::getData(std::string name) const {
-  auto data = tryGetData(std::move(name));
-  if (data == nullptr) {
-    throw std::runtime_error("The data does not exist");
-  }
-
-  return data;
-}
-
-std::shared_ptr<Http::Parser> Peer::tryGetData(std::string(name)) const {
-  auto it = data_.find(name);
-  if (it == std::end(data_))
-    return nullptr;
-
-  return it->second;
+std::shared_ptr<Http::RequestParser> Peer::getParser() const {
+  return parser_;
 }
 
 Async::Promise<ssize_t> Peer::send(const RawBuffer &buffer, int flags) {

@@ -9,7 +9,6 @@
 #include <iostream>
 #include <memory>
 #include <string>
-#include <unordered_map>
 
 #include <pistache/async.h>
 #include <pistache/http.h>
@@ -43,9 +42,8 @@ public:
 
   void *ssl() const;
 
-  void putData(std::string name, std::shared_ptr<Http::Parser> data);
-  std::shared_ptr<Http::Parser> getData(std::string name) const;
-  std::shared_ptr<Http::Parser> tryGetData(std::string name) const;
+  void setParser(std::shared_ptr<Http::RequestParser> parser);
+  std::shared_ptr<Http::RequestParser> getParser() const;
 
   Async::Promise<ssize_t> send(const RawBuffer &buffer, int flags = 0);
   size_t getID() const;
@@ -62,7 +60,7 @@ private:
   Address addr;
 
   std::string hostname_;
-  std::unordered_map<std::string, std::shared_ptr<Http::Parser>> data_;
+  std::shared_ptr<Http::RequestParser> parser_;
 
   void *ssl_ = nullptr;
   const size_t id_;
