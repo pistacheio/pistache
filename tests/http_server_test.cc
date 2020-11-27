@@ -11,6 +11,8 @@
 #include <fstream>
 #include <future>
 #include <string>
+#include <mutex>
+#include <condition_variable>
 
 using namespace Pistache;
 
@@ -416,10 +418,36 @@ TEST(http_server_test, response_size_captured) {
   ASSERT_EQ(rcode, Http::Code::Ok);
 }
 
+namespace {
+
+class WaitHelper {
+public:
+    void increment() {
+      std::lock_guard<std::mutex> lock(counterLock_);
+      ++counter_;
+      cv_.notify_one();
+    }
+
+    template<typename Duration>
+    bool wait(const size_t count, const Duration timeout) {
+      std::unique_lock<std::mutex> lock(counterLock_);
+      return cv_.wait_for(lock, timeout, [this, count](){ return counter_ == count; } );
+    }
+
+private:
+    size_t counter_ = 0;
+    std::mutex counterLock_;
+    std::condition_variable cv_;
+};
+
 struct ClientCountingHandler : public Http::Handler {
   HTTP_PROTOTYPE(ClientCountingHandler)
 
-  ClientCountingHandler(std::atomic<size_t> & counter) : counter_(counter) { std::cout << "[server] Ininting..." << std::endl; }
+  explicit ClientCountingHandler(std::shared_ptr<WaitHelper> waitHelper)
+      : waitHelper(waitHelper)
+  {
+      std::cout << "[server] Ininting..." << std::endl;
+  }
 
   void onRequest(const Http::Request &request,
                  Http::ResponseWriter writer) override {
@@ -435,16 +463,17 @@ struct ClientCountingHandler : public Http::Handler {
   }
 
   void onDisconnection(const std::shared_ptr<Tcp::Peer> &peer) override {
-    ++counter_;
-    std::cout << "[server] Disconnect from peer ID " << peer->getID() << " connecting from " << peer->address().host() << "; counter now at " << counter_ << std::endl;
+    std::cout << "[server] Disconnect from peer ID " << peer->getID() << " connecting from " << peer->address().host() << std::endl;
     activeConnections.erase(peer->getID());
+    waitHelper->increment();
   }
 
 private:
-  std::unordered_set<size_t> activeConnections;
-
-  std::atomic<size_t> & counter_;
+    std::unordered_set<size_t> activeConnections;
+    std::shared_ptr<WaitHelper> waitHelper;
 };
+
+}
 
 TEST(
     http_server_test,
@@ -457,8 +486,8 @@ TEST(
   server.init(server_opts);
 
   std::cout << "Trying to run server...\n";
-  std::atomic<size_t> counter{0};
-  auto handler = Http::make_handler<ClientCountingHandler>(counter);
+  auto waitHelper = std::make_shared<WaitHelper>();
+  auto handler = Http::make_handler<ClientCountingHandler>(waitHelper);
   server.setHandler(handler);
   server.serveThreaded();
 
@@ -468,8 +497,8 @@ TEST(
   const size_t CLIENT_REQUEST_SIZE = 3;
   clientLogicFunc(CLIENT_REQUEST_SIZE, server_address, 1, 6);
 
-  std::this_thread::sleep_for(std::chrono::seconds(2));
+  const bool result = waitHelper->wait(CLIENT_REQUEST_SIZE, std::chrono::seconds(2));
   server.shutdown();
 
-  ASSERT_EQ(counter, CLIENT_REQUEST_SIZE);
+  ASSERT_EQ(result, true);
 }
