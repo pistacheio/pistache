@@ -416,9 +416,9 @@ public:
   ResponseWriter clone() const;
 
   std::shared_ptr<Tcp::Peer> getPeer() const {
-      if (auto sp = peer_.lock())
-          return sp;
-      return nullptr;
+    if (auto sp = peer_.lock())
+      return sp;
+    return nullptr;
   }
 
 private:

@@ -82,9 +82,7 @@ void Peer::setParser(std::shared_ptr<Http::RequestParser> parser) {
   parser_ = parser;
 }
 
-std::shared_ptr<Http::RequestParser> Peer::getParser() const {
-  return parser_;
-}
+std::shared_ptr<Http::RequestParser> Peer::getParser() const { return parser_; }
 
 Async::Promise<ssize_t> Peer::send(const RawBuffer &buffer, int flags) {
   return transport()->asyncWrite(fd_, buffer, flags);

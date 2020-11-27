@@ -423,12 +423,12 @@ BodyStep::Chunk::Result BodyStep::Chunk::parse(StreamCursor &cursor) {
   if (available + alreadyAppendedChunkBytes < size + 2) {
     cursor.advance(available);
     message->body_.append(chunkData.rawText(), available);
-    alreadyAppendedChunkBytes +=available;
+    alreadyAppendedChunkBytes += available;
     return Incomplete;
   }
   cursor.advance(size - alreadyAppendedChunkBytes);
-  
-  //trailing EOL
+
+  // trailing EOL
   cursor.advance(2);
 
   message->body_.append(chunkData.rawText(), size - alreadyAppendedChunkBytes);
@@ -798,8 +798,10 @@ Async::Promise<ssize_t> ResponseWriter::putOnWire(const char *data,
         .then<std::function<Async::Promise<ssize_t>(ssize_t)>,
               std::function<void(std::exception_ptr &)>>(
             [=](int /*l*/) {
-              return Async::Promise<ssize_t>([=](
-                  Async::Deferred<ssize_t> /*deferred*/) mutable { return; });
+              return Async::Promise<ssize_t>(
+                  [=](Async::Deferred<ssize_t> /*deferred*/) mutable {
+                    return;
+                  });
             },
 
             [=](std::exception_ptr &eptr) {
@@ -922,7 +924,7 @@ void Handler::onInput(const char *buffer, size_t len,
     }
 
     auto state = parser->parse();
-    auto& request = parser->request;
+    auto &request = parser->request;
 
     if (state == Private::State::Done) {
       ResponseWriter response(transport(), request, this, peer);
