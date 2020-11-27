@@ -111,8 +111,6 @@ const HttpMethods httpMethods = {
 
 } // namespace
 
-static constexpr const char *ParserData = "__Parser";
-
 namespace Private {
 
 Step::Step(Message *request) : message(request) {}
@@ -425,12 +423,12 @@ BodyStep::Chunk::Result BodyStep::Chunk::parse(StreamCursor &cursor) {
   if (available + alreadyAppendedChunkBytes < size + 2) {
     cursor.advance(available);
     message->body_.append(chunkData.rawText(), available);
-    alreadyAppendedChunkBytes +=available;
+    alreadyAppendedChunkBytes += available;
     return Incomplete;
   }
   cursor.advance(size - alreadyAppendedChunkBytes);
-  
-  //trailing EOL
+
+  // trailing EOL
   cursor.advance(2);
 
   message->body_.append(chunkData.rawText(), size - alreadyAppendedChunkBytes);
@@ -800,8 +798,10 @@ Async::Promise<ssize_t> ResponseWriter::putOnWire(const char *data,
         .then<std::function<Async::Promise<ssize_t>(ssize_t)>,
               std::function<void(std::exception_ptr &)>>(
             [=](int /*l*/) {
-              return Async::Promise<ssize_t>([=](
-                  Async::Deferred<ssize_t> /*deferred*/) mutable { return; });
+              return Async::Promise<ssize_t>(
+                  [=](Async::Deferred<ssize_t> /*deferred*/) mutable {
+                    return;
+                  });
             },
 
             [=](std::exception_ptr &eptr) {
@@ -915,16 +915,16 @@ Private::ParserImpl<Http::Response>::ParserImpl(size_t maxDataSize)
 
 void Handler::onInput(const char *buffer, size_t len,
                       const std::shared_ptr<Tcp::Peer> &peer) {
-  auto &parser = getParser(peer);
+  auto parser = peer->getParser();
   try {
-    if (!parser.feed(buffer, len)) {
-      parser.reset();
+    if (!parser->feed(buffer, len)) {
+      parser->reset();
       throw HttpError(Code::Request_Entity_Too_Large,
                       "Request exceeded maximum buffer size");
     }
 
-    auto state = parser.parse();
-    auto& request = parser.request;
+    auto state = parser->parse();
+    auto &request = parser->request;
 
     if (state == Private::State::Done) {
       ResponseWriter response(transport(), request, this, peer);
@@ -944,24 +944,24 @@ void Handler::onInput(const char *buffer, size_t len,
       }
 
       onRequest(request, std::move(response));
-      parser.reset();
+      parser->reset();
     }
 
   } catch (const HttpError &err) {
-    ResponseWriter response(transport(), parser.request, this, peer);
+    ResponseWriter response(transport(), parser->request, this, peer);
     response.send(static_cast<Code>(err.code()), err.reason());
-    parser.reset();
+    parser->reset();
   }
 
   catch (const std::exception &e) {
-    ResponseWriter response(transport(), parser.request, this, peer);
+    ResponseWriter response(transport(), parser->request, this, peer);
     response.send(Code::Internal_Server_Error, e.what());
-    parser.reset();
+    parser->reset();
   }
 }
 
 void Handler::onConnection(const std::shared_ptr<Tcp::Peer> &peer) {
-  peer->putData(ParserData, std::make_shared<RequestParser>(maxRequestSize_));
+  peer->setParser(std::make_shared<RequestParser>(maxRequestSize_));
 }
 
 void Handler::onTimeout(const Request & /*request*/,
@@ -999,11 +999,6 @@ size_t Handler::getMaxRequestSize() const { return maxRequestSize_; }
 void Handler::setMaxResponseSize(size_t value) { maxResponseSize_ = value; }
 
 size_t Handler::getMaxResponseSize() const { return maxResponseSize_; }
-
-RequestParser &
-Handler::getParser(const std::shared_ptr<Tcp::Peer> &peer) const {
-  return static_cast<RequestParser &>(*peer->getData(ParserData));
-}
 
 } // namespace Http
 } // namespace Pistache

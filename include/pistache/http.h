@@ -416,9 +416,9 @@ public:
   ResponseWriter clone() const;
 
   std::shared_ptr<Tcp::Peer> getPeer() const {
-      if (auto sp = peer_.lock())
-          return sp;
-      return nullptr;
+    if (auto sp = peer_.lock())
+      return sp;
+    return nullptr;
   }
 
 private:
@@ -589,7 +589,6 @@ private:
   void onConnection(const std::shared_ptr<Tcp::Peer> &peer) override;
   void onInput(const char *buffer, size_t len,
                const std::shared_ptr<Tcp::Peer> &peer) override;
-  RequestParser &getParser(const std::shared_ptr<Tcp::Peer> &peer) const;
 
 private:
   size_t maxRequestSize_ = Const::DefaultMaxRequestSize;
