@@ -30,6 +30,7 @@ class Transport;
 class Peer {
 public:
   friend class Transport;
+  friend class Http::Handler;
 
   ~Peer();
 
@@ -42,9 +43,6 @@ public:
 
   void *ssl() const;
 
-  void setParser(std::shared_ptr<Http::RequestParser> parser);
-  std::shared_ptr<Http::RequestParser> getParser() const;
-
   Async::Promise<ssize_t> send(const RawBuffer &buffer, int flags = 0);
   size_t getID() const;
 
@@ -52,6 +50,9 @@ protected:
   Peer(Fd fd, const Address &addr, void *ssl);
 
 private:
+  void setParser(std::shared_ptr<Http::RequestParser> parser);
+  std::shared_ptr<Http::RequestParser> getParser() const;
+
   void associateTransport(Transport *transport);
   Transport *transport() const;
 
