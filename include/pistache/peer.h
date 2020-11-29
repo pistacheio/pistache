@@ -31,6 +31,7 @@ class Peer {
 public:
   friend class Transport;
   friend class Http::Handler;
+  friend class Http::Timeout;
 
   ~Peer();
 
@@ -52,6 +53,8 @@ protected:
 private:
   void setParser(std::shared_ptr<Http::RequestParser> parser);
   std::shared_ptr<Http::RequestParser> getParser() const;
+
+  Http::Request &request();
 
   void associateTransport(Transport *transport);
   Transport *transport() const;
