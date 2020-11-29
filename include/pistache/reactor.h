@@ -43,7 +43,6 @@ public:
     bool isWritable() const { return flags.hasFlag(Polling::NotifyOn::Write); }
     bool isHangup() const { return flags.hasFlag(Polling::NotifyOn::Hangup); }
 
-    Fd getFd() const { return this->fd; }
     Polling::Tag getTag() const { return this->tag; }
   };
 
@@ -120,7 +119,7 @@ public:
   void modifyFd(const Key &key, Fd fd, Polling::NotifyOn interest,
                 Polling::Tag tag, Polling::Mode mode = Polling::Mode::Level);
 
-  void removeFd(const Key& key, Fd fd);
+  void removeFd(const Key &key, Fd fd);
 
   void runOnce();
   void run();
