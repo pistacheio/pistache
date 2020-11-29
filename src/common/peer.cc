@@ -84,6 +84,14 @@ void Peer::setParser(std::shared_ptr<Http::RequestParser> parser) {
 
 std::shared_ptr<Http::RequestParser> Peer::getParser() const { return parser_; }
 
+Http::Request &Peer::request() {
+  if (!parser_) {
+    throw std::runtime_error("The peer has no associated parser");
+  }
+
+  return parser_->request;
+}
+
 Async::Promise<ssize_t> Peer::send(const RawBuffer &buffer, int flags) {
   return transport()->asyncWrite(fd_, buffer, flags);
 }

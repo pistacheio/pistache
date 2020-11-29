@@ -255,7 +255,7 @@ public:
 private:
   Timeout(const Timeout &other) = default;
 
-  Timeout(Tcp::Transport *transport_, Handler *handler_, Request request_,
+  Timeout(Tcp::Transport *transport_, Handler *handler_,
           std::weak_ptr<Tcp::Peer> peer_);
 
   void onTimeout(uint64_t numWakeup);
@@ -422,8 +422,8 @@ public:
   }
 
 private:
-  ResponseWriter(Tcp::Transport *transport, Request request, Handler *handler,
-                 std::weak_ptr<Tcp::Peer> peer);
+  ResponseWriter(Http::Version version, Tcp::Transport *transport,
+                 Handler *handler, std::weak_ptr<Tcp::Peer> peer);
 
   ResponseWriter(const ResponseWriter &other);
 
@@ -436,9 +436,9 @@ private:
   Response response_;
   std::weak_ptr<Tcp::Peer> peer_;
   DynamicStreamBuf buf_;
-  Tcp::Transport *transport_;
+  Tcp::Transport *transport_ = nullptr;
   Timeout timeout_;
-  ssize_t sent_bytes_;
+  ssize_t sent_bytes_ = 0;
 };
 
 Async::Promise<ssize_t>
