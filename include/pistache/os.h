@@ -86,7 +86,6 @@ struct Event {
   explicit Event(Tag _tag);
 
   Flags<NotifyOn> flags;
-  Fd fd;
   Tag tag;
 };
 
