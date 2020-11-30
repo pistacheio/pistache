@@ -537,7 +537,9 @@ Version Message::version() const { return version_; }
 
 Code Message::code() const { return code_; }
 
-std::string Message::body() const { return body_; }
+const std::string &Message::body() const { return body_; }
+
+std::string Message::body() { return body_; }
 
 const Header::Collection &Message::headers() const { return headers_; }
 

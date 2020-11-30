@@ -83,7 +83,8 @@ public:
   Version version() const;
   Code code() const;
 
-  std::string body() const;
+  const std::string &body() const;
+  std::string body();
 
   const CookieJar &cookies() const;
   CookieJar &cookies();
