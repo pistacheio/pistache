@@ -379,8 +379,8 @@ State BodyStep::parseContentLength(
   }
   // This is the first time we are reading the payload
   else {
-    message->body_.reserve(contentLength);
-    if (!readBody(contentLength))
+    message->body_.reserve(static_cast<size_t>(contentLength));
+    if (!readBody(static_cast<size_t>(contentLength)))
       return State::Again;
   }
 
