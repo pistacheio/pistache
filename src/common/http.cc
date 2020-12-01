@@ -373,7 +373,7 @@ State BodyStep::parseContentLength(
   // We already started to read some bytes but we got an incomplete payload
   if (bytesRead > 0) {
     // How many bytes do we still need to read ?
-    const size_t remaining = static_cast<size_t>(ontentLength - bytesRead);
+    const size_t remaining = static_cast<size_t>(contentLength - bytesRead);
     if (!readBody(remaining))
       return State::Again;
   }
