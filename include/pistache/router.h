@@ -67,7 +67,7 @@ struct Route {
 
   typedef std::function<bool(Http::Request& req, Http::ResponseWriter& resp)> Middleware;
 
-  typedef std::function<bool(const std::shared_ptr<Tcp::Peer> &peer)> DisconnectHandler;
+  typedef std::function<void(const std::shared_ptr<Tcp::Peer> &peer)> DisconnectHandler;
 
   explicit Route(Route::Handler handler) : handler_(std::move(handler)) {}
 

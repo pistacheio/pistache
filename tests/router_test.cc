@@ -379,3 +379,69 @@ TEST(segment_tree_node_test, test_resource_sanitize) {
     ASSERT_EQ(SegmentTreeNode::sanitizeResource("/path//to/bar"), "path/to/bar");
     ASSERT_EQ(SegmentTreeNode::sanitizeResource("/path/to///////:place"), "path/to/:place");
 }
+
+namespace {
+class WaitHelper {
+public:
+  void increment() {
+    std::lock_guard<std::mutex> lock(counterLock_);
+    ++counter_;
+    cv_.notify_one();
+  }
+
+  template <typename Duration>
+  bool wait(const size_t count, const Duration timeout) {
+    std::unique_lock<std::mutex> lock(counterLock_);
+    return cv_.wait_for(lock, timeout,
+                        [this, count]() { return counter_ >= count; });
+  }
+
+private:
+  size_t counter_ = 0;
+  std::mutex counterLock_;
+  std::condition_variable cv_;
+};
+
+TEST(router_test, test_client_disconnects) {
+    Address addr(Ipv4::any(), 0);
+    auto endpoint = std::make_shared<Http::Endpoint>(addr);
+
+    auto opts = Http::Endpoint::options().threads(1).maxRequestSize(4096);
+    endpoint->init(opts);
+
+    int count_found = 0;
+    WaitHelper count_disconnect;
+
+    Rest::Router router;
+
+    Routes::Head(router, "/moogle",
+                [&count_found](const Pistache::Rest::Request &,
+                                Pistache::Http::ResponseWriter response) {
+                    count_found++;
+                    response.send(Pistache::Http::Code::Ok);
+                    return Pistache::Rest::Route::Result::Ok;
+                });
+
+    router.addDisconnectHandler(
+            [&count_disconnect] (const std::shared_ptr<Tcp::Peer> &) {
+                count_disconnect.increment();
+            });
+
+    endpoint->setHandler(router.handler());
+    endpoint->serveThreaded();
+    const auto bound_port = endpoint->getPort();
+    {
+        httplib::Client client("localhost", bound_port);
+        count_found = 0;
+        client.Head("/moogle");
+        ASSERT_EQ(count_found, 1);
+    }
+
+    const bool result = count_disconnect.wait(1, std::chrono::seconds(2));
+
+    endpoint->shutdown();
+    ASSERT_EQ(result, 1);
+    }
+}
+
+
