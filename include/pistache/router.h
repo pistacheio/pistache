@@ -67,6 +67,8 @@ struct Route {
 
   typedef std::function<bool(Http::Request& req, Http::ResponseWriter& resp)> Middleware;
 
+  typedef std::function<bool(const std::shared_ptr<Tcp::Peer> &peer)> DisconnectHandler;
+
   explicit Route(Route::Handler handler) : handler_(std::move(handler)) {}
 
   template <typename... Args> void invokeHandler(Args &&... args) const {
@@ -223,9 +225,12 @@ public:
   void addMiddleware(Route::Middleware middleware);
 
   void addNotFoundHandler(Route::Handler handler);
+  void addDisconnectHandler(Route::DisconnectHandler handler);
   inline bool hasNotFoundHandler() { return notFoundHandler != nullptr; }
   void invokeNotFoundHandler(const Http::Request &req,
                              Http::ResponseWriter resp) const;
+
+  void disconnectPeer(const std::shared_ptr<Tcp::Peer> &peer);
 
   Route::Status route(const Http::Request &request,
                       Http::ResponseWriter response);
@@ -238,6 +243,8 @@ private:
   std::vector<Route::Handler> customHandlers;
 
   std::vector<Route::Middleware> middlewares;
+
+  std::vector<Route::DisconnectHandler> disconnectHandlers;
 
   Route::Handler notFoundHandler;
 };
@@ -265,6 +272,8 @@ public:
 
   void onRequest(const Http::Request &req,
                  Http::ResponseWriter response) override;
+
+  void onDisconnection(const std::shared_ptr<Tcp::Peer> &peer) override;
 
 private:
   std::shared_ptr<Rest::Router> router;

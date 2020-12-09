@@ -306,6 +306,11 @@ void RouterHandler::onRequest(const Http::Request &req,
   router->route(req, std::move(response));
 }
 
+void RouterHandler::onDisconnection(const std::shared_ptr<Tcp::Peer> &peer)
+{
+  router->disconnectPeer(peer);
+}
+
 } // namespace Private
 
 Router Router::fromDescription(const Rest::Description &desc) {
@@ -382,6 +387,10 @@ void Router::addCustomHandler(Route::Handler handler) {
 
 void Router::addMiddleware(Route::Middleware middleware) {
     middlewares.push_back(std::move(middleware));
+}
+
+void Router::addDisconnectHandler(Route::DisconnectHandler handler) {
+  disconnectHandlers.push_back(std::move(handler));
 }
 
 void Router::addNotFoundHandler(Route::Handler handler) {
@@ -478,6 +487,12 @@ void Router::addRoute(Http::Method method, const std::string &resource,
   memcpy(ptr.get(), sanitized.data(), sanitized.length());
   const std::string_view path{ptr.get(), sanitized.length()};
   r.addRoute(path, handler, ptr);
+}
+
+void Router::disconnectPeer(const std::shared_ptr<Tcp::Peer> &peer) {
+    for (const auto & handler : disconnectHandlers) {
+        handler(peer);
+    }
 }
 
 namespace Routes {
