@@ -306,8 +306,7 @@ void RouterHandler::onRequest(const Http::Request &req,
   router->route(req, std::move(response));
 }
 
-void RouterHandler::onDisconnection(const std::shared_ptr<Tcp::Peer> &peer)
-{
+void RouterHandler::onDisconnection(const std::shared_ptr<Tcp::Peer> &peer) {
   router->disconnectPeer(peer);
 }
 
@@ -490,9 +489,9 @@ void Router::addRoute(Http::Method method, const std::string &resource,
 }
 
 void Router::disconnectPeer(const std::shared_ptr<Tcp::Peer> &peer) {
-    for (const auto & handler : disconnectHandlers) {
-        handler(peer);
-    }
+  for (const auto & handler : disconnectHandlers) {
+    handler(peer);
+  }
 }
 
 namespace Routes {

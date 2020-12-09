@@ -403,45 +403,45 @@ private:
 };
 
 TEST(router_test, test_client_disconnects) {
-    Address addr(Ipv4::any(), 0);
-    auto endpoint = std::make_shared<Http::Endpoint>(addr);
+  Address addr(Ipv4::any(), 0);
+  auto endpoint = std::make_shared<Http::Endpoint>(addr);
 
-    auto opts = Http::Endpoint::options().threads(1).maxRequestSize(4096);
-    endpoint->init(opts);
+  auto opts = Http::Endpoint::options().threads(1).maxRequestSize(4096);
+  endpoint->init(opts);
 
-    int count_found = 0;
-    WaitHelper count_disconnect;
+  int count_found = 0;
+  WaitHelper count_disconnect;
 
-    Rest::Router router;
+  Rest::Router router;
 
-    Routes::Head(router, "/moogle",
-                [&count_found](const Pistache::Rest::Request &,
-                                Pistache::Http::ResponseWriter response) {
-                    count_found++;
-                    response.send(Pistache::Http::Code::Ok);
-                    return Pistache::Rest::Route::Result::Ok;
-                });
+  Routes::Head(router, "/moogle",
+      [&count_found](const Pistache::Rest::Request &,
+        Pistache::Http::ResponseWriter response) {
+      count_found++;
+      response.send(Pistache::Http::Code::Ok);
+      return Pistache::Rest::Route::Result::Ok;
+      });
 
-    router.addDisconnectHandler(
-            [&count_disconnect] (const std::shared_ptr<Tcp::Peer> &) {
-                count_disconnect.increment();
-            });
+  router.addDisconnectHandler(
+      [&count_disconnect] (const std::shared_ptr<Tcp::Peer> &) {
+      count_disconnect.increment();
+      });
 
-    endpoint->setHandler(router.handler());
-    endpoint->serveThreaded();
-    const auto bound_port = endpoint->getPort();
-    {
-        httplib::Client client("localhost", bound_port);
-        count_found = 0;
-        client.Head("/moogle");
-        ASSERT_EQ(count_found, 1);
-    }
+  endpoint->setHandler(router.handler());
+  endpoint->serveThreaded();
+  const auto bound_port = endpoint->getPort();
+  {
+    httplib::Client client("localhost", bound_port);
+    count_found = 0;
+    client.Head("/moogle");
+    ASSERT_EQ(count_found, 1);
+  }
 
-    const bool result = count_disconnect.wait(1, std::chrono::seconds(2));
+  const bool result = count_disconnect.wait(1, std::chrono::seconds(2));
 
-    endpoint->shutdown();
-    ASSERT_EQ(result, 1);
-    }
+  endpoint->shutdown();
+  ASSERT_EQ(result, 1);
+}
 }
 
 
