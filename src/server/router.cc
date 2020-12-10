@@ -489,7 +489,7 @@ void Router::addRoute(Http::Method method, const std::string &resource,
 }
 
 void Router::disconnectPeer(const std::shared_ptr<Tcp::Peer> &peer) {
-  for (const auto & handler : disconnectHandlers) {
+  for (const auto &handler : disconnectHandlers) {
     handler(peer);
   }
 }

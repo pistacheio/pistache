@@ -415,16 +415,16 @@ TEST(router_test, test_client_disconnects) {
   Rest::Router router;
 
   Routes::Head(router, "/moogle",
-      [&count_found](const Pistache::Rest::Request &,
-        Pistache::Http::ResponseWriter response) {
-      count_found++;
-      response.send(Pistache::Http::Code::Ok);
-      return Pistache::Rest::Route::Result::Ok;
-      });
+               [&count_found](const Pistache::Rest::Request &,
+                              Pistache::Http::ResponseWriter response) {
+                 count_found++;
+                 response.send(Pistache::Http::Code::Ok);
+                 return Pistache::Rest::Route::Result::Ok;
+               });
 
   router.addDisconnectHandler(
-      [&count_disconnect] (const std::shared_ptr<Tcp::Peer> &) {
-      count_disconnect.increment();
+      [&count_disconnect](const std::shared_ptr<Tcp::Peer> &) {
+        count_disconnect.increment();
       });
 
   endpoint->setHandler(router.handler());
@@ -442,6 +442,4 @@ TEST(router_test, test_client_disconnects) {
   endpoint->shutdown();
   ASSERT_EQ(result, 1);
 }
-}
-
-
+} // namespace
