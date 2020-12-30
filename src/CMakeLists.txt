@@ -12,7 +12,7 @@ set(SOURCE_FILES
 )
 
 add_library(pistache OBJECT ${SOURCE_FILES})
-set_target_properties(pistache PROPERTIES POSITION_INDEPENDENT_CODE $<BOOL:${PISTACHE_PIC}>)
+set_target_properties(pistache PROPERTIES POSITION_INDEPENDENT_CODE ${PISTACHE_PIC})
 add_definitions(-DONLY_C_LOCALE=1)
 
 set(PISTACHE_INCLUDE
