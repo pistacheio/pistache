@@ -1,15 +1,8 @@
 ---
-name: Bug report
-about: Create a report to help us improve
-title: "[BUG]"
-labels: bug
-assignees: ''
-
----
-
----
 name: (Bug report)
-about: (Something is broken or doesn't work as expected)
+about: Create a report to help us improve
+title: "[BUG] (Insert short description)"
+assignees: ''
 labels: 
 
 - bug
