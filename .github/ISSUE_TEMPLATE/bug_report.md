@@ -23,10 +23,10 @@ labels:
 
 ## Context (Environment)
 
-- Pistache version: (include git revision)
+- Pistache version: major.minor.patch-git_revision
 - Operating System: (Distro and release)
-- Architecture: (amd64, arm64, armhf, i386, ppc64el, s390x, all, other)
+- Architecture: (amd64, arm64, armhf, i386, ppc64el, s390x, all, or other)
 - Installed from: (Built from source / unstable or stable PPA)
-- Used pkg-config: (yes / no)
+- Used `pkg-config`: (yes / no)
 
 Screenshots, logs, stacktraces or other relevant information here.
