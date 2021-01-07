@@ -218,7 +218,7 @@ Generate a Pistache source package in the parent directory of `pistache_source`:
 $ cd pistache_source
 $ sudo apt build-dep pistache
 $ ./debian/rules get-orig-source
-$ debuild -S -sa
+$ debuild -S -sa -uc
 ```
 
 Test the source package on the host architecture in QEMU with KVM support and 8GB of RAM and four CPUs:
