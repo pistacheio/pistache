@@ -12,7 +12,7 @@ set(SOURCE_FILES
 )
 
 add_library(pistache OBJECT ${SOURCE_FILES})
-set_target_properties(pistache PROPERTIES POSITION_INDEPENDENT_CODE 1)
+set_target_properties(pistache PROPERTIES POSITION_INDEPENDENT_CODE ${PISTACHE_PIC})
 add_definitions(-DONLY_C_LOCALE=1)
 
 set(PISTACHE_INCLUDE
@@ -56,7 +56,7 @@ if (BUILD_SHARED_LIBS)
     )
 endif ()
 
-set_target_properties(pistache_static PROPERTIES 
+set_target_properties(pistache_static PROPERTIES
     OUTPUT_NAME ${Pistache_OUTPUT_NAME}
 )
 
