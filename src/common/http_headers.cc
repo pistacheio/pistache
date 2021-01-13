@@ -170,15 +170,15 @@ namespace Pistache
                 return header.second;
             }
 
-            Optional<Raw> Collection::tryGetRaw(const std::string& name) const
+            std::optional<Raw> Collection::tryGetRaw(const std::string& name) const
             {
                 auto it = rawHeaders.find(name);
                 if (it == std::end(rawHeaders))
                 {
-                    return Optional<Raw>(None());
+                    return std::nullopt;
                 }
 
-                return Optional<Raw>(Some(it->second));
+                return std::optional<Raw>(it->second);
             }
 
             bool Collection::has(const std::string& name) const

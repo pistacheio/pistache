@@ -3323,13 +3323,13 @@ namespace date
             static CONSTDATA classify value = std::is_convertible<Duration, std::chrono::hours>::value
                 ? classify::hour
                 : std::is_convertible<Duration, std::chrono::minutes>::value
-                    ? classify::minute
-                    : std::is_convertible<Duration, std::chrono::seconds>::value
-                        ? classify::second
-                        : std::chrono::treat_as_floating_point<
-                              typename Duration::rep>::value
-                            ? classify::not_valid
-                            : classify::subsecond;
+                ? classify::minute
+                : std::is_convertible<Duration, std::chrono::seconds>::value
+                ? classify::second
+                : std::chrono::treat_as_floating_point<
+                      typename Duration::rep>::value
+                ? classify::not_valid
+                : classify::subsecond;
         };
 
         template <class Rep, class Period>

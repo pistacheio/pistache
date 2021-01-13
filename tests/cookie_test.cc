@@ -28,29 +28,29 @@ TEST(cookie_test, attributes_test)
     parse("SID=31d4d96e407aad42; Path=/", [](const Cookie& c) {
         ASSERT_EQ(c.name, "SID");
         ASSERT_EQ(c.value, "31d4d96e407aad42");
-        ASSERT_EQ(c.path.getOrElse(""), "/");
+        ASSERT_EQ(c.path.value_or(""), "/");
     });
 
     parse("SID=31d4d96e407aad42; Path=/; Domain=example.com",
           [](const Cookie& c) {
-              ASSERT_EQ(c.path.getOrElse(""), "/");
-              ASSERT_EQ(c.domain.getOrElse(""), "example.com");
+              ASSERT_EQ(c.path.value_or(""), "/");
+              ASSERT_EQ(c.domain.value_or(""), "example.com");
           });
 
     parse("lang=en-US; Path=/; Domain=example.com; Max-Age=10",
           [](const Cookie& c) {
               ASSERT_EQ(c.name, "lang");
               ASSERT_EQ(c.value, "en-US");
-              ASSERT_EQ(c.path.getOrElse(""), "/");
-              ASSERT_EQ(c.domain.getOrElse(""), "example.com");
-              ASSERT_EQ(c.maxAge.getOrElse(0), 10);
+              ASSERT_EQ(c.path.value_or(""), "/");
+              ASSERT_EQ(c.domain.value_or(""), "example.com");
+              ASSERT_EQ(c.maxAge.value_or(0), 10);
           });
 
     parse("lang=en-US; Expires=Wed, 09 Jun 2021 10:18:14 GMT",
           [](const Cookie& c) {
               ASSERT_EQ(c.name, "lang");
               ASSERT_EQ(c.value, "en-US");
-              auto expires = c.expires.getOrElse(FullDate());
+              auto expires = c.expires.value_or(FullDate());
               auto date    = expires.date();
 
               using namespace std::chrono;
@@ -61,7 +61,7 @@ TEST(cookie_test, attributes_test)
     parse("lang=en-US; Path=/; Domain=example.com;", [](const Cookie& c) {
         ASSERT_EQ(c.name, "lang");
         ASSERT_EQ(c.value, "en-US");
-        ASSERT_EQ(c.domain.getOrElse(""), "example.com");
+        ASSERT_EQ(c.domain.value_or(""), "example.com");
     });
 }
 
@@ -70,7 +70,7 @@ TEST(cookie_test, bool_test)
     parse("SID=31d4d96e407aad42; Path=/; Secure", [](const Cookie& c) {
         ASSERT_EQ(c.name, "SID");
         ASSERT_EQ(c.value, "31d4d96e407aad42");
-        ASSERT_EQ(c.path.getOrElse(""), "/");
+        ASSERT_EQ(c.path.value_or(""), "/");
         ASSERT_TRUE(c.secure);
         ASSERT_FALSE(c.httpOnly);
     });
@@ -78,7 +78,7 @@ TEST(cookie_test, bool_test)
     parse("SID=31d4d96e407aad42; Path=/; Secure; HttpOnly", [](const Cookie& c) {
         ASSERT_EQ(c.name, "SID");
         ASSERT_EQ(c.value, "31d4d96e407aad42");
-        ASSERT_EQ(c.path.getOrElse(""), "/");
+        ASSERT_EQ(c.path.value_or(""), "/");
         ASSERT_TRUE(c.secure);
         ASSERT_TRUE(c.httpOnly);
     });
@@ -89,7 +89,7 @@ TEST(cookie_test, ext_test)
     parse("lang=en-US; Path=/; Scope=Private", [](const Cookie& c) {
         ASSERT_EQ(c.name, "lang");
         ASSERT_EQ(c.value, "en-US");
-        ASSERT_EQ(c.path.getOrElse(""), "/");
+        ASSERT_EQ(c.path.value_or(""), "/");
         auto fooIt = c.ext.find("Scope");
         ASSERT_TRUE(fooIt != std::end(c.ext));
         ASSERT_EQ(fooIt->second, "Private");
@@ -99,8 +99,8 @@ TEST(cookie_test, ext_test)
 TEST(cookie_test, write_test)
 {
     Cookie c1("lang", "fr-FR");
-    c1.path   = Some(std::string("/"));
-    c1.domain = Some(std::string("example.com"));
+    c1.path   = std::string("/");
+    c1.domain = std::string("example.com");
 
     std::ostringstream oss;
     oss << c1;
@@ -112,8 +112,8 @@ TEST(cookie_test, write_test)
 
     FullDate::time_point expires = date::sys_days(date::year { 118 } / 2 / 16) + hours(17);
 
-    c2.path    = Some(std::string("/"));
-    c2.expires = Some(FullDate(expires));
+    c2.path    = std::string("/");
+    c2.expires = FullDate(expires);
 
     oss.str("");
     oss << c2;

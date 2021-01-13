@@ -240,7 +240,7 @@ namespace Pistache
                             double val;
                             if (!match_double(&val, cursor))
                                 raise("Invalid quality factor");
-                            q_ = Some(Q::fromFloat(val));
+                            q_ = Q::fromFloat(val);
                         }
                         else
                         {
@@ -266,17 +266,17 @@ namespace Pistache
                 }
             }
 
-            void MediaType::setQuality(Q quality) { q_ = Some(quality); }
+            void MediaType::setQuality(Q quality) { q_ = quality; }
 
-            Optional<std::string> MediaType::getParam(const std::string& name) const
+            std::optional<std::string> MediaType::getParam(const std::string& name) const
             {
                 auto it = params.find(name);
                 if (it == std::end(params))
                 {
-                    return Optional<std::string>(None());
+                    return std::nullopt;
                 }
 
-                return Optional<std::string>(Some(it->second));
+                return std::optional<std::string>(it->second);
             }
 
             void MediaType::setParam(const std::string& name, std::string value)
@@ -339,10 +339,12 @@ namespace Pistache
                     res += suffixString(suffix_);
                 }
 
-                optionally_do(q_, [&res](Q quality) {
+                if (q_.has_value())
+                {
+                    Q quality = *q_;
                     res += "; ";
                     res += quality.toString();
-                });
+                }
 
                 for (const auto& param : params)
                 {

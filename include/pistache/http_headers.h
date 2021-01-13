@@ -101,7 +101,7 @@ namespace Pistache
 
                 std::shared_ptr<const Header> tryGet(const std::string& name) const;
                 std::shared_ptr<Header> tryGet(const std::string& name);
-                Optional<Raw> tryGetRaw(const std::string& name) const;
+                std::optional<Raw> tryGetRaw(const std::string& name) const;
 
                 template <typename H>
                 typename std::enable_if<IsHeader<H>::value, bool>::type has() const

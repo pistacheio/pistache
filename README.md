@@ -4,7 +4,7 @@
 
 [![Build Status](https://travis-ci.org/pistacheio/pistache.svg?branch=master)](https://travis-ci.org/pistacheio/pistache)
 
-Pistache is a modern and elegant HTTP and REST framework for C++. It is entirely written in pure-C++14 and provides a clear and pleasant API.
+Pistache is a modern and elegant HTTP and REST framework for C++. It is entirely written in pure-C++17 and provides a clear and pleasant API.
 
 ## Documentation
 
@@ -214,13 +214,13 @@ Be patient, async_test can take some time before completing. And that's it, now 
 
 Some other Meson options:
 
-| Option                        | Default     | Description                                    |
-|-------------------------------|-------------|------------------------------------------------|
-| PISTACHE_USE_SSL              | False       | Build server with SSL support                  |
-| PISTACHE_BUILD_TESTS          | False       | Build all of the unit tests                    |
-| PISTACHE_ENABLE_NETWORK_TESTS | True        | Run unit tests requiring remote network access |
-| PISTACHE_BUILD_EXAMPLES       | False       | Build all of the example apps                  |
-| PISTACHE_BUILD_DOCS           | False       | Build Doxygen docs                             |
+| Option                        | Default | Description                                    |
+| ----------------------------- | ------- | ---------------------------------------------- |
+| PISTACHE_USE_SSL              | False   | Build server with SSL support                  |
+| PISTACHE_BUILD_TESTS          | False   | Build all of the unit tests                    |
+| PISTACHE_ENABLE_NETWORK_TESTS | True    | Run unit tests requiring remote network access |
+| PISTACHE_BUILD_EXAMPLES       | False   | Build all of the example apps                  |
+| PISTACHE_BUILD_DOCS           | False   | Build Doxygen docs                             |
 
 ## Continuous Integration Testing
 
