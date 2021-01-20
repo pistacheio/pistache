@@ -225,7 +225,7 @@ endif()
 
     # Don't include these files in the archive...
     set(CPACK_SOURCE_IGNORE_FILES
-      "/build/;/debian/;/prefix/;/.git*;~$;${CPACK_SOURCE_IGNORE_FILES}")
+      "/build/;/debian/;/prefix/;/.git*/;~$;${CPACK_SOURCE_IGNORE_FILES}")
 
     # Include the CPack module for generating the archive and add the standard
     #  dist target to the generated makefile...
