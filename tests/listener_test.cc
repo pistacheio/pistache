@@ -95,17 +95,14 @@ SocketWrapper bind_free_port() {
   return SocketWrapper(sockfd);
 }
 
-TEST(listener_test, listener_bind_port_free) {
-  uint16_t port_nb;
+// This is just done to get the value of a free port. The socket will be
+// closed after the closing curly bracket and the port will be free again
+// (SO_REUSEADDR option). In theory, it is possible that some application grab
+// this port before we bind it again...
+uint16_t get_free_port() { return bind_free_port().port(); }
 
-  // This is just done to get the value of a free port. The socket will be
-  // closed after the closing curly bracket and the port will be free again
-  // (SO_REUSEADDR option). In theory, it is possible that some application grab
-  // this port before we bind it again...
-  {
-    SocketWrapper s = bind_free_port();
-    port_nb = s.port();
-  }
+TEST(listener_test, listener_bind_port_free) {
+  uint16_t port_nb = get_free_port();
 
   if (port_nb == 0) {
     FAIL() << "Could not find a free port. Abort test.\n";
@@ -125,16 +122,7 @@ TEST(listener_test, listener_bind_port_free) {
 // Listener should not crash if an additional member is added to the listener
 // class. This test is there to prevent regression for PR 303
 TEST(listener_test, listener_uses_default) {
-  uint16_t port_nb;
-
-  // This is just done to get the value of a free port. The socket will be
-  // closed after the closing curly bracket and the port will be free again
-  // (SO_REUSEADDR option). In theory, it is possible that some application grab
-  // this port before we bind it again...
-  {
-    SocketWrapper s = bind_free_port();
-    port_nb = s.port();
-  }
+  uint16_t port_nb = get_free_port();
 
   if (port_nb == 0) {
     FAIL() << "Could not find a free port. Abort test.\n";
@@ -214,4 +202,73 @@ TEST(listener_test, listener_bind_ephemeral_v6_port) {
     ASSERT_TRUE(bound_port > (uint16_t)0);
   }
   ASSERT_TRUE(true);
+}
+
+class CloseOnExecTest : public testing::Test {
+public:
+  ~CloseOnExecTest() override = default;
+
+  std::unique_ptr<Pistache::Tcp::Listener>
+  prepare_listener(const Pistache::Tcp::Options options) {
+    const Pistache::Address address(Pistache::Ipv4::any(),
+                                    Pistache::Port(port));
+    auto listener = std::make_unique<Pistache::Tcp::Listener>(address);
+    listener->setHandler(Pistache::Http::make_handler<DummyHandler>());
+    listener->init(1, Pistache::Flags<Pistache::Tcp::Options>(options));
+    return listener;
+  }
+
+  bool is_child_process(pid_t id) {
+    constexpr auto fork_child_pid = 0;
+    return id == fork_child_pid;
+  }
+
+  /*
+   * we need to leak the socket through child process and verify that socket is
+   * still bound after child has quit
+   */
+  void try_to_leak_socket(const Pistache::Tcp::Options options) {
+    pid_t id = fork();
+    if (is_child_process(id)) {
+      auto server = prepare_listener(options);
+      server->bind();
+      std::system(
+          "sleep 10 <&- &"); // leak open socket to child of our child process
+      exit(0);
+    }
+
+    int status = 0;
+    wait(&status);
+    ASSERT_EQ(0, status);
+    usleep(100000); // wait 100 ms, so socket gets a chance to be closed
+  }
+
+  uint16_t port = get_free_port();
+};
+
+TEST_F(CloseOnExecTest, socket_not_leaked) {
+  Pistache::Tcp::Options options =
+      Pistache::Tcp::Options::CloseOnExec | Pistache::Tcp::Options::ReuseAddr;
+
+  try_to_leak_socket(options);
+
+  ASSERT_NO_THROW({
+    auto server = prepare_listener(options);
+    server->bind();
+    server->shutdown();
+  });
+}
+
+TEST_F(CloseOnExecTest, socket_leaked) {
+  Pistache::Tcp::Options options = Pistache::Tcp::Options::ReuseAddr;
+
+  try_to_leak_socket(options);
+
+  ASSERT_THROW(
+      {
+        auto server = prepare_listener(options);
+        server->bind();
+        server->shutdown();
+      },
+      std::runtime_error);
 }
