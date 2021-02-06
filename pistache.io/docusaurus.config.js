@@ -5,7 +5,7 @@ module.exports = {
   baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/logo.png',
   organizationName: 'pistacheio', // Usually your GitHub org/user name.
   projectName: 'pistace', // Usually your repo name.
   themeConfig: {
@@ -24,7 +24,8 @@ module.exports = {
         },
         {
           href: 'https://github.com/pistacheio/pistache',
-          label: 'GitHub',
+          className: 'header-github-link',
+          'aria-label': 'GitHub repository',
           position: 'right',
         },
       ],
@@ -36,12 +37,12 @@ module.exports = {
           title: 'Docs',
           items: [
             {
-              label: 'Style Guide',
+              label: 'Quickstart',
               to: 'docs/',
             },
             {
-              label: 'Second Doc',
-              to: 'docs/doc2/',
+              label: 'User guide',
+              to: 'docs/http-handler/',
             },
           ],
         },
@@ -53,12 +54,8 @@ module.exports = {
               href: 'https://stackoverflow.com/questions/tagged/pistache',
             },
             {
-              label: 'Discord',
-              href: 'https://discord.com/invite/pistacheio',
-            },
-            {
-              label: 'Twitter',
-              href: 'https://twitter.com/pistacheio',
+              label: '#pistache on Freenode',
+              href: 'irc://chat.freenode.net',
             },
           ],
         },

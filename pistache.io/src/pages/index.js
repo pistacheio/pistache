@@ -8,32 +8,42 @@ import styles from './styles.module.css';
 
 const features = [
   {
-    title: 'Easy to Use',
-    imageUrl: 'img/undraw_docusaurus_mountain.svg',
+    title: 'Modern API',
+    imageUrl: 'img/undraw_futuristic_interface.svg',
     description: (
       <>
-        Docusaurus was designed from the ground up to be easily installed and
-        used to get your website up and running quickly.
+        Written in pure C++17 and providing a low-level HTTP abstraction,
+        Pistache makes playing with its modern API fun and easy,
+        just take a look at the quickstart
       </>
     ),
   },
   {
-    title: 'Focus on What Matters',
-    imageUrl: 'img/undraw_docusaurus_tree.svg',
+    title: 'What\'s in the box',
+    imageUrl: 'img/undraw_accept_request.svg',
     description: (
       <>
-        Docusaurus lets you focus on your docs, and we&apos;ll do the chores. Go
-        ahead and move your docs into the <code>docs</code> directory.
+        <ul>
+          <li>A multi-threaded HTTP server to build your APIs</li>
+          <li>An asynchronous HTTP client to request APIs</li>
+          <li>An HTTP router to dispatch requests to C++ functions</li>
+          <li>A REST description DSL to easily define your APIs</li>
+          <li>Type-safe headers and MIME types implementation</li>
+        </ul>
       </>
     ),
   },
   {
-    title: 'Powered by React',
-    imageUrl: 'img/undraw_docusaurus_react.svg',
+    title: 'Use it',
+    imageUrl: 'img/undraw_version_control.svg',
     description: (
       <>
-        Extend or customize your website layout by reusing React. Docusaurus can
-        be extended while reusing the same header and footer.
+        <ul>
+          <li>Clone it on <a href="https://github.com/pistacheio/pistache">GitHub</a></li>
+          <li>Start with the <a href="docs/">quickstart</a></li>
+          <li>Read the full user's <a href="docs/http-handler">guide</a></li>
+          <li>Have issues with it? Fill an <a href="https://github.com/pistacheio/pistache/issues">issue</a></li>
+        </ul>
       </>
     ),
   },
@@ -59,7 +69,6 @@ function Home() {
   const {siteConfig = {}} = context;
   return (
     <Layout
-      title={`Hello from ${siteConfig.title}`}
       description="Description will go into a meta tag in <head />">
       <header className={clsx('hero hero--primary', styles.heroBanner)}>
         <div className="container">
