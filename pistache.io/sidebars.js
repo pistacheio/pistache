@@ -1,5 +1,5 @@
 module.exports = {
-  someSidebar: {
-    Pistache: ['http-handler', 'asynchronous-http-programming', 'headers', 'routing'],
+  leftSidebar: {
+    Pistache: ['quickstart', 'http-handler', 'asynchronous-http-programming', 'headers', 'routing'],
   },
 };

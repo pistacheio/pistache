@@ -1,7 +1,6 @@
 ---
 id: http-handler
 title: HTTP handler
-slug: /
 ---
 
 Requests that are received by Pistache are handled by a special class called `Http::Handler`. This class declares a bunch of virtual methods that can be overriden to handle special events that occur on the socket and/or connection.
