@@ -1,0 +1,33 @@
+name: pistache.io
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install yarnpkg npm --no-install-recommends --assume-yes -qq
+          sudo update-alternatives --install /usr/bin/yarn yarn /usr/bin/yarnpkg 10
+          sudo npm install --global --silent npx
+      
+      - name: Build docs site
+        run: |
+          cd pistache.io
+          yarn install --non-interactive
+          yarn build
+      
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build
+          cname: pistache.io

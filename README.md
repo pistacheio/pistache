@@ -1,7 +1,5 @@
-
-
 # Pistache
-[![N|Solid](http://pistache.io/assets/images/logo.png)](https://www.github.com/oktal/pistache)
+[![N|Solid](pistache.io/static/img/logo.png)](https://www.github.com/pistacheio/pistache)
 
 [![Build Status](https://travis-ci.org/pistacheio/pistache.svg?branch=master)](https://travis-ci.org/pistacheio/pistache)
 
