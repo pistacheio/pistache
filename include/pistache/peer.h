@@ -43,9 +43,9 @@ public:
 
   void *ssl() const;
 
-  void putData(std::string name, std::shared_ptr<Http::Parser> data);
-  std::shared_ptr<Http::Parser> getData(std::string name) const;
-  std::shared_ptr<Http::Parser> tryGetData(std::string name) const;
+  void putData(std::string name, std::shared_ptr<void> data);
+  std::shared_ptr<void> getData(std::string name) const;
+  std::shared_ptr<void> tryGetData(std::string name) const;
 
   Async::Promise<ssize_t> send(const RawBuffer &buffer, int flags = 0);
 
@@ -61,7 +61,7 @@ private:
   Address addr;
 
   std::string hostname_;
-  std::unordered_map<std::string, std::shared_ptr<Http::Parser>> data_;
+  std::unordered_map<std::string, std::shared_ptr<void>> data_;
 
   void *ssl_ = nullptr;
 };

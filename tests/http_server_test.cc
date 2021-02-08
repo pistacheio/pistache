@@ -436,9 +436,46 @@ TEST(http_server_test, response_size_captured) {
 TEST(http_server_test, client_request_header_timeout_raises_http_408) {
   Pistache::Address address("localhost", Pistache::Port(0));
 
+  auto timeout = std::chrono::seconds(2);
+
   Http::Endpoint server(address);
   auto flags = Tcp::Options::ReuseAddr;
-  auto opts = Http::Endpoint::options().flags(flags);
+  auto opts = Http::Endpoint::options()
+                .flags(flags)
+                .headerTimeout(timeout);
+  server.init(opts);
+  server.setHandler(Http::make_handler<PingHandler>());
+  server.serveThreaded();
+
+  auto port = server.getPort();
+  auto addr = "localhost:" + port.toString();
+  std::cout << "Server address: " << addr << "\n";
+
+  char recvBuf[1024];
+  std::memset(recvBuf, 0, sizeof(recvBuf));
+  size_t bytes;
+
+  TcpClient client;
+  ASSERT_TRUE(client.connect(Pistache::Address("localhost", port))) << client.lastError();
+
+  ASSERT_TRUE(client.receive(recvBuf, sizeof(recvBuf), &bytes, std::chrono::seconds(5))) << client.lastError();
+
+  server.shutdown();
+}
+
+TEST(http_server_test, client_request_body_timeout_raises_http_408) {
+  Pistache::Address address("localhost", Pistache::Port(0));
+
+  auto headerTimeout = std::chrono::seconds(1);
+  auto bodyTimeout = std::chrono::seconds(1);
+
+  Http::Endpoint server(address);
+  auto flags = Tcp::Options::ReuseAddr;
+  auto opts = Http::Endpoint::options()
+                .flags(flags)
+                .headerTimeout(headerTimeout)
+                .bodyTimeout(bodyTimeout);
+
   server.init(opts);
   server.setHandler(Http::make_handler<PingHandler>());
   server.serveThreaded();
@@ -448,16 +485,24 @@ TEST(http_server_test, client_request_header_timeout_raises_http_408) {
   std::cout << "Server address: " << addr << "\n";
 
   std::string reqStr = "GET /ping HTTP/1.1\r\n";
+  std::string headerStr = "Host: localhost\r\nUser-Agent: test\r\n";
 
   char recvBuf[1024];
   std::memset(recvBuf, 0, sizeof(recvBuf));
   size_t bytes;
 
   TcpClient client;
-  EXPECT_TRUE(client.connect(Pistache::Address("localhost", port))) << client.lastError();
-  EXPECT_TRUE(client.send(reqStr)) << client.lastError();
+  ASSERT_TRUE(client.connect(Pistache::Address("localhost", port))) << client.lastError();
+  ASSERT_TRUE(client.send(reqStr)) << client.lastError();
 
-  EXPECT_TRUE(client.receive(recvBuf, sizeof(recvBuf), &bytes, std::chrono::seconds(5))) << client.lastError();
+  std::this_thread::sleep_for(headerTimeout / 2);
+  ASSERT_TRUE(client.send(headerStr)) << client.lastError();
+
+  static constexpr const char* ExpectedResponseLine = "HTTP/1.1 408 Request Timeout";
+
+  ASSERT_TRUE(client.receive(recvBuf, sizeof(recvBuf), &bytes, std::chrono::seconds(5))) << client.lastError();
+  ASSERT_TRUE(!strncmp(recvBuf, ExpectedResponseLine, strlen(ExpectedResponseLine)));
 
   server.shutdown();
 }
+

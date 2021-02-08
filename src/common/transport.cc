@@ -160,6 +160,11 @@ void Transport::handleIncoming(const std::shared_ptr<Peer> &peer) {
 void Transport::handlePeerDisconnection(const std::shared_ptr<Peer> &peer) {
   handler_->onDisconnection(peer);
 
+  removePeer(peer);
+}
+
+void Transport::removePeer(const std::shared_ptr<Peer>& peer)
+{
   int fd = peer->fd();
   auto it = peers.find(fd);
   if (it == std::end(peers))

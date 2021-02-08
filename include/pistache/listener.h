@@ -45,7 +45,9 @@ public:
     TimePoint tick;
   };
 
-  Listener() = default;
+  using TransportFactory = std::function<std::shared_ptr<Transport> ()>;
+
+  Listener();
   ~Listener();
 
   explicit Listener(const Address &address);
@@ -54,6 +56,8 @@ public:
             const std::string &workersName = "",
             int backlog = Const::MaxBacklog,
             PISTACHE_STRING_LOGGER_T logger = PISTACHE_NULL_STRING_LOGGER);
+
+  void setTransportFactory(TransportFactory factory);
   void setHandler(const std::shared_ptr<Handler> &handler);
 
   void bind();
@@ -95,6 +99,10 @@ private:
 
   Aio::Reactor reactor_;
   Aio::Reactor::Key transportKey;
+
+  TransportFactory transportFactory_;
+
+  TransportFactory defaultTransportFactory() const;
 
   void handleNewConnection();
   int acceptConnection(struct sockaddr_in &peer_addr) const;

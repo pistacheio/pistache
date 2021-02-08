@@ -247,7 +247,7 @@ State ResponseLineStep::apply(StreamCursor &cursor) {
   char *end;
   auto code = strtol(codeToken.rawText(), &end, 10);
   if (*end != ' ')
-    raise("Failed to parsed return code");
+    raise("Failed to parse return code");
   response->code_ = static_cast<Http::Code>(code);
 
   if (!cursor.advance(1))
@@ -484,6 +484,7 @@ State ParserBase::parse() {
 }
 
 bool ParserBase::feed(const char *data, size_t len) {
+  time_ = std::chrono::steady_clock::now();
   return buffer.feed(data, len);
 }
 
@@ -492,6 +493,12 @@ void ParserBase::reset() {
   cursor.reset();
 
   currentStep = 0;
+  time_ = std::chrono::steady_clock::time_point(std::chrono::steady_clock::duration(0));
+}
+
+Step* ParserBase::step()
+{
+    return allSteps[currentStep].get();
 }
 
 } // namespace Private
@@ -966,8 +973,11 @@ void Handler::onConnection(const std::shared_ptr<Tcp::Peer> &peer) {
 
 void Handler::onDisconnection(const std::shared_ptr<Tcp::Peer> & /*peer*/) {}
 
-void Handler::onTimeout(const Request & /*request*/,
-                        ResponseWriter /*response*/) {}
+void Handler::onTimeout(const Request& /*request*/,
+                        ResponseWriter response)
+{
+    response.send(Code::Request_Timeout);
+}
 
 Timeout::~Timeout() { disarm(); }
 
@@ -990,7 +1000,6 @@ void Timeout::onTimeout(uint64_t numWakeup) {
     return;
 
   ResponseWriter response(transport, request, handler, peer);
-
   handler->onTimeout(request, std::move(response));
 }
 
@@ -1003,8 +1012,8 @@ void Handler::setMaxResponseSize(size_t value) { maxResponseSize_ = value; }
 size_t Handler::getMaxResponseSize() const { return maxResponseSize_; }
 
 RequestParser &
-Handler::getParser(const std::shared_ptr<Tcp::Peer> &peer) const {
-  return static_cast<RequestParser &>(*peer->getData(ParserData));
+Handler::getParser(const std::shared_ptr<Tcp::Peer> &peer) {
+  return *std::static_pointer_cast<RequestParser>(peer->getData(ParserData));
 }
 
 } // namespace Http

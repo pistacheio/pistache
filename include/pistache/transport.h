@@ -27,15 +27,16 @@ class Handler;
 class Transport : public Aio::Handler {
 public:
   explicit Transport(const std::shared_ptr<Tcp::Handler> &handler);
+
   Transport(const Transport &) = delete;
   Transport &operator=(const Transport &) = delete;
 
   void init(const std::shared_ptr<Tcp::Handler> &handler);
 
-  void registerPoller(Polling::Epoll &poller) override;
+  virtual void registerPoller(Polling::Epoll &poller) override;
 
   void handleNewPeer(const std::shared_ptr<Peer> &peer);
-  void onReady(const Aio::FdSet &fds) override;
+  virtual void onReady(const Aio::FdSet &fds) override;
 
   template <typename Buf>
   Async::Promise<ssize_t> asyncWrite(Fd fd, const Buf &buffer, int flags = 0) {
@@ -167,13 +168,17 @@ private:
   std::unordered_map<Fd, TimerEntry> timers;
 
   PollableQueue<PeerEntry> peersQueue;
-  std::unordered_map<Fd, std::shared_ptr<Peer>> peers;
 
   Async::Deferred<rusage> loadRequest_;
   NotifyFd notifier;
 
   std::shared_ptr<Tcp::Handler> handler_;
 
+protected:
+  void removePeer(const std::shared_ptr<Peer>& peer);
+  std::unordered_map<Fd, std::shared_ptr<Peer>> peers;
+
+private:
   bool isPeerFd(Fd fd) const;
   bool isTimerFd(Fd fd) const;
   bool isPeerFd(Polling::Tag tag) const;

@@ -8,7 +8,10 @@
 
 #include <pistache/http.h>
 #include <pistache/listener.h>
+#include <pistache/transport.h>
 #include <pistache/net.h>
+
+#include <chrono>
 
 namespace Pistache {
 namespace Http {
@@ -20,26 +23,55 @@ public:
 
     Options &threads(int val);
     Options &threadsName(const std::string &val);
+
     Options &flags(Flags<Tcp::Options> flags);
     Options &flags(Tcp::Options tcp_opts) {
       flags(Flags<Tcp::Options>(tcp_opts));
       return *this;
     }
+
     Options &backlog(int val);
+
     Options &maxRequestSize(size_t val);
     Options &maxResponseSize(size_t val);
+
+    template<typename Duration>
+    Options &headerTimeout(Duration timeout)
+    {
+        headerTimeout_ = std::chrono::duration_cast<std::chrono::milliseconds>(timeout);
+        return *this;
+    }
+
+    template<typename Duration>
+    Options& bodyTimeout(Duration timeout)
+    {
+        bodyTimeout_ = std::chrono::duration_cast<std::chrono::milliseconds>(timeout);
+        return *this;
+    }
+
     Options &logger(PISTACHE_STRING_LOGGER_T logger);
 
     [[deprecated("Replaced by maxRequestSize(val)")]] Options &
     maxPayload(size_t val);
 
   private:
+    // Thread options
     int threads_;
     std::string threadsName_;
+
+    // TCP flags
     Flags<Tcp::Options> flags_;
+    // Backlog size
     int backlog_;
+
+    // Size options
     size_t maxRequestSize_;
     size_t maxResponseSize_;
+
+    // Timeout options
+    std::chrono::milliseconds headerTimeout_;
+    std::chrono::milliseconds bodyTimeout_;
+
     PISTACHE_STRING_LOGGER_T logger_;
     Options();
   };
@@ -151,8 +183,8 @@ private:
 
   std::shared_ptr<Handler> handler_;
   Tcp::Listener listener;
-  size_t maxRequestSize_ = Const::DefaultMaxRequestSize;
-  size_t maxResponseSize_ = Const::DefaultMaxResponseSize;
+
+  Options options_;
   PISTACHE_STRING_LOGGER_T logger_ = PISTACHE_NULL_STRING_LOGGER;
 };
 
