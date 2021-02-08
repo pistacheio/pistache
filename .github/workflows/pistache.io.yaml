@@ -7,7 +7,7 @@ on:
     branches: [ master ]
 
 jobs:
-  pistache.io-deploy:
+  pistacheio-deploy:
     runs-on: ubuntu-20.04
 
     steps:
