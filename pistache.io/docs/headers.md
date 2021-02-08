@@ -48,12 +48,6 @@ void parse(const std::string& data);
 
 This function is used to parse the header from the string representation. Alternatively, to avoid allocating memory for the string representation, a _raw_ version can be used:
 
-:::note Note to the Pistache team
-
-Why not to use a `std::string_view` instead?
-
-:::
-
 ```cpp
 void parseRaw(const char* str, size_t len);
 ```
