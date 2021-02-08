@@ -73,7 +73,7 @@ module.exports = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Pistache. Built by Tachi with <3 and Docusaurus.`,
+      copyright: `Pistache, 2015 - ${new Date().getFullYear()}`,
     },
   },
   presets: [

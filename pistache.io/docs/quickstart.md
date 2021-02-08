@@ -15,7 +15,7 @@ Pistache is a web framework written in Modern C++ that focuses on performance an
 
 If you're on Ubuntu and want to skip the compilation process you can add the official PPA providing nightly builds:
 
-```sh
+```shell
 sudo add-apt-repository ppa:pistache+team/unstable
 sudo apt update
 sudo apt install libpistache-dev
@@ -23,7 +23,7 @@ sudo apt install libpistache-dev
 
 Otherwise, here's how to build and install the latest release:
 
-```sh
+```shell
 git clone --recurse-submodules https://github.com/pistacheio/pistache.git
 cd pistache
 mkdir build && cd build
@@ -92,7 +92,7 @@ int main() {
 
 And that’s it, now you can fire up your favorite curl request and observe the final result:
 
-```sh
+```shell
 curl http://localhost:9080/
 Hello, World
 ```
