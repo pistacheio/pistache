@@ -67,7 +67,7 @@ void(const Rest::Request&, Http::ResponseWriter);
 
 A callback can either be a non-static free or member function. For member functions, a pointer to the corresponding instance must be passed to the Routes::bind function so that the router knows on which instance to invoke the member function.
 
-The first parameter of the callback is `Rest::Request` and not an `Http::Request`. A `Rest::Request` is an `Http::Request` will additional functions. Named and splat parameters are for example retrieved through this object:
+The first parameter of the callback is `Rest::Request` and not an `Http::Request`. A `Rest::Request` is an `Http::Request` with additional functions. Named and splat parameters are for example retrieved through this object:
 
 ```cpp
 void UsersApi::getUserId(const Rest::Request& request, Http::ResponseWriter response) {
