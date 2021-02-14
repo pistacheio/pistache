@@ -85,7 +85,8 @@ public:
   Version version() const;
   Code code() const;
 
-  std::string body() const;
+  const std::string &body() const;
+  std::string body();
 
   const CookieJar &cookies() const;
   CookieJar &cookies();
@@ -213,7 +214,7 @@ public:
   friend class ResponseWriter;
 
   explicit Timeout(Timeout &&other)
-      : handler(other.handler), request(std::move(other.request)),
+      : handler(other.handler),
         transport(other.transport), armed(other.armed), timerFd(other.timerFd),
         peer(std::move(other.peer)) {
     // cppcheck-suppress useInitializationList
@@ -223,7 +224,7 @@ public:
   Timeout &operator=(Timeout &&other) {
     handler = other.handler;
     transport = other.transport;
-    request = std::move(other.request);
+    version = other.version;
     armed = other.armed;
     timerFd = other.timerFd;
     other.timerFd = -1;
@@ -257,13 +258,13 @@ public:
 private:
   Timeout(const Timeout &other) = default;
 
-  Timeout(Tcp::Transport *transport_, Handler *handler_, Request request_,
+  Timeout(Tcp::Transport *transport_, Http::Version version, Handler *handler_,
           std::weak_ptr<Tcp::Peer> peer_);
 
   void onTimeout(uint64_t numWakeup);
 
   Handler *handler;
-  Request request;
+  Http::Version version;
   Tcp::Transport *transport;
   bool armed;
   Fd timerFd;
@@ -355,9 +356,8 @@ public:
 
   friend class Private::ResponseLineStep;
 
-  ResponseWriter(Tcp::Transport *transport, Request request, Handler *handler,
-                 std::weak_ptr<Tcp::Peer> peer);
-
+  ResponseWriter(Http::Version version, Tcp::Transport *transport,
+                 Handler *handler, std::weak_ptr<Tcp::Peer> peer);
 
   //
   // C++11: std::weak_ptr move constructor is C++14 only so the default
@@ -421,6 +421,12 @@ public:
 
   ResponseWriter clone() const;
 
+  std::shared_ptr<Tcp::Peer> getPeer() const {
+    if (auto sp = peer_.lock())
+      return sp;
+    return nullptr;
+  }
+
 private:
   ResponseWriter(const ResponseWriter &other);
 
@@ -433,9 +439,9 @@ private:
   Response response_;
   std::weak_ptr<Tcp::Peer> peer_;
   DynamicStreamBuf buf_;
-  Tcp::Transport *transport_;
+  Tcp::Transport *transport_ = nullptr;
   Timeout timeout_;
-  ssize_t sent_bytes_;
+  ssize_t sent_bytes_ = 0;
 };
 
 Async::Promise<ssize_t>
@@ -592,6 +598,8 @@ using ResponseParser = Private::ParserImpl<Http::Response>;
 
 class Handler : public Tcp::Handler {
 public:
+  static constexpr const char* ParserData = "__Parser";
+
   virtual void onRequest(const Request &request, ResponseWriter response) = 0;
 
   virtual void onTimeout(const Request &request, ResponseWriter response);
@@ -623,13 +631,12 @@ public:
       return bodyTimeout_;
   }
 
-  static RequestParser &getParser(const std::shared_ptr<Tcp::Peer> &peer);
+  static std::shared_ptr<RequestParser> getParser(const std::shared_ptr<Tcp::Peer> &peer);
 
   virtual ~Handler() override {}
 
 private:
   void onConnection(const std::shared_ptr<Tcp::Peer> &peer) override;
-  void onDisconnection(const std::shared_ptr<Tcp::Peer> &peer) override;
   void onInput(const char *buffer, size_t len,
                const std::shared_ptr<Tcp::Peer> &peer) override;
 private:

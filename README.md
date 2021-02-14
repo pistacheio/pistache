@@ -1,8 +1,7 @@
-
-
 # Pistache
-[![N|Solid](http://pistache.io/assets/images/logo.png)](https://www.github.com/oktal/pistache)
-[![Travis Build Status](https://travis-ci.org/oktal/pistache.svg?branch=master)](https://travis-ci.org/oktal/pistache)
+[![N|Solid](pistache.io/static/img/logo.png)](https://www.github.com/pistacheio/pistache)
+
+[![Build Status](https://travis-ci.org/pistacheio/pistache.svg?branch=master)](https://travis-ci.org/pistacheio/pistache)
 
 Pistache is a modern and elegant HTTP and REST framework for C++. It is entirely written in pure-C++14 and provides a clear and pleasant API.
 
@@ -207,9 +206,9 @@ On Debian based distributions, `autopkgtest` implements the DEP-8 standard. To c
 $ sudo apt install autopkgtest
 ```
 
-Next create the test image, substituting `eoan` or `amd64` for other releases or architectures:
+Next create the test image, substituting `groovy` or `amd64` for other releases or architectures:
 ```
-$ autopkgtest-buildvm-ubuntu-cloud -r eoan -a amd64
+$ autopkgtest-buildvm-ubuntu-cloud -r groovy -a amd64
 ```
 
 Generate a Pistache source package in the parent directory of `pistache_source`:
@@ -217,7 +216,7 @@ Generate a Pistache source package in the parent directory of `pistache_source`:
 $ cd pistache_source
 $ sudo apt build-dep pistache
 $ ./debian/rules get-orig-source
-$ debuild -S -sa
+$ debuild -S -sa -uc
 ```
 
 Test the source package on the host architecture in QEMU with KVM support and 8GB of RAM and four CPUs:

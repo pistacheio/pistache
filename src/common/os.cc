@@ -118,7 +118,7 @@ cpu_set_t CpuSet::toPosix() const {
 
 namespace Polling {
 
-Event::Event(Tag _tag) : flags(), fd(-1), tag(_tag) {}
+Event::Event(Tag _tag) : flags(), tag(_tag) {}
 
 Epoll::Epoll()
     : epoll_fd([&]() { return TRY_RET(epoll_create(Const::MaxEvents)); }()) {}
@@ -171,7 +171,8 @@ int Epoll::poll(std::vector<Event> &events,
 
   int ready_fds = -1;
   do {
-    ready_fds = ::epoll_wait(epoll_fd, evs, Const::MaxEvents, static_cast<int>(timeout.count()));
+    ready_fds = ::epoll_wait(epoll_fd, evs, Const::MaxEvents,
+                             static_cast<int>(timeout.count()));
   } while (ready_fds < 0 && errno == EINTR);
 
   for (int i = 0; i < ready_fds; ++i) {

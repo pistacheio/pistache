@@ -106,13 +106,13 @@ void TransportImpl::checkIdlePeers()
     for (const auto& peerPair: peers)
     {
         const auto& peer = peerPair.second;
-        auto& parser = Http::Handler::getParser(peer);
-        auto time = parser.time();
+        auto parser = Http::Handler::getParser(peer);
+        auto time = parser->time();
 
         auto now = std::chrono::steady_clock::now();
         auto elapsed = now - time;
 
-        auto* step = parser.step();
+        auto* step = parser->step();
         if (step->id() == Private::RequestLineStep::Id)
         {
             if (elapsed > headerTimeout_ || elapsed > bodyTimeout_)
@@ -127,8 +127,7 @@ void TransportImpl::checkIdlePeers()
 
     for (const auto& idlePeer: idlePeers)
     {
-        Http::Request request;
-        ResponseWriter response(this, request, static_cast<Http::Handler *>(handler_.get()), idlePeer);
+        ResponseWriter response(Http::Version::Http11, this, static_cast<Http::Handler *>(handler_.get()), idlePeer);
         response.send(Http::Code::Request_Timeout).then([=](ssize_t) {
             removePeer(idlePeer);
         }, [=](std::exception_ptr) {

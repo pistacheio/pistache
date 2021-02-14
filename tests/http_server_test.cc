@@ -3,12 +3,15 @@
 #include <pistache/common.h>
 #include <pistache/endpoint.h>
 #include <pistache/http.h>
+#include <pistache/peer.h>
 
 #include "gtest/gtest.h"
 
 #include <chrono>
+#include <condition_variable>
 #include <fstream>
 #include <future>
+#include <mutex>
 #include <string>
 
 #include "tcp_client.h"
@@ -506,3 +509,87 @@ TEST(http_server_test, client_request_body_timeout_raises_http_408) {
   server.shutdown();
 }
 
+namespace {
+
+class WaitHelper {
+public:
+  void increment() {
+    std::lock_guard<std::mutex> lock(counterLock_);
+    ++counter_;
+    cv_.notify_one();
+  }
+
+  template <typename Duration>
+  bool wait(const size_t count, const Duration timeout) {
+    std::unique_lock<std::mutex> lock(counterLock_);
+    return cv_.wait_for(lock, timeout,
+                        [this, count]() { return counter_ >= count; });
+  }
+
+private:
+  size_t counter_ = 0;
+  std::mutex counterLock_;
+  std::condition_variable cv_;
+};
+
+struct ClientCountingHandler : public Http::Handler {
+  HTTP_PROTOTYPE(ClientCountingHandler)
+
+  explicit ClientCountingHandler(std::shared_ptr<WaitHelper> waitHelper)
+      : waitHelper(waitHelper) {
+    std::cout << "[server] Ininting..." << std::endl;
+  }
+
+  void onRequest(const Http::Request &request,
+                 Http::ResponseWriter writer) override {
+    auto peer = writer.getPeer();
+    if (peer) {
+      activeConnections.insert(peer->getID());
+    } else {
+      return;
+    }
+    std::string requestAddress = request.address().host();
+    writer.send(Http::Code::Ok, requestAddress);
+    std::cout << "[server] Sent: " << requestAddress << std::endl;
+  }
+
+  void onDisconnection(const std::shared_ptr<Tcp::Peer> &peer) override {
+    std::cout << "[server] Disconnect from peer ID " << peer->getID()
+              << " connecting from " << peer->address().host() << std::endl;
+    activeConnections.erase(peer->getID());
+    waitHelper->increment();
+  }
+
+private:
+  std::unordered_set<size_t> activeConnections;
+  std::shared_ptr<WaitHelper> waitHelper;
+};
+
+} // namespace
+
+TEST(http_server_test, client_multiple_requests_disconnects_handled) {
+  const Pistache::Address address("localhost", Pistache::Port(0));
+
+  Http::Endpoint server(address);
+  auto flags = Tcp::Options::ReuseAddr;
+  auto server_opts = Http::Endpoint::options().flags(flags);
+  server.init(server_opts);
+
+  std::cout << "Trying to run server...\n";
+  auto waitHelper = std::make_shared<WaitHelper>();
+  auto handler = Http::make_handler<ClientCountingHandler>(waitHelper);
+  server.setHandler(handler);
+  server.serveThreaded();
+
+  const std::string server_address = "localhost:" + server.getPort().toString();
+  std::cout << "Server address: " << server_address << "\n";
+
+  const size_t CLIENT_REQUEST_SIZE = 3;
+  clientLogicFunc(CLIENT_REQUEST_SIZE, server_address, 1, 6);
+
+  const bool result =
+      waitHelper->wait(CLIENT_REQUEST_SIZE, std::chrono::seconds(2));
+  server.shutdown();
+
+  ASSERT_EQ(result, true);
+}

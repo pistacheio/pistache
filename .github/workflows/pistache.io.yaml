@@ -1,0 +1,33 @@
+name: pistache.io
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  pistacheio-deploy:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -qq npm --no-install-recommends --assume-yes
+          sudo npm install --global --silent yarn
+          sudo npm install --global --force --silent npx
+      
+      - name: Build docs site
+        run: |
+          cd pistache.io
+          yarn install --non-interactive
+          yarn build
+      
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./pistache.io/build
+          cname: pistache.io

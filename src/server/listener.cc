@@ -231,7 +231,11 @@ void Listener::bind(const Address &address) {
 
   const addrinfo *addr = nullptr;
   for (addr = addr_info.get_info_ptr(); addr; addr = addr->ai_next) {
-    fd = ::socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
+    auto socktype = addr->ai_socktype;
+    if (options_.hasFlag(Options::CloseOnExec))
+      socktype |= SOCK_CLOEXEC;
+
+    fd = ::socket(addr->ai_family, socktype, addr->ai_protocol);
     if (fd < 0)
       continue;
 

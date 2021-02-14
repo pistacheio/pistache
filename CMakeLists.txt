@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.4)
+cmake_minimum_required (VERSION 3.9)
 
 set(CMAKE_BUILD_TYPE_INIT Release)
 
@@ -13,13 +13,13 @@ project (pistache
 
 include(GNUInstallDirs)
 
-set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wall -Wconversion -pedantic -Wextra -Wno-missing-field-initializers")
+add_compile_options(-Wall -Wconversion -pedantic -Wextra -Wno-missing-field-initializers)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/CMakeModules)
 
 include(CheckAtomic)
 
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
-    set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -g -O0 -fprofile-arcs -ftest-coverage -fstack-protector-all --param=ssp-buffer-size=4")
+    add_compile_options(-g -Og -ftest-coverage -fstack-protector-all --param=ssp-buffer-size=4)
 endif()
 
 option(BUILD_SHARED_LIBS "build shared library" ON)
@@ -29,10 +29,15 @@ option(PISTACHE_BUILD_EXAMPLES "build examples alongside the project" OFF)
 option(PISTACHE_BUILD_DOCS "build docs alongside the project" OFF)
 option(PISTACHE_INSTALL "add pistache as install target (recommended)" ON)
 option(PISTACHE_USE_SSL "add support for SSL server" OFF)
+option(PISTACHE_PIC "Enable pistache PIC" ON)
 
 # require fat LTO objects in static library
-if(CMAKE_CXX_FLAGS MATCHES "-flto")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffat-lto-objects")
+if(CMAKE_INTERPROCEDURAL_OPTIMIZATION OR CMAKE_CXX_FLAGS MATCHES "-flto" OR CMAKE_CXX_FLAGS MATCHES "-flto=thin")
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+        add_compile_options(-ffat-lto-objects)
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        add_compile_options(-flto=full)
+    endif()
 endif()
 
 if (PISTACHE_BUILD_TESTS)
@@ -220,10 +225,9 @@ endif()
 
     # Don't include these files in the archive...
     set(CPACK_SOURCE_IGNORE_FILES
-      "/build/;/debian/;/prefix/;/.git*;~$;${CPACK_SOURCE_IGNORE_FILES}")
+      "/build/;/debian/;/prefix/;/.git*/;~$;${CPACK_SOURCE_IGNORE_FILES}")
 
     # Include the CPack module for generating the archive and add the standard
     #  dist target to the generated makefile...
     include(CPack)
     add_custom_target(dist COMMAND ${CMAKE_MAKE_PROGRAM} package_source)
-

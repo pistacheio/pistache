@@ -9,7 +9,6 @@
 #include <iostream>
 #include <memory>
 #include <string>
-#include <unordered_map>
 
 #include <pistache/async.h>
 #include <pistache/http.h>
@@ -31,6 +30,8 @@ class Transport;
 class Peer {
 public:
   friend class Transport;
+  friend class Http::Handler;
+  friend class Http::Timeout;
 
   ~Peer();
 
@@ -48,6 +49,7 @@ public:
   std::shared_ptr<void> tryGetData(std::string name) const;
 
   Async::Promise<ssize_t> send(const RawBuffer &buffer, int flags = 0);
+  size_t getID() const;
 
 protected:
   Peer(Fd fd, const Address &addr, void *ssl);
@@ -64,6 +66,7 @@ private:
   std::unordered_map<std::string, std::shared_ptr<void>> data_;
 
   void *ssl_ = nullptr;
+  const size_t id_;
 };
 
 std::ostream &operator<<(std::ostream &os, Peer &peer);

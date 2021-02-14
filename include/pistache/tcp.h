@@ -27,6 +27,7 @@ enum class Options : uint64_t {
   QuickAck = FastOpen << 1,
   ReuseAddr = QuickAck << 1,
   ReusePort = ReuseAddr << 1,
+  CloseOnExec = ReusePort << 1,
 };
 
 DECLARE_FLAGS_OPERATORS(Options)

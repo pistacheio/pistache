@@ -111,8 +111,6 @@ const HttpMethods httpMethods = {
 
 } // namespace
 
-static constexpr const char *ParserData = "__Parser";
-
 namespace Private {
 
 Step::Step(Message *request) : message(request) {}
@@ -425,12 +423,12 @@ BodyStep::Chunk::Result BodyStep::Chunk::parse(StreamCursor &cursor) {
   if (available + alreadyAppendedChunkBytes < size + 2) {
     cursor.advance(available);
     message->body_.append(chunkData.rawText(), available);
-    alreadyAppendedChunkBytes +=available;
+    alreadyAppendedChunkBytes += available;
     return Incomplete;
   }
   cursor.advance(size - alreadyAppendedChunkBytes);
-  
-  //trailing EOL
+
+  // trailing EOL
   cursor.advance(2);
 
   message->body_.append(chunkData.rawText(), size - alreadyAppendedChunkBytes);
@@ -546,7 +544,9 @@ Version Message::version() const { return version_; }
 
 Code Message::code() const { return code_; }
 
-std::string Message::body() const { return body_; }
+const std::string &Message::body() const { return body_; }
+
+std::string Message::body() { return body_; }
 
 const Header::Collection &Message::headers() const { return headers_; }
 
@@ -663,21 +663,29 @@ void ResponseStream::ends() {
 }
 
 ResponseWriter::ResponseWriter(ResponseWriter &&other)
-    : response_(std::move(other.response_)), peer_(other.peer_),
-      buf_(std::move(other.buf_)), transport_(other.transport_),
-      timeout_(std::move(other.timeout_)), sent_bytes_(0) {}
+    : response_(std::move(other.response_))
+    , peer_(other.peer_)
+    , buf_(std::move(other.buf_))
+    , transport_(other.transport_)
+    , timeout_(std::move(other.timeout_))
+{}
 
-ResponseWriter::ResponseWriter(Tcp::Transport *transport, Request request,
+ResponseWriter::ResponseWriter(Http::Version version, Tcp::Transport *transport,
                                Handler *handler, std::weak_ptr<Tcp::Peer> peer)
-    : response_(request.version()), peer_(peer),
-      buf_(DefaultStreamSize, handler->getMaxResponseSize()),
-      transport_(transport),
-      timeout_(transport, handler, std::move(request), peer), sent_bytes_(0) {}
+    : response_(version)
+    , peer_(peer)
+    , buf_(DefaultStreamSize, handler->getMaxResponseSize())
+    , transport_(transport)
+    , timeout_(transport, version, handler, peer)
+{}
 
 ResponseWriter::ResponseWriter(const ResponseWriter &other)
-    : response_(other.response_), peer_(other.peer_),
-      buf_(DefaultStreamSize, other.buf_.maxSize()),
-      transport_(other.transport_), timeout_(other.timeout_), sent_bytes_(0) {}
+    : response_(other.response_)
+    , peer_(other.peer_)
+    , buf_(DefaultStreamSize, other.buf_.maxSize())
+    , transport_(other.transport_)
+    , timeout_(other.timeout_)
+{}
 
 void ResponseWriter::setMime(const Mime::MediaType &mime) {
   auto ct = response_.headers().tryGet<Header::ContentType>();
@@ -807,8 +815,10 @@ Async::Promise<ssize_t> ResponseWriter::putOnWire(const char *data,
         .then<std::function<Async::Promise<ssize_t>(ssize_t)>,
               std::function<void(std::exception_ptr &)>>(
             [=](int /*l*/) {
-              return Async::Promise<ssize_t>([=](
-                  Async::Deferred<ssize_t> /*deferred*/) mutable { return; });
+              return Async::Promise<ssize_t>(
+                  [=](Async::Deferred<ssize_t> /*deferred*/) mutable {
+                    return;
+                  });
             },
 
             [=](std::exception_ptr &eptr) {
@@ -922,24 +932,24 @@ Private::ParserImpl<Http::Response>::ParserImpl(size_t maxDataSize)
 
 void Handler::onInput(const char *buffer, size_t len,
                       const std::shared_ptr<Tcp::Peer> &peer) {
-  auto &parser = getParser(peer);
+  auto parser = getParser(peer);
+  auto &request = parser->request;
   try {
-    if (!parser.feed(buffer, len)) {
-      parser.reset();
+    if (!parser->feed(buffer, len)) {
+      parser->reset();
       throw HttpError(Code::Request_Entity_Too_Large,
                       "Request exceeded maximum buffer size");
     }
 
-    auto state = parser.parse();
+    auto state = parser->parse();
 
     if (state == Private::State::Done) {
-      ResponseWriter response(transport(), parser.request, this, peer);
+      ResponseWriter response(request.version(), transport(), this, peer);
 
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
-      parser.request.associatePeer(peer);
+      request.associatePeer(peer);
 #endif
 
-      auto request = parser.request;
       request.copyAddress(peer->address());
 
       auto connection = request.headers().tryGet<Header::Connection>();
@@ -951,27 +961,25 @@ void Handler::onInput(const char *buffer, size_t len,
       }
 
       onRequest(request, std::move(response));
-      parser.reset();
+      parser->reset();
     }
 
   } catch (const HttpError &err) {
-    ResponseWriter response(transport(), parser.request, this, peer);
+    ResponseWriter response(request.version(), transport(), this, peer);
     response.send(static_cast<Code>(err.code()), err.reason());
-    parser.reset();
+    parser->reset();
   }
 
   catch (const std::exception &e) {
-    ResponseWriter response(transport(), parser.request, this, peer);
+    ResponseWriter response(request.version(), transport(), this, peer);
     response.send(Code::Internal_Server_Error, e.what());
-    parser.reset();
+    parser->reset();
   }
 }
 
 void Handler::onConnection(const std::shared_ptr<Tcp::Peer> &peer) {
   peer->putData(ParserData, std::make_shared<RequestParser>(maxRequestSize_));
 }
-
-void Handler::onDisconnection(const std::shared_ptr<Tcp::Peer> & /*peer*/) {}
 
 void Handler::onTimeout(const Request& /*request*/,
                         ResponseWriter response)
@@ -989,17 +997,25 @@ void Timeout::disarm() {
 
 bool Timeout::isArmed() const { return armed; }
 
-Timeout::Timeout(Tcp::Transport *transport_, Handler *handler_,
-                 Request request_, std::weak_ptr<Tcp::Peer> peer_)
-    : handler(handler_), request(std::move(request_)), transport(transport_),
-      armed(false), timerFd(-1), peer(peer_) {}
+Timeout::Timeout(Tcp::Transport *transport_, Http::Version version, Handler *handler_,
+                 std::weak_ptr<Tcp::Peer> peer_)
+    : handler(handler_)
+    , transport(transport_)
+    , version(version)
+    , armed(false)
+    , timerFd(-1)
+    , peer(peer_)
+{}
 
 void Timeout::onTimeout(uint64_t numWakeup) {
   UNUSED(numWakeup)
-  if (!peer.lock())
+  auto sp = peer.lock();
+  if (!sp)
     return;
 
-  ResponseWriter response(transport, request, handler, peer);
+  ResponseWriter response(version, transport, handler, peer);
+  auto parser = Handler::getParser(sp);
+  const auto& request = parser->request;
   handler->onTimeout(request, std::move(response));
 }
 
@@ -1011,9 +1027,9 @@ void Handler::setMaxResponseSize(size_t value) { maxResponseSize_ = value; }
 
 size_t Handler::getMaxResponseSize() const { return maxResponseSize_; }
 
-RequestParser &
+std::shared_ptr<RequestParser>
 Handler::getParser(const std::shared_ptr<Tcp::Peer> &peer) {
-  return *std::static_pointer_cast<RequestParser>(peer->getData(ParserData));
+  return std::static_pointer_cast<RequestParser>(peer->getData(ParserData));
 }
 
 } // namespace Http

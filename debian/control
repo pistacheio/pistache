@@ -17,9 +17,9 @@ Build-Depends:
     pkg-config (>= 0.28),
     rapidjson-dev (>= 1.1.0),
     valgrind
-Vcs-Git: https://github.com/oktal/pistache.git
-Vcs-browser: https://www.github.com/oktal/pistache
-Homepage: https://www.github.com/oktal/pistache
+Vcs-Git: https://github.com/pistacheio/pistache.git
+Vcs-browser: https://github.com/pistacheio/pistache
+Homepage: https://github.com/pistacheio/pistache
 
 Package: libpistache-dev
 Architecture: any
@@ -31,7 +31,7 @@ Depends:
  libssl-dev
 Description: elegant C++ REST framework
  Pistache is a C++ REST framework originally written by Mathieu Stefani at
- Datacratic, since maintained by other volunteers. It is written in pure C++11
+ Datacratic, since maintained by other volunteers. It is written in pure C++14
  with no external dependency and provides a low-level HTTP abstraction.
  .
  Pistache provides both an HTTP client and server that can be used to create and
@@ -50,7 +50,7 @@ Depends:
     ${shlibs:Depends}
 Description: elegant C++ REST framework
  Pistache is a C++ REST framework originally written by Mathieu Stefani at
- Datacratic, since maintained by other volunteers. It is written in pure C++11
+ Datacratic, since maintained by other volunteers. It is written in pure C++14
  with no external dependency and provides a low-level HTTP abstraction.
  .
  Pistache provides both an HTTP client and server that can be used to create and
