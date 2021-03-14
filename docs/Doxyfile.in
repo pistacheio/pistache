@@ -2,6 +2,7 @@ OUTPUT_DIRECTORY       = @CMAKE_CURRENT_BINARY_DIR@/docs/
 INPUT                  = @CMAKE_SOURCE_DIR@/README.md @CMAKE_SOURCE_DIR@/src/ @CMAKE_SOURCE_DIR@/include/ @CMAKE_SOURCE_DIR@/examples/ @CMAKE_SOURCE_DIR@/docs/
 USE_MDFILE_AS_MAINPAGE = @CMAKE_SOURCE_DIR@/README.md
 EXCLUDE_PATTERNS       = */.git/*
+EXCLUDE_PATTERNS      += */subprojects/*
 EXCLUDE_PATTERNS      += */tests/*
 EXCLUDE_PATTERNS      += */third-party/*
 

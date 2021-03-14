@@ -34,3 +34,10 @@
 
 .vscode
 .idea
+
+# Clangd cache
+.cache
+
+# Meson Wrap DB cache
+/subprojects/*
+!/subprojects/*.wrap

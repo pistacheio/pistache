@@ -1,0 +1,6 @@
+option('PISTACHE_BUILD_TESTS', type: 'boolean', value: false, description: 'build tests alongside the project')
+option('PISTACHE_ENABLE_NETWORK_TESTS', type: 'boolean', value: true, description: 'if tests are built, run ones needing network access')
+option('PISTACHE_BUILD_EXAMPLES', type: 'boolean', value: false, description: 'build examples alongside the project')
+option('PISTACHE_BUILD_DOCS', type: 'boolean', value: false, description: 'build docs alongside the project')
+option('PISTACHE_INSTALL', type: 'boolean', value: true, description: 'add pistache as install target (recommended)')
+option('PISTACHE_USE_SSL', type: 'boolean', value: false, description: 'add support for SSL server')
