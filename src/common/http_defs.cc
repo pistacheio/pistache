@@ -32,7 +32,7 @@ bool parse_RFC_1123(const std::string &s, time_point &tp) {
 
 bool parse_RFC_850(const std::string &s, time_point &tp) {
   std::istringstream in{s};
-  in >> date::parse("%a, %d-%b-%y %T %Z", tp);
+  in >> date::parse("%A, %d-%b-%y %T %Z", tp);
   return !in.fail();
 }
 
