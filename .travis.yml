@@ -5,7 +5,7 @@ dist: focal
 
 branches:
   only:
-    - meson-test
+    - master
 
 # Note that we're not making use of the matrix expansion that Travis provides -
 # it doesn't work very well for our collection of builds that each require a
