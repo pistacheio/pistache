@@ -1,5 +1,4 @@
-rapidjson = subproject('rapidjson')
-rapidjson_dep = dependency('rapidjson', fallback: ['rapidjson', 'rapidjson_dep'], required: true)
+rapidjson_dep = dependency('RapidJSON', fallback: ['rapidjson', 'rapidjson_dep'], required: true)
 
 pistache_example_files = [
 	'custom_header',

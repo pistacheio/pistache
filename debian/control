@@ -6,7 +6,7 @@ Standards-Version: 4.2.1
 Build-Depends:
     meson (>= 0.50.0),
     cppcheck,
-    debhelper-compat (= 11),
+    debhelper-compat (= 12),
     dh-exec,
     libc6-dev (>= 2.26),
     libcurl4-openssl-dev,
@@ -19,7 +19,7 @@ Build-Depends:
     valgrind
 Vcs-Git: https://github.com/pistacheio/pistache.git
 Vcs-browser: https://github.com/pistacheio/pistache
-Homepage: https://github.com/pistacheio/pistache
+Homepage: http://pistache.io
 
 Package: libpistache-dev
 Architecture: any

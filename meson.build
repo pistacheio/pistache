@@ -1,7 +1,7 @@
 project(
 	'pistache',
 	'cpp',
-	version: '0.0.0',
+	version: '0.0.002',
 	license: 'Apache-2.0',
 	default_options: [
 		'cpp_std=c++17',
@@ -93,7 +93,7 @@ endforeach
 pistache_version_str = '.'.join([version_data_conf.get_unquoted('VERSION_MAJOR'), version_data_conf.get_unquoted('VERSION_MINOR'), version_data_conf.get_unquoted('VERSION_PATCH')])
 pistache_soversion_str = '.'.join([version_data_conf.get_unquoted('SONAME_VERSION_MAJOR'), version_data_conf.get_unquoted('SONAME_VERSION_MINOR')])
 
-configure_file(input: 'libpistache.pc.in', output: 'libpistache.pc', install: get_option('PISTACHE_INSTALL'), install_dir: get_option('includedir')/'pistache', configuration: {
+configure_file(input: 'libpistache.pc.in', output: 'libpistache.pc', install: get_option('PISTACHE_INSTALL'), install_dir: get_option('libdir')/'pkgconfig', configuration: {
 	'prefix': prefix,
 	'exec_prefix': prefix/get_option('bindir'),
 	'libdir': prefix/get_option('libdir'),
