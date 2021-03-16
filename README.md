@@ -149,6 +149,12 @@ executable(
 )
 ```
 
+If you're using a Meson version older than 0.55.0 you'll have to use the "older" syntax for `depependecy()`:
+
+```meson
+dependencies: dependency('pistache', fallback ['pistache', 'pistache_static_dep'])
+```
+
 ### Makefile
 
 To use within a vanilla makefile, you can call `pkg-config` directly to supply compiler and linker flags using shell substitution.

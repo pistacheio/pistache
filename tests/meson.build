@@ -7,7 +7,7 @@ cppcheck = find_program('cppcheck', required: false)
 if cppcheck.found()
 	cppcheck_args = ['--enable=all','-DCPPCHECK','--suppress=*:third-party*','--suppress=*:tests*','--suppress=noExplicitConstructor:include/pistache/optional.h']
 else
-	warning('can\'t find Cppcheck')
+	warning('Can\'t find Cppcheck')
 endif
 # TODO
 

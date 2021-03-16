@@ -50,8 +50,10 @@ libpistache_shared = shared_library(
 pistache_static_dep = declare_dependency(link_with: libpistache_static, include_directories: incl_pistache)
 pistache_shared_dep = declare_dependency(link_with: libpistache_shared, include_directories: incl_pistache)
 
-if get_option('default_library') == 'static'
-	meson.override_dependency('pistache', pistache_static_dep)
-else
-	meson.override_dependency('pistache', pistache_shared_dep)
+if meson.version().version_compare('>=0.54.0')
+	if get_option('default_library') == 'static'
+		meson.override_dependency('pistache', pistache_static_dep)
+	else
+		meson.override_dependency('pistache', pistache_shared_dep)
+	endif
 endif

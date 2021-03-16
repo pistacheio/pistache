@@ -10,7 +10,7 @@ project(
 		'b_lto=false',
 		'warning_level=3'
 	],
-	meson_version: '>=0.57.0'
+	meson_version: '>=0.50.0'
 )
 
 compiler = meson.get_compiler('cpp')
@@ -72,8 +72,16 @@ if get_option('PISTACHE_USE_SSL')
 	pc_libs += ['-lssl', '-lcrypto']
 endif
 
-fs = import('fs')
-version_data_raw = fs.read('version.txt').split('\n')
+version_data_raw = ''
+if meson.version().version_compare('>=0.57.0')
+	fs = import('fs')
+	version_data_raw = fs.read('version.txt').split('\n')
+else
+	# Ugly workaround for reading a file
+	version_data_raw = run_command(
+		find_program('python3'), '-c', 'print(open("version.txt").read())'
+	).stdout().strip().split('\n')
+endif
 version_data_conf = configuration_data()
 foreach _ : version_data_raw
 	if _ != ''
