@@ -38,19 +38,18 @@ SOURCE_DIR  = $(abspath $(PACKAGE_DIR)/../)
 # Main packaging script based on debhelper 7 syntax. The % is an implicit
 #  pattern rule that acts as a universal target...
 %:
-	dh $@
+	dh $@ --buildsystem=meson
 
 # Configure source...
 override_dh_auto_configure:
 	dh_auto_configure --                                                        \
-	    -G "Unix Makefiles"                                                     \
-	    -DCMAKE_BUILD_TYPE=Release                                              \
+	    --buildtype=release                                                     \
 	    -DPISTACHE_BUILD_EXAMPLES=true                                          \
 	    -DPISTACHE_BUILD_TESTS=true                                             \
 	    -DPISTACHE_ENABLE_NETWORK_TESTS=false                                   \
 	    -DPISTACHE_BUILD_DOCS=false                                             \
 	    -DPISTACHE_USE_SSL=true                                                 \
-	    -DCMAKE_INSTALL_PREFIX=/usr                                             \
+	    --prefix=/usr                                                           \
 	    $(SOURCE_DIR)
 
 # Perform unit testing, but only if not disabled...
@@ -70,31 +69,53 @@ endif
 get-orig-source: $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM).orig.tar.bz2 $(info I: $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM))
 	@
 
+## Prepare an upstream vanilla distribution tarball...
+#$(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM).orig.tar.bz2:
+#	@echo "# Preparing source for $(DEB_SOURCE) v$(DEB_VERSION_UPSTREAM)..."
+#	cd $(SOURCE_DIR)                                                            \
+#	&& cd $(PACKAGE_DIR)                                                        \
+#	&& mkdir -p $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)                           \
+#	&& cd $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)                                 \
+#	&& cmake                                                                    \
+#		-G "Unix Makefiles"                                                     \
+#		-DCMAKE_BUILD_TYPE=Release                                              \
+#		-DPISTACHE_BUILD_EXAMPLES=true                                          \
+#		-DPISTACHE_BUILD_TESTS=true                                             \
+#	    -DPISTACHE_ENABLE_NETWORK_TESTS=false                                   \
+#		-DPISTACHE_BUILD_DOCS=false                                             \
+#	    -DPISTACHE_USE_SSL=true                                                 \
+#		-DCMAKE_INSTALL_PREFIX=/usr                                             \
+#		$(SOURCE_DIR)                                                           \
+#	&& make dist                                                                \
+#	&& mv -v $(DEB_SOURCE)-$(DEB_VERSION_UPSTREAM).tar.bz2 $(SOURCE_DIR)/../$@
+#	@echo "# Cleaning up..."
+#	cd $(PACKAGE_DIR)/$(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)                     \
+#	&& make clean
+#	cd $(PACKAGE_DIR)                                                           \
+#	&& $(RM) -r $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)
+
 # Prepare an upstream vanilla distribution tarball...
 $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM).orig.tar.bz2:
 	@echo "# Preparing source for $(DEB_SOURCE) v$(DEB_VERSION_UPSTREAM)..."
 	cd $(SOURCE_DIR)                                                            \
 	&& cd $(PACKAGE_DIR)                                                        \
-	&& mkdir -p $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)                              \
-	&& cd $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)                                 \
-	&& cmake                                                                    \
-		-G "Unix Makefiles"                                                     \
-		-DCMAKE_BUILD_TYPE=Release                                              \
+	&& meson setup $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)                        \
+		--buildtype=release                                                     \
 		-DPISTACHE_BUILD_EXAMPLES=true                                          \
 		-DPISTACHE_BUILD_TESTS=true                                             \
 	    -DPISTACHE_ENABLE_NETWORK_TESTS=false                                   \
 		-DPISTACHE_BUILD_DOCS=false                                             \
 	    -DPISTACHE_USE_SSL=true                                                 \
-		-DCMAKE_INSTALL_PREFIX=/usr                                             \
-		$(SOURCE_DIR)                                                           \
-	&& make dist                                                                \
-	&& mv -v $(DEB_SOURCE)-$(DEB_VERSION_UPSTREAM).tar.bz2 $(SOURCE_DIR)/../$@
+		--prefix=/usr                                                           \
+	&& cd $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)                                 \
+	&& ninja dist                                                               \
+	&& rm meson-dist/$(DEB_SOURCE)-$(DEB_VERSION_UPSTREAM).tar.xz.sha256sum     \
+	&& mv -v meson-dist/$(DEB_SOURCE)-$(DEB_VERSION_UPSTREAM).tar.xz $(SOURCE_DIR)/../$@
 	@echo "# Cleaning up..."
 	cd $(PACKAGE_DIR)/$(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)                     \
-	&& make clean
+	&& ninja clean
 	cd $(PACKAGE_DIR)                                                           \
 	&& $(RM) -r $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)
 
 # Targets which aren't actual products...
 .PHONY: get-orig-source override_dh_auto_configure override_dh_auto_test
-
