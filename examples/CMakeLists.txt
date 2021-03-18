@@ -13,12 +13,25 @@ pistache_example(rest_server)
 pistache_example(custom_header)
 pistache_example(http_server_shutdown)
 
-set(RAPIDJSON_ROOT_DIR PATH "${PROJECT_SOURCE_DIR}/third-party/rapidjson")
-
-find_package(RapidJSON)
-if (RAPIDJSON_FOUND)
-    include_directories(${RAPIDJSON_INCLUDES})
+find_package(RapidJSON QUIET)
+if (NOT RapidJSON_FOUND)
+    include(FetchContent)
+    FetchContent_Declare(
+        RapidJSON
+        GIT_REPOSITORY https://github.com/Tencent/rapidjson.git
+        GIT_TAG v1.1.0
+        GIT_SHALLOW true
+    )
+    set(RAPIDJSON_BUILD_DOC OFF CACHE BOOL "")
+    set(RAPIDJSON_BUILD_EXAMPLES OFF CACHE BOOL "")
+    set(RAPIDJSON_BUILD_TESTS OFF CACHE BOOL "")
+    if(NOT RapidJSON_POPULATED)
+        FetchContent_Populate(RapidJSON)
+        add_subdirectory(${rapidjson_SOURCE_DIR} ${rapidjson_BINARY_DIR})
+    endif()
     pistache_example(rest_description)
+    target_include_directories(run_rest_description PRIVATE ${rapidjson_SOURCE_DIR}/include)
 else()
-    message(FATAL_ERROR "RapidJSON not found. Could not build rest_description example.")
+    pistache_example(rest_description)
+    target_include_directories(run_rest_description PRIVATE ${RAPIDJSON_INCLUDE_DIRS})
 endif()

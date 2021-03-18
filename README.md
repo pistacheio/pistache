@@ -14,7 +14,7 @@ We are still looking for a volunteer to document fully the API. In the mean time
 
 Pistache has the following third party dependencies
 
-- [CMake](https://cmake.org)
+- [Meson](https://mesonbuild.com)
 - [Doxygen](https://www.doxygen.nl/)
 - [Googletest](https://github.com/google/googletest)
 - [OpenSSL](https://www.openssl.org/)
@@ -116,21 +116,6 @@ YOURPROJECT_CXXFLAGS="$YOURPROJECT_CXXFLAGS $libpistache_CFLAGS"
 YOURPROJECT_LIBS="$YOURPROJECT_LIBS $libpistache_LIBS"
 ```
 
-### CMake
-
-To use with a CMake build environment, use the [FindPkgConfig](https://cmake.org/cmake/help/latest/module/FindPkgConfig.html) module. Here is an example:
-
-```cmake
-cmake_minimum_required(3.4 FATAL_ERROR)
-project("MyPistacheProject")
-
-# Find the library.
-find_package(Pistache 0.0.2 REQUIRED)
-
-add_executable(${PROJECT_NAME} main.cpp)
-target_link_libraries(${PROJECT_NAME} pistache_shared)
-```
-
 ### Meson
 
 To use with Meson, you just need to add `dependency('pistache')` as a dependency for your executable. If you have this repository as a submodule in the `subprojects` directory of your project, Meson will automatically build the library from source if it is not installed on the system.
@@ -139,7 +124,7 @@ To use with Meson, you just need to add `dependency('pistache')` as a dependency
 project(
     'MyPistacheProject',
     'cpp',
-    meson_version: '>=0.57.0'
+    meson_version: '>=0.55.0'
 )
 
 executable(
@@ -153,6 +138,21 @@ If you're using a Meson version older than 0.55.0 you'll have to use the "older"
 
 ```meson
 dependencies: dependency('pistache', fallback ['pistache', 'pistache_static_dep'])
+```
+
+### CMake
+
+To use with a CMake build environment, use the [FindPkgConfig](https://cmake.org/cmake/help/latest/module/FindPkgConfig.html) module. Here is an example:
+
+```cmake
+cmake_minimum_required(3.4 FATAL_ERROR)
+project("MyPistacheProject")
+
+# Find the library.
+find_package(Pistache 0.0.2 REQUIRED)
+
+add_executable(${PROJECT_NAME} main.cpp)
+target_link_libraries(${PROJECT_NAME} pistache_shared)
 ```
 
 ### Makefile
@@ -172,44 +172,33 @@ LDFLAGS+= $(pkg-config --libs libpistache)
 To download the latest available release, clone the repository over GitHub.
 
 ```sh
-$ git clone https://github.com/pistacheio/pistache.git --recurse-submodules
+$ git clone https://github.com/pistacheio/pistache.git
 ```
 
 Now, compile the sources:
 
 ```sh
 $ cd pistache
-$ mkdir -p {build,prefix}
-$ cd build
-$ cmake -G "Unix Makefiles" \
-    -DCMAKE_BUILD_TYPE=Release \
+$ meson setup build \
+    --buildtype=release \
+    -DPISTACHE_USE_SSL=true \
     -DPISTACHE_BUILD_EXAMPLES=true \
     -DPISTACHE_BUILD_TESTS=true \
     -DPISTACHE_BUILD_DOCS=false \
-    -DPISTACHE_USE_SSL=true \
-    -DCMAKE_INSTALL_PREFIX=$PWD/../prefix \
-    ../
-$ make -j
-$ make install
+    --prefix=$PWD/prefix
+$ meson compile -C build
+$ meson install -C build
 ```
 
-If you chose to build the examples, then perform the following to build the examples.
+Optionally, you can also run the tests:
 
 ```sh
-$ cd examples
-$ make -j
-```
-
-Optionally, you can also build and run the tests (tests require the examples):
-
-```sh
-$ cmake -G "Unix Makefiles" -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_TESTS=true ..
-$ make test test_memcheck
+$ meson test -C build
 ```
 
 Be patient, async_test can take some time before completing. And that's it, now you can start playing with your newly installed Pistache framework.
 
-Some other CMake and Meson options:
+Some other Meson and CMake options:
 
 | Option                        | Default     | Description                                    |
 |-------------------------------|-------------|------------------------------------------------|
@@ -249,7 +238,7 @@ Generate a Pistache source package in the parent directory of `pistache_source`:
 $ cd pistache_source
 $ sudo apt build-dep pistache
 $ ./debian/rules get-orig-source
-$ debuild -S -sa -uc
+$ debuild -S -sa -uc -us
 ```
 
 Test the source package on the host architecture in QEMU with KVM support and 8GB of RAM and four CPUs:

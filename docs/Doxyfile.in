@@ -4,7 +4,6 @@ USE_MDFILE_AS_MAINPAGE = @CMAKE_SOURCE_DIR@/README.md
 EXCLUDE_PATTERNS       = */.git/*
 EXCLUDE_PATTERNS      += */subprojects/*
 EXCLUDE_PATTERNS      += */tests/*
-EXCLUDE_PATTERNS      += */third-party/*
 
 DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = @PROJECT_NAME@

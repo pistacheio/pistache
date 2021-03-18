@@ -36,6 +36,7 @@ _apt_pkgs: &_apt_pkgs
   - 'python3-setuptools'
   - 'ninja-build'
   - 'libblocksruntime-dev'
+  - 'rapidjson-dev'
 
 _apt_srcs: &_apt_srcs
   - 'ubuntu-toolchain-r-test'
@@ -254,24 +255,24 @@ before_script:
   - initctl list || true
 
   # CMake debug build
-  - cmake -H.
-    -BBuild-Debug
+  - cmake -S .
+    -B cmake_build_debug
     -DCMAKE_BUILD_TYPE=Debug
     -DPISTACHE_BUILD_EXAMPLES=true
     -DPISTACHE_BUILD_TESTS=true
     -DPISTACHE_USE_SSL=true
 
   # CMake debug build, no SSL
-  - cmake -H.
-    -BBuild-Debug-nossl
+  - cmake -S .
+    -B cmake_build_debug-nossl
     -DCMAKE_BUILD_TYPE=Debug
     -DPISTACHE_BUILD_EXAMPLES=true
     -DPISTACHE_BUILD_TESTS=true
     -DPISTACHE_USE_SSL=false
 
   # CMake release build
-  - cmake -H.
-    -BBuild-Release
+  - cmake -S .
+    -B cmake_build_release
     -DCMAKE_BUILD_TYPE=Release
     -DPISTACHE_USE_SSL=true
 
@@ -301,19 +302,19 @@ script:
   - ulimit -c unlimited -S
 
   # CMake debug build
-  - make -C Build-Debug --jobs 2 all test ARGS="-V"
+  - cmake --build cmake_build_debug --parallel 2 --target all test -- ARGS='-V'
 
   # CMake debug build, no SSL
-  - make -C Build-Debug-nossl --jobs 2 all test ARGS="-V"
+  - cmake --build cmake_build_debug-nossl --parallel 2 --target all test -- ARGS='-V'
 
   # CMake release build
-  - make -C Build-Release --jobs 2
+  - cmake --build cmake_build_release --parallel 2 -- ARGS='-V'
 
   # Meson debug build
-  - meson compile -C meson_build_debug --jobs 2 && meson test -C meson_build_debug
+  - meson compile -C meson_build_debug --jobs 2 && meson test -C meson_build_debug || (cat meson_build_debug/meson-logs/testlog.txt && false)
 
   # Meson debug build, no SSL
-  - meson compile -C meson_build_debug_nossl --jobs 2 && meson test -C meson_build_debug_nossl
+  - meson compile -C meson_build_debug_nossl --jobs 2 && meson test -C meson_build_debug_nossl || (cat meson_build_debug/meson-logs/testlog.txt && false)
 
   # Meson release build
   - meson compile -C meson_build_release --jobs 2
@@ -330,6 +331,6 @@ after_failure:
 after_success:
   - sudo su -c "echo 'if [ \"\$1\" = \"-v\" ] ; then $COV_TOOL --version ; else $COV_TOOL $COV_TOOL_ARGS \$@ ; fi' > /usr/local/bin/cov-tool" && sudo chmod +x /usr/local/bin/cov-tool
   - lcov --capture --gcov-tool cov-tool --directory . --output-file coverage.info
-  - lcov --remove coverage.info '/usr/*' '*tests/*' '*third-party/*' --output-file coverage.info
+  - lcov --remove coverage.info '/usr/*' '*tests/*' '*examples/*' '*subprojects/*' --output-file coverage.info
   - lcov --list coverage.info
   - bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"

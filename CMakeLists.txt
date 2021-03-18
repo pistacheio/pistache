@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.9)
+cmake_minimum_required (VERSION 3.11)
 
 set(CMAKE_BUILD_TYPE_INIT Release)
 
@@ -177,10 +177,20 @@ if (PISTACHE_BUILD_EXAMPLES)
 endif()
 
 if (PISTACHE_BUILD_TESTS)
-    find_package(GTest)
+    find_package(GTest QUIET)
     if (NOT GTEST_FOUND)
-        ADD_SUBDIRECTORY (third-party/googletest)
-        set(GTEST_INCLUDE_DIRS ${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
+        include(FetchContent)
+        FetchContent_Declare(
+            googletest
+            GIT_REPOSITORY https://github.com/google/googletest.git
+            GIT_SHALLOW true
+        )
+        set(BUILD_GMOCK OFF CACHE BOOL "")
+        FetchContent_GetProperties(googletest)
+        if(NOT googletest_POPULATED)
+            FetchContent_Populate(googletest)
+            add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
+        endif()
     endif()
 
     enable_testing()

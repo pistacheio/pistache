@@ -11,4 +11,3 @@ Requires:
 Libs: -L'${libdir}/' @libs@
 Libs.private:
 Cflags: -I'${includedir}/'
-
