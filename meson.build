@@ -24,7 +24,7 @@ add_project_arguments(compiler.get_supported_arguments(['-Wconversion', '-Wno-mi
 
 # No need for --coverage, since b_coverage is set
 if get_option('b_coverage')
-	add_global_arguments(compiler.get_supported_arguments(['-fstack-protector-all', '--param=ssp-buffer-size=4']), language: 'cpp')
+	add_project_arguments(compiler.get_supported_arguments(['-fstack-protector-all', '--param=ssp-buffer-size=4']), language: 'cpp')
 endif
 
 ##### BEGIN CheckAtomic.cmake
@@ -65,10 +65,10 @@ if is_libatomic_needed
 	pc_libs += '-latomic'
 endif
 
-deps_libpistache = [dependency('threads')]
+deps_libpistache = [dependency('threads'), dependency('RapidJSON', fallback: ['rapidjson', 'rapidjson_dep'])]
 
 if get_option('PISTACHE_USE_SSL')
-	deps_libpistache += dependency('openssl', required: true)
+	deps_libpistache += dependency('openssl')
 	pc_libs += ['-lssl', '-lcrypto']
 endif
 

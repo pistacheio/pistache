@@ -1,15 +1,5 @@
-curl_dep = dependency('libcurl', required: true)
-gtest_main_dep = dependency('gtest', main: true, required: true, fallback: ['gtest', 'gtest_main_dep'])
-
-valgrind = find_program('valgrind', required: false)
-gcov = find_program('gcov', required: false)
-cppcheck = find_program('cppcheck', required: false)
-if cppcheck.found()
-	cppcheck_args = ['--enable=all','-DCPPCHECK','--suppress=*:third-party*','--suppress=*:tests*','--suppress=noExplicitConstructor:include/pistache/optional.h']
-else
-	warning('Can\'t find Cppcheck')
-endif
-# TODO
+curl_dep = dependency('libcurl')
+gtest_main_dep = dependency('gtest', main: true, fallback: ['gtest', 'gtest_main_dep'])
 
 pistache_test_files = [
 	'mime_test',
@@ -39,7 +29,7 @@ pistache_test_files = [
 	'string_logger_test'
 ]
 if get_option('PISTACHE_ENABLE_NETWORK_TESTS')
-    pistache_test_files += 'net_test'
+	pistache_test_files += 'net_test'
 endif
 if get_option('PISTACHE_USE_SSL')
 	pistache_test_files += 'https_server_test'
@@ -63,3 +53,25 @@ foreach test_name : pistache_test_files
 		is_parallel: false
 	)
 endforeach
+
+cppcheck = find_program('cppcheck', required: false)
+if cppcheck.found()
+	cppcheck_args = [
+		'--project=' + (meson.build_root()/'compile_commands.json'),
+		'--enable=all',
+		'-DCPPCHECK',
+		'--suppress=*:*tests/*',
+		'--suppress=*:*subprojects/*',
+		'--suppress=noExplicitConstructor:include/pistache/optional.h',
+		'--std=' + get_option('cpp_std')
+	]
+	run_target(
+		'cppcheck',
+		command: [
+			cppcheck,
+			cppcheck_args
+		]
+	)
+else
+	warning('Can\'t find Cppcheck')
+endif

@@ -234,8 +234,7 @@ install:
   - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
   - mkdir -p ${DEPS_DIR} && cd ${DEPS_DIR}
   # Install Meson >=0.57.0
-  - export PATH=$HOME/.local/bin:$PATH
-  - pip3 install -qqq --user --ignore-installed meson
+  - sudo pip3 install -qqq --ignore-installed meson
 
 before_script:
   - cd ${TRAVIS_BUILD_DIR}
@@ -253,28 +252,6 @@ before_script:
   - cat /etc/default/apport || true
   - service --status-all || true
   - initctl list || true
-
-  # CMake debug build
-  - cmake -S .
-    -B cmake_build_debug
-    -DCMAKE_BUILD_TYPE=Debug
-    -DPISTACHE_BUILD_EXAMPLES=true
-    -DPISTACHE_BUILD_TESTS=true
-    -DPISTACHE_USE_SSL=true
-
-  # CMake debug build, no SSL
-  - cmake -S .
-    -B cmake_build_debug-nossl
-    -DCMAKE_BUILD_TYPE=Debug
-    -DPISTACHE_BUILD_EXAMPLES=true
-    -DPISTACHE_BUILD_TESTS=true
-    -DPISTACHE_USE_SSL=false
-
-  # CMake release build
-  - cmake -S .
-    -B cmake_build_release
-    -DCMAKE_BUILD_TYPE=Release
-    -DPISTACHE_USE_SSL=true
 
   # Meson debug build
   - meson setup meson_build_debug
@@ -295,6 +272,26 @@ before_script:
   # Meson release build
   - meson setup meson_build_release
     --buildtype=release
+    -DPISTACHE_USE_SSL=true
+
+  # CMake debug build
+  - cmake -S .
+    -B cmake_build_debug
+    -DCMAKE_BUILD_TYPE=Debug
+    -DPISTACHE_BUILD_TESTS=true
+    -DPISTACHE_USE_SSL=true
+
+  # CMake debug build, no SSL
+  - cmake -S .
+    -B cmake_build_debug-nossl
+    -DCMAKE_BUILD_TYPE=Debug
+    -DPISTACHE_BUILD_TESTS=true
+    -DPISTACHE_USE_SSL=false
+
+  # CMake release build
+  - cmake -S .
+    -B cmake_build_release
+    -DCMAKE_BUILD_TYPE=Release
     -DPISTACHE_USE_SSL=true
 
 script:

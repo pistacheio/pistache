@@ -198,15 +198,15 @@ $ meson test -C build
 
 Be patient, async_test can take some time before completing. And that's it, now you can start playing with your newly installed Pistache framework.
 
-Some other Meson and CMake options:
+Some other Meson options:
 
 | Option                        | Default     | Description                                    |
 |-------------------------------|-------------|------------------------------------------------|
-| PISTACHE_BUILD_EXAMPLES       | False       | Build all of the example apps                  |
+| PISTACHE_USE_SSL              | False       | Build server with SSL support                  |
 | PISTACHE_BUILD_TESTS          | False       | Build all of the unit tests                    |
 | PISTACHE_ENABLE_NETWORK_TESTS | True        | Run unit tests requiring remote network access |
-| PISTACHE_USE_SSL              | False       | Build server with SSL support                  |
-| PISTACHE_PIC                  | True        | Enable PIC in the static library               |
+| PISTACHE_BUILD_EXAMPLES       | False       | Build all of the example apps                  |
+| PISTACHE_BUILD_DOCS           | False       | Build Doxygen docs                             |
 
 ## Continuous Integration Testing
 

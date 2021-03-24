@@ -1,7 +1,10 @@
-doxygen = find_program('doxygen', required: true)
+doxygen = find_program('doxygen')
+dot = find_program('dot')
+mscgen = find_program('mscgen', required: false)
+
 configure_file(input: 'Doxyfile.in', output: 'Doxyfile', configuration: {
-	'CMAKE_CURRENT_BINARY_DIR': meson.current_build_dir(),
-	'CMAKE_SOURCE_DIR': meson.project_source_root(),
+	'CURRENT_BUILD_DIR': meson.current_build_dir(),
+	'SOURCE_DIR': meson.source_root(),
 	'PROJECT_NAME': meson.project_name()
 })
 

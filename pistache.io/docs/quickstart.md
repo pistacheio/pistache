@@ -24,7 +24,7 @@ sudo apt install libpistache-dev
 Otherwise, here's how to build and install the latest release:
 
 ```shell
-git clone --recurse-submodules https://github.com/pistacheio/pistache.git
+git clone https://github.com/pistacheio/pistache.git
 cd pistache
 meson setup build
 meson install -C build

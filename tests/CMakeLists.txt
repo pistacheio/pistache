@@ -54,4 +54,3 @@ if (PISTACHE_USE_SSL)
 
     pistache_test(https_server_test)
 endif (PISTACHE_USE_SSL)
-
