@@ -3,8 +3,7 @@ name: pistache.io
 on:
   push:
     branches: [ master ]
-  pull_request:
-    branches: [ master ]
+    paths: pistache.io/**
 
 jobs:
   pistacheio-deploy:
