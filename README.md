@@ -9,6 +9,8 @@ Pistache is a modern and elegant HTTP and REST framework for C++. It is entirely
 
 We are still looking for a volunteer to document fully the API. In the mean time, partial documentation is available at [http://pistache.io](http://pistache.io). If you are interested in helping with this, please open an issue ticket.
 
+A comparison of Pistache to other C++ RESTful APIs was created by guteksan and is available [here](https://github.com/guteksan/REST-CPP-benchmark).
+
 # Dependencies
 
 Pistache has the following third party dependencies
@@ -246,4 +248,3 @@ int main() {
   Http::listenAndServe<HelloHandler>(Pistache::Address("*:9080"));
 }
 ```
-
