@@ -127,6 +127,8 @@ public:
   void useSSLAuth(std::string ca_file, std::string ca_path = "",
                   int (*cb)(int, void *) = NULL);
 
+  bool setSessionIdContext(const std::string &s_id_ctx);
+
   bool isBound() const { return listener.isBound(); }
 
   Port getPort() const { return listener.getPort(); }

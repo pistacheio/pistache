@@ -490,6 +490,13 @@ void Listener::setupSSLAuth(const std::string &ca_file,
                      );
 }
 
+bool Listener::setSessionIdContext(const std::string &s_id_ctx)
+{
+    return SSL_CTX_set_session_id_context(GetSSLContext(ssl_ctx_),
+                                         (const unsigned char*)s_id_ctx.c_str(),
+                                         (unsigned int)s_id_ctx.length()) == 1;
+}
+
 void Listener::setupSSL(const std::string &cert_path,
                         const std::string &key_path, bool use_compression) {
   SSL_load_error_strings();

@@ -78,6 +78,7 @@ public:
                 bool use_compression);
   void setupSSLAuth(const std::string &ca_file, const std::string &ca_path,
                     int (*cb)(int, void *));
+  bool setSessionIdContext(const std::string &s_id_ctx);
 
 private:
   Address addr_;
