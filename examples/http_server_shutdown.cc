@@ -8,7 +8,7 @@ public:
 
     HTTP_PROTOTYPE(HelloHandler)
 
-    void onRequest(const Http::Request& request, Http::ResponseWriter response) override{
+    void onRequest(const Http::Request& request, Http::ResponseWriter response) override {
         UNUSED(request);
         response.send(Pistache::Http::Code::Ok, "Hello World\n");
     }
@@ -38,11 +38,11 @@ int main() {
     int status = sigwait(&signals, &signal);
     if (status == 0)
     {
-        std::cout << "received signal " << signal << std::endl;
+        std::cout << "received signal " << signal << '\n';
     }
     else
     {
-        std::cerr << "sigwait returns " << status << std::endl;
+        std::cerr << "sigwait returns " << status << '\n';
     }
 
     server.shutdown();

@@ -32,8 +32,8 @@ fetchOp
         [](const User& user) { return fetchUserInfo(user); },
         Async::Throw)
     .then(
-        [](const UserInfo& info) { std::cout << "User name = " << info.name << std::endl; },
-        [](exception_ptr ptr) { std::cout << "An exception occured during user retrieval" << std::endl;}
+        [](const UserInfo& info) { std::cout << "User name = " << info.name << '\n'; },
+        [](exception_ptr ptr) { std::cerr << "An exception occured during user retrieval\n";}
 );
 ```
 

@@ -17,9 +17,8 @@
 #endif
 
 using namespace Pistache;
-using namespace Pistache::Http;
 
-class XProtocolVersion : public Header::Header {
+class XProtocolVersion : public Http::Header::Header {
 public:
     NAME("X-Protocol-Version");
 
@@ -68,5 +67,5 @@ private:
 };
 
 int main() {
-    Header::Registry::instance().registerHeader<XProtocolVersion>();
+    Http::Header::Registry::instance().registerHeader<XProtocolVersion>();
 }

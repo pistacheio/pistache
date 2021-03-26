@@ -12,7 +12,6 @@
 #include <pistache/endpoint.h>
 #include <pistache/common.h>
 
-using namespace std;
 using namespace Pistache;
 
 struct LoadMonitor {
@@ -58,9 +57,9 @@ private:
                 if (global > 100) global = 100;
 
                 if (global > 1)
-                    std::cout << "Global load is " << global << "%" << std::endl;
+                    std::cout << "Global load is " << global << "%\n";
                 else
-                    std::cout << "Global load is 0%" << std::endl;
+                    std::cout << "Global load is 0%\n";
             },
             Async::NoExcept);
 
@@ -85,7 +84,7 @@ class MyHandler : public Http::Handler {
 
                 auto query = req.query();
                 if (query.has("chunked")) {
-                    std::cout << "Using chunked encoding" << std::endl;
+                    std::cout << "Using chunked encoding\n";
 
                     response.headers()
                         .add<Header::Server>("pistache/0.1")
@@ -131,7 +130,7 @@ class MyHandler : public Http::Handler {
         else if (req.resource() == "/static") {
             if (req.method() == Http::Method::Get) {
                 Http::serveFile(response, "README.md").then([](ssize_t bytes) {
-                    std::cout << "Sent " << bytes << " bytes" << std::endl;
+                    std::cout << "Sent " << bytes << " bytes\n";
                 }, Async::NoExcept);
             }
         } else {
@@ -165,8 +164,8 @@ int main(int argc, char *argv[]) {
 
     Address addr(Ipv4::any(), port);
 
-    cout << "Cores = " << hardware_concurrency() << endl;
-    cout << "Using " << thr << " threads" << endl;
+    std::cout << "Cores = " << hardware_concurrency() << '\n';
+    std::cout << "Using " << thr << " threads\n";
 
     auto server = std::make_shared<Http::Endpoint>(addr);
 

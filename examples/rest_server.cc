@@ -10,17 +10,16 @@
 #include <pistache/router.h>
 #include <pistache/endpoint.h>
 
-using namespace std;
 using namespace Pistache;
 
 void printCookies(const Http::Request& req) {
     auto cookies = req.cookies();
-    std::cout << "Cookies: [" << std::endl;
+    std::cout << "Cookies: [\n";
     const std::string indent(4, ' ');
     for (const auto& c: cookies) {
-        std::cout << indent << c.name << " = " << c.value << std::endl;
+        std::cout << indent << c.name << " = " << c.value << '\n';
     }
-    std::cout << "]" << std::endl;
+    std::cout << "]\n";
 }
 
 namespace Generic {
@@ -158,8 +157,8 @@ int main(int argc, char *argv[]) {
 
     Address addr(Ipv4::any(), port);
 
-    cout << "Cores = " << hardware_concurrency() << endl;
-    cout << "Using " << thr << " threads" << endl;
+    std::cout << "Cores = " << hardware_concurrency() << '\n';
+    std::cout << "Using " << thr << " threads" << '\n';
 
     StatsEndpoint stats(addr);
 

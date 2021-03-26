@@ -11,11 +11,10 @@
 #include <pistache/net.h>
 
 using namespace Pistache;
-using namespace Pistache::Http;
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
-    std::cerr << "Usage: http_client page [count]" << std::endl;
+    std::cerr << "Usage: http_client page [count]" << '\n';
     return 1;
   }
 
@@ -42,10 +41,10 @@ int main(int argc, char *argv[]) {
     resp.then(
         [&](Http::Response response) {
           ++completedRequests;
-          std::cout << "Response code = " << response.code() << std::endl;
+          std::cout << "Response code = " << response.code() << '\n';
           auto body = response.body();
           if (!body.empty())
-            std::cout << "Response body = " << body << std::endl;
+            std::cout << "Response body = " << body << '\n';
         },
         [&](std::exception_ptr exc) {
           ++failedRequests;
@@ -60,17 +59,17 @@ int main(int argc, char *argv[]) {
   barrier.wait_for(std::chrono::seconds(5));
 
   auto end = std::chrono::system_clock::now();
-  std::cout << "Summary of execution" << std::endl
-            << "Total number of requests sent     : " << count << std::endl
+  std::cout << "Summary of execution\n"
+            << "Total number of requests sent     : " << count << '\n'
             << "Total number of responses received: "
-            << completedRequests.load() << std::endl
+            << completedRequests.load() << '\n'
             << "Total number of requests failed   : " << failedRequests.load()
-            << std::endl
+            << '\n'
             << "Total time of execution           : "
             << std::chrono::duration_cast<std::chrono::milliseconds>(end -
                                                                      start)
                    .count()
-            << "ms" << std::endl;
+            << "ms\n";
 
   client.shutdown();
 }
