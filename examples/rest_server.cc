@@ -10,7 +10,6 @@
 #include <pistache/router.h>
 #include <pistache/endpoint.h>
 
-using namespace std;
 using namespace Pistache;
 
 void printCookies(const Http::Request& req) {
@@ -158,8 +157,8 @@ int main(int argc, char *argv[]) {
 
     Address addr(Ipv4::any(), port);
 
-    cout << "Cores = " << hardware_concurrency() << endl;
-    cout << "Using " << thr << " threads" << endl;
+    std::cout << "Cores = " << hardware_concurrency() << std::endl;
+    std::cout << "Using " << thr << " threads" << std::endl;
 
     StatsEndpoint stats(addr);
 

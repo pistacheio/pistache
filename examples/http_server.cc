@@ -12,7 +12,6 @@
 #include <pistache/endpoint.h>
 #include <pistache/common.h>
 
-using namespace std;
 using namespace Pistache;
 
 struct LoadMonitor {
@@ -165,8 +164,8 @@ int main(int argc, char *argv[]) {
 
     Address addr(Ipv4::any(), port);
 
-    cout << "Cores = " << hardware_concurrency() << endl;
-    cout << "Using " << thr << " threads" << endl;
+    std::cout << "Cores = " << hardware_concurrency() << std::endl;
+    std::cout << "Using " << thr << " threads" << std::endl;
 
     auto server = std::make_shared<Http::Endpoint>(addr);
 

@@ -10,7 +10,6 @@
 
 #include <pistache/thirdparty/serializer/rapidjson.h>
 
-using namespace std;
 using namespace Pistache;
 
 namespace Generic {
@@ -145,8 +144,8 @@ int main(int argc, char *argv[]) {
 
     Address addr(Ipv4::any(), port);
 
-    cout << "Cores = " << hardware_concurrency() << endl;
-    cout << "Using " << thr << " threads" << endl;
+    std::cout << "Cores = " << hardware_concurrency() << std::endl;
+    std::cout << "Using " << thr << " threads" << std::endl;
 
     BankerService banker(addr);
 
