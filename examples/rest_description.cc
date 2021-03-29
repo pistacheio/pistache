@@ -144,8 +144,8 @@ int main(int argc, char *argv[]) {
 
     Address addr(Ipv4::any(), port);
 
-    std::cout << "Cores = " << hardware_concurrency() << '\n';
-    std::cout << "Using " << thr << " threads" << '\n';
+    std::cout << "Cores = " << hardware_concurrency() << std::endl;
+    std::cout << "Using " << thr << " threads" << std::endl;
 
     BankerService banker(addr);
 

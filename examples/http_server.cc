@@ -57,9 +57,9 @@ private:
                 if (global > 100) global = 100;
 
                 if (global > 1)
-                    std::cout << "Global load is " << global << "%\n";
+                    std::cout << "Global load is " << global << "%" << std::endl;
                 else
-                    std::cout << "Global load is 0%\n";
+                    std::cout << "Global load is 0%" << std::endl;
             },
             Async::NoExcept);
 
@@ -84,7 +84,7 @@ class MyHandler : public Http::Handler {
 
                 auto query = req.query();
                 if (query.has("chunked")) {
-                    std::cout << "Using chunked encoding\n";
+                    std::cout << "Using chunked encoding" << std::endl;
 
                     response.headers()
                         .add<Header::Server>("pistache/0.1")
@@ -130,7 +130,7 @@ class MyHandler : public Http::Handler {
         else if (req.resource() == "/static") {
             if (req.method() == Http::Method::Get) {
                 Http::serveFile(response, "README.md").then([](ssize_t bytes) {
-                    std::cout << "Sent " << bytes << " bytes\n";
+                    std::cout << "Sent " << bytes << " bytes" << std::endl;
                 }, Async::NoExcept);
             }
         } else {
@@ -164,8 +164,8 @@ int main(int argc, char *argv[]) {
 
     Address addr(Ipv4::any(), port);
 
-    std::cout << "Cores = " << hardware_concurrency() << '\n';
-    std::cout << "Using " << thr << " threads\n";
+    std::cout << "Cores = " << hardware_concurrency() << std::endl;
+    std::cout << "Using " << thr << " threads" << std::endl;
 
     auto server = std::make_shared<Http::Endpoint>(addr);
 

@@ -14,7 +14,7 @@ using namespace Pistache;
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
-    std::cerr << "Usage: http_client page [count]" << '\n';
+    std::cerr << "Usage: http_client page [count]\n";
     return 1;
   }
 
@@ -41,10 +41,10 @@ int main(int argc, char *argv[]) {
     resp.then(
         [&](Http::Response response) {
           ++completedRequests;
-          std::cout << "Response code = " << response.code() << '\n';
+          std::cout << "Response code = " << response.code() << std::endl;
           auto body = response.body();
           if (!body.empty())
-            std::cout << "Response body = " << body << '\n';
+            std::cout << "Response body = " << body << std::endl;
         },
         [&](std::exception_ptr exc) {
           ++failedRequests;
@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
             << std::chrono::duration_cast<std::chrono::milliseconds>(end -
                                                                      start)
                    .count()
-            << "ms\n";
+            << "ms" << std::endl;
 
   client.shutdown();
 }

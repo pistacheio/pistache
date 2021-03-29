@@ -14,12 +14,12 @@ using namespace Pistache;
 
 void printCookies(const Http::Request& req) {
     auto cookies = req.cookies();
-    std::cout << "Cookies: [\n";
+    std::cout << "Cookies: [" << std::endl;
     const std::string indent(4, ' ');
     for (const auto& c: cookies) {
-        std::cout << indent << c.name << " = " << c.value << '\n';
+        std::cout << indent << c.name << " = " << c.value << std::endl;
     }
-    std::cout << "]\n";
+    std::cout << "]" << std::endl;
 }
 
 namespace Generic {
@@ -157,8 +157,8 @@ int main(int argc, char *argv[]) {
 
     Address addr(Ipv4::any(), port);
 
-    std::cout << "Cores = " << hardware_concurrency() << '\n';
-    std::cout << "Using " << thr << " threads" << '\n';
+    std::cout << "Cores = " << hardware_concurrency() << std::endl;
+    std::cout << "Using " << thr << " threads" << std::endl;
 
     StatsEndpoint stats(addr);
 
