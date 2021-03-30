@@ -73,7 +73,7 @@ void serializeParameter(Writer &writer, const Schema::Parameter &parameter) {
     writer.String(parameter.name.c_str());
     writer.String("in");
     // @Feature: support other types of parameters
-    writer.String(locations[parameter.location]);
+    writer.String(locations[static_cast<size_t>(parameter.location)]);
     writer.String("description");
     writer.String(parameter.description.c_str());
     writer.String("required");
