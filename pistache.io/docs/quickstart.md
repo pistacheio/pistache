@@ -24,12 +24,10 @@ sudo apt install libpistache-dev
 Otherwise, here's how to build and install the latest release:
 
 ```shell
-git clone --recurse-submodules https://github.com/pistacheio/pistache.git
+git clone https://github.com/pistacheio/pistache.git
 cd pistache
-mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-make
-sudo make install
+meson setup build
+meson install -C build
 ```
 
 Also, Pistache does not support Windows yet, but should work fine under [WSL](https://docs.microsoft.com/windows/wsl/about).

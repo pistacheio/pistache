@@ -12,20 +12,21 @@ export DH_OPTIONS=-v
 # Set flags for how the package will be compiled and built. Note separated with
 #  white space and not comma, as per DPM § 4.9.1...
 
-    # Set various group related security hardening build flags for format,
-    #  fortify, stackprotector, relro, bindnow, and pie...
-    DH_BUILD_MAINT_OPTIONS  = hardening=+all
+# Set various group related security hardening build flags for format,
+#  fortify, stackprotector, relro, bindnow, and pie...
+DH_BUILD_MAINT_OPTIONS  = hardening=+all
 
-    # Skip unit testing...
-    #DH_BUILD_MAINT_OPTIONS += nocheck
+# Skip unit testing...
+#DH_BUILD_MAINT_OPTIONS += nocheck
 
-    # The above should be reflected when dpkg-buildflags is called and merged
-    #  with the defaults...
-    export DH_BUILD_MAINT_OPTIONS
-    export DPKG_EXPORT_BUILDFLAGS = 1
+# The above should be reflected when dpkg-buildflags is called and merged
+#  with the defaults...
+export DH_BUILD_MAINT_OPTIONS
 
-# Standard rules and preset shell variables...
-include /usr/share/dpkg/default.mk
+# Should be avoided since debhelper 9
+# https://www.debian.org/doc/manuals/debmake-doc/ch05.en.html#variablesrules
+# Including only the necessary variables
+include /usr/share/dpkg/pkg-info.mk
 
 # Directory containing package since may not be called from current working
 #  directory. MAKEFILE_LIST pre-defined by Make and appended each time another
@@ -38,63 +39,61 @@ SOURCE_DIR  = $(abspath $(PACKAGE_DIR)/../)
 # Main packaging script based on debhelper 7 syntax. The % is an implicit
 #  pattern rule that acts as a universal target...
 %:
-	dh $@
+	dh $@ --buildsystem=meson
 
 # Configure source...
 override_dh_auto_configure:
-	dh_auto_configure --                                                        \
-	    -G "Unix Makefiles"                                                     \
-	    -DCMAKE_BUILD_TYPE=Release                                              \
-	    -DPISTACHE_BUILD_EXAMPLES=true                                          \
-	    -DPISTACHE_BUILD_TESTS=true                                             \
-	    -DPISTACHE_ENABLE_NETWORK_TESTS=false                                   \
-	    -DPISTACHE_BUILD_DOCS=false                                             \
-	    -DPISTACHE_USE_SSL=true                                                 \
-	    -DCMAKE_INSTALL_PREFIX=/usr                                             \
-	    $(SOURCE_DIR)
+	dh_auto_configure --														\
+		-DPISTACHE_BUILD_EXAMPLES=true											\
+		-DPISTACHE_BUILD_TESTS=true												\
+		-DPISTACHE_ENABLE_NETWORK_TESTS=false									\
+		-DPISTACHE_BUILD_DOCS=false												\
+		-DPISTACHE_USE_SSL=true													\
 
-# Perform unit testing, but only if not disabled...
-ifeq (,$(findstring nocheck,$(DEB_BUILD_OPTIONS)))
-override_dh_auto_test:
-ifeq "$(DEB_BUILD_ARCH)" "armhf"
-	@echo "# Performing unit tests, but skipping memcheck because valgrind broken on this platform..."
-	dh_auto_test -- test || { find . -iname "LastTest.log" -exec cat {} \; ; exit 99; }
-else
-	@echo "# Performing all unit tests..."
-	dh_auto_test -- test test_memcheck || { find . -iname "LastTest.log" -exec cat {} \; ; exit 99; }
-endif
-endif
+# It is pointless to customize the tests until we upgrade to debhelper-compat 13,
+# because debhelper 12 runs ninja test instead of meson test, and --wrap=valgrind
+# is only supported by the latter.
+#override_dh_auto_test:
+#ifeq "$(DEB_BUILD_ARCH)" "armhf"
+#	@echo "# Performing unit tests, but skipping valgrind because it is broken on this platform..."
+#	dh_auto_test
+#else
+#	@echo "# Performing all unit tests..."
+#	dh_auto_test -- --wrap=valgrind
+#endif
 
+# get-orig-source is deprecated since version 4.1.4 of the Debian Policy
 # Prepare an upstream vanilla distribution tarball as per DPM § 4.9...
 #  http://wiki.debian.org/onlyjob/get-orig-source
-get-orig-source: $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM).orig.tar.bz2 $(info I: $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM))
+get-orig-source: $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM).orig.tar.gz $(info I: $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM))
 	@
 
 # Prepare an upstream vanilla distribution tarball...
-$(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM).orig.tar.bz2:
+# meson dist does not include .github in the source tarball (mesonbuild/meson#8541)
+# so it is necessary to manually add the folder to the archive
+$(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM).orig.tar.gz:
 	@echo "# Preparing source for $(DEB_SOURCE) v$(DEB_VERSION_UPSTREAM)..."
-	cd $(SOURCE_DIR)                                                            \
-	&& cd $(PACKAGE_DIR)                                                        \
-	&& mkdir -p $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)                              \
-	&& cd $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)                                 \
-	&& cmake                                                                    \
-		-G "Unix Makefiles"                                                     \
-		-DCMAKE_BUILD_TYPE=Release                                              \
-		-DPISTACHE_BUILD_EXAMPLES=true                                          \
-		-DPISTACHE_BUILD_TESTS=true                                             \
-	    -DPISTACHE_ENABLE_NETWORK_TESTS=false                                   \
-		-DPISTACHE_BUILD_DOCS=false                                             \
-	    -DPISTACHE_USE_SSL=true                                                 \
-		-DCMAKE_INSTALL_PREFIX=/usr                                             \
-		$(SOURCE_DIR)                                                           \
-	&& make dist                                                                \
-	&& mv -v $(DEB_SOURCE)-$(DEB_VERSION_UPSTREAM).tar.bz2 $(SOURCE_DIR)/../$@
+	cd $(SOURCE_DIR)															\
+	&& cd $(PACKAGE_DIR)														\
+	&& meson setup $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM) ..						\
+		--buildtype=plain														\
+		-DPISTACHE_BUILD_EXAMPLES=true											\
+		-DPISTACHE_BUILD_TESTS=true												\
+		-DPISTACHE_ENABLE_NETWORK_TESTS=false									\
+		-DPISTACHE_BUILD_DOCS=false												\
+		-DPISTACHE_USE_SSL=true													\
+		--prefix=/usr															\
+		--wrap-mode=nodownload													\
+	&& meson dist -C $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM) --no-tests --formats=gztar	\
+	&& cd $(PACKAGE_DIR)/$(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)					\
+	&& mkdir $(DEB_SOURCE)-$(DEB_VERSION_UPSTREAM)								\
+	&& cp -r $(SOURCE_DIR)/.github $(DEB_SOURCE)-$(DEB_VERSION_UPSTREAM)		\
+	&& gunzip $(PACKAGE_DIR)/$(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)/meson-dist/$(DEB_SOURCE)-$(DEB_VERSION_UPSTREAM).tar.gz						\
+	&& tar --append --file=$(PACKAGE_DIR)/$(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)/meson-dist/$(DEB_SOURCE)-$(DEB_VERSION_UPSTREAM).tar $(DEB_SOURCE)-$(DEB_VERSION_UPSTREAM)/.github	\
+	&& gzip $(PACKAGE_DIR)/$(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)/meson-dist/$(DEB_SOURCE)-$(DEB_VERSION_UPSTREAM).tar							\
+	&& mv $(PACKAGE_DIR)/$(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)/meson-dist/$(DEB_SOURCE)-$(DEB_VERSION_UPSTREAM).tar.gz $(SOURCE_DIR)/../$@
 	@echo "# Cleaning up..."
-	cd $(PACKAGE_DIR)/$(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)                     \
-	&& make clean
-	cd $(PACKAGE_DIR)                                                           \
-	&& $(RM) -r $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)
+	$(RM) -r $(PACKAGE_DIR)/$(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)
 
 # Targets which aren't actual products...
-.PHONY: get-orig-source override_dh_auto_configure override_dh_auto_test
-
+.PHONY: get-orig-source override_dh_auto_configure# override_dh_auto_test

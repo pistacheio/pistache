@@ -246,7 +246,7 @@ void Transport::asyncWriteImpl(Fd fd) {
         }
         // EBADF can happen when the HTTP parser, in the case of
         // an error, closes fd before the entire request is processed.
-        // https://github.com/oktal/pistache/issues/501
+        // https://github.com/pistacheio/pistache/issues/501
         else if (errno == EBADF || errno == EPIPE || errno == ECONNRESET) {
           wq.pop_front();
           toWrite.erase(fd);

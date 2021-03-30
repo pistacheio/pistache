@@ -1,7 +1,7 @@
 language: cpp
 
 os: linux
-dist: bionic
+dist: focal
 
 branches:
   only:
@@ -32,70 +32,126 @@ _apt_pkgs: &_apt_pkgs
   - 'lcov'
   - 'cppcheck'
   - 'clang-format-9'
+  - 'python3-pip'
+  - 'python3-setuptools'
+  - 'ninja-build'
+  - 'libblocksruntime-dev'
+  - 'rapidjson-dev'
 
 _apt_srcs: &_apt_srcs
   - 'ubuntu-toolchain-r-test'
 
-_env_clang_4: &_env_clang_4
-  - COMPILER=clang++-4.0
-  - COV_TOOL=llvm-cov-4.0
-  - COV_TOOL_ARGS=gcov
-
-_env_clang_5: &_env_clang_5
-  - COMPILER=clang++-5.0
-  - COV_TOOL=llvm-cov-5.0
-  - COV_TOOL_ARGS=gcov
-
 _env_clang_6: &_env_clang_6
-  - COMPILER=clang++-6.0
+  - CC=clang-6.0
+  - CXX=clang++-6.0
   - COV_TOOL=llvm-cov-6.0
   - COV_TOOL_ARGS=gcov
 
+_env_clang_7: &_env_clang_7
+  - CC=clang-7
+  - CXX=clang++-7
+  - COV_TOOL=llvm-cov-7
+  - COV_TOOL_ARGS=gcov
+
+_env_clang_8: &_env_clang_8
+  - CC=clang-8
+  - CXX=clang++-8
+  - COV_TOOL=llvm-cov-8
+  - COV_TOOL_ARGS=gcov
+
+_env_clang_9: &_env_clang_9
+  - CC=clang-9
+  - CXX=clang++-9
+  - COV_TOOL=llvm-cov-9
+  - COV_TOOL_ARGS=gcov
+
+_env_clang_10: &_env_clang_10
+  - CC=clang-10
+  - CXX=clang++-10
+  - COV_TOOL=llvm-cov-10
+  - COV_TOOL_ARGS=gcov
+
 _env_gcc_7: &_env_gcc_7
-  - COMPILER=g++-7
+  - CC=gcc-7
+  - CXX=g++-7
   - COV_TOOL=gcov-7
   - COV_TOOL_ARGS=
 
 _env_gcc_8: &_env_gcc_8
-  - COMPILER=g++-8
+  - CC=gcc-8
+  - CXX=g++-8
   - COV_TOOL=gcov-8
+  - COV_TOOL_ARGS=
+
+_env_gcc_9: &_env_gcc_9
+  - CC=gcc-9
+  - CXX=g++-9
+  - COV_TOOL=gcov-9
+  - COV_TOOL_ARGS=
+
+_env_gcc_10: &_env_gcc_10
+  - CC=gcc-10
+  - CXX=g++-10
+  - COV_TOOL=gcov-10
   - COV_TOOL_ARGS=
 
 jobs:
   include:
   # Linux clang builds
   - arch: amd64
-    env: *_env_clang_4
-    addons:
-      apt:
-        sources: 
-          - *_apt_srcs
-          - ['llvm-toolchain-bionic-4.0']
-        packages: 
-          - *_apt_pkgs
-          - ['clang-4.0', 'llvm-4.0-tools', 'libstdc++-6-dev']
-
-  - arch: amd64
-    env: *_env_clang_5
-    addons:
-      apt:
-        sources:
-          - *_apt_srcs
-          - ['llvm-toolchain-bionic-5.0', 'fish']
-        packages: 
-          - *_apt_pkgs
-          - ['clang-5.0', 'llvm-5.0-tools', 'libstdc++-6-dev']
-
-  - arch: amd64
     env: *_env_clang_6
     addons:
       apt:
         sources:
           - *_apt_srcs
-          - ['llvm-toolchain-bionic-6.0']
-        packages: 
+          - ['llvm-toolchain-6.0']
+        packages:
           - *_apt_pkgs
-          - ['clang-6.0', 'llvm-6.0-tools', 'libstdc++-6-dev']
+          - ['clang-6.0', 'llvm-6.0-tools', 'libstdc++-7-dev']
+
+  - arch: amd64
+    env: *_env_clang_7
+    addons:
+      apt:
+        sources:
+          - *_apt_srcs
+          - ['llvm-toolchain-7']
+        packages:
+          - *_apt_pkgs
+          - ['clang-7', 'llvm-7-tools', 'libstdc++-7-dev']
+
+  - arch: amd64
+    env: *_env_clang_8
+    addons:
+      apt:
+        sources:
+          - *_apt_srcs
+          - ['llvm-toolchain-8']
+        packages:
+          - *_apt_pkgs
+          - ['clang-8', 'llvm-8-tools', 'libstdc++-8-dev']
+
+  - arch: amd64
+    env: *_env_clang_9
+    addons:
+      apt:
+        sources:
+          - *_apt_srcs
+          - ['llvm-toolchain-9']
+        packages:
+          - *_apt_pkgs
+          - ['clang-9', 'llvm-9-tools', 'libstdc++-9-dev']
+
+  - arch: amd64
+    env: *_env_clang_10
+    addons:
+      apt:
+        sources:
+          - *_apt_srcs
+          - ['llvm-toolchain-10']
+        packages:
+          - *_apt_pkgs
+          - ['clang-10', 'llvm-10-tools', 'libstdc++-10-dev']
 
   # Linux GCC builds
   - arch: amd64
@@ -104,7 +160,7 @@ jobs:
       apt:
         sources:
           - *_apt_srcs
-        packages: 
+        packages:
           - *_apt_pkgs
           - ['g++-7']
 
@@ -114,9 +170,29 @@ jobs:
       apt:
         sources:
           - *_apt_srcs
-        packages: 
+        packages:
           - *_apt_pkgs
           - ['g++-8']
+
+  - arch: amd64
+    env: *_env_gcc_9
+    addons:
+      apt:
+        sources:
+          - *_apt_srcs
+        packages:
+          - *_apt_pkgs
+          - ['g++-9']
+
+  - arch: amd64
+    env: *_env_gcc_10
+    addons:
+      apt:
+        sources:
+          - *_apt_srcs
+        packages:
+          - *_apt_pkgs
+          - ['g++-10']
 
   - arch: ppc64le
     env: *_env_gcc_8
@@ -124,7 +200,7 @@ jobs:
       apt:
         sources:
           - *_apt_srcs
-        packages: 
+        packages:
           - *_apt_pkgs
           - ['g++-8']
 
@@ -134,7 +210,7 @@ jobs:
       apt:
         sources:
           - *_apt_srcs
-        packages: 
+        packages:
           - *_apt_pkgs
           - ['g++-8']
 
@@ -144,7 +220,7 @@ jobs:
       apt:
         sources:
           - *_apt_srcs
-        packages: 
+        packages:
           - *_apt_pkgs
           - ['g++-8']
 
@@ -157,9 +233,10 @@ before_install:
 install:
   - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
   - mkdir -p ${DEPS_DIR} && cd ${DEPS_DIR}
+  # Install Meson >=0.57.0
+  - sudo pip3 install -qqq --ignore-installed meson
 
 before_script:
-  - export CXX=${COMPILER}
   - cd ${TRAVIS_BUILD_DIR}
 
   # Enable core dumps
@@ -176,25 +253,44 @@ before_script:
   - service --status-all || true
   - initctl list || true
 
-  # Debug build
-  - cmake -H.
-    -BBuild-Debug
-    -DCMAKE_BUILD_TYPE=Debug
+  # Meson debug build
+  - meson setup meson_build_debug
+    --buildtype=debug
+    -Db_coverage=true
+    -DPISTACHE_BUILD_TESTS=true
     -DPISTACHE_BUILD_EXAMPLES=true
+    -DPISTACHE_USE_SSL=true
+
+  # Meson debug build, no SSL
+  - meson setup meson_build_debug_nossl
+    --buildtype=debug
+    -Db_coverage=true
+    -DPISTACHE_BUILD_TESTS=true
+    -DPISTACHE_BUILD_EXAMPLES=true
+    -DPISTACHE_USE_SSL=false
+
+  # Meson release build
+  - meson setup meson_build_release
+    --buildtype=release
+    -DPISTACHE_USE_SSL=true
+
+  # CMake debug build
+  - cmake -S .
+    -B cmake_build_debug
+    -DCMAKE_BUILD_TYPE=Debug
     -DPISTACHE_BUILD_TESTS=true
     -DPISTACHE_USE_SSL=true
 
-  # Debug build, no SSL
-  - cmake -H.
-    -BBuild-Debug-nossl
+  # CMake debug build, no SSL
+  - cmake -S .
+    -B cmake_build_debug-nossl
     -DCMAKE_BUILD_TYPE=Debug
-    -DPISTACHE_BUILD_EXAMPLES=true
     -DPISTACHE_BUILD_TESTS=true
     -DPISTACHE_USE_SSL=false
 
-  # Release build
-  - cmake -H.
-    -BBuild-Release
+  # CMake release build
+  - cmake -S .
+    -B cmake_build_release
     -DCMAKE_BUILD_TYPE=Release
     -DPISTACHE_USE_SSL=true
 
@@ -202,17 +298,23 @@ script:
   # Set the ulimit
   - ulimit -c unlimited -S
 
-  # Debug build
-  - cd Build-Debug
-  - make -j 2 all test ARGS="-V"
+  # CMake debug build
+  - cmake --build cmake_build_debug --parallel 2 --target all test -- ARGS='-V'
 
-  # Debug build, no SSL
-  - cd ../Build-Debug-nossl
-  - make -j 2 all test ARGS="-V"
+  # CMake debug build, no SSL
+  - cmake --build cmake_build_debug-nossl --parallel 2 --target all test -- ARGS='-V'
 
-  # Release build
-  - cd ../Build-Release
-  - make -j 2
+  # CMake release build
+  - cmake --build cmake_build_release --parallel 2 -- ARGS='-V'
+
+  # Meson debug build
+  - meson compile -C meson_build_debug --jobs 2 && meson test -C meson_build_debug || (cat meson_build_debug/meson-logs/testlog.txt && false)
+
+  # Meson debug build, no SSL
+  - meson compile -C meson_build_debug_nossl --jobs 2 && meson test -C meson_build_debug_nossl || (cat meson_build_debug/meson-logs/testlog.txt && false)
+
+  # Meson release build
+  - meson compile -C meson_build_release --jobs 2
 
 after_failure:
   - CRASHFILES=$(find /var/crash/ -mindepth 1 -maxdepth 1 -print)
@@ -224,10 +326,8 @@ after_failure:
     if [ -n "$CRASHFILES" ]; then echo "$CRASHFILES" | while IFS= read -r CRASH; do echo "Crash report: $CRASH"; DIR="/tmp/$(basename $CRASH).d"; apport-unpack "$CRASH" "$DIR"; EXE=$(cat $DIR/ExecutablePath); CORE="$DIR/CoreDump"; echo "Coredump $CORE for $EXE"; /usr/bin/gdb $EXE $CORE -ex "thread apply all bt" -ex "set pagination 0" -batch; done; fi
 
 after_success:
-  - cd ../Build-Debug
   - sudo su -c "echo 'if [ \"\$1\" = \"-v\" ] ; then $COV_TOOL --version ; else $COV_TOOL $COV_TOOL_ARGS \$@ ; fi' > /usr/local/bin/cov-tool" && sudo chmod +x /usr/local/bin/cov-tool
   - lcov --capture --gcov-tool cov-tool --directory . --output-file coverage.info
-  - lcov --remove coverage.info '/usr/*' '*tests/*' '*third-party/*' --output-file coverage.info
+  - lcov --remove coverage.info '/usr/*' '*tests/*' '*examples/*' '*subprojects/*' --output-file coverage.info
   - lcov --list coverage.info
   - bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
-
