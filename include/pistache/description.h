@@ -143,6 +143,45 @@ private:
   Info *info_;
 };
 
+#define AUTHENTICATION_TYPES                                      \
+  AUTH_TYPE(ApiKey, "apiKey")
+
+enum class AuthenticationType {
+#define AUTH_TYPE(name, _) name,
+            AUTHENTICATION_TYPES
+#undef AUTH_TYPE
+};
+
+#define AUTHENTICATION_LOCATIONS                                      \
+  AUTH_LOC(Header, "header")                                          \
+  AUTH_LOC(Query, "query")
+
+enum class AuthenticationLocation {
+#define AUTH_LOC(name, _) name,
+            AUTHENTICATION_LOCATIONS
+#undef AUTH_LOC
+};
+
+struct Authentication {
+  Authentication(std::string title);
+
+  std::string title;
+  AuthenticationType type;
+  AuthenticationLocation location;
+  std::string name;
+};
+
+struct AuthenticationBuilder {
+  explicit AuthenticationBuilder(Authentication *auth);
+
+  AuthenticationBuilder &type(AuthenticationType type);
+  AuthenticationBuilder &location(AuthenticationLocation loc);
+  AuthenticationBuilder &name(std::string name);
+
+private:
+  Authentication *auth_;
+};
+
 struct DataType {
   virtual const char *typeName() const = 0;
   virtual const char *format() const = 0;
@@ -380,6 +419,7 @@ public:
               std::string description = "");
 
   Schema::InfoBuilder info();
+  Schema::AuthenticationBuilder authentication(std::string title);
 
   Description &host(std::string value);
   Description &basePath(std::string value);
@@ -423,6 +463,7 @@ public:
                                    std::string description);
 
   Schema::Info rawInfo() const { return info_; }
+  std::vector<Schema::Authentication> rawAuthenticationSchemas() const { return authenticationSchemes_; }
   std::string rawHost() const { return host_; }
   std::string rawBasePath() const { return basePath_; }
   std::vector<Scheme> rawSchemes() const { return schemes_; }
@@ -431,6 +472,7 @@ public:
 
 private:
   Schema::Info info_;
+  std::vector<Schema::Authentication> authenticationSchemes_;
   std::string host_;
   std::string basePath_;
   std::vector<Scheme> schemes_;

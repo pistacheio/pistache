@@ -16,6 +16,31 @@ namespace Pistache {
 namespace Rest {
 namespace Serializer {
 
+
+const char *authenticationTypeString(Schema::AuthenticationType type) {
+  switch (type) {
+#define AUTH_TYPE(e, str)                                               \
+    case Schema::AuthenticationType::e:                                 \
+       return str;
+       AUTHENTICATION_TYPES
+#undef AUTH_TYPE
+  }
+
+  return nullptr;
+}
+
+const char *authenticationLocationString(Schema::AuthenticationLocation location) {
+  switch (location) {
+#define AUTH_LOC(e, str)                                                     \
+    case Schema::AuthenticationLocation::e:                                  \
+       return str;
+       AUTHENTICATION_LOCATIONS
+#undef AUTH_LOC
+  }
+
+  return nullptr;
+}
+
 template <typename Writer>
 void serializeInfo(Writer &writer, const Schema::Info &info) {
   writer.String("swagger");
@@ -37,6 +62,40 @@ void serializeInfo(Writer &writer, const Schema::Info &info) {
     }
   }
   writer.EndObject();
+}
+template <typename Writer>
+void serializeAuthenticationSchemas(Writer &writer, const std::vector<Schema::Authentication> &authenticationSchemas) {
+  if (authenticationSchemas.empty()) return;
+
+  writer.String("securityDefinitions");
+  writer.StartObject();
+  for (auto &schema: authenticationSchemas){
+    writer.String(schema.title.c_str());
+    writer.StartObject();
+    {
+      writer.String("type");
+      writer.String(authenticationTypeString(schema.type));
+      writer.String("in");
+      writer.String(authenticationLocationString(schema.location));
+      writer.String("name");
+      writer.String(schema.name.c_str());
+    }
+    writer.EndObject();
+  }
+  writer.EndObject();
+
+  writer.String("security");
+  writer.StartArray();
+  for (auto &schema: authenticationSchemas) {
+    writer.StartObject();
+    {
+      writer.String(schema.title.c_str());
+      writer.StartArray();
+      writer.EndArray();
+    }
+    writer.EndObject();
+  }
+  writer.EndArray();
 }
 
 template <typename Writer>
@@ -175,6 +234,7 @@ void serializeDescription(Writer &writer, const Description &desc) {
   writer.StartObject();
   {
     serializeInfo(writer, desc.rawInfo());
+    serializeAuthenticationSchemas(writer, desc.rawAuthenticationSchemas());
     auto host = desc.rawHost();
     auto basePath = desc.rawBasePath();
     auto schemes = desc.rawSchemes();
