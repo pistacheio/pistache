@@ -147,14 +147,14 @@ dependencies: dependency('pistache', fallback ['pistache', 'pistache_static_dep'
 To use with a CMake build environment, use the [FindPkgConfig](https://cmake.org/cmake/help/latest/module/FindPkgConfig.html) module. Here is an example:
 
 ```cmake
-cmake_minimum_required(3.4 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.6)
 project("MyPistacheProject")
 
-# Find the library.
-find_package(Pistache 0.0.2 REQUIRED)
+find_package(PkgConfig)
+pkg_check_modules(Pistache REQUIRED IMPORTED_TARGET libpistache)
 
 add_executable(${PROJECT_NAME} main.cpp)
-target_link_libraries(${PROJECT_NAME} pistache_shared)
+target_link_libraries(${PROJECT_NAME} PkgConfig::Pistache)
 ```
 
 ### Makefile
