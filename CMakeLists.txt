@@ -109,3 +109,12 @@ if (PISTACHE_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
+
+# format target
+
+add_custom_target(format
+    COMMAND
+        ./tools/format.sh
+    WORKING_DIRECTORY
+        ${CMAKE_CURRENT_SOURCE_DIR}
+)
