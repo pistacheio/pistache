@@ -115,3 +115,10 @@ endif
 if get_option('PISTACHE_BUILD_DOCS')
 	subdir('docs')
 endif
+
+if find_program('clang-format', required: false).found()
+	run_target(
+		'format',
+		command: (find_program('tools/format.sh'))
+	)
+endif
