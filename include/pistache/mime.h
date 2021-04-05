@@ -47,7 +47,8 @@ namespace Mime {
   SUB_TYPE(Png, "png")                                                         \
   SUB_TYPE(Gif, "gif")                                                         \
   SUB_TYPE(Bmp, "bmp")                                                         \
-  SUB_TYPE(Jpeg, "jpeg")
+  SUB_TYPE(Jpeg, "jpeg")                                                       \
+  SUB_TYPE(Tiff, "tiff")                     
 
 #define MIME_SUFFIXES                                                          \
   SUFFIX(Json, "json", "JavaScript Object Notation")                           \
