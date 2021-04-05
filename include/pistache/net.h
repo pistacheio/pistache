@@ -150,11 +150,15 @@ public:
   Port port() const;
   int family() const;
 
+  friend std::ostream &operator<<(std::ostream &os, const Address &address);
+
 private:
   void init(const std::string &addr);
   IP ip_;
   Port port_;
 };
+
+std::ostream &operator<<(std::ostream &os, const Address &address);
 
 namespace helpers {
 inline Address httpAddr(const StringView &view) {

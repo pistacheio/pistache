@@ -501,6 +501,7 @@ bool Connection::isConnected() const {
 
 void Connection::close() {
   connectionState_.store(NotConnected);
+  ::shutdown(fd_, SHUT_RDWR);
   ::close(fd_);
 }
 
@@ -713,8 +714,9 @@ size_t ConnectionPool::availableConnections(const std::string &domain) const {
   return 0;
 }
 
-void ConnectionPool::closeIdleConnections(const std::string &domain){
-    UNUSED(domain)}
+void ConnectionPool::closeIdleConnections(const std::string &domain) {
+  UNUSED(domain)
+}
 
 void ConnectionPool::shutdown() {
   // close all connections

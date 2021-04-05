@@ -13,14 +13,21 @@
 #include <future>
 #include <mutex>
 #include <string>
+#include <thread>
 
 using namespace Pistache;
+
+#define THREAD_INFO                                                            \
+  "[" << std::hex << std::this_thread::get_id() << std::dec << "]"
+#define SERVER_PREFIX "[server] " THREAD_INFO
+#define CLIENT_PREFIX "[client] " THREAD_INFO
 
 struct HelloHandlerWithDelay : public Http::Handler {
   HTTP_PROTOTYPE(HelloHandlerWithDelay)
 
   explicit HelloHandlerWithDelay(int delay = 0) : delay_(delay) {
-    std::cout << "Init Hello handler with " << delay_ << " seconds delay\n";
+    std::cout << SERVER_PREFIX << " Init Hello handler with " << delay_
+              << " seconds delay\n";
   }
 
   void onRequest(const Http::Request & /*request*/,
@@ -50,7 +57,7 @@ struct HandlerWithSlowPage : public Http::Handler {
     }
 
     writer.send(Http::Code::Ok, message);
-    std::cout << "[server] Sent: " << message;
+    std::cout << SERVER_PREFIX << " Sent: " << message;
   }
 
   int delay_;
@@ -66,8 +73,8 @@ struct FileHandler : public Http::Handler {
     Http::serveFile(writer, fileName_)
         .then(
             [this](ssize_t bytes) {
-              std::cout << "Sent " << bytes << " bytes from " << fileName_
-                        << " file" << std::endl;
+              std::cout << SERVER_PREFIX << " Sent " << bytes << " bytes from "
+                        << fileName_ << " file" << std::endl;
             },
             Async::IgnoreException);
   }
@@ -85,7 +92,7 @@ struct AddressEchoHandler : public Http::Handler {
                  Http::ResponseWriter writer) override {
     std::string requestAddress = request.address().host();
     writer.send(Http::Code::Ok, requestAddress);
-    std::cout << "[server] Sent: " << requestAddress << std::endl;
+    std::cout << SERVER_PREFIX << " Sent: " << requestAddress << std::endl;
   }
 };
 
@@ -103,14 +110,15 @@ int clientLogicFunc(int response_size, const std::string &server_page,
     auto response = rb.send();
     response.then(
         [&resolver_counter](Http::Response resp) {
-          std::cout << "Response code is " << resp.code() << std::endl;
+          std::cout << CLIENT_PREFIX << " Response code is " << resp.code()
+                    << std::endl;
           if (resp.code() == Http::Code::Ok) {
             ++resolver_counter;
           }
         },
         [&reject_counter](std::exception_ptr exc) {
           PrintException excPrinter;
-          std::cout << "Reject with reason: ";
+          std::cout << CLIENT_PREFIX << " Reject with reason: ";
           excPrinter(exc);
           ++reject_counter;
         });
@@ -123,9 +131,10 @@ int clientLogicFunc(int response_size, const std::string &server_page,
 
   client.shutdown();
 
-  std::cout << "resolves: " << resolver_counter
+  std::cout << CLIENT_PREFIX << " resolves: " << resolver_counter
             << ", rejects: " << reject_counter
-            << ", timeout: " << timeout_seconds << ", wait: " << wait_seconds
+            << ", timeout: " << timeout_seconds << " seconds"
+            << ", wait: " << wait_seconds << " seconds"
             << "\n";
 
   return resolver_counter;
@@ -333,7 +342,8 @@ TEST(http_server_test, server_request_copies_address) {
   std::string resultData;
   response.then(
       [&resultData](Http::Response resp) {
-        std::cout << "Response code is " << resp.code() << std::endl;
+        std::cout << CLIENT_PREFIX << " Response code is " << resp.code()
+                  << std::endl;
         if (resp.code() == Http::Code::Ok) {
           resultData = resp.body();
         }
@@ -360,7 +370,7 @@ struct ResponseSizeHandler : public Http::Handler {
                  Http::ResponseWriter writer) override {
     std::string requestAddress = request.address().host();
     writer.send(Http::Code::Ok, requestAddress);
-    std::cout << "[server] Sent: " << requestAddress << std::endl;
+    std::cout << SERVER_PREFIX << " Sent: " << requestAddress << std::endl;
     rsize_ = writer.getResponseSize();
     rcode_ = writer.getResponseCode();
   }
@@ -395,7 +405,8 @@ TEST(http_server_test, response_size_captured) {
   std::string resultData;
   response.then(
       [&resultData](Http::Response resp) {
-        std::cout << "Response code is " << resp.code() << std::endl;
+        std::cout << CLIENT_PREFIX << " Response code is " << resp.code()
+                  << std::endl;
         if (resp.code() == Http::Code::Ok) {
           resultData = resp.body();
         }
@@ -412,7 +423,7 @@ TEST(http_server_test, response_size_captured) {
   // Sanity check (stolen from AddressEchoHandler test).
   ASSERT_EQ("127.0.0.1", resultData);
 
-  std::cout << "Response size is " << rsize << "\n";
+  std::cout << CLIENT_PREFIX << " Response size is " << rsize << "\n";
   ASSERT_GT(rsize, 1u);
   ASSERT_LT(rsize, 300u);
   ASSERT_EQ(rcode, Http::Code::Ok);
@@ -445,9 +456,7 @@ struct ClientCountingHandler : public Http::Handler {
   HTTP_PROTOTYPE(ClientCountingHandler)
 
   explicit ClientCountingHandler(std::shared_ptr<WaitHelper> waitHelper)
-      : waitHelper(waitHelper) {
-    std::cout << "[server] Ininting..." << std::endl;
-  }
+      : waitHelper(waitHelper) {}
 
   void onRequest(const Http::Request &request,
                  Http::ResponseWriter writer) override {
@@ -459,12 +468,13 @@ struct ClientCountingHandler : public Http::Handler {
     }
     std::string requestAddress = request.address().host();
     writer.send(Http::Code::Ok, requestAddress);
-    std::cout << "[server] Sent: " << requestAddress << std::endl;
+    std::cout << SERVER_PREFIX << " Sent: `" << requestAddress << "` data to "
+              << *peer << std::endl;
   }
 
   void onDisconnection(const std::shared_ptr<Tcp::Peer> &peer) override {
-    std::cout << "[server] Disconnect from peer ID " << peer->getID()
-              << " connecting from " << peer->address().host() << std::endl;
+    std::cout << SERVER_PREFIX << " Disconnect from peer " << *peer
+              << std::endl;
     activeConnections.erase(peer->getID());
     waitHelper->increment();
   }
