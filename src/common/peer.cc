@@ -98,8 +98,8 @@ Async::Promise<ssize_t> Peer::send(const RawBuffer &buffer, int flags) {
 
 std::ostream &operator<<(std::ostream &os, Peer &peer) {
   const auto &addr = peer.address();
-  os << "(" << addr.host() << ", " << addr.port() << ") [" << peer.hostname()
-     << "]";
+  os << "Peer with ID=" << peer.getID() << " (address=" << addr
+     << ", hostname=" << peer.hostname() << ", fd=" << peer.fd() << ")";
   return os;
 }
 

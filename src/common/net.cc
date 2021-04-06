@@ -356,7 +356,7 @@ void Address::init(const std::string &addr) {
       host = "127.0.0.1";
     }
 
-    const auto& addresses = HostToIPv4(host, portPart);
+    const auto &addresses = HostToIPv4(host, portPart);
     if (!addresses.empty()) {
       ip_ = GetIPv4(addresses[0]);
     } else {
@@ -365,6 +365,11 @@ void Address::init(const std::string &addr) {
   } else {
     assert(false);
   }
+}
+
+std::ostream &operator<<(std::ostream &os, const Address &address) {
+  os << address.host() << ":" << address.port();
+  return os;
 }
 
 Error::Error(const char *message) : std::runtime_error(message) {}
