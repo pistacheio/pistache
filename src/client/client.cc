@@ -501,7 +501,6 @@ bool Connection::isConnected() const {
 
 void Connection::close() {
   connectionState_.store(NotConnected);
-  ::shutdown(fd_, SHUT_RDWR);
   ::close(fd_);
 }
 
