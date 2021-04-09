@@ -1,5 +1,3 @@
-prefix = get_option('prefix')
-
 configure_file(input: 'version.h.in', output: 'version.h', configuration: version_data_conf, install: get_option('PISTACHE_INSTALL'), install_dir: prefix/get_option('includedir')/'pistache')
 
 install_headers([

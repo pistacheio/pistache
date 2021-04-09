@@ -1,0 +1,12 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: libpistache
+URL: http://pistache.io/
+Description: An elegant C++ REST framework.
+Version: @version@
+Libs: -L'${libdir}/' @libs@
+Libs.private: @libs_private@
+Cflags: -I'${includedir}/'

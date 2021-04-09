@@ -269,10 +269,9 @@ before_script:
     -DPISTACHE_BUILD_EXAMPLES=true
     -DPISTACHE_USE_SSL=false
 
-  # Meson release build, both libs
+  # Meson release build
   - meson setup meson_build_release
     --buildtype=release
-    --default-library=both
     -DPISTACHE_USE_SSL=true
 
   # CMake debug build

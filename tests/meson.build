@@ -43,7 +43,7 @@ foreach test_name : pistache_test_files
 			'run_'+test_name,
 			test_name+'.cc',
 			dependencies: [
-				pistache_dep,
+				pistache_shared_dep,
 				gtest_main_dep,
 				curl_dep
 			]

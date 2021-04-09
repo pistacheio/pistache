@@ -8,8 +8,6 @@ pistache_example_files = [
 	'rest_description'
 ]
 
-threads_dep = dependency('threads')
-
 foreach example_name : pistache_example_files
-	executable('run'+example_name, example_name+'.cc', dependencies: [pistache_dep, threads_dep])
+	executable('run'+example_name, example_name+'.cc', dependencies: pistache_static_dep)
 endforeach
