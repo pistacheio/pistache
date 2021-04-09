@@ -16,7 +16,8 @@ project(
 compiler = meson.get_compiler('cpp')
 compiler_id = compiler.get_id()
 prefix = get_option('prefix')
-pc_libs = ['-lpistache', '-pthread']
+pc_lib = '-lpistache'
+pc_libs_private = ['-pthread']
 
 # Wrapping arguments inside a call to get_supported_arguments so that only supported arguments get applied
 # No need for -Wall -Wextra -Wpedantic, since warning_level is 3
@@ -62,14 +63,14 @@ endif
 ##### END CheckAtomic.cmake
 
 if is_libatomic_needed
-	pc_libs += '-latomic'
+	pc_libs_private += '-latomic'
 endif
 
 deps_libpistache = [dependency('threads'), dependency('RapidJSON', fallback: ['rapidjson', 'rapidjson_dep'])]
 
 if get_option('PISTACHE_USE_SSL')
 	deps_libpistache += dependency('openssl')
-	pc_libs += ['-lssl', '-lcrypto']
+	pc_libs_private += ['-lssl', '-lcrypto']
 endif
 
 version_data_raw = ''
@@ -97,7 +98,8 @@ configure_file(input: 'libpistache.pc.in', output: 'libpistache.pc', install: ge
 	'prefix': prefix,
 	'exec_prefix': prefix/get_option('bindir'),
 	'libdir': prefix/get_option('libdir'),
-	'libs': ' '.join(pc_libs),
+	'libs': pc_lib,
+	'libs_private': ' '.join(pc_libs_private),
 	'includedir': prefix/get_option('includedir'),
 	'version': pistache_version_str+'-git'+version_data_conf.get_unquoted('VERSION_GIT_DATE')
 })
