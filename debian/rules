@@ -44,7 +44,6 @@ SOURCE_DIR  = $(abspath $(PACKAGE_DIR)/../)
 # Configure source...
 override_dh_auto_configure:
 	dh_auto_configure --														\
-		--default-library=both													\
 		-DPISTACHE_BUILD_EXAMPLES=true											\
 		-DPISTACHE_BUILD_TESTS=true												\
 		-DPISTACHE_ENABLE_NETWORK_TESTS=false									\
