@@ -7,7 +7,6 @@ Name: libpistache
 URL: http://pistache.io/
 Description: An elegant C++ REST framework.
 Version: @version@
-Requires:
 Libs: -L'${libdir}/' @libs@
-Libs.private:
+Libs.private: @libs_private@
 Cflags: -I'${includedir}/'
