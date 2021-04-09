@@ -31,29 +31,19 @@ if get_option('PISTACHE_USE_SSL')
 	add_project_arguments('-DPISTACHE_USE_SSL', language: 'cpp')
 endif
 
-libpistache_static = static_library(
-	'pistache',	pistache_common_src+pistache_server_src+pistache_client_src,
+libpistache = library(
+	'pistache',
+	sources: pistache_common_src + pistache_server_src + pistache_client_src,
 	include_directories: incl_pistache,
 	dependencies: deps_libpistache,
 	install: get_option('PISTACHE_INSTALL'),
-	pic: get_option('b_staticpic')
-)
-libpistache_shared = shared_library(
-	'pistache',	pistache_common_src+pistache_server_src+pistache_client_src,
 	version: pistache_version_str,
 	soversion: pistache_soversion_str,
-	include_directories: incl_pistache,
-	dependencies: deps_libpistache,
-	install: get_option('PISTACHE_INSTALL')
+	pic: get_option('b_staticpic')
 )
 
-pistache_static_dep = declare_dependency(link_with: libpistache_static, include_directories: incl_pistache)
-pistache_shared_dep = declare_dependency(link_with: libpistache_shared, include_directories: incl_pistache)
+pistache_dep = declare_dependency(link_with: libpistache, include_directories: incl_pistache)
 
 if meson.version().version_compare('>=0.54.0')
-	if get_option('default_library') == 'static'
-		meson.override_dependency('pistache', pistache_static_dep)
-	else
-		meson.override_dependency('pistache', pistache_shared_dep)
-	endif
+	meson.override_dependency('pistache', pistache_dep)
 endif
