@@ -213,6 +213,28 @@ InfoBuilder &InfoBuilder::license(std::string name, std::string url) {
   return *this;
 }
 
+Authentication::Authentication(std::string title) : title(std::move(title)) {}
+
+AuthenticationBuilder::AuthenticationBuilder(Authentication *auth) : auth_(auth) {}
+
+AuthenticationBuilder &AuthenticationBuilder::type(AuthenticationType type)
+{
+  auth_->type = type;
+  return *this;
+}
+
+AuthenticationBuilder &AuthenticationBuilder::location(AuthenticationLocation loc)
+{
+  auth_->location = loc;
+  return *this;
+}
+
+AuthenticationBuilder &AuthenticationBuilder::name(std::string name)
+{
+  auth_->name = std::move(name);
+  return *this;
+}
+
 } // namespace Schema
 
 Description::Description(std::string title, std::string version,
@@ -223,6 +245,12 @@ Description::Description(std::string title, std::string version,
 Schema::InfoBuilder Description::info() {
   Schema::InfoBuilder builder(&info_);
   return builder;
+}
+
+Schema::AuthenticationBuilder Description::authentication(std::string title)
+{
+  auto it = authenticationSchemes_.emplace(authenticationSchemes_.end(), std::move(title));
+  return Schema::AuthenticationBuilder(&*it);
 }
 
 Description &Description::host(std::string value) {
