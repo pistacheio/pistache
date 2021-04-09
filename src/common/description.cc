@@ -184,9 +184,9 @@ SubPath SubPath::path(const std::string &prefix) {
   return SubPath(this->prefix + prefix, paths);
 }
 
-Parameter::Parameter(std::string name, std::string description)
-    : name(std::move(name)), description(std::move(description)),
-      required(true), type() {}
+Parameter::Parameter(std::string name, std::string description, Location location, bool required)
+    : name(std::move(name)), description(std::move(description)), location(location),
+      required(required), type() {}
 
 Response::Response(Http::Code statusCode, std::string description)
     : statusCode(statusCode), description(std::move(description)) {}

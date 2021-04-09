@@ -172,8 +172,18 @@ template <typename T> std::unique_ptr<DataType> makeDataType() {
   return std::unique_ptr<DataType>(new DataTypeT<T>());
 }
 
+#define PARAMETER_LOCATIONS                                      \
+  LOC(Path, "path")                                              \
+  LOC(Query, "query")
+
+enum class Location {
+#define LOC(name, _) name,
+  PARAMETER_LOCATIONS
+#undef LOC
+};
+
 struct Parameter {
-  Parameter(std::string name, std::string description);
+  Parameter(std::string name, std::string description, Location location, bool required);
 
   template <typename T, typename... Args>
   static Parameter create(Args &&... args) {
@@ -184,6 +194,7 @@ struct Parameter {
 
   std::string name;
   std::string description;
+  Location location;
   bool required;
   std::shared_ptr<DataType> type;
 };
@@ -298,8 +309,15 @@ struct PathBuilder {
   template <typename T>
   PathBuilder &parameter(std::string name, std::string description) {
     path_->parameters.push_back(
-        Parameter::create<T>(std::move(name), std::move(description)));
+        Parameter::create<T>(std::move(name), std::move(description), Location::Path, true));
     return *this;
+  }
+
+  template <typename T>
+  PathBuilder &query(std::string name, std::string description, bool required) {
+     path_->parameters.push_back(
+         Parameter::create<T>(std::move(name), std::move(description), Location::Query, required));
+     return *this;
   }
 
   PathBuilder &response(Http::Code statusCode, std::string description) {
@@ -363,8 +381,14 @@ struct SubPath {
 
   template <typename T>
   void parameter(std::string name, std::string description) {
-    parameters.push_back(
-        Parameter::create<T>(std::move(name), std::move(description)));
+     parameters.push_back(
+         Parameter::create<T>(std::move(name), std::move(description), Location::Path, true));
+  }
+
+  template <typename T>
+  void query(std::string name, std::string description, bool required) {
+     parameters.push_back(
+         Parameter::create<T>(std::move(name), std::move(description), Location::Query, required));
   }
 
   std::string prefix;

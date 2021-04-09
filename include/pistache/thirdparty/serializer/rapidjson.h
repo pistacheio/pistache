@@ -62,13 +62,18 @@ void serializePC(Writer &writer, const Schema::ProduceConsume &pc) {
 
 template <typename Writer>
 void serializeParameter(Writer &writer, const Schema::Parameter &parameter) {
+#define LOC(_, name) name,
+  static char* locations[] = {
+          PARAMETER_LOCATIONS
+  };
+#undef LOC
   writer.StartObject();
   {
     writer.String("name");
     writer.String(parameter.name.c_str());
     writer.String("in");
     // @Feature: support other types of parameters
-    writer.String("path");
+    writer.String(locations[static_cast<size_t>(parameter.location)]);
     writer.String("description");
     writer.String(parameter.description.c_str());
     writer.String("required");
