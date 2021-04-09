@@ -47,3 +47,13 @@ pistache_dep = declare_dependency(link_with: libpistache, include_directories: i
 if meson.version().version_compare('>=0.54.0')
 	meson.override_dependency('pistache', pistache_dep)
 endif
+
+pkg = import('pkgconfig')
+pkg.generate(
+   libpistache,
+   name: 'Pistache',
+   description: 'An elegant C++ REST framework.',
+   url: 'http://pistache.io',
+   version: pistache_version_str+'-git'+version_data_conf.get_unquoted('VERSION_GIT_DATE'),
+   filebase: 'libpistache'
+)
