@@ -22,6 +22,7 @@ install_headers([
 	'log.h',
 	'mailbox.h',
 	'mime.h',
+	'meta.h',
 	'net.h',
 	'optional.h',
 	'os.h',
