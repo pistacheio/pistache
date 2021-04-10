@@ -120,7 +120,7 @@ YOURPROJECT_LIBS="$YOURPROJECT_LIBS $libpistache_LIBS"
 
 ### Meson
 
-To use with Meson, you just need to add `dependency('pistache')` as a dependency for your executable. If you have this repository as a submodule in the `subprojects` directory of your project, Meson will automatically build the library from source if it is not installed on the system.
+To use with Meson, you just need to add `dependency('libpistache')` as a dependency for your executable.
 
 ```meson
 project(
@@ -132,14 +132,26 @@ project(
 executable(
     'MyPistacheExecutable',
     sources: 'main.cpp',
-    dependencies: dependency('pistache')
+    dependencies: dependency('libpistache')
 )
 ```
 
-If you're using a Meson version older than 0.55.0 you'll have to use the "older" syntax for `depependecy()`:
+If you want to build the library from source in case the dependency is not found on the system, you can add this repository as a submodule in the `subprojects` directory of your project, and edit the `dependency()` call as follows:
 
 ```meson
-dependencies: dependency('pistache', fallback ['pistache', 'pistache_dep'])
+dependencies: dependency('libpistache', fallback: 'pistache')
+```
+
+If you're using a Meson version older than 0.55.0 you'll have to use the "older" syntax for `dependency()`:
+
+```meson
+dependencies: dependency('libpistache', fallback: ['pistache', 'pistache_dep'])
+```
+
+Lastly, if you'd like to build the fallback as a static library you can specify it with the `default_options` keyword:
+
+```meson
+dependencies: dependency('libpistache', fallback: 'pistache', default_options: 'default_library=static')
 ```
 
 ### CMake
