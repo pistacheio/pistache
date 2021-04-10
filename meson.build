@@ -14,10 +14,6 @@ project(
 )
 
 compiler = meson.get_compiler('cpp')
-compiler_id = compiler.get_id()
-prefix = get_option('prefix')
-pc_lib = '-lpistache'
-pc_libs_private = ['-pthread']
 
 # Wrapping arguments inside a call to get_supported_arguments so that only supported arguments get applied
 # No need for -Wall -Wextra -Wpedantic, since warning_level is 3
@@ -28,49 +24,10 @@ if get_option('b_coverage')
 	add_project_arguments(compiler.get_supported_arguments(['-fstack-protector-all', '--param=ssp-buffer-size=4']), language: 'cpp')
 endif
 
-##### BEGIN CheckAtomic.cmake
-is_libatomic_needed = false
-
-cxx_atomics_check_code = '''
-#include <atomic>
-std::atomic<int> x;
-int main(){return x;}
-'''
-has_working_cxx_atomics = compiler.compiles(cxx_atomics_check_code, name: 'std::atomic')
-if (compiler_id.contains('clang') or compiler_id.contains('gcc')) and not has_working_cxx_atomics
-	assert(compiler.has_function('__atomic_fetch_add_4', args: '-latomic'), 'Host compiler appears to require libatomic, but cannot find it.')
-	has_working_cxx_atomics = compiler.compiles(cxx_atomics_check_code, args: '-latomic', name: 'std::atomic with libatomic')
-	assert(has_working_cxx_atomics, 'Host compiler must support std::atomic!')
-	is_libatomic_needed = true
-endif
-
-cxx_atomics64_check_code = '''
-#include <atomic>
-#include <cstdint>
-std::atomic<uint64_t> x(0);
-int main() {
-uint64_t i = x.load(std::memory_order_relaxed);
-return 0;
-}
-'''
-has_working_cxx_atomics64 = compiler.compiles(cxx_atomics64_check_code, name: 'std::atomic<uint64_t>')
-if not has_working_cxx_atomics64
-	assert(compiler.has_function('__atomic_load_8', args: '-latomic'), 'Host compiler appears to require libatomic for 64-bit operations, but cannot find it.')
-	has_working_cxx_atomics = compiler.compiles(cxx_atomics_check_code, args: '-latomic', name: 'std::atomic<uint64_t> with libatomic')
-	assert(has_working_cxx_atomics, 'Host compiler must support 64-bit std::atomic')
-	is_libatomic_needed = true
-endif
-##### END CheckAtomic.cmake
-
-if is_libatomic_needed
-	pc_libs_private += '-latomic'
-endif
-
 deps_libpistache = [dependency('threads'), dependency('RapidJSON', fallback: ['rapidjson', 'rapidjson_dep'])]
 
 if get_option('PISTACHE_USE_SSL')
 	deps_libpistache += dependency('openssl')
-	pc_libs_private += ['-lssl', '-lcrypto']
 endif
 
 version_data_raw = ''
@@ -93,16 +50,6 @@ endforeach
 
 pistache_version_str = '.'.join([version_data_conf.get_unquoted('VERSION_MAJOR'), version_data_conf.get_unquoted('VERSION_MINOR'), version_data_conf.get_unquoted('VERSION_PATCH')])
 pistache_soversion_str = '.'.join([version_data_conf.get_unquoted('SONAME_VERSION_MAJOR'), version_data_conf.get_unquoted('SONAME_VERSION_MINOR')])
-
-configure_file(input: 'libpistache.pc.in', output: 'libpistache.pc', install: get_option('PISTACHE_INSTALL'), install_dir: get_option('libdir')/'pkgconfig', configuration: {
-	'prefix': prefix,
-	'exec_prefix': prefix/get_option('bindir'),
-	'libdir': prefix/get_option('libdir'),
-	'libs': pc_lib,
-	'libs_private': ' '.join(pc_libs_private),
-	'includedir': prefix/get_option('includedir'),
-	'version': pistache_version_str+'-git'+version_data_conf.get_unquoted('VERSION_GIT_DATE')
-})
 
 incl_pistache = include_directories('include')
 

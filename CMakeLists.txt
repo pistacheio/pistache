@@ -14,9 +14,6 @@ project (pistache
 include(GNUInstallDirs)
 
 add_compile_options(-Wall -Wconversion -pedantic -Wextra -Wno-missing-field-initializers)
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/CMakeModules)
-
-include(CheckAtomic)
 
 option(BUILD_SHARED_LIBS "build shared library" ON)
 option(PISTACHE_BUILD_TESTS "build tests alongside the project" OFF)
