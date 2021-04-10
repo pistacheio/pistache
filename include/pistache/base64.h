@@ -17,13 +17,6 @@
 #include <string>
 #include <vector>
 
-#if __cplusplus < 201703L
-namespace std
-{
-    typedef uint8_t byte;
-}
-#endif
-
 // A class for performing decoding to raw bytes from base 64 encoding...
 class Base64Decoder
 {

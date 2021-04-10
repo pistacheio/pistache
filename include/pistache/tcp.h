@@ -13,54 +13,51 @@
 #include <pistache/flags.h>
 #include <pistache/prototype.h>
 
-namespace Pistache
+namespace Pistache::Tcp
 {
-    namespace Tcp
+
+    class Peer;
+    class Transport;
+
+    enum class Options : uint64_t {
+        None        = 0,
+        NoDelay     = 1,
+        Linger      = NoDelay << 1,
+        FastOpen    = Linger << 1,
+        QuickAck    = FastOpen << 1,
+        ReuseAddr   = QuickAck << 1,
+        ReusePort   = ReuseAddr << 1,
+        CloseOnExec = ReusePort << 1,
+    };
+
+    DECLARE_FLAGS_OPERATORS(Options)
+
+    class Handler : public Prototype<Handler>
     {
+    public:
+        friend class Transport;
 
-        class Peer;
-        class Transport;
+        Handler();
+        virtual ~Handler();
 
-        enum class Options : uint64_t {
-            None        = 0,
-            NoDelay     = 1,
-            Linger      = NoDelay << 1,
-            FastOpen    = Linger << 1,
-            QuickAck    = FastOpen << 1,
-            ReuseAddr   = QuickAck << 1,
-            ReusePort   = ReuseAddr << 1,
-            CloseOnExec = ReusePort << 1,
-        };
+        virtual void onInput(const char* buffer, size_t len,
+                             const std::shared_ptr<Tcp::Peer>& peer)
+            = 0;
 
-        DECLARE_FLAGS_OPERATORS(Options)
+        virtual void onConnection(const std::shared_ptr<Tcp::Peer>& peer);
+        virtual void onDisconnection(const std::shared_ptr<Tcp::Peer>& peer);
 
-        class Handler : public Prototype<Handler>
+    private:
+        void associateTransport(Transport* transport);
+        Transport* transport_;
+
+    protected:
+        Transport* transport()
         {
-        public:
-            friend class Transport;
+            if (!transport_)
+                throw std::logic_error("Orphaned handler");
+            return transport_;
+        }
+    };
 
-            Handler();
-            virtual ~Handler();
-
-            virtual void onInput(const char* buffer, size_t len,
-                                 const std::shared_ptr<Tcp::Peer>& peer)
-                = 0;
-
-            virtual void onConnection(const std::shared_ptr<Tcp::Peer>& peer);
-            virtual void onDisconnection(const std::shared_ptr<Tcp::Peer>& peer);
-
-        private:
-            void associateTransport(Transport* transport);
-            Transport* transport_;
-
-        protected:
-            Transport* transport()
-            {
-                if (!transport_)
-                    throw std::logic_error("Orphaned handler");
-                return transport_;
-            }
-        };
-
-    } // namespace Tcp
-} // namespace Pistache
+} // namespace Pistache::Tcp

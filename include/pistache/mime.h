@@ -14,12 +14,8 @@
 
 #include <pistache/optional.h>
 
-namespace Pistache
+namespace Pistache::Http::Mime
 {
-    namespace Http
-    {
-        namespace Mime
-        {
 
 #define MIME_TYPES                   \
     TYPE(Star, "*")                  \
@@ -61,195 +57,193 @@ namespace Pistache
     SUFFIX(Zip, "zip", "ZIP file storage")             \
     SUFFIX(Xml, "xml", "Extensible Markup Language")
 
-            enum class Type {
+    enum class Type {
 #define TYPE(val, _) val,
-                MIME_TYPES
+        MIME_TYPES
 #undef TYPE
-                    None
-            };
+            None
+    };
 
-            enum class Subtype {
+    enum class Subtype {
 #define SUB_TYPE(val, _) val,
-                MIME_SUBTYPES
+        MIME_SUBTYPES
 #undef SUB_TYPE
-                    Vendor,
-                Ext,
-                None
-            };
+            Vendor,
+        Ext,
+        None
+    };
 
-            enum class Suffix {
+    enum class Suffix {
 #define SUFFIX(val, _, __) val,
-                MIME_SUFFIXES
+        MIME_SUFFIXES
 #undef SUFFIX
-                    None,
-                Ext
-            };
+            None,
+        Ext
+    };
 
-            // 3.9 Quality Values
-            class Q
+    // 3.9 Quality Values
+    class Q
+    {
+    public:
+        // typedef uint8_t Type;
+
+        typedef uint16_t Type;
+
+        explicit Q(Type val)
+            : val_()
+        {
+            if (val > 100)
             {
-            public:
-                // typedef uint8_t Type;
+                throw std::runtime_error(
+                    "Invalid quality value, must be in the [0; 100] range");
+            }
 
-                typedef uint16_t Type;
+            val_ = val;
+        }
 
-                explicit Q(Type val)
-                    : val_()
-                {
-                    if (val > 100)
-                    {
-                        throw std::runtime_error(
-                            "Invalid quality value, must be in the [0; 100] range");
-                    }
+        static Q fromFloat(double f)
+        {
+            return Q(static_cast<Type>(round(f * 100.0)));
+        }
 
-                    val_ = val;
-                }
+        Type value() const { return val_; }
+        operator Type() const { return val_; }
 
-                static Q fromFloat(double f)
-                {
-                    return Q(static_cast<Type>(round(f * 100.0)));
-                }
+        std::string toString() const;
 
-                Type value() const { return val_; }
-                operator Type() const { return val_; }
+    private:
+        Type val_;
+    };
 
-                std::string toString() const;
+    inline bool operator==(Q lhs, Q rhs) { return lhs.value() == rhs.value(); }
 
-            private:
-                Type val_;
-            };
+    // 3.7 Media Types
+    class MediaType
+    {
+    public:
+        enum Parse { DoParse,
+                     DontParse };
 
-            inline bool operator==(Q lhs, Q rhs) { return lhs.value() == rhs.value(); }
+        MediaType()
+            : top_(Type::None)
+            , sub_(Subtype::None)
+            , suffix_(Suffix::None)
+            , raw_()
+            , rawSubIndex()
+            , rawSuffixIndex()
+            , params()
+            , q_()
+        { }
 
-            // 3.7 Media Types
-            class MediaType
+        explicit MediaType(std::string raw, Parse parse = DontParse)
+            : top_(Type::None)
+            , sub_(Subtype::None)
+            , suffix_(Suffix::None)
+            , raw_()
+            , rawSubIndex()
+            , rawSuffixIndex()
+            , params()
+            , q_()
+        {
+            if (parse == DoParse)
             {
-            public:
-                enum Parse { DoParse,
-                             DontParse };
+                parseRaw(raw.c_str(), raw.length());
+            }
+            else
+            {
+                raw_ = std::move(raw);
+            }
+        }
 
-                MediaType()
-                    : top_(Type::None)
-                    , sub_(Subtype::None)
-                    , suffix_(Suffix::None)
-                    , raw_()
-                    , rawSubIndex()
-                    , rawSuffixIndex()
-                    , params()
-                    , q_()
-                { }
+        MediaType(Mime::Type top, Mime::Subtype sub)
+            : top_(top)
+            , sub_(sub)
+            , suffix_(Suffix::None)
+            , raw_()
+            , rawSubIndex()
+            , rawSuffixIndex()
+            , params()
+            , q_()
+        { }
 
-                explicit MediaType(std::string raw, Parse parse = DontParse)
-                    : top_(Type::None)
-                    , sub_(Subtype::None)
-                    , suffix_(Suffix::None)
-                    , raw_()
-                    , rawSubIndex()
-                    , rawSuffixIndex()
-                    , params()
-                    , q_()
-                {
-                    if (parse == DoParse)
-                    {
-                        parseRaw(raw.c_str(), raw.length());
-                    }
-                    else
-                    {
-                        raw_ = std::move(raw);
-                    }
-                }
+        MediaType(Mime::Type top, Mime::Subtype sub, Mime::Suffix suffix)
+            : top_(top)
+            , sub_(sub)
+            , suffix_(suffix)
+            , raw_()
+            , rawSubIndex()
+            , rawSuffixIndex()
+            , params()
+            , q_()
+        { }
 
-                MediaType(Mime::Type top, Mime::Subtype sub)
-                    : top_(top)
-                    , sub_(sub)
-                    , suffix_(Suffix::None)
-                    , raw_()
-                    , rawSubIndex()
-                    , rawSuffixIndex()
-                    , params()
-                    , q_()
-                { }
+        void parseRaw(const char* str, size_t len);
+        static MediaType fromRaw(const char* str, size_t len);
 
-                MediaType(Mime::Type top, Mime::Subtype sub, Mime::Suffix suffix)
-                    : top_(top)
-                    , sub_(sub)
-                    , suffix_(suffix)
-                    , raw_()
-                    , rawSubIndex()
-                    , rawSuffixIndex()
-                    , params()
-                    , q_()
-                { }
+        static MediaType fromString(const std::string& str);
+        static MediaType fromString(std::string&& str);
 
-                void parseRaw(const char* str, size_t len);
-                static MediaType fromRaw(const char* str, size_t len);
+        static MediaType fromFile(const char* fileName);
 
-                static MediaType fromString(const std::string& str);
-                static MediaType fromString(std::string&& str);
+        Mime::Type top() const { return top_; }
+        Mime::Subtype sub() const { return sub_; }
+        Mime::Suffix suffix() const { return suffix_; }
 
-                static MediaType fromFile(const char* fileName);
+        std::string rawSub() const { return rawSubIndex.splice(raw_); }
 
-                Mime::Type top() const { return top_; }
-                Mime::Subtype sub() const { return sub_; }
-                Mime::Suffix suffix() const { return suffix_; }
+        std::string raw() const { return raw_; }
 
-                std::string rawSub() const { return rawSubIndex.splice(raw_); }
+        const Optional<Q>& q() const { return q_; }
+        void setQuality(Q quality);
 
-                std::string raw() const { return raw_; }
+        Optional<std::string> getParam(const std::string& name) const;
+        void setParam(const std::string& name, std::string value);
 
-                const Optional<Q>& q() const { return q_; }
-                void setQuality(Q quality);
+        std::string toString() const;
+        bool isValid() const;
 
-                Optional<std::string> getParam(const std::string& name) const;
-                void setParam(const std::string& name, std::string value);
+    private:
+        Mime::Type top_;
+        Mime::Subtype sub_;
+        Mime::Suffix suffix_;
 
-                std::string toString() const;
-                bool isValid() const;
-
-            private:
-                Mime::Type top_;
-                Mime::Subtype sub_;
-                Mime::Suffix suffix_;
-
-                /* Let's save some extra memory allocations by only storing the
+        /* Let's save some extra memory allocations by only storing the
      raw MediaType along with indexes of the relevant parts
      Note: experimental for now as it might not be a good idea
   */
-                std::string raw_;
+        std::string raw_;
 
-                struct Index
-                {
-                    size_t beg;
-                    size_t end;
+        struct Index
+        {
+            size_t beg;
+            size_t end;
 
-                    std::string splice(const std::string& str) const
-                    {
-                        assert(end >= beg);
-                        return str.substr(beg, end - beg + 1);
-                    }
-                };
-
-                Index rawSubIndex;
-                Index rawSuffixIndex;
-
-                std::unordered_map<std::string, std::string> params;
-
-                Optional<Q> q_;
-            };
-
-            inline bool operator==(const MediaType& lhs, const MediaType& rhs)
+            std::string splice(const std::string& str) const
             {
-                return lhs.top() == rhs.top() && lhs.sub() == rhs.sub() && lhs.suffix() == rhs.suffix();
+                assert(end >= beg);
+                return str.substr(beg, end - beg + 1);
             }
+        };
 
-            inline bool operator!=(const MediaType& lhs, const MediaType& rhs)
-            {
-                return !operator==(lhs, rhs);
-            }
+        Index rawSubIndex;
+        Index rawSuffixIndex;
 
-        } // namespace Mime
-    } // namespace Http
-} // namespace Pistache
+        std::unordered_map<std::string, std::string> params;
+
+        Optional<Q> q_;
+    };
+
+    inline bool operator==(const MediaType& lhs, const MediaType& rhs)
+    {
+        return lhs.top() == rhs.top() && lhs.sub() == rhs.sub() && lhs.suffix() == rhs.suffix();
+    }
+
+    inline bool operator!=(const MediaType& lhs, const MediaType& rhs)
+    {
+        return !operator==(lhs, rhs);
+    }
+
+} // namespace Pistache::Http::Mime
 
 #define MIME(top, sub)                                               \
     Pistache::Http::Mime::MediaType(Pistache::Http::Mime::Type::top, \

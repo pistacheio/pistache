@@ -848,15 +848,13 @@ namespace Pistache
                 [](const std::shared_ptr<Connection>& conn) { return conn->isIdle(); });
         }
 
-        size_t ConnectionPool::availableConnections(const std::string& domain) const
+        size_t ConnectionPool::availableConnections(const std::string& /*domain*/) const
         {
-            UNUSED(domain)
             return 0;
         }
 
-        void ConnectionPool::closeIdleConnections(const std::string& domain)
+        void ConnectionPool::closeIdleConnections(const std::string& /*domain*/)
         {
-            UNUSED(domain)
         }
 
         void ConnectionPool::shutdown()

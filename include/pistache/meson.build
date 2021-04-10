@@ -34,7 +34,6 @@ install_headers([
 	'ssl_wrappers.h',
 	'stream.h',
 	'string_logger.h',
-	'string_view.h',
 	'tcp.h',
 	'timer_pool.h',
 	'transport.h',

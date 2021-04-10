@@ -166,10 +166,9 @@ class MyHandler : public Http::Handler
     }
 
     void onTimeout(
-        const Http::Request& req,
+        const Http::Request& /*req*/,
         Http::ResponseWriter response) override
     {
-        UNUSED(req);
         response
             .send(Http::Code::Request_Timeout, "Timeout")
             .then([=](ssize_t) {}, PrintException());
