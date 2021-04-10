@@ -139,7 +139,7 @@ executable(
 If you're using a Meson version older than 0.55.0 you'll have to use the "older" syntax for `depependecy()`:
 
 ```meson
-dependencies: dependency('pistache', fallback ['pistache', 'pistache_static_dep'])
+dependencies: dependency('pistache', fallback ['pistache', 'pistache_dep'])
 ```
 
 ### CMake
