@@ -7,24 +7,31 @@
 #include <pistache/peer.h>
 #include <pistache/tcp.h>
 
-namespace Pistache {
-namespace Tcp {
+namespace Pistache
+{
+    namespace Tcp
+    {
 
-Handler::Handler() : transport_(nullptr) {}
+        Handler::Handler()
+            : transport_(nullptr)
+        { }
 
-Handler::~Handler() {}
+        Handler::~Handler() { }
 
-void Handler::associateTransport(Transport *transport) {
-  transport_ = transport;
-}
+        void Handler::associateTransport(Transport* transport)
+        {
+            transport_ = transport;
+        }
 
-void Handler::onConnection(const std::shared_ptr<Tcp::Peer> &peer) {
-  UNUSED(peer)
-}
+        void Handler::onConnection(const std::shared_ptr<Tcp::Peer>& peer)
+        {
+            UNUSED(peer)
+        }
 
-void Handler::onDisconnection(const std::shared_ptr<Tcp::Peer> &peer) {
-  UNUSED(peer)
-}
+        void Handler::onDisconnection(const std::shared_ptr<Tcp::Peer>& peer)
+        {
+            UNUSED(peer)
+        }
 
-} // namespace Tcp
+    } // namespace Tcp
 } // namespace Pistache

@@ -7,41 +7,48 @@
 
 #pragma once
 
-#include <memory>
 #include <iostream>
+#include <memory>
 
-namespace Pistache {
-namespace Log {
+namespace Pistache
+{
+    namespace Log
+    {
 
-enum class Level {
-  TRACE,
-  DEBUG,
-  INFO,
-  WARN,
-  ERROR,
-  FATAL
-};
+        enum class Level {
+            TRACE,
+            DEBUG,
+            INFO,
+            WARN,
+            ERROR,
+            FATAL
+        };
 
-class StringLogger {
-public:
-  virtual void log(Level level, const std::string &message) = 0;
-  virtual bool isEnabledFor(Level level) const = 0;
+        class StringLogger
+        {
+        public:
+            virtual void log(Level level, const std::string& message) = 0;
+            virtual bool isEnabledFor(Level level) const              = 0;
 
-  virtual ~StringLogger() {}
-};
+            virtual ~StringLogger() { }
+        };
 
-class StringToStreamLogger : public StringLogger {
-public:
-  explicit StringToStreamLogger(Level level, std::ostream *out = &std::cerr)
-    : level_(level), out_(out) {}
-  ~StringToStreamLogger() override {}
+        class StringToStreamLogger : public StringLogger
+        {
+        public:
+            explicit StringToStreamLogger(Level level, std::ostream* out = &std::cerr)
+                : level_(level)
+                , out_(out)
+            { }
+            ~StringToStreamLogger() override { }
 
-  void log(Level level, const std::string &message) override;
-  bool isEnabledFor(Level level) const override;
-private:
-  Level level_;
-  std::ostream* out_;
-};
+            void log(Level level, const std::string& message) override;
+            bool isEnabledFor(Level level) const override;
 
-} // namespace Log
+        private:
+            Level level_;
+            std::ostream* out_;
+        };
+
+    } // namespace Log
 } // namespace Pistache

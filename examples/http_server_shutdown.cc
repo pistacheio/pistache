@@ -3,31 +3,34 @@
 
 using namespace Pistache;
 
-class HelloHandler : public Http::Handler {
+class HelloHandler : public Http::Handler
+{
 public:
-
     HTTP_PROTOTYPE(HelloHandler)
 
-    void onRequest(const Http::Request& request, Http::ResponseWriter response) override {
+    void onRequest(const Http::Request& request, Http::ResponseWriter response) override
+    {
         UNUSED(request);
         response.send(Pistache::Http::Code::Ok, "Hello World\n");
     }
 };
 
-int main() {
+int main()
+{
     sigset_t signals;
     if (sigemptyset(&signals) != 0
-            || sigaddset(&signals, SIGTERM) != 0
-            || sigaddset(&signals, SIGINT) != 0
-            || sigaddset(&signals, SIGHUP) != 0
-            || pthread_sigmask(SIG_BLOCK, &signals, nullptr) != 0) {
+        || sigaddset(&signals, SIGTERM) != 0
+        || sigaddset(&signals, SIGINT) != 0
+        || sigaddset(&signals, SIGHUP) != 0
+        || pthread_sigmask(SIG_BLOCK, &signals, nullptr) != 0)
+    {
         perror("install signal handler failed");
         return 1;
     }
 
     Pistache::Address addr(Pistache::Ipv4::any(), Pistache::Port(9080));
     auto opts = Pistache::Http::Endpoint::options()
-        .threads(1);
+                    .threads(1);
 
     Http::Endpoint server(addr);
     server.init(opts);

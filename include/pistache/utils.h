@@ -34,6 +34,6 @@
  *
  * [1] https://www.openssl.org/docs/manmaster/man3/SSL_sendfile.html
  */
-ssize_t SSL_sendfile(SSL *out, int in, off_t *offset, size_t count);
+ssize_t SSL_sendfile(SSL* out, int in, off_t* offset, size_t count);
 
 #endif /* PISTACHE_USE_SSL */

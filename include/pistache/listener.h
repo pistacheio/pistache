@@ -26,93 +26,97 @@
 #include <openssl/ssl.h>
 #endif /* PISTACHE_USE_SSL */
 
-namespace Pistache {
-namespace Tcp {
+namespace Pistache
+{
+    namespace Tcp
+    {
 
-class Peer;
-class Transport;
+        class Peer;
+        class Transport;
 
-void setSocketOptions(Fd fd, Flags<Options> options);
+        void setSocketOptions(Fd fd, Flags<Options> options);
 
-class Listener {
-public:
-  struct Load {
-    using TimePoint = std::chrono::system_clock::time_point;
-    double global;
-    std::vector<double> workers;
+        class Listener
+        {
+        public:
+            struct Load
+            {
+                using TimePoint = std::chrono::system_clock::time_point;
+                double global;
+                std::vector<double> workers;
 
-    std::vector<rusage> raw;
-    TimePoint tick;
-  };
+                std::vector<rusage> raw;
+                TimePoint tick;
+            };
 
-  using TransportFactory = std::function<std::shared_ptr<Transport> ()>;
+            using TransportFactory = std::function<std::shared_ptr<Transport>()>;
 
-  Listener();
-  ~Listener();
+            Listener();
+            ~Listener();
 
-  explicit Listener(const Address &address);
-  void init(size_t workers,
-            Flags<Options> options = Flags<Options>(Options::None),
-            const std::string &workersName = "",
-            int backlog = Const::MaxBacklog,
-            PISTACHE_STRING_LOGGER_T logger = PISTACHE_NULL_STRING_LOGGER);
+            explicit Listener(const Address& address);
+            void init(size_t workers,
+                      Flags<Options> options          = Flags<Options>(Options::None),
+                      const std::string& workersName  = "",
+                      int backlog                     = Const::MaxBacklog,
+                      PISTACHE_STRING_LOGGER_T logger = PISTACHE_NULL_STRING_LOGGER);
 
-  void setTransportFactory(TransportFactory factory);
-  void setHandler(const std::shared_ptr<Handler> &handler);
+            void setTransportFactory(TransportFactory factory);
+            void setHandler(const std::shared_ptr<Handler>& handler);
 
-  void bind();
-  void bind(const Address &address);
+            void bind();
+            void bind(const Address& address);
 
-  bool isBound() const;
-  Port getPort() const;
+            bool isBound() const;
+            Port getPort() const;
 
-  void run();
-  void runThreaded();
+            void run();
+            void runThreaded();
 
-  void shutdown();
+            void shutdown();
 
-  Async::Promise<Load> requestLoad(const Load &old);
+            Async::Promise<Load> requestLoad(const Load& old);
 
-  Options options() const;
-  Address address() const;
+            Options options() const;
+            Address address() const;
 
-  void pinWorker(size_t worker, const CpuSet &set);
+            void pinWorker(size_t worker, const CpuSet& set);
 
-  void setupSSL(const std::string &cert_path, const std::string &key_path,
-                bool use_compression);
-  void setupSSLAuth(const std::string &ca_file, const std::string &ca_path,
-                    int (*cb)(int, void *));
+            void setupSSL(const std::string& cert_path, const std::string& key_path,
+                          bool use_compression);
+            void setupSSLAuth(const std::string& ca_file, const std::string& ca_path,
+                              int (*cb)(int, void*));
 
-private:
-  Address addr_;
-  int listen_fd = -1;
-  int backlog_ = Const::MaxBacklog;
-  NotifyFd shutdownFd;
-  Polling::Epoll poller;
+        private:
+            Address addr_;
+            int listen_fd = -1;
+            int backlog_  = Const::MaxBacklog;
+            NotifyFd shutdownFd;
+            Polling::Epoll poller;
 
-  Flags<Options> options_;
-  std::thread acceptThread;
+            Flags<Options> options_;
+            std::thread acceptThread;
 
-  size_t workers_ = Const::DefaultWorkers;
-  std::string workersName_;
-  std::shared_ptr<Handler> handler_;
+            size_t workers_ = Const::DefaultWorkers;
+            std::string workersName_;
+            std::shared_ptr<Handler> handler_;
 
-  Aio::Reactor reactor_;
-  Aio::Reactor::Key transportKey;
+            Aio::Reactor reactor_;
+            Aio::Reactor::Key transportKey;
 
-  TransportFactory transportFactory_;
+            TransportFactory transportFactory_;
 
-  TransportFactory defaultTransportFactory() const;
+            TransportFactory defaultTransportFactory() const;
 
-  void handleNewConnection();
-  int acceptConnection(struct sockaddr_in &peer_addr) const;
-  void dispatchPeer(const std::shared_ptr<Peer> &peer);
+            void handleNewConnection();
+            int acceptConnection(struct sockaddr_in& peer_addr) const;
+            void dispatchPeer(const std::shared_ptr<Peer>& peer);
 
-  bool useSSL_ = false;
-  ssl::SSLCtxPtr ssl_ctx_ = nullptr;
+            bool useSSL_            = false;
+            ssl::SSLCtxPtr ssl_ctx_ = nullptr;
 
-  PISTACHE_STRING_LOGGER_T logger_ = PISTACHE_NULL_STRING_LOGGER;
-};
+            PISTACHE_STRING_LOGGER_T logger_ = PISTACHE_NULL_STRING_LOGGER;
+        };
 
-} // namespace Tcp
+    } // namespace Tcp
 } // namespace Pistache

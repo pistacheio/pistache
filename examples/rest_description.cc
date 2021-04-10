@@ -4,37 +4,42 @@
    Example of how to use the Description mechanism
 */
 
-#include <pistache/http.h>
 #include <pistache/description.h>
 #include <pistache/endpoint.h>
+#include <pistache/http.h>
 
 #include <pistache/thirdparty/serializer/rapidjson.h>
 
 using namespace Pistache;
 
-namespace Generic {
+namespace Generic
+{
 
-void handleReady(const Rest::Request&, Http::ResponseWriter response) {
-    response.send(Http::Code::Ok, "1");
+    void handleReady(const Rest::Request&, Http::ResponseWriter response)
+    {
+        response.send(Http::Code::Ok, "1");
+    }
+
 }
 
-}
-
-class BankerService {
+class BankerService
+{
 public:
     BankerService(Address addr)
         : httpEndpoint(std::make_shared<Http::Endpoint>(addr))
         , desc("Banking API", "0.1")
     { }
 
-    void init(size_t thr = 2) {
+    void init(size_t thr = 2)
+    {
         auto opts = Http::Endpoint::options()
-            .threads(static_cast<int>(thr));
+                        .threads(static_cast<int>(thr));
         httpEndpoint->init(opts);
         createDescription();
     }
 
-    void start() {
+    void start()
+    {
         router.initFromDescription(desc);
 
         Rest::Swagger swagger(desc);
@@ -50,13 +55,13 @@ public:
     }
 
 private:
-    void createDescription() {
+    void createDescription()
+    {
         desc
             .info()
             .license("Apache", "http://www.apache.org/licenses/LICENSE-2.0");
 
-        auto backendErrorResponse =
-            desc.response(Http::Code::Internal_Server_Error, "An error occured with the backend");
+        auto backendErrorResponse = desc.response(Http::Code::Internal_Server_Error, "An error occured with the backend");
 
         desc
             .schemes(Rest::Scheme::Http)
@@ -106,22 +111,25 @@ private:
             .produces(MIME(Application, Json))
             .response(Http::Code::Ok, "Budget has been added to the account")
             .response(backendErrorResponse);
-
     }
 
-    void retrieveAllAccounts(const Rest::Request&, Http::ResponseWriter response) {
+    void retrieveAllAccounts(const Rest::Request&, Http::ResponseWriter response)
+    {
         response.send(Http::Code::Ok, "No Account");
     }
 
-    void retrieveAccount(const Rest::Request&, Http::ResponseWriter response) {
+    void retrieveAccount(const Rest::Request&, Http::ResponseWriter response)
+    {
         response.send(Http::Code::Ok, "The bank is closed, come back later");
     }
 
-    void createAccount(const Rest::Request&, Http::ResponseWriter response) {
+    void createAccount(const Rest::Request&, Http::ResponseWriter response)
+    {
         response.send(Http::Code::Ok, "The bank is closed, come back later");
     }
 
-    void creditAccount(const Rest::Request&, Http::ResponseWriter response) {
+    void creditAccount(const Rest::Request&, Http::ResponseWriter response)
+    {
         response.send(Http::Code::Ok, "The bank is closed, come back later");
     }
 
@@ -130,12 +138,14 @@ private:
     Rest::Router router;
 };
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[])
+{
     Port port(9080);
 
     int thr = 2;
 
-    if (argc >= 2) {
+    if (argc >= 2)
+    {
         port = static_cast<uint16_t>(std::stol(argv[1]));
 
         if (argc == 3)
