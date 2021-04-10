@@ -45,7 +45,7 @@ libpistache = library(
 pistache_dep = declare_dependency(link_with: libpistache, include_directories: incl_pistache)
 
 if meson.version().version_compare('>=0.54.0')
-	meson.override_dependency('pistache', pistache_dep)
+	meson.override_dependency('libpistache', pistache_dep)
 endif
 
 pkg = import('pkgconfig')
