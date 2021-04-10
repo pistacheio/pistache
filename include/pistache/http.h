@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
@@ -21,6 +22,7 @@
 #include <pistache/cookie.h>
 #include <pistache/http_defs.h>
 #include <pistache/http_headers.h>
+#include <pistache/meta.h>
 #include <pistache/mime.h>
 #include <pistache/net.h>
 #include <pistache/stream.h>
@@ -212,7 +214,7 @@ public:
   friend class ResponseWriter;
 
   explicit Timeout(Timeout &&other)
-      : handler(other.handler), request(std::move(other.request)),
+      : handler(other.handler),
         transport(other.transport), armed(other.armed), timerFd(other.timerFd),
         peer(std::move(other.peer)) {
     // cppcheck-suppress useInitializationList
@@ -222,7 +224,7 @@ public:
   Timeout &operator=(Timeout &&other) {
     handler = other.handler;
     transport = other.transport;
-    request = std::move(other.request);
+    version = other.version;
     armed = other.armed;
     timerFd = other.timerFd;
     other.timerFd = -1;
@@ -256,13 +258,13 @@ public:
 private:
   Timeout(const Timeout &other) = default;
 
-  Timeout(Tcp::Transport *transport_, Handler *handler_,
+  Timeout(Tcp::Transport *transport_, Http::Version version, Handler *handler_,
           std::weak_ptr<Tcp::Peer> peer_);
 
   void onTimeout(uint64_t numWakeup);
 
   Handler *handler;
-  Request request;
+  Http::Version version;
   Tcp::Transport *transport;
   bool armed;
   Fd timerFd;
@@ -354,6 +356,9 @@ public:
 
   friend class Private::ResponseLineStep;
 
+  ResponseWriter(Http::Version version, Tcp::Transport *transport,
+                 Handler *handler, std::weak_ptr<Tcp::Peer> peer);
+
   //
   // C++11: std::weak_ptr move constructor is C++14 only so the default
   // version of move constructor / assignement operator does not work and we
@@ -423,9 +428,6 @@ public:
   }
 
 private:
-  ResponseWriter(Http::Version version, Tcp::Transport *transport,
-                 Handler *handler, std::weak_ptr<Tcp::Peer> peer);
-
   ResponseWriter(const ResponseWriter &other);
 
   Async::Promise<ssize_t> sendImpl(Code code, const char *data,
@@ -449,12 +451,14 @@ serveFile(ResponseWriter &writer, const std::string &fileName,
 namespace Private {
 
 enum class State { Again, Next, Done };
+using StepId = uint64_t;
 
 struct Step {
   explicit Step(Message *request);
 
   virtual ~Step() = default;
 
+  virtual StepId id() const = 0;
   virtual State apply(StreamCursor &cursor) = 0;
 
   static void raise(const char *msg, Code code = Code::Bad_Request);
@@ -465,30 +469,42 @@ protected:
 
 class RequestLineStep : public Step {
 public:
+  static constexpr StepId Id = Meta::Hash::fnv1a("RequestLine");
+
   explicit RequestLineStep(Request *request) : Step(request) {}
 
+  StepId id() const override { return Id; }
   State apply(StreamCursor &cursor) override;
 };
 
 class ResponseLineStep : public Step {
 public:
+  static constexpr StepId Id = Meta::Hash::fnv1a("ResponseLine");
+
   explicit ResponseLineStep(Response *response) : Step(response) {}
 
+  StepId id() const override { return Id; }
   State apply(StreamCursor &cursor) override;
 };
 
 class HeadersStep : public Step {
 public:
+  static constexpr StepId Id = Meta::Hash::fnv1a("Headers");
+
   explicit HeadersStep(Message *request) : Step(request) {}
 
+  StepId id() const override { return Id; }
   State apply(StreamCursor &cursor) override;
 };
 
 class BodyStep : public Step {
 public:
+  static constexpr auto Id = Meta::Hash::fnv1a("Headers");
+
   explicit BodyStep(Message *message_)
       : Step(message_), chunk(message_), bytesRead(0) {}
 
+  StepId id() const override { return Id; }
   State apply(StreamCursor &cursor) override;
 
 private:
@@ -524,6 +540,8 @@ private:
 
 class ParserBase {
 public:
+  static constexpr size_t StepsCount = 3;
+
   explicit ParserBase(size_t maxDataSize);
 
   ParserBase(const ParserBase &) = delete;
@@ -537,11 +555,17 @@ public:
   virtual void reset();
   State parse();
 
-protected:
-  static constexpr size_t StepsCount = 3;
+  Step* step();
+  std::chrono::steady_clock::time_point time() const
+  {
+      return time_;
+  }
 
+protected:
   std::array<std::unique_ptr<Step>, StepsCount> allSteps;
   size_t currentStep = 0;
+
+  std::chrono::steady_clock::time_point time_;
 
 private:
   ArrayStreamBuf<char> buffer;
@@ -551,7 +575,6 @@ private:
 template <typename Message> class ParserImpl;
 
 template <> class ParserImpl<Http::Request> : public ParserBase {
-
 public:
   explicit ParserImpl(size_t maxDataSize);
 
@@ -575,6 +598,8 @@ using ResponseParser = Private::ParserImpl<Http::Response>;
 
 class Handler : public Tcp::Handler {
 public:
+  static constexpr const char* ParserData = "__Parser";
+
   virtual void onRequest(const Request &request, ResponseWriter response) = 0;
 
   virtual void onTimeout(const Request &request, ResponseWriter response);
@@ -584,16 +609,42 @@ public:
   void setMaxResponseSize(size_t value);
   size_t getMaxResponseSize() const;
 
+  template<typename Duration>
+  void setHeaderTimeout(Duration timeout)
+  {
+      headerTimeout_ = std::chrono::duration_cast<std::chrono::milliseconds>(timeout);
+  }
+
+  template<typename Duration>
+  void setBodyTimeout(Duration timeout)
+  {
+      bodyTimeout_ = std::chrono::duration_cast<std::chrono::milliseconds>(timeout);
+  }
+
+  std::chrono::milliseconds getHeaderTimeout() const
+  {
+      return headerTimeout_;
+  }
+
+  std::chrono::milliseconds getBodyTimeout() const
+  {
+      return bodyTimeout_;
+  }
+
+  static std::shared_ptr<RequestParser> getParser(const std::shared_ptr<Tcp::Peer> &peer);
+
   virtual ~Handler() override {}
 
 private:
   void onConnection(const std::shared_ptr<Tcp::Peer> &peer) override;
   void onInput(const char *buffer, size_t len,
                const std::shared_ptr<Tcp::Peer> &peer) override;
-
 private:
   size_t maxRequestSize_ = Const::DefaultMaxRequestSize;
   size_t maxResponseSize_ = Const::DefaultMaxResponseSize;
+
+  std::chrono::milliseconds headerTimeout_ = Const::DefaultHeaderTimeout;
+  std::chrono::milliseconds bodyTimeout_ = Const::DefaultBodyTimeout;
 };
 
 template <typename H, typename... Args>

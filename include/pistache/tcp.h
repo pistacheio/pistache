@@ -32,7 +32,7 @@ enum class Options : uint64_t {
 
 DECLARE_FLAGS_OPERATORS(Options)
 
-class Handler : private Prototype<Handler> {
+class Handler : public Prototype<Handler> {
 public:
   friend class Transport;
 

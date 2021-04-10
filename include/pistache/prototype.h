@@ -13,16 +13,15 @@ namespace Pistache {
 
 /* In a sense, a Prototype is just a class that provides a clone() method */
 template <typename Class> struct Prototype {
+public:
   virtual ~Prototype() {}
   virtual std::shared_ptr<Class> clone() const = 0;
 };
 
 } // namespace Pistache
 
-#define PROTOTYPE_OF(Base, Class)                                              \
-private:                                                                       \
-  std::shared_ptr<Base> clone() const override {                               \
-    return std::make_shared<Class>(*this);                                     \
-  }                                                                            \
-                                                                               \
-public:
+#define PROTOTYPE_OF(Base, Class)                    \
+public:                                              \
+  std::shared_ptr<Base> clone() const override {     \
+    return std::make_shared<Class>(*this);           \
+  }                                                  \

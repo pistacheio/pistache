@@ -15,6 +15,8 @@
 #include <string>
 #include <thread>
 
+#include "tcp_client.h"
+
 using namespace Pistache;
 
 #define THREAD_INFO                                                            \
@@ -93,6 +95,22 @@ struct AddressEchoHandler : public Http::Handler {
     std::string requestAddress = request.address().host();
     writer.send(Http::Code::Ok, requestAddress);
     std::cout << SERVER_PREFIX << " Sent: " << requestAddress << std::endl;
+  }
+};
+
+struct PingHandler : public Http::Handler {
+  HTTP_PROTOTYPE(PingHandler)
+
+  PingHandler() = default;
+
+  void onRequest(const Http::Request& request,
+                 Http::ResponseWriter writer) override {
+    if (request.resource() == "/ping") {
+      writer.send(Http::Code::Ok, "PONG");
+    }
+    else {
+      writer.send(Http::Code::Not_Found);
+    }
   }
 };
 
@@ -427,6 +445,79 @@ TEST(http_server_test, response_size_captured) {
   ASSERT_GT(rsize, 1u);
   ASSERT_LT(rsize, 300u);
   ASSERT_EQ(rcode, Http::Code::Ok);
+}
+
+TEST(http_server_test, client_request_header_timeout_raises_http_408) {
+  Pistache::Address address("localhost", Pistache::Port(0));
+
+  auto timeout = std::chrono::seconds(2);
+
+  Http::Endpoint server(address);
+  auto flags = Tcp::Options::ReuseAddr;
+  auto opts = Http::Endpoint::options()
+                .flags(flags)
+                .headerTimeout(timeout);
+  server.init(opts);
+  server.setHandler(Http::make_handler<PingHandler>());
+  server.serveThreaded();
+
+  auto port = server.getPort();
+  auto addr = "localhost:" + port.toString();
+  std::cout << "Server address: " << addr << "\n";
+
+  char recvBuf[1024];
+  std::memset(recvBuf, 0, sizeof(recvBuf));
+  size_t bytes;
+
+  TcpClient client;
+  ASSERT_TRUE(client.connect(Pistache::Address("localhost", port))) << client.lastError();
+
+  ASSERT_TRUE(client.receive(recvBuf, sizeof(recvBuf), &bytes, std::chrono::seconds(5))) << client.lastError();
+
+  server.shutdown();
+}
+
+TEST(http_server_test, client_request_body_timeout_raises_http_408) {
+  Pistache::Address address("localhost", Pistache::Port(0));
+
+  auto headerTimeout = std::chrono::seconds(1);
+  auto bodyTimeout = std::chrono::seconds(1);
+
+  Http::Endpoint server(address);
+  auto flags = Tcp::Options::ReuseAddr;
+  auto opts = Http::Endpoint::options()
+                .flags(flags)
+                .headerTimeout(headerTimeout)
+                .bodyTimeout(bodyTimeout);
+
+  server.init(opts);
+  server.setHandler(Http::make_handler<PingHandler>());
+  server.serveThreaded();
+
+  auto port = server.getPort();
+  auto addr = "localhost:" + port.toString();
+  std::cout << "Server address: " << addr << "\n";
+
+  std::string reqStr = "GET /ping HTTP/1.1\r\n";
+  std::string headerStr = "Host: localhost\r\nUser-Agent: test\r\n";
+
+  char recvBuf[1024];
+  std::memset(recvBuf, 0, sizeof(recvBuf));
+  size_t bytes;
+
+  TcpClient client;
+  ASSERT_TRUE(client.connect(Pistache::Address("localhost", port))) << client.lastError();
+  ASSERT_TRUE(client.send(reqStr)) << client.lastError();
+
+  std::this_thread::sleep_for(headerTimeout / 2);
+  ASSERT_TRUE(client.send(headerStr)) << client.lastError();
+
+  static constexpr const char* ExpectedResponseLine = "HTTP/1.1 408 Request Timeout";
+
+  ASSERT_TRUE(client.receive(recvBuf, sizeof(recvBuf), &bytes, std::chrono::seconds(5))) << client.lastError();
+  ASSERT_TRUE(!strncmp(recvBuf, ExpectedResponseLine, strlen(ExpectedResponseLine)));
+
+  server.shutdown();
 }
 
 namespace {

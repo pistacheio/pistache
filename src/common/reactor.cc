@@ -66,7 +66,6 @@ public:
 
   Reactor::Key addHandler(const std::shared_ptr<Handler> &handler,
                           bool setKey = true) override {
-
     handler->registerPoller(poller);
 
     handler->reactor_ = reactor_;

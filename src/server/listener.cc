@@ -148,7 +148,14 @@ void setSocketOptions(Fd fd, Flags<Options> options) {
   }
 }
 
-Listener::Listener(const Address &address) : addr_(address) {}
+Listener::Listener()
+    : transportFactory_(defaultTransportFactory())
+{}
+
+Listener::Listener(const Address &address)
+ : addr_(address)
+ , transportFactory_(defaultTransportFactory())
+{}
 
 Listener::~Listener() {
   if (isBound())
@@ -165,16 +172,21 @@ Listener::~Listener() {
 void Listener::init(size_t workers, Flags<Options> options,
                     const std::string &workersName, int backlog,
                     PISTACHE_STRING_LOGGER_T logger) {
-  if (workers > hardware_concurrency()) {
+    if (workers > hardware_concurrency()) {
     // Log::warning() << "More workers than available cores"
-  }
+    }
 
-  options_ = options;
-  backlog_ = backlog;
-  useSSL_ = false;
-  workers_ = workers;
-  workersName_ = workersName;
-  logger_ = logger;
+    options_ = options;
+    backlog_ = backlog;
+    useSSL_ = false;
+    workers_ = workers;
+    workersName_ = workersName;
+    logger_ = logger;
+}
+
+void Listener::setTransportFactory(TransportFactory factory)
+{
+    transportFactory_ =  std::move(factory);
 }
 
 void Listener::setHandler(const std::shared_ptr<Handler> &handler) {
@@ -200,8 +212,6 @@ void Listener::pinWorker(size_t worker, const CpuSet &set) {
 void Listener::bind() { bind(addr_); }
 
 void Listener::bind(const Address &address) {
-  if (!handler_)
-    throw std::runtime_error("Call setHandler before calling bind()");
   addr_ = address;
 
   struct addrinfo hints;
@@ -252,7 +262,7 @@ void Listener::bind(const Address &address) {
                Polling::Tag(fd));
   listen_fd = fd;
 
-  auto transport = std::make_shared<Transport>(handler_);
+  auto transport = transportFactory_();
 
   reactor_.init(Aio::AsyncContext(workers_, workersName_));
   transportKey = reactor_.addHandler(transport);
@@ -449,6 +459,16 @@ void Listener::dispatchPeer(const std::shared_ptr<Peer> &peer) {
   auto transport = std::static_pointer_cast<Transport>(handlers[idx]);
 
   transport->handleNewPeer(peer);
+}
+
+Listener::TransportFactory Listener::defaultTransportFactory() const
+{
+    return [&] {
+        if (!handler_)
+            throw std::runtime_error("setHandler() has not been called");
+
+        return std::make_shared<Transport>(handler_);
+    };
 }
 
 #ifdef PISTACHE_USE_SSL
