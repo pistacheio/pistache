@@ -194,12 +194,10 @@ namespace Pistache::Tcp
 
             std::shared_ptr<Peer> peer;
         };
-        using Lock  = std::mutex;
-        using Guard = std::lock_guard<Lock>;
 
         PollableQueue<WriteEntry> writesQueue;
         std::unordered_map<Fd, std::deque<WriteEntry>> toWrite;
-        Lock toWriteLock;
+        std::mutex toWriteLock;
 
         PollableQueue<TimerEntry> timersQueue;
         std::unordered_map<Fd, TimerEntry> timers;

@@ -407,7 +407,7 @@ namespace
     public:
         void increment()
         {
-            std::lock_guard<std::mutex> lock(counterLock_);
+            std::scoped_lock lock(counterLock_);
             ++counter_;
             cv_.notify_one();
         }

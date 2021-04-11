@@ -141,10 +141,8 @@ namespace Pistache::Http
 
     private:
         using Connections = std::vector<std::shared_ptr<Connection>>;
-        using Lock        = std::mutex;
-        using Guard       = std::lock_guard<Lock>;
 
-        mutable Lock connsLock;
+        mutable std::mutex connsLock;
         std::unordered_map<std::string, Connections> conns;
         size_t maxConnectionsPerHost;
         size_t maxResponseSize;
@@ -237,10 +235,7 @@ namespace Pistache::Http
 
         std::atomic<uint64_t> ioIndex;
 
-        using Lock  = std::mutex;
-        using Guard = std::lock_guard<Lock>;
-
-        Lock queuesLock;
+        std::mutex queuesLock;
         std::unordered_map<std::string,
                            MPMCQueue<std::shared_ptr<Connection::RequestData>, 2048>>
             requestsQueues;

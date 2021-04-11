@@ -70,7 +70,7 @@ private:
     {
         auto name = request.param(":name").as<std::string>();
 
-        Guard guard(metricsLock);
+        std::scoped_lock lock(metricsLock);
         auto it = std::find_if(metrics.begin(), metrics.end(), [&](const Metric& metric) {
             return metric.name() == name;
         });
@@ -99,7 +99,7 @@ private:
     {
         auto name = request.param(":name").as<std::string>();
 
-        Guard guard(metricsLock);
+        std::scoped_lock guard(metricsLock);
         auto it = std::find_if(metrics.begin(), metrics.end(), [&](const Metric& metric) {
             return metric.name() == name;
         });
@@ -153,9 +153,7 @@ private:
         int value_;
     };
 
-    using Lock  = std::mutex;
-    using Guard = std::lock_guard<Lock>;
-    Lock metricsLock;
+    std::mutex metricsLock;
     std::vector<Metric> metrics;
 
     std::shared_ptr<Http::Endpoint> httpEndpoint;

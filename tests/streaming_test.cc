@@ -15,7 +15,6 @@
 #include <thread>
 #include <vector>
 
-using namespace std;
 using namespace Pistache;
 
 static constexpr size_t N_LETTERS      = 26;
@@ -25,15 +24,12 @@ static constexpr size_t N_WORKERS      = 10;
 
 void dumpData(const Rest::Request& /*req*/, Http::ResponseWriter response)
 {
-    using Lock  = std::mutex;
-    using Guard = std::lock_guard<Lock>;
-
-    Lock responseLock;
+    std::mutex responseLock;
     std::vector<std::thread> workers;
     std::condition_variable cv;
 
     std::queue<std::function<void()>> jobs;
-    Lock jobLock;
+    std::mutex jobLock;
     std::atomic<size_t> jobCounter(0);
 
     constexpr size_t JOB_LIMIT = SET_REPEATS * N_LETTERS;
@@ -43,7 +39,7 @@ void dumpData(const Rest::Request& /*req*/, Http::ResponseWriter response)
         workers.push_back(std::thread([&jobCounter, &cv, &jobLock, &jobs]() {
             while (jobCounter < JOB_LIMIT)
             {
-                std::unique_lock<Lock> l(jobLock);
+                std::unique_lock l(jobLock);
                 cv.wait(l, [&jobCounter, &jobs] {
                     return jobs.size() || !(jobCounter < JOB_LIMIT);
                 });
@@ -73,7 +69,7 @@ void dumpData(const Rest::Request& /*req*/, Http::ResponseWriter response)
                 constexpr size_t chunk_size = LETTER_REPEATS / nchunks;
                 const std::string payload(chunk_size, static_cast<char>(letter + i));
                 {
-                    Guard guard(responseLock);
+                    std::scoped_lock lock(responseLock);
                     for (size_t chunk = 0; chunk < nchunks; ++chunk)
                     {
                         stream.write(payload.c_str(), chunk_size);
@@ -81,7 +77,7 @@ void dumpData(const Rest::Request& /*req*/, Http::ResponseWriter response)
                     }
                 }
             };
-            std::unique_lock<Lock> l(jobLock);
+            std::unique_lock l(jobLock);
             jobs.push(std::move(job));
             l.unlock();
             cv.notify_all();

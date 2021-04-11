@@ -66,7 +66,7 @@ namespace Pistache
             }
             int fd = peer->fd();
             {
-                Guard guard(toWriteLock);
+                std::scoped_lock lock(toWriteLock);
                 toWrite.emplace(fd, std::deque<WriteEntry> {});
             }
         }
@@ -118,7 +118,7 @@ namespace Pistache
                     auto fd  = static_cast<Fd>(tag.value());
 
                     {
-                        Guard guard(toWriteLock);
+                        std::scoped_lock lock(toWriteLock);
                         auto it = toWrite.find(fd);
                         if (it == std::end(toWrite))
                         {
@@ -217,7 +217,7 @@ namespace Pistache
 
             {
                 // Clean up buffers
-                Guard guard(toWriteLock);
+                std::scoped_lock lock(toWriteLock);
                 auto& wq = toWrite[fd];
                 while (wq.size() > 0)
                 {
@@ -242,7 +242,7 @@ namespace Pistache
             bool stop = false;
             while (!stop)
             {
-                Guard guard(toWriteLock);
+                std::scoped_lock lock(toWriteLock);
 
                 auto it = toWrite.find(fd);
 
@@ -466,7 +466,7 @@ namespace Pistache
                     continue;
 
                 {
-                    Guard guard(toWriteLock);
+                    std::scoped_lock lock(toWriteLock);
                     toWrite[fd].push_back(std::move(*write));
                 }
 
