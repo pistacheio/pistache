@@ -250,8 +250,7 @@ before_script:
   # Print debug system information
   - cat /proc/sys/kernel/core_pattern
   - cat /etc/default/apport || true
-  - service --status-all || true
-  - initctl list || true
+  - systemctl list-units --type=service --state=running
 
   # Meson debug build
   - meson setup meson_build_debug
@@ -299,23 +298,23 @@ script:
   # Set the ulimit
   - ulimit -c unlimited -S
 
-  # CMake debug build
-  - cmake --build cmake_build_debug --parallel 2 --target all test -- ARGS='-V'
-
-  # CMake debug build, no SSL
-  - cmake --build cmake_build_debug-nossl --parallel 2 --target all test -- ARGS='-V'
-
-  # CMake release build
-  - cmake --build cmake_build_release --parallel 2 -- ARGS='-V'
-
   # Meson debug build
-  - meson compile -C meson_build_debug --jobs 2 && meson test -C meson_build_debug || (cat meson_build_debug/meson-logs/testlog.txt && false)
+  - meson compile -C meson_build_debug --jobs 2 && meson test -C meson_build_debug --print-errorlogs --no-stdsplit
 
   # Meson debug build, no SSL
-  - meson compile -C meson_build_debug_nossl --jobs 2 && meson test -C meson_build_debug_nossl || (cat meson_build_debug/meson-logs/testlog.txt && false)
+  - meson compile -C meson_build_debug_nossl --jobs 2 && meson test -C meson_build_debug_nossl --print-errorlogs --no-stdsplit
 
   # Meson release build
   - meson compile -C meson_build_release --jobs 2
+
+  # CMake debug build
+  - CTEST_OUTPUT_ON_FAILURE=True cmake --build cmake_build_debug --parallel 2 --target all test
+
+  # CMake debug build, no SSL
+  - CTEST_OUTPUT_ON_FAILURE=True cmake --build cmake_build_debug-nossl --parallel 2 --target all test
+
+  # CMake release build
+  - cmake --build cmake_build_release --parallel 2
 
 after_failure:
   - CRASHFILES=$(find /var/crash/ -mindepth 1 -maxdepth 1 -print)
