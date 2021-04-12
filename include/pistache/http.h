@@ -231,7 +231,7 @@ namespace Pistache
         public:
             friend class ResponseWriter;
 
-            explicit Timeout(Timeout&& other)
+            explicit Timeout(Timeout&& other) noexcept
                 : handler(other.handler)
                 , transport(other.transport)
                 , armed(other.armed)
@@ -242,7 +242,7 @@ namespace Pistache
                 other.timerFd = -1;
             }
 
-            Timeout& operator=(Timeout&& other)
+            Timeout& operator=(Timeout&& other) noexcept
             {
                 handler       = other.handler;
                 transport     = other.transport;
@@ -300,9 +300,9 @@ namespace Pistache
         public:
             friend class ResponseWriter;
 
-            ResponseStream(ResponseStream&& other);
+            ResponseStream(ResponseStream&& other) noexcept;
 
-            ResponseStream& operator=(ResponseStream&& other);
+            ResponseStream& operator=(ResponseStream&& other) noexcept;
 
             template <typename T>
             friend ResponseStream& operator<<(ResponseStream& stream, const T& val);
@@ -394,7 +394,7 @@ namespace Pistache
             // C++11: std::weak_ptr move constructor is C++14 only so the default
             // version of move constructor / assignement operator does not work and we
             // have to define it ourself
-            ResponseWriter(ResponseWriter&& other);
+            ResponseWriter(ResponseWriter&& other) noexcept;
 
             ResponseWriter& operator=(ResponseWriter&& other) = default;
 
@@ -419,7 +419,7 @@ namespace Pistache
                 return sendImpl(code, arr, N - 1, mime);
             }
 
-            Async::Promise<ssize_t> send(Code code, const char* data, const size_t size,
+            Async::Promise<ssize_t> send(Code code, const char* data, size_t size,
                                          const Mime::MediaType& mime = Mime::MediaType());
 
             ResponseStream stream(Code code, size_t streamSize = DefaultStreamSize);
@@ -466,7 +466,7 @@ namespace Pistache
             ResponseWriter(const ResponseWriter& other);
 
             Async::Promise<ssize_t> sendImpl(Code code, const char* data,
-                                             const size_t size,
+                                             size_t size,
                                              const Mime::MediaType& mime);
 
             Async::Promise<ssize_t> putOnWire(const char* data, size_t len);
@@ -500,7 +500,7 @@ namespace Pistache
                 virtual StepId id() const                 = 0;
                 virtual State apply(StreamCursor& cursor) = 0;
 
-                static void raise(const char* msg, Code code = Code::Bad_Request);
+                [[noreturn]] static void raise(const char* msg, Code code = Code::Bad_Request);
 
             protected:
                 Message* message;
@@ -699,7 +699,7 @@ namespace Pistache
 
             static std::shared_ptr<RequestParser> getParser(const std::shared_ptr<Tcp::Peer>& peer);
 
-            virtual ~Handler() override { }
+            ~Handler() override = default;
 
         private:
             void onConnection(const std::shared_ptr<Tcp::Peer>& peer) override;

@@ -53,7 +53,7 @@ namespace Pistache
         spec.it_value.tv_sec  = 0;
         spec.it_value.tv_nsec = 0;
 
-        TRY(timerfd_settime(fd_, 0, &spec, 0));
+        TRY(timerfd_settime(fd_, 0, &spec, nullptr));
     }
 
     void TimerPool::Entry::registerReactor(const Aio::Reactor::Key& key,
@@ -82,7 +82,7 @@ namespace Pistache
             spec.it_value.tv_sec  = std::chrono::duration_cast<std::chrono::seconds>(value).count();
             spec.it_value.tv_nsec = 0;
         }
-        TRY(timerfd_settime(fd_, 0, &spec, 0));
+        TRY(timerfd_settime(fd_, 0, &spec, nullptr));
     }
 
     TimerPool::TimerPool(size_t initialSize)

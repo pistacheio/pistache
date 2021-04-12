@@ -112,7 +112,7 @@ namespace Pistache
             void rearmFd(Fd fd, Flags<NotifyOn> interest, Tag tag,
                          Mode mode = Mode::Level);
 
-            int poll(std::vector<Event>& events, const std::chrono::milliseconds timeout = std::chrono::milliseconds(-1)) const;
+            int poll(std::vector<Event>& events, std::chrono::milliseconds timeout = std::chrono::milliseconds(-1)) const;
 
         private:
             static int toEpollEvents(const Flags<NotifyOn>& interest);

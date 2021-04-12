@@ -146,8 +146,7 @@ namespace Pistache
     public:
         Address();
         Address(std::string host, Port port);
-        explicit Address(std::string addr);
-        explicit Address(const char* addr);
+        explicit Address(std::string_view addr);
         Address(IP ip, Port port);
 
         Address(const Address& other) = default;
@@ -175,10 +174,9 @@ namespace Pistache
 
     namespace helpers
     {
-        inline Address httpAddr(const StringView& view)
+        inline Address httpAddr(const std::string_view& view)
         {
-            auto const str = view.toString();
-            return Address(str);
+            return Address(std::string(view));
         }
     } // namespace helpers
 

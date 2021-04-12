@@ -104,7 +104,7 @@ struct AddressEchoHandler : public Http::Handler
 {
     HTTP_PROTOTYPE(AddressEchoHandler)
 
-    AddressEchoHandler() { }
+    AddressEchoHandler() = default;
 
     void onRequest(const Http::Request& request,
                    Http::ResponseWriter writer) override

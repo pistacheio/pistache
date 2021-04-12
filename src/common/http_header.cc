@@ -16,13 +16,14 @@
 #include <iterator>
 #include <limits>
 #include <stdexcept>
+#include <utility>
 
 namespace Pistache::Http::Header
 {
 
-    void Header::parse(const std::string& str)
+    void Header::parse(const std::string& data)
     {
-        parseRaw(str.c_str(), str.length());
+        parseRaw(data.c_str(), data.length());
     }
 
     void Header::parseRaw(const char* str, size_t len)
@@ -134,7 +135,7 @@ namespace Pistache::Http::Header
             {
                 if (match_raw(d.str, d.size, cursor))
                 {
-                    directives_.push_back(CacheDirective(d.repr));
+                    directives_.emplace_back(d.repr);
                     found = true;
                     break;
                 }
@@ -165,8 +166,7 @@ namespace Pistache::Http::Header
                             throw std::runtime_error(
                                 "Invalid caching directive, malformated delta-seconds");
                         }
-                        directives_.push_back(
-                            CacheDirective(d.repr, std::chrono::seconds(secs)));
+                        directives_.emplace_back(d.repr, std::chrono::seconds(secs));
                         break;
                     }
                 }
@@ -219,8 +219,6 @@ namespace Pistache::Http::Header
             case CacheDirective::SMaxAge:
                 return "s-maxage";
             case CacheDirective::Ext:
-                return "";
-            default:
                 return "";
             }
             return "";
@@ -320,7 +318,7 @@ namespace Pistache::Http::Header
 
             value_ = val;
         }
-        catch (const std::invalid_argument& e)
+        catch (const std::invalid_argument& /*e*/)
         {
         }
     }
@@ -461,9 +459,9 @@ namespace Pistache::Http::Header
 
     void Authorization::write(std::ostream& os) const { os << value_; }
 
-    void Date::parse(const std::string& str)
+    void Date::parse(const std::string& data)
     {
-        fullDate_ = FullDate::fromString(str);
+        fullDate_ = FullDate::fromString(data);
     }
 
     void Date::write(std::ostream& os) const { fullDate_.write(os); }
@@ -488,11 +486,11 @@ namespace Pistache::Http::Header
         }
     }
 
-    Host::Host(const std::string& data)
+    Host::Host(const std::string_view host)
         : host_()
         , port_(0)
     {
-        parse(data);
+        parse(std::string(host));
     }
 
     void Host::parse(const std::string& data)
@@ -522,8 +520,8 @@ namespace Pistache::Http::Header
         }
     }
 
-    Location::Location(const std::string& location)
-        : location_(location)
+    Location::Location(const std::string_view location)
+        : location_(std::string(location))
     { }
 
     void Location::parse(const std::string& data) { location_ = data; }
@@ -642,7 +640,7 @@ namespace Pistache::Http::Header
     {
         for (size_t i = 0; i < tokens_.size(); i++)
         {
-            auto& token = tokens_[i];
+            const auto& token = tokens_[i];
             os << token;
             if (i < tokens_.size() - 1)
             {

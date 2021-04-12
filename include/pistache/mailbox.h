@@ -29,7 +29,7 @@ namespace Pistache
     public:
         Mailbox() { data.store(nullptr); }
 
-        virtual ~Mailbox() { }
+        virtual ~Mailbox() = default;
 
         const T* get() const
         {
@@ -269,7 +269,7 @@ namespace Pistache
             : event_fd(-1)
         { }
 
-        ~PollableQueue()
+        ~PollableQueue() override
         {
             if (event_fd != -1)
                 close(event_fd);
@@ -373,9 +373,9 @@ namespace Pistache
    * otherwise the client won't compile
    * @Investigate why
    */
-        MPMCQueue(MPMCQueue&& other) { *this = std::move(other); }
+        MPMCQueue(MPMCQueue&& other) noexcept { *this = std::move(other); }
 
-        MPMCQueue& operator=(MPMCQueue&& other)
+        MPMCQueue& operator=(MPMCQueue&& other) noexcept
         {
             for (size_t i = 0; i < Size; ++i)
             {

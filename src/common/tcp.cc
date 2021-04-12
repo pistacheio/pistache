@@ -14,7 +14,7 @@ namespace Pistache::Tcp
         : transport_(nullptr)
     { }
 
-    Handler::~Handler() { }
+    Handler::~Handler() = default;
 
     void Handler::associateTransport(Transport* transport)
     {

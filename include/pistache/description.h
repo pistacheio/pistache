@@ -175,7 +175,7 @@ namespace Pistache::Rest
 
             virtual bool validate(const std::string& input) const = 0;
 
-            virtual ~DataType() { }
+            virtual ~DataType() = default;
         };
 
         template <typename T>
@@ -195,7 +195,7 @@ namespace Pistache::Rest
                 return Traits::DataTypeValidation<T>::validate(input);
             }
 
-            virtual ~DataTypeT() { }
+            ~DataTypeT() override = default;
         };
 
         template <typename T>
@@ -357,7 +357,7 @@ namespace Pistache::Rest
 
             PathBuilder& response(Http::Code statusCode, std::string description)
             {
-                path_->responses.push_back(Response(statusCode, std::move(description)));
+                path_->responses.emplace_back(statusCode, std::move(description));
                 return *this;
             }
 
@@ -419,7 +419,7 @@ namespace Pistache::Rest
                               std::string description = "");
             PathBuilder route(PathDecl fragment, std::string description = "");
 
-            SubPath path(const std::string& prefix);
+            SubPath path(const std::string& prefix) const;
 
             template <typename T>
             void parameter(std::string name, std::string description)

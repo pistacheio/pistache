@@ -479,7 +479,7 @@ TEST(async_test, chain_rejects)
     std::unique_ptr<Async::Rejection> rejecter;
     Async::Promise<int> promise(
         [&](Async::Resolver& /*resolve*/, Async::Rejection& reject) {
-            rejecter.reset(new Async::Rejection(std::move(reject)));
+            rejecter = std::make_unique<Async::Rejection>(std::move(reject));
         });
     promise.then(
         [](int v) -> Async::Promise<int> {

@@ -45,7 +45,7 @@ public:
 protected:
     // Convert an octet character to corresponding sextet, provided it can
     //  safely be represented as such. Otherwise return 0xff...
-    std::byte DecodeCharacter(const unsigned char Character) const;
+    std::byte DecodeCharacter(unsigned char Character) const;
 
     // Protected attributes...
 protected:
@@ -69,7 +69,7 @@ public:
     // Calculate length of base 64 string that would need to be generated
     //  for raw data of a given length...
     static std::string::size_type CalculateEncodedSize(
-        const std::vector<std::byte>::size_type DecodedSize) noexcept;
+        std::vector<std::byte>::size_type DecodedSize) noexcept;
 
     // Encode raw data input buffer to base 64...
     const std::string& Encode() noexcept;
@@ -86,7 +86,7 @@ public:
     // Protected methods...
 protected:
     // Encode single binary byte to 6-bit base 64 character...
-    unsigned char EncodeByte(const std::byte Byte) const;
+    unsigned char EncodeByte(std::byte Byte) const;
 
     // Protected attributes...
 protected:

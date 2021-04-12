@@ -32,7 +32,10 @@ namespace Pistache
 
         namespace
         {
-            std::pair<StringView, StringView> splitUrl(const std::string& url)
+            // Using const_cast can result in undefined behavior.
+            // C++17 provides a non-const .data() overload,
+            // but url must be passed as a non-const reference (or by value)
+            std::pair<std::string_view, std::string_view> splitUrl(const std::string& url)
             {
                 RawStreamBuf<char> buf(const_cast<char*>(url.data()), url.size());
                 StreamCursor cursor(&buf);
@@ -44,10 +47,10 @@ namespace Pistache
                 StreamCursor::Token hostToken(cursor);
                 match_until({ '?', '/' }, cursor);
 
-                StringView host(hostToken.rawText(), hostToken.size());
-                StringView page(cursor.offset(), buf.endptr());
+                std::string_view host(hostToken.rawText(), hostToken.size());
+                std::string_view page(cursor.offset(), buf.endptr() - buf.curptr());
 
-                return std::make_pair(std::move(host), std::move(page));
+                return std::make_pair(host, page);
             }
         } // namespace
 
@@ -106,15 +109,12 @@ namespace Pistache
             {
                 using Http::crlf;
 
-                auto res   = request.resource();
-                auto s     = splitUrl(res);
-                auto body  = request.body();
-                auto query = request.query();
+                const auto& res         = request.resource();
+                const auto [host, path] = splitUrl(res);
+                const auto& body        = request.body();
+                const auto& query       = request.query();
 
-                auto host = s.first;
-                auto path = s.second;
-
-                auto pathStr = path.toString();
+                auto pathStr = std::string(path);
 
                 streamBuf << request.method() << " ";
                 if (pathStr[0] != '/')
@@ -127,7 +127,7 @@ namespace Pistache
                 writeHeaders(streamBuf, request.headers());
 
                 writeHeader<Http::Header::UserAgent>(streamBuf, UA);
-                writeHeader<Http::Header::Host>(streamBuf, host.toString());
+                writeHeader<Http::Header::Host>(streamBuf, std::string(host));
                 if (!body.empty())
                 {
                     writeHeader<Http::Header::ContentLength>(streamBuf, body.size());
@@ -563,7 +563,7 @@ namespace Pistache
                     .then(
                         [=]() {
                             socklen_t len = sizeof(saddr);
-                            getsockname(sfd, (struct sockaddr*)&saddr, &len);
+                            getsockname(sfd, reinterpret_cast<struct sockaddr*>(&saddr), &len);
                             connectionState_.store(Connected);
                             processRequestQueue();
                         },
@@ -746,8 +746,8 @@ namespace Pistache
                 timer->arm(timeout);
             }
 
-            requestEntry.reset(new RequestEntry(std::move(resolve), std::move(reject),
-                                                timer, std::move(onDone)));
+            requestEntry = std::make_unique<RequestEntry>(std::move(resolve), std::move(reject),
+                                                          timer, std::move(onDone));
             transport_->asyncSendRequest(shared_from_this(), timer, std::move(buffer));
         }
 
@@ -1023,7 +1023,7 @@ namespace Pistache
             auto resourceData = request.resource();
 
             auto resource = splitUrl(resourceData);
-            auto conn     = pool.pickConnection(resource.first);
+            auto conn     = pool.pickConnection(std::string(resource.first));
 
             if (conn == nullptr)
             {
@@ -1034,7 +1034,7 @@ namespace Pistache
 
                     auto data = std::make_shared<Connection::RequestData>(
                         std::move(resolve), std::move(reject), std::move(request), nullptr);
-                    auto& queue = requestsQueues[resource.first];
+                    auto& queue = requestsQueues[std::string(resource.first)];
                     if (!queue.enqueue(data))
                         data->reject(std::runtime_error("Queue is full"));
                 });

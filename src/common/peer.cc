@@ -71,13 +71,13 @@ namespace Pistache::Tcp
             }
             else
             {
-                if (!getnameinfo((struct sockaddr*)&sa, sizeof(sa), host, sizeof(host),
-                                 NULL, 0 // Service info
+                if (!getnameinfo(reinterpret_cast<struct sockaddr*>(&sa), sizeof(sa), host, sizeof(host),
+                                 nullptr, 0 // Service info
                                  ,
                                  NI_NAMEREQD // Raise an error if name resolution failed
                                  ))
                 {
-                    hostname_.assign((char*)host);
+                    hostname_.assign(static_cast<char*>(host));
                 }
             }
         }
@@ -119,7 +119,7 @@ namespace Pistache::Tcp
         return data;
     }
 
-    std::shared_ptr<void> Peer::tryGetData(std::string(name)) const
+    std::shared_ptr<void> Peer::tryGetData(const std::string name) const
     {
         auto it = data_.find(name);
         if (it == std::end(data_))

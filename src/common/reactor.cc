@@ -131,7 +131,7 @@ namespace Pistache::Aio
             poller.rearmFd(fd, Flags<Polling::NotifyOn>(interest), pollTag, mode);
         }
 
-        void removeFd(const Reactor::Key& key, Fd fd) override
+        void removeFd(const Reactor::Key& /*key*/, Fd fd) override
         {
             poller.removeFd(fd);
         }
@@ -210,7 +210,7 @@ namespace Pistache::Aio
                     std::tie(index, value) = decodeTag(event.tag);
                     auto handler_          = handlers_.at(index);
                     auto& evs              = fdHandlers.at(handler_);
-                    evs.push_back(std::move(event));
+                    evs.push_back(event);
                 }
 
                 for (auto& data : fdHandlers)
@@ -402,7 +402,7 @@ namespace Pistache::Aio
 
             std::vector<std::shared_ptr<Handler>> res;
             res.reserve(workers_.size());
-            for (auto& wrk : workers_)
+            for (const auto& wrk : workers_)
             {
                 res.push_back(wrk->sync->handler(originalKey));
             }
@@ -473,8 +473,8 @@ namespace Pistache::Aio
         template <typename Func, typename... Args>
         void dispatchCall(const Reactor::Key& key, Func func, Args&&... args) const
         {
-            auto decoded = decodeKey(key);
-            auto& wrk    = workers_.at(decoded.second);
+            auto decoded    = decodeKey(key);
+            const auto& wrk = workers_.at(decoded.second);
 
             Reactor::Key originalKey(decoded.first);
             CALL_MEMBER_FN(wrk->sync.get(), func)
@@ -501,7 +501,7 @@ namespace Pistache::Aio
             void run()
             {
                 thread = std::thread([=]() {
-                    if (threadsName_.size() > 0)
+                    if (!threadsName_.empty())
                     {
                         pthread_setname_np(pthread_self(),
                                            threadsName_.substr(0, 15).c_str());

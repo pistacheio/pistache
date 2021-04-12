@@ -62,7 +62,7 @@ namespace Pistache::Rest
         , optional_()
         , splat_(nullptr)
         , route_(nullptr)
-    {
+    { // Change to make_shared in C++20
         std::shared_ptr<char> ptr(new char[0], std::default_delete<char[]>());
         resource_ref_.swap(ptr);
     }
@@ -388,7 +388,7 @@ namespace Pistache::Rest
 
     void Router::initFromDescription(const Rest::Description& desc)
     {
-        auto paths = desc.rawPaths();
+        const auto& paths = desc.rawPaths();
         for (auto it = paths.flatBegin(), end = paths.flatEnd(); it != end; ++it)
         {
             const auto& paths_ = *it;
@@ -474,19 +474,19 @@ namespace Pistache::Rest
     void Router::invokeNotFoundHandler(const Http::Request& req,
                                        Http::ResponseWriter resp) const
     {
-        notFoundHandler(Rest::Request(std::move(req), std::vector<TypedParam>(),
+        notFoundHandler(Rest::Request(req, std::vector<TypedParam>(),
                                       std::vector<TypedParam>()),
                         std::move(resp));
     }
 
-    Route::Status Router::route(const Http::Request& http_req,
+    Route::Status Router::route(const Http::Request& request,
                                 Http::ResponseWriter response)
     {
-        const auto resource = http_req.resource();
+        const auto& resource = request.resource();
         if (resource.empty())
             throw std::runtime_error("Invalid zero-length URL.");
 
-        auto req  = http_req;
+        auto req  = request;
         auto resp = response.clone();
 
         for (const auto& middleware : middlewares)
@@ -568,6 +568,7 @@ namespace Pistache::Rest
             throw std::runtime_error("Invalid zero-length URL.");
         auto& r              = routes[method];
         const auto sanitized = SegmentTreeNode::sanitizeResource(resource);
+        // Change to make_shared in C++20
         std::shared_ptr<char> ptr(new char[sanitized.length()],
                                   std::default_delete<char[]>());
         memcpy(ptr.get(), sanitized.data(), sanitized.length());

@@ -69,7 +69,7 @@ namespace Pistache::Http::Header
     class Header
     {
     public:
-        virtual ~Header() { }
+        virtual ~Header()                = default;
         virtual const char* name() const = 0;
 
         virtual void parse(const std::string& data);
@@ -162,7 +162,7 @@ namespace Pistache::Http::Header
         void parseRaw(const char* str, size_t len) override;
         void write(std::ostream& os) const override;
 
-        const std::vector<Mime::MediaType> media() const { return mediaRange_; }
+        std::vector<Mime::MediaType> media() const { return mediaRange_; }
 
     private:
         std::vector<Mime::MediaType> mediaRange_;
@@ -177,11 +177,8 @@ namespace Pistache::Http::Header
             : uri_()
         { }
 
-        explicit AccessControlAllowOrigin(const char* uri)
-            : uri_(uri)
-        { }
-        explicit AccessControlAllowOrigin(const std::string& uri)
-            : uri_(uri)
+        explicit AccessControlAllowOrigin(const std::string_view uri)
+            : uri_(std::string(uri))
         { }
 
         void parse(const std::string& data) override;
@@ -204,11 +201,8 @@ namespace Pistache::Http::Header
             : val_()
         { }
 
-        explicit AccessControlAllowHeaders(const char* val)
-            : val_(val)
-        { }
-        explicit AccessControlAllowHeaders(const std::string& val)
-            : val_(val)
+        explicit AccessControlAllowHeaders(const std::string_view val)
+            : val_(std::string(val))
         { }
 
         void parse(const std::string& data) override;
@@ -231,11 +225,8 @@ namespace Pistache::Http::Header
             : val_()
         { }
 
-        explicit AccessControlExposeHeaders(const char* val)
-            : val_(val)
-        { }
-        explicit AccessControlExposeHeaders(const std::string& val)
-            : val_(val)
+        explicit AccessControlExposeHeaders(const std::string_view val)
+            : val_(std::string(val))
         { }
 
         void parse(const std::string& data) override;
@@ -258,11 +249,8 @@ namespace Pistache::Http::Header
             : val_()
         { }
 
-        explicit AccessControlAllowMethods(const char* val)
-            : val_(val)
-        { }
-        explicit AccessControlAllowMethods(const std::string& val)
-            : val_(val)
+        explicit AccessControlAllowMethods(const std::string_view val)
+            : val_(std::string(val))
         { }
 
         void parse(const std::string& data) override;
@@ -415,11 +403,8 @@ namespace Pistache::Http::Header
             : value_("NONE")
         { }
 
-        explicit Authorization(std::string&& val)
-            : value_(std::move(val))
-        { }
-        explicit Authorization(const std::string& val)
-            : value_(val)
+        explicit Authorization(const std::string_view val)
+            : value_(std::string(val))
         { }
 
         // What type of authorization method was used?
@@ -535,9 +520,9 @@ namespace Pistache::Http::Header
             , port_(0)
         { }
 
-        explicit Host(const std::string& host);
-        explicit Host(const std::string& host, Port port)
-            : host_(host)
+        explicit Host(std::string_view host);
+        explicit Host(const std::string_view host, Port port)
+            : host_(std::string(host))
             , port_(port)
         { }
 
@@ -561,7 +546,7 @@ namespace Pistache::Http::Header
             : location_()
         { }
 
-        explicit Location(const std::string& location);
+        explicit Location(std::string_view location);
 
         void parse(const std::string& data) override;
         void write(std::ostream& os) const override;
@@ -585,7 +570,7 @@ namespace Pistache::Http::Header
         explicit Server(const std::string& token);
         explicit Server(const char* token);
 
-        void parse(const std::string& data) override;
+        void parse(const std::string& token) override;
         void write(std::ostream& os) const override;
 
         std::vector<std::string> tokens() const { return tokens_; }
@@ -603,12 +588,8 @@ namespace Pistache::Http::Header
             : ua_()
         { }
 
-        explicit UserAgent(const char* ua)
-            : ua_(ua)
-        { }
-
-        explicit UserAgent(const std::string& ua)
-            : ua_(ua)
+        explicit UserAgent(const std::string_view ua)
+            : ua_(std::string(ua))
         { }
 
         void parse(const std::string& data) override;

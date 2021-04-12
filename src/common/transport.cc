@@ -158,9 +158,9 @@ namespace Pistache
                 ssize_t bytes;
 
 #ifdef PISTACHE_USE_SSL
-                if (peer->ssl() != NULL)
+                if (peer->ssl() != nullptr)
                 {
-                    bytes = SSL_read((SSL*)peer->ssl(), buffer + totalBytes,
+                    bytes = SSL_read(static_cast<SSL*>(peer->ssl()), buffer + totalBytes,
                                      static_cast<int>(Const::MaxBuffer - totalBytes));
                 }
                 else
@@ -219,7 +219,7 @@ namespace Pistache
                 // Clean up buffers
                 std::scoped_lock lock(toWriteLock);
                 auto& wq = toWrite[fd];
-                while (wq.size() > 0)
+                while (!wq.empty())
                 {
                     wq.pop_front();
                 }
@@ -252,7 +252,7 @@ namespace Pistache
                     return;
                 }
                 auto& wq = it->second;
-                if (wq.size() == 0)
+                if (wq.empty())
                 {
                     break;
                 }
@@ -264,7 +264,7 @@ namespace Pistache
 
                 auto cleanUp = [&]() {
                     wq.pop_front();
-                    if (wq.size() == 0)
+                    if (wq.empty())
                     {
                         toWrite.erase(fd);
                         reactor()->modifyFd(key(), fd, NotifyOn::Read, Polling::Mode::Edge);
@@ -280,9 +280,9 @@ namespace Pistache
 
                     if (buffer.isRaw())
                     {
-                        auto raw     = buffer.raw();
-                        auto ptr     = raw.data().c_str() + totalWritten;
-                        bytesWritten = sendRawBuffer(fd, ptr, len, flags);
+                        auto raw        = buffer.raw();
+                        const auto* ptr = raw.data().c_str() + totalWritten;
+                        bytesWritten    = sendRawBuffer(fd, ptr, len, flags);
                     }
                     else
                     {
@@ -354,9 +354,9 @@ namespace Pistache
             if (it_ == std::end(peers))
                 throw std::runtime_error("No peer found for fd: " + std::to_string(fd));
 
-            if (it_->second->ssl() != NULL)
+            if (it_->second->ssl() != nullptr)
             {
-                auto ssl_    = static_cast<SSL*>(it_->second->ssl());
+                auto* ssl_   = static_cast<SSL*>(it_->second->ssl());
                 bytesWritten = SSL_write(ssl_, buffer, static_cast<int>(len));
             }
             else
@@ -380,9 +380,9 @@ namespace Pistache
             if (it_ == std::end(peers))
                 throw std::runtime_error("No peer found for fd: " + std::to_string(fd));
 
-            if (it_->second->ssl() != NULL)
+            if (it_->second->ssl() != nullptr)
             {
-                auto ssl_    = static_cast<SSL*>(it_->second->ssl());
+                auto* ssl_   = static_cast<SSL*>(it_->second->ssl());
                 bytesWritten = SSL_sendfile(ssl_, file, &offset, len);
             }
             else
@@ -440,7 +440,7 @@ namespace Pistache
                 spec.it_value.tv_nsec = 0;
             }
 
-            int res = timerfd_settime(entry.fd, 0, &spec, 0);
+            int res = timerfd_settime(entry.fd, 0, &spec, nullptr);
             if (res == -1)
             {
                 entry.deferred.reject(Pistache::Error::system("Could not set timer time"));

@@ -17,7 +17,7 @@ compiler = meson.get_compiler('cpp')
 
 # Wrapping arguments inside a call to get_supported_arguments so that only supported arguments get applied
 # No need for -Wall -Wextra -Wpedantic, since warning_level is 3
-add_project_arguments(compiler.get_supported_arguments(['-Wconversion', '-Wno-missing-field-initializers']), language: 'cpp')
+add_project_arguments(compiler.get_supported_arguments(['-Wconversion', '-Wno-sign-conversion', '-Wno-missing-field-initializers']), language: 'cpp')
 
 # No need for --coverage, since b_coverage is set
 if get_option('b_coverage')

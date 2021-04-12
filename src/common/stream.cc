@@ -91,20 +91,20 @@ namespace Pistache
         reserve(size);
     }
 
-    DynamicStreamBuf::DynamicStreamBuf(DynamicStreamBuf&& other)
+    DynamicStreamBuf::DynamicStreamBuf(DynamicStreamBuf&& other) noexcept
         : data_(std::move(other.data_))
-        , maxSize_(std::move(other.maxSize_))
+        , maxSize_(other.maxSize_)
     {
         setp(other.pptr(), other.epptr());
         other.setp(nullptr, nullptr);
     }
 
-    DynamicStreamBuf& DynamicStreamBuf::operator=(DynamicStreamBuf&& other)
+    DynamicStreamBuf& DynamicStreamBuf::operator=(DynamicStreamBuf&& other) noexcept
     {
         if (&other != this)
         {
             data_    = std::move(other.data_);
-            maxSize_ = std::move(other.maxSize_);
+            maxSize_ = other.maxSize_;
             setp(other.pptr(), other.epptr());
             other.setp(nullptr, nullptr);
         }
@@ -133,7 +133,7 @@ namespace Pistache
             const auto size = data_.size();
             if (size < maxSize_)
             {
-                reserve((size ? size : 1u) * 2);
+                reserve((size ? size : 1U) * 2);
                 *pptr() = static_cast<char>(ch);
                 pbump(1);
                 return traits_type::not_eof(ch);

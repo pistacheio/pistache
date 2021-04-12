@@ -20,6 +20,7 @@
 
 #include <memory>
 #include <thread>
+#include <utility>
 #include <vector>
 
 namespace Pistache::Aio
@@ -42,7 +43,7 @@ namespace Pistache::Aio
         struct Entry : private Polling::Event
         {
             Entry(Polling::Event&& event)
-                : Polling::Event(std::move(event))
+                : Polling::Event(std::move(event)) // Event is trivially copyable
             { }
 
             bool isReadable() const { return flags.hasFlag(Polling::NotifyOn::Read); }
@@ -142,26 +143,26 @@ namespace Pistache::Aio
     class ExecutionContext
     {
     public:
-        virtual ~ExecutionContext() { }
+        virtual ~ExecutionContext()                             = default;
         virtual Reactor::Impl* makeImpl(Reactor* reactor) const = 0;
     };
 
     class SyncContext : public ExecutionContext
     {
     public:
-        virtual ~SyncContext() { }
+        ~SyncContext() override = default;
         Reactor::Impl* makeImpl(Reactor* reactor) const override;
     };
 
     class AsyncContext : public ExecutionContext
     {
     public:
-        explicit AsyncContext(size_t threads, const std::string& threadsName = "")
+        explicit AsyncContext(size_t threads, std::string threadsName = "")
             : threads_(threads)
-            , threadsName_(threadsName)
+            , threadsName_(std::move(threadsName))
         { }
 
-        virtual ~AsyncContext() { }
+        ~AsyncContext() override = default;
 
         Reactor::Impl* makeImpl(Reactor* reactor) const override;
 
@@ -206,9 +207,9 @@ namespace Pistache::Aio
 
         Context context() const { return context_; }
 
-        Reactor::Key key() const { return key_; };
+        Reactor::Key key() const { return key_; }
 
-        virtual ~Handler() { }
+        ~Handler() override = default;
 
     private:
         Reactor* reactor_;

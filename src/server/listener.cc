@@ -25,7 +25,7 @@
 #include <vector>
 
 #include <cerrno>
-#include <signal.h>
+#include <csignal>
 
 #ifdef PISTACHE_USE_SSL
 
@@ -66,7 +66,6 @@ namespace Pistache::Tcp
                 case -2:
                     throw std::logic_error("Trying to call PopStringFromBio on a BIO that "
                                            "does not support the BIO_gets method");
-                    break;
                 default: // >0
                     result.append(buffer);
                     break;
@@ -128,7 +127,7 @@ namespace Pistache::Tcp
             return ctx;
         }
 
-    }
+    } // namespace
 #endif /* PISTACHE_USE_SSL */
 
     void setSocketOptions(Fd fd, Flags<Options> options)
@@ -312,7 +311,7 @@ namespace Pistache::Tcp
 
         struct sockaddr_in sock_addr = { 0 };
         socklen_t addrlen            = sizeof(sock_addr);
-        auto sock_addr_alias         = reinterpret_cast<struct sockaddr*>(&sock_addr);
+        auto* sock_addr_alias        = reinterpret_cast<struct sockaddr*>(&sock_addr);
 
         if (-1 == getsockname(listen_fd, sock_addr_alias, &addrlen))
         {
@@ -496,7 +495,7 @@ namespace Pistache::Tcp
         socklen_t peer_addr_len = sizeof(peer_addr);
         // Do not share open FD with forked processes
         int client_fd = ::accept4(
-            listen_fd, (struct sockaddr*)&peer_addr, &peer_addr_len, SOCK_CLOEXEC);
+            listen_fd, reinterpret_cast<struct sockaddr*>(&peer_addr), &peer_addr_len, SOCK_CLOEXEC);
         if (client_fd < 0)
         {
             if (errno == EBADF || errno == ENOTSOCK)
@@ -527,13 +526,13 @@ namespace Pistache::Tcp
     }
 
 #ifdef PISTACHE_USE_SSL
-
+    // Do not change with std::string_view, that is not guarantied to be \0 terminated
     void Listener::setupSSLAuth(const std::string& ca_file,
                                 const std::string& ca_path,
-                                int (*cb)(int, void*) = NULL)
+                                int (*cb)(int, void*) = nullptr)
     {
-        const char* __ca_file = NULL;
-        const char* __ca_path = NULL;
+        const char* __ca_file = nullptr;
+        const char* __ca_path = nullptr;
 
         if (ssl_ctx_ == nullptr)
         {
@@ -561,9 +560,9 @@ namespace Pistache::Tcp
                            SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT | SSL_VERIFY_CLIENT_ONCE,
 /* Callback type did change in 1.0.1 */
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-                           (int (*)(int, X509_STORE_CTX*))cb
+                           reinterpret_cast<int (*)(int, X509_STORE_CTX*)>(cb)
 #else
-                           (SSL_verify_cb)cb
+                           reinterpret_cast<SSL_verify_cb>(cb)
 #endif /* OPENSSL_VERSION_NUMBER */
         );
     }

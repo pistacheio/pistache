@@ -133,7 +133,7 @@ namespace Pistache
 
         ~RawBuffer() = default;
 
-        RawBuffer copy(size_t fromIndex = 0u) const;
+        RawBuffer copy(size_t fromIndex = 0U) const;
         const std::string& data() const;
         size_t size() const;
 
@@ -167,8 +167,8 @@ namespace Pistache
         DynamicStreamBuf(const DynamicStreamBuf& other) = delete;
         DynamicStreamBuf& operator=(const DynamicStreamBuf& other) = delete;
 
-        DynamicStreamBuf(DynamicStreamBuf&& other);
-        DynamicStreamBuf& operator=(DynamicStreamBuf&& other);
+        DynamicStreamBuf(DynamicStreamBuf&& other) noexcept;
+        DynamicStreamBuf& operator=(DynamicStreamBuf&& other) noexcept;
 
         RawBuffer buffer() const;
 

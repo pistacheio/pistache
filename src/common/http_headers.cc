@@ -55,9 +55,9 @@ namespace Pistache::Http::Header
         return instance;
     }
 
-    Registry::Registry() { }
+    Registry::Registry() = default;
 
-    Registry::~Registry() { }
+    Registry::~Registry() = default;
 
     void Registry::registerHeader(const std::string& name,
                                   Registry::RegistryFunc func)

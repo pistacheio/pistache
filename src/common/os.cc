@@ -30,10 +30,7 @@ namespace Pistache
 
         flags |= O_NONBLOCK;
         int ret = fcntl(fd, F_SETFL, flags);
-        if (ret == -1)
-            return false;
-
-        return true;
+        return ret != -1;
     }
 
     CpuSet::CpuSet() { bits.reset(); }
