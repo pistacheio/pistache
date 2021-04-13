@@ -250,7 +250,7 @@ before_script:
   # Print debug system information
   - cat /proc/sys/kernel/core_pattern
   - cat /etc/default/apport || true
-  - systemctl list-units --type=service --state=running
+  - systemctl list-units --type=service --state=running || true
 
   # Meson debug build
   - meson setup meson_build_debug
