@@ -27,9 +27,8 @@ int main()
 
 EOF
 
-g++ -o pistache_test pistache_test.cpp `pkg-config --cflags --libs libpistache`
+g++ -o pistache_test pistache_test.cpp -std=c++17 `pkg-config --cflags --libs libpistache`
 echo "build: OK"
 [ -x pistache_test ]
 ./pistache_test
 echo "run: OK"
-
