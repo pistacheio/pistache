@@ -152,7 +152,7 @@ namespace Pistache
 
         size_t Peer::getUniqueId()
         {
-            static std::atomic<size_t> idCounter{0};
+            static std::atomic<size_t> idCounter { 0 };
             return idCounter++;
         }
 
