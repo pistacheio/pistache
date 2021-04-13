@@ -821,10 +821,10 @@ TEST(headers_test, raw_headers_are_case_insensitive)
         step.apply(cursor);
 
         // or the header you try and get, it should work:
-        ASSERT_FALSE(request.headers().tryGetRaw("Custom-Header").has_value());
-        ASSERT_FALSE(request.headers().tryGetRaw("CUSTOM-HEADER").has_value());
-        ASSERT_FALSE(request.headers().tryGetRaw("custom-header").has_value());
-        ASSERT_FALSE(request.headers().tryGetRaw("CuStOm-HeAdEr").has_value());
+        ASSERT_TRUE(request.headers().tryGetRaw("Custom-Header").has_value());
+        ASSERT_TRUE(request.headers().tryGetRaw("CUSTOM-HEADER").has_value());
+        ASSERT_TRUE(request.headers().tryGetRaw("custom-header").has_value());
+        ASSERT_TRUE(request.headers().tryGetRaw("CuStOm-HeAdEr").has_value());
     }
 }
 
