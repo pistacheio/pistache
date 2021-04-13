@@ -13,7 +13,7 @@ project (pistache
 
 include(GNUInstallDirs)
 
-add_compile_options(-Wall -Wconversion -pedantic -Wextra -Wno-missing-field-initializers)
+add_compile_options(-Wall -Wextra -Wpedantic -Wconversion -Wno-sign-conversion -Wno-missing-field-initializers)
 
 option(BUILD_SHARED_LIBS "build shared library" ON)
 option(PISTACHE_BUILD_TESTS "build tests alongside the project" OFF)
