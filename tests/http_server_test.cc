@@ -612,13 +612,13 @@ namespace
             }
             std::string requestAddress = request.address().host();
             writer.send(Http::Code::Ok, requestAddress);
-            std::cout << SERVER_PREFIX << " Sent: `" << requestAddress << "` data to "
+            std::cout << SERVER_PREFIX << " Sent `" << requestAddress << "` to "
                       << *peer << std::endl;
         }
 
         void onDisconnection(const std::shared_ptr<Tcp::Peer>& peer) override
         {
-            std::cout << SERVER_PREFIX << " Disconnect from peer " << *peer
+            std::cout << SERVER_PREFIX << " Disconnect from " << *peer
                       << std::endl;
             activeConnections.erase(peer->getID());
             waitHelper->increment();
