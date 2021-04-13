@@ -24,7 +24,6 @@ pistache_test_files = [
 	'stream_test',
 	'reactor_test',
 	'threadname_test',
-	'optional_test',
 	'log_api_test',
 	'string_logger_test'
 ]
@@ -62,7 +61,6 @@ if cppcheck.found()
 		'-DCPPCHECK',
 		'--suppress=*:*tests/*',
 		'--suppress=*:*subprojects/*',
-		'--suppress=noExplicitConstructor:include/pistache/optional.h',
 		'--std=' + get_option('cpp_std')
 	]
 	run_target(
