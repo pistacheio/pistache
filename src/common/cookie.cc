@@ -9,6 +9,7 @@
 #include <pistache/stream.h>
 
 #include <iterator>
+#include <optional>
 #include <unordered_map>
 
 namespace Pistache::Http
@@ -36,21 +37,21 @@ namespace Pistache::Http
         struct AttributeMatcher;
 
         template <>
-        struct AttributeMatcher<Optional<std::string>>
+        struct AttributeMatcher<std::optional<std::string>>
         {
             static void match(StreamCursor& cursor, Cookie* obj,
-                              Optional<std::string> Cookie::*attr)
+                              std::optional<std::string> Cookie::*attr)
             {
                 auto token = matchValue(cursor);
-                obj->*attr = Some(token.text());
+                obj->*attr = token.text();
             }
         };
 
         template <>
-        struct AttributeMatcher<Optional<int>>
+        struct AttributeMatcher<std::optional<int>>
         {
             static void match(StreamCursor& cursor, Cookie* obj,
-                              Optional<int> Cookie::*attr)
+                              std::optional<int> Cookie::*attr)
             {
                 auto token = matchValue(cursor);
 
@@ -68,7 +69,7 @@ namespace Pistache::Http
                     return ret;
                 };
 
-                obj->*attr = Some(strntol(token.rawText(), token.size()));
+                obj->*attr = strntol(token.rawText(), token.size());
             }
         };
 
@@ -82,13 +83,13 @@ namespace Pistache::Http
         };
 
         template <>
-        struct AttributeMatcher<Optional<FullDate>>
+        struct AttributeMatcher<std::optional<FullDate>>
         {
             static void match(StreamCursor& cursor, Cookie* obj,
-                              Optional<FullDate> Cookie::*attr)
+                              std::optional<FullDate> Cookie::*attr)
             {
                 auto token = matchValue(cursor);
-                obj->*attr = Some(FullDate::fromString(token.text()));
+                obj->*attr = FullDate::fromString(token.text());
             }
         };
 
@@ -199,23 +200,27 @@ namespace Pistache::Http
     void Cookie::write(std::ostream& os) const
     {
         os << name << "=" << value;
-        optionally_do(path, [&](const std::string& value) {
+        if (path.has_value()) {
+            const std::string& value = *path;
             os << "; ";
             os << "Path=" << value;
-        });
-        optionally_do(domain, [&](const std::string& value) {
+        }
+        if (domain.has_value()) {
+            const std::string& value = *domain;
             os << "; ";
             os << "Domain=" << value;
-        });
-        optionally_do(maxAge, [&](int value) {
+        }
+        if (maxAge.has_value()) {
+            int value = *maxAge;
             os << "; ";
             os << "Max-Age=" << value;
-        });
-        optionally_do(expires, [&](const FullDate& value) {
+        }
+        if (expires.has_value()) {
+            const FullDate& value = *expires;
             os << "; ";
             os << "Expires=";
             value.write(os);
-        });
+        }
         if (secure)
             os << "; Secure";
         if (httpOnly)

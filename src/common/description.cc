@@ -9,6 +9,7 @@
 #include <pistache/http_header.h>
 
 #include <algorithm>
+#include <optional>
 #include <sstream>
 
 namespace Pistache::Rest
@@ -156,7 +157,7 @@ namespace Pistache::Rest
             return it->second;
         }
 
-        Optional<Path> PathGroup::path(const std::string& name,
+        std::optional<Path> PathGroup::path(const std::string& name,
                                        Http::Method method) const
         {
             auto group = paths(name);
@@ -165,9 +166,9 @@ namespace Pistache::Rest
 
             if (it != std::end(group))
             {
-                return Optional<Path>(Some(*it));
+                return std::optional<Path>(*it);
             }
-            return Optional<Path>(None());
+            return std::nullopt;
         }
 
         PathGroup::group_iterator PathGroup::add(Path path)
@@ -256,13 +257,13 @@ namespace Pistache::Rest
         InfoBuilder& InfoBuilder::contact(std::string name, std::string url,
                                           std::string email)
         {
-            info_->contact = Some(Contact(std::move(name), std::move(url), std::move(email)));
+            info_->contact = Contact(std::move(name), std::move(url), std::move(email));
             return *this;
         }
 
         InfoBuilder& InfoBuilder::license(std::string name, std::string url)
         {
-            info_->license = Some(License(std::move(name), std::move(url)));
+            info_->license = License(std::move(name), std::move(url));
             return *this;
         }
 

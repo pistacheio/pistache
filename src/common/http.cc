@@ -15,6 +15,7 @@
 #include <iomanip>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <unordered_map>
 
@@ -585,13 +586,13 @@ namespace Pistache::Http
             params.insert(std::make_pair(std::move(name), std::move(value)));
         }
 
-        Optional<std::string> Query::get(const std::string& name) const
+        std::optional<std::string> Query::get(const std::string& name) const
         {
             auto it = params.find(name);
             if (it == std::end(params))
-                return Optional<std::string>(None());
+                return std::nullopt;
 
-            return Optional<std::string>(Some(it->second));
+            return std::optional<std::string>(it->second);
         }
 
         std::string Query::as_str() const

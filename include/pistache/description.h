@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -16,7 +17,6 @@
 #include <pistache/http_defs.h>
 #include <pistache/iterator_adapter.h>
 #include <pistache/mime.h>
-#include <pistache/optional.h>
 #include <pistache/router.h>
 
 namespace Pistache::Rest
@@ -152,8 +152,8 @@ namespace Pistache::Rest
             std::string description;
             std::string termsOfService;
 
-            Optional<Contact> contact;
-            Optional<License> license;
+            std::optional<Contact> contact;
+            std::optional<License> license;
         };
 
         struct InfoBuilder
@@ -303,7 +303,7 @@ namespace Pistache::Rest
             { }
 
             Group paths(const std::string& name) const;
-            Optional<Path> path(const std::string& name, Http::Method method) const;
+            std::optional<Path> path(const std::string& name, Http::Method method) const;
 
             group_iterator add(Path path);
 

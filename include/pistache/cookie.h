@@ -9,12 +9,12 @@
 #include <ctime>
 #include <list>
 #include <map>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 
 #include <pistache/http_defs.h>
-#include <pistache/optional.h>
 
 namespace Pistache::Http
 {
@@ -28,11 +28,11 @@ namespace Pistache::Http
         std::string name;
         std::string value;
 
-        Optional<std::string> path;
-        Optional<std::string> domain;
-        Optional<FullDate> expires;
+        std::optional<std::string> path;
+        std::optional<std::string> domain;
+        std::optional<FullDate> expires;
 
-        Optional<int> maxAge;
+        std::optional<int> maxAge;
         bool secure;
         bool httpOnly;
 
