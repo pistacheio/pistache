@@ -32,7 +32,7 @@ Depends:
  rapidjson-dev (>= 1.1.0)
 Description: elegant C++ REST framework
  Pistache is a C++ REST framework originally written by Mathieu Stefani at
- Datacratic, since maintained by other volunteers. It is written in pure C++14
+ Datacratic, since maintained by other volunteers. It is written in pure C++17
  with no external dependency and provides a low-level HTTP abstraction.
  .
  Pistache provides both an HTTP client and server that can be used to create and
@@ -51,7 +51,7 @@ Depends:
     ${shlibs:Depends}
 Description: elegant C++ REST framework
  Pistache is a C++ REST framework originally written by Mathieu Stefani at
- Datacratic, since maintained by other volunteers. It is written in pure C++14
+ Datacratic, since maintained by other volunteers. It is written in pure C++17
  with no external dependency and provides a low-level HTTP abstraction.
  .
  Pistache provides both an HTTP client and server that can be used to create and

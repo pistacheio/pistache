@@ -12,6 +12,7 @@
 #include <fstream>
 #include <future>
 #include <mutex>
+#include <sstream>
 #include <string>
 #include <thread>
 
@@ -19,10 +20,56 @@
 
 using namespace Pistache;
 
-#define THREAD_INFO \
-    "[" << std::hex << std::this_thread::get_id() << std::dec << "]"
-#define SERVER_PREFIX "[server] " THREAD_INFO
-#define CLIENT_PREFIX "[client] " THREAD_INFO
+namespace
+{
+
+    class SimpleLogger
+    {
+    public:
+        static SimpleLogger& instance()
+        {
+            static SimpleLogger logger;
+            return logger;
+        }
+
+        void log(const std::string& message)
+        {
+            std::lock_guard<std::mutex> guard { m_coutLock };
+            std::cout << message << std::endl;
+        }
+
+    private:
+        SimpleLogger() = default;
+        std::mutex m_coutLock;
+    };
+
+    // from
+    // https://stackoverflow.com/questions/9667963/can-i-rewrite-a-logging-macro-with-stream-operators-to-use-a-c-template-functi
+    class ScopedLogger
+    {
+    public:
+        ScopedLogger(const std::string& prefix)
+        {
+            m_stream << "[" << prefix << "] [" << std::hex << std::this_thread::get_id() << "] " << std::dec;
+        }
+
+        ~ScopedLogger()
+        {
+            SimpleLogger::instance().log(m_stream.str());
+        }
+
+        std::stringstream& stream()
+        {
+            return m_stream;
+        }
+
+    private:
+        std::stringstream m_stream;
+    };
+
+#define LOGGER(prefix, message) ScopedLogger(prefix).stream() << message;
+
+}
 
 struct HelloHandlerWithDelay : public Http::Handler
 {
@@ -31,8 +78,7 @@ struct HelloHandlerWithDelay : public Http::Handler
     explicit HelloHandlerWithDelay(int delay = 0)
         : delay_(delay)
     {
-        std::cout << SERVER_PREFIX << " Init Hello handler with " << delay_
-                  << " seconds delay\n";
+        LOGGER("server", "Init Hello handler with " << delay_ << " seconds delay");
     }
 
     void onRequest(const Http::Request& /*request*/,
@@ -70,7 +116,7 @@ struct HandlerWithSlowPage : public Http::Handler
         }
 
         writer.send(Http::Code::Ok, message);
-        std::cout << SERVER_PREFIX << " Sent: " << message;
+        LOGGER("server", "Sent: " << message);
     }
 
     int delay_;
@@ -90,8 +136,7 @@ struct FileHandler : public Http::Handler
         Http::serveFile(writer, fileName_)
             .then(
                 [this](ssize_t bytes) {
-                    std::cout << SERVER_PREFIX << " Sent " << bytes << " bytes from "
-                              << fileName_ << " file" << std::endl;
+                    LOGGER("server", "Sent " << bytes << " bytes from " << fileName_ << " file");
                 },
                 Async::IgnoreException);
     }
@@ -111,7 +156,7 @@ struct AddressEchoHandler : public Http::Handler
     {
         std::string requestAddress = request.address().host();
         writer.send(Http::Code::Ok, requestAddress);
-        std::cout << SERVER_PREFIX << " Sent: " << requestAddress << std::endl;
+        LOGGER("server", "Sent: " << requestAddress);
     }
 };
 
@@ -150,8 +195,7 @@ int clientLogicFunc(int response_size, const std::string& server_page,
         auto response = rb.send();
         response.then(
             [&resolver_counter](Http::Response resp) {
-                std::cout << CLIENT_PREFIX << " Response code is " << resp.code()
-                          << std::endl;
+                LOGGER("client", "Response code is " << resp.code());
                 if (resp.code() == Http::Code::Ok)
                 {
                     ++resolver_counter;
@@ -159,7 +203,7 @@ int clientLogicFunc(int response_size, const std::string& server_page,
             },
             [&reject_counter](std::exception_ptr exc) {
                 PrintException excPrinter;
-                std::cout << CLIENT_PREFIX << " Reject with reason: ";
+                LOGGER("client", "Reject with reason:");
                 excPrinter(exc);
                 ++reject_counter;
             });
@@ -172,11 +216,8 @@ int clientLogicFunc(int response_size, const std::string& server_page,
 
     client.shutdown();
 
-    std::cout << CLIENT_PREFIX << " resolves: " << resolver_counter
-              << ", rejects: " << reject_counter
-              << ", timeout: " << timeout_seconds << " seconds"
-              << ", wait: " << wait_seconds << " seconds"
-              << "\n";
+    LOGGER("client", " resolves: " << resolver_counter << ", rejects: " << reject_counter << ", timeout: " << timeout_seconds << " seconds"
+                                   << ", wait: " << wait_seconds << " seconds");
 
     return resolver_counter;
 }
@@ -191,7 +232,7 @@ TEST(http_server_test,
     auto server_opts = Http::Endpoint::options().flags(flags);
     server.init(server_opts);
 
-    std::cout << "Trying to run server...\n";
+    LOGGER("test", "Trying to run server...");
     const int ONE_SECOND_TIMEOUT = 1;
     const int SIX_SECONDS_DELAY  = 6;
     server.setHandler(
@@ -199,7 +240,7 @@ TEST(http_server_test,
     server.serveThreaded();
 
     const std::string server_address = "localhost:" + server.getPort().toString();
-    std::cout << "Server address: " << server_address << "\n";
+    LOGGER("test", "Server address: " << server_address);
 
     const int CLIENT_REQUEST_SIZE = 1;
     int counter                   = clientLogicFunc(CLIENT_REQUEST_SIZE, server_address,
@@ -221,7 +262,7 @@ TEST(
     auto server_opts = Http::Endpoint::options().flags(flags);
     server.init(server_opts);
 
-    std::cout << "Trying to run server...\n";
+    LOGGER("test", "Trying to run server...");
     const int ONE_SECOND_TIMEOUT = 1;
     const int SIX_SECONDS_DELAY  = 6;
     server.setHandler(
@@ -229,7 +270,7 @@ TEST(
     server.serveThreaded();
 
     const std::string server_address = "localhost:" + server.getPort().toString();
-    std::cout << "Server address: " << server_address << "\n";
+    LOGGER("test", "Server address: " << server_address);
 
     const int CLIENT_REQUEST_SIZE = 3;
     int counter                   = clientLogicFunc(CLIENT_REQUEST_SIZE, server_address,
@@ -248,12 +289,12 @@ TEST(http_server_test, multiple_client_with_requests_to_multithreaded_server)
     auto flags       = Tcp::Options::ReuseAddr;
     auto server_opts = Http::Endpoint::options().flags(flags).threads(3);
     server.init(server_opts);
-    std::cout << "Trying to run server...\n";
+    LOGGER("test", "Trying to run server...");
     server.setHandler(Http::make_handler<HelloHandlerWithDelay>());
     ASSERT_NO_THROW(server.serveThreaded());
 
     const std::string server_address = "localhost:" + server.getPort().toString();
-    std::cout << "Server is running: " << server_address << "\n";
+    LOGGER("test", "Server address: " << server_address);
 
     const int NO_TIMEOUT                = 0;
     const int SIX_SECONDS_TIMOUT        = 6;
@@ -289,7 +330,7 @@ TEST(http_server_test,
     server.serveThreaded();
 
     const std::string server_address = "localhost:" + server.getPort().toString();
-    std::cout << "Server address: " << server_address << "\n";
+    LOGGER("test", "Server address: " << server_address);
 
     const int FIRST_CLIENT_REQUEST_SIZE = 1;
     const int FIRST_CLIENT_TIMEOUT      = SIX_SECONDS_DELAY / 2;
@@ -326,7 +367,7 @@ TEST(http_server_test, server_with_static_file)
     {
         std::cerr << "No suitable filename can be generated!" << std::endl;
     }
-    std::cout << "Creating temporary file: " << fileName << std::endl;
+    LOGGER("test", "Creating temporary file: " << fileName);
 
     std::ofstream tmpFile;
     tmpFile.open(fileName);
@@ -343,7 +384,7 @@ TEST(http_server_test, server_with_static_file)
     server.serveThreaded();
 
     const std::string server_address = "localhost:" + server.getPort().toString();
-    std::cout << "Server address: " << server_address << "\n";
+    LOGGER("test", "Server address: " << server_address);
 
     Http::Client client;
     client.init();
@@ -367,7 +408,7 @@ TEST(http_server_test, server_with_static_file)
     client.shutdown();
     server.shutdown();
 
-    std::cout << "Deleting file " << fileName << std::endl;
+    LOGGER("test", "Deleting file " << fileName);
     std::remove(fileName);
 
     ASSERT_EQ(data, resultData);
@@ -385,7 +426,7 @@ TEST(http_server_test, server_request_copies_address)
     server.serveThreaded();
 
     const std::string server_address = "localhost:" + server.getPort().toString();
-    std::cout << "Server address: " << server_address << "\n";
+    LOGGER("test", "Server address: " << server_address);
 
     Http::Client client;
     client.init();
@@ -394,8 +435,7 @@ TEST(http_server_test, server_request_copies_address)
     std::string resultData;
     response.then(
         [&resultData](Http::Response resp) {
-            std::cout << CLIENT_PREFIX << " Response code is " << resp.code()
-                      << std::endl;
+            LOGGER("client", " Response code is " << resp.code());
             if (resp.code() == Http::Code::Ok)
             {
                 resultData = resp.body();
@@ -427,7 +467,7 @@ struct ResponseSizeHandler : public Http::Handler
     {
         std::string requestAddress = request.address().host();
         writer.send(Http::Code::Ok, requestAddress);
-        std::cout << SERVER_PREFIX << " Sent: " << requestAddress << std::endl;
+        LOGGER("server", "Sent: " << requestAddress);
         rsize_ = writer.getResponseSize();
         rcode_ = writer.getResponseCode();
     }
@@ -451,7 +491,7 @@ TEST(http_server_test, response_size_captured)
     server.serveThreaded();
 
     const std::string server_address = "localhost:" + server.getPort().toString();
-    std::cout << "Server address: " << server_address << "\n";
+    LOGGER("test", "Server address: " << server_address);
 
     // Use the built-in http client, but this test is interested in testing
     // that the ResponseWriter in the server stashed the correct size and code
@@ -463,8 +503,7 @@ TEST(http_server_test, response_size_captured)
     std::string resultData;
     response.then(
         [&resultData](Http::Response resp) {
-            std::cout << CLIENT_PREFIX << " Response code is " << resp.code()
-                      << std::endl;
+            LOGGER("client", "Response code is " << resp.code());
             if (resp.code() == Http::Code::Ok)
             {
                 resultData = resp.body();
@@ -482,7 +521,7 @@ TEST(http_server_test, response_size_captured)
     // Sanity check (stolen from AddressEchoHandler test).
     ASSERT_EQ("127.0.0.1", resultData);
 
-    std::cout << CLIENT_PREFIX << " Response size is " << rsize << "\n";
+    LOGGER("test", "Response size is " << rsize);
     ASSERT_GT(rsize, 1u);
     ASSERT_LT(rsize, 300u);
     ASSERT_EQ(rcode, Http::Code::Ok);
@@ -505,7 +544,7 @@ TEST(http_server_test, client_request_header_timeout_raises_http_408)
 
     auto port = server.getPort();
     auto addr = "localhost:" + port.toString();
-    std::cout << "Server address: " << addr << "\n";
+    LOGGER("test", "Server address: " << addr)
 
     char recvBuf[1024];
     std::memset(recvBuf, 0, sizeof(recvBuf));
@@ -539,7 +578,7 @@ TEST(http_server_test, client_request_body_timeout_raises_http_408)
 
     auto port = server.getPort();
     auto addr = "localhost:" + port.toString();
-    std::cout << "Server address: " << addr << "\n";
+    LOGGER("test", "Server address: " << addr);
 
     std::string reqStr    = "GET /ping HTTP/1.1\r\n";
     std::string headerStr = "Host: localhost\r\nUser-Agent: test\r\n";
@@ -612,14 +651,12 @@ namespace
             }
             std::string requestAddress = request.address().host();
             writer.send(Http::Code::Ok, requestAddress);
-            std::cout << SERVER_PREFIX << " Sent: `" << requestAddress << "` data to "
-                      << *peer << std::endl;
+            LOGGER("server", "Sent `" << requestAddress << "` to " << *peer);
         }
 
         void onDisconnection(const std::shared_ptr<Tcp::Peer>& peer) override
         {
-            std::cout << SERVER_PREFIX << " Disconnect from peer " << *peer
-                      << std::endl;
+            LOGGER("server", "Disconnect from " << *peer);
             activeConnections.erase(peer->getID());
             waitHelper->increment();
         }

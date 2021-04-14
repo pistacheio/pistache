@@ -24,7 +24,6 @@ install_headers([
 	'mime.h',
 	'meta.h',
 	'net.h',
-	'optional.h',
 	'os.h',
 	'peer.h',
 	'prototype.h',

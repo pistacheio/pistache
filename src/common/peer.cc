@@ -17,9 +17,6 @@
 
 namespace Pistache::Tcp
 {
-
-    std::atomic<size_t> idCounter { 0 };
-
     namespace
     {
         struct ConcretePeer : Peer
@@ -35,7 +32,7 @@ namespace Pistache::Tcp
         : fd_(fd)
         , addr(addr)
         , ssl_(ssl)
-        , id_(idCounter++)
+        , id_(getUniqueId())
     { }
 
     Peer::~Peer()
@@ -136,7 +133,7 @@ namespace Pistache::Tcp
     std::ostream& operator<<(std::ostream& os, Peer& peer)
     {
         const auto& addr = peer.address();
-        os << "Peer with ID=" << peer.getID() << " (address=" << addr
+        os << "Peer " << &peer << " (id=" << peer.getID() << ", address=" << addr
            << ", hostname=" << peer.hostname() << ", fd=" << peer.fd() << ")";
         return os;
     }
@@ -149,6 +146,12 @@ namespace Pistache::Tcp
             throw std::logic_error("Orphaned peer");
 
         return transport_;
+    }
+
+    size_t Peer::getUniqueId()
+    {
+        static std::atomic<size_t> idCounter{0};
+        return idCounter++;
     }
 
 } // namespace Pistache::Tcp

@@ -31,7 +31,7 @@ _apt_pkgs: &_apt_pkgs
   - 'gdb'
   - 'lcov'
   - 'cppcheck'
-  - 'clang-format-9'
+  - 'clang-format-10'
   - 'python3-pip'
   - 'python3-setuptools'
   - 'ninja-build'
@@ -227,8 +227,8 @@ jobs:
 before_install:
   # Check source code formatting
   - if [ $TRAVIS_PULL_REQUEST != "false" ]; then changed_src=$(git diff --name-only master...HEAD | egrep "\.(h|cc)$" | grep -v "include/pistache/thirdparty" || [ $? == 1 ]); fi
-  - if [ ! -z "$changed_src" ]; then git-clang-format-9 --quiet --binary $(which clang-format-9) --style llvm --diff master HEAD -- $changed_src > ./clang-format-diff; fi
-  - if [ -s ./clang-format-diff ]; then cat ./clang-format-diff && echo "Format source code according to LLVM style, please" && false; fi
+  - if [ ! -z "$changed_src" ]; then git-clang-format-10 --quiet --binary $(which clang-format-10) --diff master HEAD -- $changed_src > ./clang-format-diff; fi
+  - if [ -s ./clang-format-diff ]; then cat ./clang-format-diff && echo "Format source code according to .clang-format rules. Make sure to run make format" && false; fi
 
 install:
   - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
@@ -250,8 +250,7 @@ before_script:
   # Print debug system information
   - cat /proc/sys/kernel/core_pattern
   - cat /etc/default/apport || true
-  - service --status-all || true
-  - initctl list || true
+  - systemctl list-units --type=service --state=running || true
 
   # Meson debug build
   - meson setup meson_build_debug
@@ -299,23 +298,23 @@ script:
   # Set the ulimit
   - ulimit -c unlimited -S
 
-  # CMake debug build
-  - cmake --build cmake_build_debug --parallel 2 --target all test -- ARGS='-V'
-
-  # CMake debug build, no SSL
-  - cmake --build cmake_build_debug-nossl --parallel 2 --target all test -- ARGS='-V'
-
-  # CMake release build
-  - cmake --build cmake_build_release --parallel 2 -- ARGS='-V'
-
   # Meson debug build
-  - meson compile -C meson_build_debug --jobs 2 && meson test -C meson_build_debug || (cat meson_build_debug/meson-logs/testlog.txt && false)
+  - meson compile -C meson_build_debug --jobs 2 && meson test -C meson_build_debug --print-errorlogs --no-stdsplit
 
   # Meson debug build, no SSL
-  - meson compile -C meson_build_debug_nossl --jobs 2 && meson test -C meson_build_debug_nossl || (cat meson_build_debug/meson-logs/testlog.txt && false)
+  - meson compile -C meson_build_debug_nossl --jobs 2 && meson test -C meson_build_debug_nossl --print-errorlogs --no-stdsplit
 
   # Meson release build
   - meson compile -C meson_build_release --jobs 2
+
+  # CMake debug build
+  - CTEST_OUTPUT_ON_FAILURE=True cmake --build cmake_build_debug --parallel 2 --target all test
+
+  # CMake debug build, no SSL
+  - CTEST_OUTPUT_ON_FAILURE=True cmake --build cmake_build_debug-nossl --parallel 2 --target all test
+
+  # CMake release build
+  - cmake --build cmake_build_release --parallel 2
 
 after_failure:
   - CRASHFILES=$(find /var/crash/ -mindepth 1 -maxdepth 1 -print)

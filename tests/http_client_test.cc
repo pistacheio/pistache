@@ -489,7 +489,7 @@ TEST(http_client_test, client_sends_query)
     for (auto entry : results)
     {
         ASSERT_TRUE(query.has(entry.first));
-        EXPECT_EQ(entry.second, query.get(entry.first).get());
+        EXPECT_EQ(entry.second, query.get(entry.first).value());
     }
 }
 

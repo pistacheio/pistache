@@ -9,7 +9,6 @@
 #include <pistache/stream.h>
 
 #include <iterator>
-#include <optional>
 #include <unordered_map>
 
 namespace Pistache::Http

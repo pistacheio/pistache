@@ -18,7 +18,7 @@ TEST(headers_test, accept)
 
         const auto& mime = media[0];
         ASSERT_TRUE(mime == MIME(Audio, Star));
-        ASSERT_TRUE(mime.q().getOrElse(Pistache::Http::Mime::Q(0)) == Pistache::Http::Mime::Q(20));
+        ASSERT_TRUE(mime.q().value_or(Pistache::Http::Mime::Q(0)) == Pistache::Http::Mime::Q(20));
     }
 
     Pistache::Http::Header::Accept a2;
@@ -35,7 +35,7 @@ TEST(headers_test, accept)
         const auto& m3 = media[2];
         ASSERT_TRUE(m3 == MIME(Text, Html));
         auto level = m3.getParam("level");
-        ASSERT_TRUE(level.getOrElse("") == "1");
+        ASSERT_TRUE(level.value_or("") == "1");
         const auto& m4 = media[3];
         ASSERT_TRUE(m4 == MIME(Star, Star));
     }
@@ -49,13 +49,13 @@ TEST(headers_test, accept)
         ASSERT_TRUE(media.size() == 5U);
 
         ASSERT_TRUE(media[0] == MIME(Text, Star));
-        ASSERT_TRUE(media[0].q().getOrElse(Pistache::Http::Mime::Q(0)) == Pistache::Http::Mime::Q(30));
+        ASSERT_TRUE(media[0].q().value_or(Pistache::Http::Mime::Q(0)) == Pistache::Http::Mime::Q(30));
 
         ASSERT_TRUE(media[1] == MIME(Text, Html));
         ASSERT_TRUE(media[2] == MIME(Text, Html));
         ASSERT_TRUE(media[3] == MIME(Text, Html));
         ASSERT_TRUE(media[4] == MIME(Star, Star));
-        ASSERT_TRUE(media[4].q().getOrElse(Pistache::Http::Mime::Q(0)) == Pistache::Http::Mime::Q::fromFloat(0.5));
+        ASSERT_TRUE(media[4].q().value_or(Pistache::Http::Mime::Q(0)) == Pistache::Http::Mime::Q::fromFloat(0.5));
     }
 
     Pistache::Http::Header::Accept a4;
@@ -574,7 +574,7 @@ TEST(headers_test, content_type)
     ASSERT_TRUE("text/html; charset=ISO-8859-4" == oss.str());
     const auto& mime = ct.mime();
     ASSERT_TRUE(mime == MIME(Text, Html));
-    ASSERT_TRUE(mime.getParam("charset").getOrElse("") == "ISO-8859-4");
+    ASSERT_TRUE(mime.getParam("charset").value_or("") == "ISO-8859-4");
 }
 
 TEST(headers_test, access_control_allow_origin_test)
@@ -821,10 +821,10 @@ TEST(headers_test, raw_headers_are_case_insensitive)
         step.apply(cursor);
 
         // or the header you try and get, it should work:
-        ASSERT_FALSE(request.headers().tryGetRaw("Custom-Header").isEmpty());
-        ASSERT_FALSE(request.headers().tryGetRaw("CUSTOM-HEADER").isEmpty());
-        ASSERT_FALSE(request.headers().tryGetRaw("custom-header").isEmpty());
-        ASSERT_FALSE(request.headers().tryGetRaw("CuStOm-HeAdEr").isEmpty());
+        ASSERT_TRUE(request.headers().tryGetRaw("Custom-Header").has_value());
+        ASSERT_TRUE(request.headers().tryGetRaw("CUSTOM-HEADER").has_value());
+        ASSERT_TRUE(request.headers().tryGetRaw("custom-header").has_value());
+        ASSERT_TRUE(request.headers().tryGetRaw("CuStOm-HeAdEr").has_value());
     }
 }
 

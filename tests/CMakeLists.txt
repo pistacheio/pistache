@@ -35,7 +35,6 @@ pistache_test(mailbox_test)
 pistache_test(stream_test)
 pistache_test(reactor_test)
 pistache_test(threadname_test)
-pistache_test(optional_test)
 pistache_test(log_api_test)
 pistache_test(string_logger_test)
 

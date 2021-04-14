@@ -58,6 +58,7 @@ namespace Pistache::Tcp
     private:
         void associateTransport(Transport* transport);
         Transport* transport() const;
+        static size_t getUniqueId();
 
         Transport* transport_ = nullptr;
         Fd fd_                = -1;

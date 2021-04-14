@@ -28,4 +28,4 @@ public:                                          \
     std::shared_ptr<Base> clone() const override \
     {                                            \
         return std::make_shared<Class>(*this);   \
-    }\
+    }
