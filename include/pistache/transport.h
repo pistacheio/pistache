@@ -8,7 +8,6 @@
 
 #include <pistache/async.h>
 #include <pistache/mailbox.h>
-#include <pistache/optional.h>
 #include <pistache/reactor.h>
 #include <pistache/stream.h>
 
@@ -16,6 +15,7 @@
 #include <deque>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <unordered_map>
 
 namespace Pistache

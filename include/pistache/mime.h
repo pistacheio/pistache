@@ -8,11 +8,10 @@
 
 #include <cassert>
 #include <cmath>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
-
-#include <pistache/optional.h>
 
 namespace Pistache
 {
@@ -197,10 +196,10 @@ namespace Pistache
 
                 std::string raw() const { return raw_; }
 
-                const Optional<Q>& q() const { return q_; }
+                const std::optional<Q>& q() const { return q_; }
                 void setQuality(Q quality);
 
-                Optional<std::string> getParam(const std::string& name) const;
+                std::optional<std::string> getParam(const std::string& name) const;
                 void setParam(const std::string& name, std::string value);
 
                 std::string toString() const;
@@ -234,7 +233,7 @@ namespace Pistache
 
                 std::unordered_map<std::string, std::string> params;
 
-                Optional<Q> q_;
+                std::optional<Q> q_;
             };
 
             inline bool operator==(const MediaType& lhs, const MediaType& rhs)
