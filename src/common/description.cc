@@ -158,7 +158,7 @@ namespace Pistache::Rest
         }
 
         std::optional<Path> PathGroup::path(const std::string& name,
-                                       Http::Method method) const
+                                            Http::Method method) const
         {
             auto group = paths(name);
             auto it    = std::find_if(std::begin(group), std::end(group),

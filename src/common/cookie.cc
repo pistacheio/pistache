@@ -199,22 +199,26 @@ namespace Pistache::Http
     void Cookie::write(std::ostream& os) const
     {
         os << name << "=" << value;
-        if (path.has_value()) {
+        if (path.has_value())
+        {
             const std::string& value = *path;
             os << "; ";
             os << "Path=" << value;
         }
-        if (domain.has_value()) {
+        if (domain.has_value())
+        {
             const std::string& value = *domain;
             os << "; ";
             os << "Domain=" << value;
         }
-        if (maxAge.has_value()) {
+        if (maxAge.has_value())
+        {
             int value = *maxAge;
             os << "; ";
             os << "Max-Age=" << value;
         }
-        if (expires.has_value()) {
+        if (expires.has_value())
+        {
             const FullDate& value = *expires;
             os << "; ";
             os << "Expires=";

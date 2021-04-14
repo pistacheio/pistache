@@ -335,7 +335,8 @@ namespace Pistache::Http::Mime
             res += suffixString(suffix_);
         }
 
-        if (q_.has_value()) {
+        if (q_.has_value())
+        {
             Q quality = *q_;
             res += "; ";
             res += quality.toString();
