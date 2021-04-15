@@ -228,7 +228,7 @@ before_install:
   # Check source code formatting
   - if [ $TRAVIS_PULL_REQUEST != "false" ]; then changed_src=$(git diff --name-only master...HEAD | egrep "\.(h|cc)$" | grep -v "include/pistache/thirdparty" || [ $? == 1 ]); fi
   - if [ ! -z "$changed_src" ]; then git-clang-format-10 --quiet --binary $(which clang-format-10) --diff master HEAD -- $changed_src > ./clang-format-diff; fi
-  - if [ -s ./clang-format-diff ]; then cat ./clang-format-diff && echo "Format source code according to .clang-format rules. Make sure to run make format" && false; fi
+  - if [ -s ./clang-format-diff ]; then cat ./clang-format-diff && echo "Format source code according to .clang-format rules. Make sure to run ninja clang-format" && false; fi
 
 install:
   - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
