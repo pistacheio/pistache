@@ -37,9 +37,7 @@ _apt_pkgs: &_apt_pkgs
   - 'ninja-build'
   - 'libblocksruntime-dev'
   - 'rapidjson-dev'
-
-_apt_srcs: &_apt_srcs
-  - 'ubuntu-toolchain-r-test'
+  - 'libgtest-dev'
 
 _env_clang_6: &_env_clang_6
   - CC=clang-6.0
@@ -102,9 +100,6 @@ jobs:
     env: *_env_clang_6
     addons:
       apt:
-        sources:
-          - *_apt_srcs
-          - ['llvm-toolchain-6.0']
         packages:
           - *_apt_pkgs
           - ['clang-6.0', 'llvm-6.0-tools', 'libstdc++-7-dev']
@@ -113,9 +108,6 @@ jobs:
     env: *_env_clang_7
     addons:
       apt:
-        sources:
-          - *_apt_srcs
-          - ['llvm-toolchain-7']
         packages:
           - *_apt_pkgs
           - ['clang-7', 'llvm-7-tools', 'libstdc++-7-dev']
@@ -124,9 +116,6 @@ jobs:
     env: *_env_clang_8
     addons:
       apt:
-        sources:
-          - *_apt_srcs
-          - ['llvm-toolchain-8']
         packages:
           - *_apt_pkgs
           - ['clang-8', 'llvm-8-tools', 'libstdc++-8-dev']
@@ -135,9 +124,6 @@ jobs:
     env: *_env_clang_9
     addons:
       apt:
-        sources:
-          - *_apt_srcs
-          - ['llvm-toolchain-9']
         packages:
           - *_apt_pkgs
           - ['clang-9', 'llvm-9-tools', 'libstdc++-9-dev']
@@ -146,9 +132,6 @@ jobs:
     env: *_env_clang_10
     addons:
       apt:
-        sources:
-          - *_apt_srcs
-          - ['llvm-toolchain-10']
         packages:
           - *_apt_pkgs
           - ['clang-10', 'llvm-10-tools', 'libstdc++-10-dev']
@@ -158,8 +141,6 @@ jobs:
     env: *_env_gcc_7
     addons:
       apt:
-        sources:
-          - *_apt_srcs
         packages:
           - *_apt_pkgs
           - ['g++-7']
@@ -168,8 +149,6 @@ jobs:
     env: *_env_gcc_8
     addons:
       apt:
-        sources:
-          - *_apt_srcs
         packages:
           - *_apt_pkgs
           - ['g++-8']
@@ -178,8 +157,6 @@ jobs:
     env: *_env_gcc_9
     addons:
       apt:
-        sources:
-          - *_apt_srcs
         packages:
           - *_apt_pkgs
           - ['g++-9']
@@ -188,8 +165,6 @@ jobs:
     env: *_env_gcc_10
     addons:
       apt:
-        sources:
-          - *_apt_srcs
         packages:
           - *_apt_pkgs
           - ['g++-10']
@@ -198,8 +173,6 @@ jobs:
     env: *_env_gcc_8
     addons:
       apt:
-        sources:
-          - *_apt_srcs
         packages:
           - *_apt_pkgs
           - ['g++-8']
@@ -208,8 +181,6 @@ jobs:
     env: *_env_gcc_8
     addons:
       apt:
-        sources:
-          - *_apt_srcs
         packages:
           - *_apt_pkgs
           - ['g++-8']
@@ -218,8 +189,6 @@ jobs:
     env: *_env_gcc_8
     addons:
       apt:
-        sources:
-          - *_apt_srcs
         packages:
           - *_apt_pkgs
           - ['g++-8']
@@ -233,7 +202,7 @@ before_install:
 install:
   - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
   - mkdir -p ${DEPS_DIR} && cd ${DEPS_DIR}
-  # Install Meson >=0.57.0
+  # Install latest Meson version
   - sudo pip3 install -qqq --ignore-installed meson
 
 before_script:
@@ -250,7 +219,7 @@ before_script:
   # Print debug system information
   - cat /proc/sys/kernel/core_pattern
   - cat /etc/default/apport || true
-  - systemctl list-units --type=service --state=running || true
+  - systemctl list-units --type=service --state=running --no-pager || true
 
   # Meson debug build
   - meson setup meson_build_debug
