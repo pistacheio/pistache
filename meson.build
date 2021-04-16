@@ -71,3 +71,5 @@ if find_program('clang-format', required: false).found()
 		command: (find_program('tools/format.sh'))
 	)
 endif
+
+run_command('git', 'config', '--local', 'core.hooksPath', '.hooks')
