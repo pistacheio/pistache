@@ -69,7 +69,7 @@ void dumpData(const Rest::Request& /*req*/, Http::ResponseWriter response)
                 constexpr size_t chunk_size = LETTER_REPEATS / nchunks;
                 const std::string payload(chunk_size, static_cast<char>(letter + i));
                 {
-                    std::scoped_lock lock(responseLock);
+                    std::lock_guard lock(responseLock);
                     for (size_t chunk = 0; chunk < nchunks; ++chunk)
                     {
                         stream.write(payload.c_str(), chunk_size);

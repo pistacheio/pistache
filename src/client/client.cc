@@ -344,7 +344,7 @@ namespace Pistache
                     {
                         if (req.timer)
                         {
-                            std::scoped_lock lock(timeoutsLock);
+                            std::lock_guard lock(timeoutsLock);
                             timeouts.insert(std::make_pair(req.timer->fd(), conn));
                             req.timer->registerReactor(key(), reactor());
                         }
@@ -423,7 +423,7 @@ namespace Pistache
             }
             else
             {
-                std::scoped_lock lock(timeoutsLock);
+                std::lock_guard lock(timeoutsLock);
                 auto timerIt = timeouts.find(fd);
                 if (timerIt != std::end(timeouts))
                 {
@@ -777,7 +777,7 @@ namespace Pistache
             Connections pool;
 
             {
-                std::scoped_lock lock(connsLock);
+                std::lock_guard lock(connsLock);
                 auto poolIt = conns.find(domain);
                 if (poolIt == std::end(conns))
                 {
@@ -813,7 +813,7 @@ namespace Pistache
         {
             Connections pool;
             {
-                std::scoped_lock lock(connsLock);
+                std::lock_guard lock(connsLock);
                 auto it = conns.find(domain);
                 if (it == std::end(conns))
                 {
@@ -832,7 +832,7 @@ namespace Pistache
         {
             Connections pool;
             {
-                std::scoped_lock lock(connsLock);
+                std::lock_guard lock(connsLock);
                 auto it = conns.find(domain);
                 if (it == std::end(conns))
                 {
@@ -858,7 +858,7 @@ namespace Pistache
         void ConnectionPool::shutdown()
         {
             // close all connections
-            std::scoped_lock lock(connsLock);
+            std::lock_guard lock(connsLock);
             for (auto& it : conns)
             {
                 for (auto& conn : it.second)
@@ -978,7 +978,7 @@ namespace Pistache
         {
             reactor_->shutdown();
             pool.shutdown();
-            std::scoped_lock lock(queuesLock);
+            std::lock_guard lock(queuesLock);
             stopProcessPequestsQueues = true;
         }
 
@@ -1030,7 +1030,7 @@ namespace Pistache
                 return Async::Promise<Response>([this, resource = std::move(resource),
                                                  request](Async::Resolver& resolve,
                                                           Async::Rejection& reject) {
-                    std::scoped_lock lock(queuesLock);
+                    std::lock_guard lock(queuesLock);
 
                     auto data = std::make_shared<Connection::RequestData>(
                         std::move(resolve), std::move(reject), std::move(request), nullptr);
@@ -1080,7 +1080,7 @@ namespace Pistache
 
         void Client::processRequestQueue()
         {
-            std::scoped_lock lock(queuesLock);
+            std::lock_guard lock(queuesLock);
 
             if (stopProcessPequestsQueues)
                 return;

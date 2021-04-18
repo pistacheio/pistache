@@ -610,7 +610,7 @@ namespace
     public:
         void increment()
         {
-            std::scoped_lock lock(counterLock_);
+            std::lock_guard lock(counterLock_);
             ++counter_;
             cv_.notify_one();
         }

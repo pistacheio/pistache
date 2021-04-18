@@ -70,7 +70,7 @@ private:
     {
         auto name = request.param(":name").as<std::string>();
 
-        std::scoped_lock lock(metricsLock);
+        std::lock_guard lock(metricsLock);
         auto it = std::find_if(metrics.begin(), metrics.end(), [&](const Metric& metric) {
             return metric.name() == name;
         });
@@ -99,7 +99,7 @@ private:
     {
         auto name = request.param(":name").as<std::string>();
 
-        std::scoped_lock guard(metricsLock);
+        std::lock_guard guard(metricsLock);
         auto it = std::find_if(metrics.begin(), metrics.end(), [&](const Metric& metric) {
             return metric.name() == name;
         });

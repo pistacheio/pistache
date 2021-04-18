@@ -419,7 +419,7 @@ namespace Pistache
                 return sendImpl(code, arr, N - 1, mime);
             }
 
-            Async::Promise<ssize_t> send(Code code, const char* data, size_t size,
+            Async::Promise<ssize_t> send(Code code, const char* data, const size_t size,
                                          const Mime::MediaType& mime = Mime::MediaType());
 
             ResponseStream stream(Code code, size_t streamSize = DefaultStreamSize);
@@ -466,7 +466,7 @@ namespace Pistache
             ResponseWriter(const ResponseWriter& other);
 
             Async::Promise<ssize_t> sendImpl(Code code, const char* data,
-                                             size_t size,
+                                             const size_t size,
                                              const Mime::MediaType& mime);
 
             Async::Promise<ssize_t> putOnWire(const char* data, size_t len);

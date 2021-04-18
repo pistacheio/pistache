@@ -1269,7 +1269,7 @@ namespace Pistache::Async
             template <size_t Index, typename T, typename Data>
             static void resolveT(const T& val, Data& data)
             {
-                std::scoped_lock lock(data->mtx);
+                std::lock_guard lock(data->mtx);
 
                 if (data->rejected)
                     return;
@@ -1287,7 +1287,7 @@ namespace Pistache::Async
             template <typename Data>
             static void resolveVoid(Data& data)
             {
-                std::scoped_lock lock(data->mtx);
+                std::lock_guard lock(data->mtx);
 
                 if (data->rejected)
                     return;
@@ -1303,7 +1303,7 @@ namespace Pistache::Async
             template <typename Data>
             static void reject(std::exception_ptr exc, Data& data)
             {
-                std::scoped_lock lock(data->mtx);
+                std::lock_guard lock(data->mtx);
 
                 data->rejected = true;
                 data->reject(exc);
@@ -1332,7 +1332,7 @@ namespace Pistache::Async
             template <size_t Index, typename T, typename Data>
             static void resolveT(const T& val, Data& data)
             {
-                std::scoped_lock lock(data->mtx);
+                std::lock_guard lock(data->mtx);
 
                 if (data->done)
                     return;
@@ -1350,7 +1350,7 @@ namespace Pistache::Async
             template <typename Data>
             static void resolveVoid(Data& data)
             {
-                std::scoped_lock lock(data->mtx);
+                std::lock_guard lock(data->mtx);
 
                 if (data->done)
                     return;
@@ -1364,7 +1364,7 @@ namespace Pistache::Async
             template <typename Data>
             static void reject(std::exception_ptr exc, Data& data)
             {
-                std::scoped_lock lock(data->mtx);
+                std::lock_guard lock(data->mtx);
 
                 data->done = true;
                 data->reject(exc);
@@ -1507,7 +1507,7 @@ namespace Pistache::Async
                     WhenContinuation<T> cont(data, index);
 
                     it->then(std::move(cont), [=](std::exception_ptr ptr) {
-                        std::scoped_lock lock(data->mtx);
+                        std::lock_guard lock(data->mtx);
 
                         if (data->rejected)
                             return;
@@ -1580,7 +1580,7 @@ namespace Pistache::Async
 
                 void operator()(const ValueType& val) const
                 {
-                    std::scoped_lock lock(data->mtx);
+                    std::lock_guard lock(data->mtx);
 
                     if (data->rejected)
                         return;
@@ -1608,7 +1608,7 @@ namespace Pistache::Async
 
                 void operator()() const
                 {
-                    std::scoped_lock lock(data->mtx);
+                    std::lock_guard lock(data->mtx);
 
                     if (data->rejected)
                         return;
