@@ -1,8 +1,5 @@
 #!/bin/sh
 
-set -eu
-
-for file in $(git diff-index --cached --name-only HEAD | grep -E '\.(cpp|cc|h|hpp)$') ; do
-    clang-format -i "$file"
-    git add "$file"
+for file in $(git diff-index --cached --name-only HEAD | grep -E '\.(cpp|cc|hpp|h)$') ; do
+    clang-format --dry-run --Werror "$file" >/dev/null 2>&1 || (echo 'Run ninja clang-format before committing' && false)
 done
