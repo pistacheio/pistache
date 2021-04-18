@@ -102,8 +102,6 @@ if (PISTACHE_BUILD_TESTS)
             add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
         endif()
     endif()
-
-    enable_testing()
     add_subdirectory(tests)
 endif()
 
