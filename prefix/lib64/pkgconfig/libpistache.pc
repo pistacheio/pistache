@@ -1,0 +1,12 @@
+prefix=/home/soundit/Downloads/pistache/prefix
+libdir=${prefix}/lib64
+includedir=${prefix}/include
+
+Name: Pistache
+Description: An elegant C++ REST framework.
+URL: http://pistache.io
+Version: 0.0.002-git20210409
+Requires.private: openssl
+Libs: -L${libdir} -lpistache
+Libs.private: -pthread
+Cflags: -I${includedir}

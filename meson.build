@@ -51,7 +51,7 @@ endforeach
 pistache_version_str = '.'.join([version_data_conf.get_unquoted('VERSION_MAJOR'), version_data_conf.get_unquoted('VERSION_MINOR'), version_data_conf.get_unquoted('VERSION_PATCH')])
 pistache_soversion_str = '.'.join([version_data_conf.get_unquoted('SONAME_VERSION_MAJOR'), version_data_conf.get_unquoted('SONAME_VERSION_MINOR')])
 
-incl_pistache = include_directories('include')
+incl_pistache = include_directories('include', 'subprojects/rapidjson-1.1.0/include')
 
 subdir('include')
 subdir('src')
