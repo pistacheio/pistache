@@ -27,6 +27,13 @@ namespace Pistache
         {
             using time_point = FullDate::time_point;
 
+            bool parse_RFC_7231(const std::string& s, time_point& tp)
+            {
+                std::istringstream in { s };
+                in >> date::parse("%a, %b %d %Y %T %Z", tp);
+                return !in.fail();
+            }
+
             bool parse_RFC_1123(const std::string& s, time_point& tp)
             {
                 std::istringstream in { s };
@@ -108,6 +115,8 @@ namespace Pistache
 
             FullDate::time_point tp;
             if (parse_RFC_1123(str, tp))
+                return FullDate(tp);
+            else if (parse_RFC_7231(str, tp)) // For formats like "Wed, Apr 21 2021 03:50:09 GMT"
                 return FullDate(tp);
             else if (parse_RFC_850(str, tp))
                 return FullDate(tp);
