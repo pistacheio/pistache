@@ -611,21 +611,15 @@ namespace Pistache
 
                 virtual ~ParserBase() = default;
 
-                bool feed(const char* data, size_t len);
+                virtual bool feed(const char* data, size_t len);
                 virtual void reset();
                 State parse();
 
                 Step* step();
-                std::chrono::steady_clock::time_point time() const
-                {
-                    return time_;
-                }
 
             protected:
                 std::array<std::unique_ptr<Step>, StepsCount> allSteps;
                 size_t currentStep = 0;
-
-                std::chrono::steady_clock::time_point time_;
 
             private:
                 ArrayStreamBuf<char> buffer;
@@ -641,9 +635,18 @@ namespace Pistache
             public:
                 explicit ParserImpl(size_t maxDataSize);
 
+                bool feed(const char* data, size_t len) override;
                 void reset() override;
 
+                std::chrono::steady_clock::time_point time() const
+                {
+                    return time_;
+                }
+
                 Request request;
+
+            private:
+                std::chrono::steady_clock::time_point time_;
             };
 
             template <>

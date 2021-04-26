@@ -75,7 +75,6 @@ namespace Pistache
 
         void TransportImpl::onReady(const Aio::FdSet& fds)
         {
-            bool handled = false;
             for (const auto& entry : fds)
             {
                 if (entry.getTag() == Polling::Tag(timerFd))
@@ -83,12 +82,11 @@ namespace Pistache
                     uint64_t wakeups;
                     ::read(timerFd, &wakeups, sizeof wakeups);
                     checkIdlePeers();
-                    handled = true;
+                    break;
                 }
             }
 
-            if (!handled)
-                Base::onReady(fds);
+            Base::onReady(fds);
         }
 
         void TransportImpl::setHeaderTimeout(std::chrono::milliseconds timeout)
@@ -129,7 +127,7 @@ namespace Pistache
             for (const auto& idlePeer : idlePeers)
             {
                 ResponseWriter response(Http::Version::Http11, this, static_cast<Http::Handler*>(handler_.get()), idlePeer);
-                response.send(Http::Code::Request_Timeout).then([=](ssize_t) { removePeer(idlePeer); }, [=](std::exception_ptr) { removePeer(idlePeer); });
+                response.send(Http::Code::Request_Timeout).then([=](ssize_t) { std::cout << "Removing idle: " << idlePeer << "\n"; removePeer(idlePeer); }, [=](std::exception_ptr) { removePeer(idlePeer); });
             }
         }
 

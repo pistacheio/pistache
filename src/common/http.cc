@@ -549,7 +549,6 @@ namespace Pistache
 
             bool ParserBase::feed(const char* data, size_t len)
             {
-                time_ = std::chrono::steady_clock::now();
                 return buffer.feed(data, len);
             }
 
@@ -559,7 +558,6 @@ namespace Pistache
                 cursor.reset();
 
                 currentStep = 0;
-                time_       = std::chrono::steady_clock::time_point(std::chrono::steady_clock::duration(0));
             }
 
             Step* ParserBase::step()
@@ -933,11 +931,8 @@ namespace Pistache
                 return transport_->asyncWrite(fd, buffer)
                     .then<std::function<Async::Promise<ssize_t>(ssize_t)>,
                           std::function<void(std::exception_ptr&)>>(
-                        [=](int /*l*/) {
-                            return Async::Promise<ssize_t>(
-                                [=](Async::Deferred<ssize_t> /*deferred*/) mutable {
-                                    return;
-                                });
+                        [=](ssize_t data) {
+                            return Async::Promise<ssize_t>::resolved(data);
                         },
 
                         [=](std::exception_ptr& eptr) {
@@ -1043,6 +1038,7 @@ namespace Pistache
         Private::ParserImpl<Http::Request>::ParserImpl(size_t maxDataSize)
             : ParserBase(maxDataSize)
             , request()
+            , time_(std::chrono::steady_clock::now())
         {
             allSteps[0].reset(new RequestLineStep(&request));
             allSteps[1].reset(new HeadersStep(&request));
@@ -1054,6 +1050,13 @@ namespace Pistache
             ParserBase::reset();
 
             request = Request();
+            time_   = std::chrono::steady_clock::now();
+        }
+
+        bool Private::ParserImpl<Http::Request>::feed(const char* data, size_t len)
+        {
+            time_ = std::chrono::steady_clock::now();
+            return ParserBase::feed(data, len);
         }
 
         Private::ParserImpl<Http::Response>::ParserImpl(size_t maxDataSize)

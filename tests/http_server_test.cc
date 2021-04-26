@@ -108,11 +108,11 @@ struct HandlerWithSlowPage : public Http::Handler
         if (request.resource() == SLOW_PAGE)
         {
             std::this_thread::sleep_for(std::chrono::seconds(delay_));
-            message = "Slow page content!\n";
+            message = "[" + std::to_string(counter++) + "] Slow page content!";
         }
         else
         {
-            message = "Hello, World!\n";
+            message = "[" + std::to_string(counter++) + "] Hello, World!";
         }
 
         writer.send(Http::Code::Ok, message);
@@ -120,7 +120,10 @@ struct HandlerWithSlowPage : public Http::Handler
     }
 
     int delay_;
+    static std::atomic<size_t> counter;
 };
+
+std::atomic<size_t> HandlerWithSlowPage::counter { 0 };
 
 struct FileHandler : public Http::Handler
 {
@@ -180,7 +183,7 @@ struct PingHandler : public Http::Handler
     }
 };
 
-int clientLogicFunc(int response_size, const std::string& server_page,
+int clientLogicFunc(size_t response_size, const std::string& server_page,
                     int timeout_seconds, int wait_seconds)
 {
     Http::Client client;
@@ -190,20 +193,24 @@ int clientLogicFunc(int response_size, const std::string& server_page,
     auto rb              = client.get(server_page).timeout(std::chrono::seconds(timeout_seconds));
     int resolver_counter = 0;
     int reject_counter   = 0;
-    for (int i = 0; i < response_size; ++i)
+    for (size_t i = 0; i < response_size; ++i)
     {
         auto response = rb.send();
         response.then(
-            [&resolver_counter](Http::Response resp) {
-                LOGGER("client", "Response code is " << resp.code());
+            [&resolver_counter, pos = i](Http::Response resp) {
                 if (resp.code() == Http::Code::Ok)
                 {
+                    LOGGER("client", "[" << pos << "] Response: " << resp.code() << ", body: `" << resp.body() << "`");
                     ++resolver_counter;
                 }
+                else
+                {
+                    LOGGER("client", "[" << pos << "] Response: " << resp.code());
+                }
             },
-            [&reject_counter](std::exception_ptr exc) {
+            [&reject_counter, pos = i](std::exception_ptr exc) {
                 PrintException excPrinter;
-                LOGGER("client", "Reject with reason:");
+                LOGGER("client", "[" << pos << "] Reject with reason:");
                 excPrinter(exc);
                 ++reject_counter;
             });
@@ -216,8 +223,8 @@ int clientLogicFunc(int response_size, const std::string& server_page,
 
     client.shutdown();
 
-    LOGGER("client", " resolves: " << resolver_counter << ", rejects: " << reject_counter << ", timeout: " << timeout_seconds << " seconds"
-                                   << ", wait: " << wait_seconds << " seconds");
+    LOGGER("client", "resolves: " << resolver_counter << ", rejects: " << reject_counter << ", request timeout: " << timeout_seconds << " seconds"
+                                  << ", wait: " << wait_seconds << " seconds");
 
     return resolver_counter;
 }
