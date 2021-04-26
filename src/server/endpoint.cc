@@ -127,7 +127,7 @@ namespace Pistache
             for (const auto& idlePeer : idlePeers)
             {
                 ResponseWriter response(Http::Version::Http11, this, static_cast<Http::Handler*>(handler_.get()), idlePeer);
-                response.send(Http::Code::Request_Timeout).then([=](ssize_t) { std::cout << "Removing idle: " << idlePeer << "\n"; removePeer(idlePeer); }, [=](std::exception_ptr) { removePeer(idlePeer); });
+                response.send(Http::Code::Request_Timeout).then([=](ssize_t) { removePeer(idlePeer); }, [=](std::exception_ptr) { removePeer(idlePeer); });
             }
         }
 
