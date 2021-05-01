@@ -15,7 +15,7 @@ namespace Pistache
     do                                    \
     {                                     \
         auto ret = __VA_ARGS__;           \
-        if (ret < 0)                      \
+        if (ret == -1)                    \
         {                                 \
             lastError_ = strerror(errno); \
             lastErrno_ = errno;           \
