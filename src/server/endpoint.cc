@@ -112,12 +112,12 @@ namespace Pistache
                 auto elapsed = now - time;
 
                 auto* step = parser->step();
-                if (step->id() == Private::RequestLineStep::Id)
+                if (step->id() == Private::RequestLineStep::Id || step->id() == Private::HeadersStep::Id)
                 {
                     if (elapsed > headerTimeout_ || elapsed > bodyTimeout_)
                         idlePeers.push_back(peer);
                 }
-                else if (step->id() == Private::HeadersStep::Id)
+                else if (step->id() == Private::BodyStep::Id)
                 {
                     if (elapsed > bodyTimeout_)
                         idlePeers.push_back(peer);

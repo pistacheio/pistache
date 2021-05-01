@@ -548,7 +548,7 @@ namespace Pistache
             class BodyStep : public Step
             {
             public:
-                static constexpr auto Id = Meta::Hash::fnv1a("Headers");
+                static constexpr auto Id = Meta::Hash::fnv1a("Body");
 
                 explicit BodyStep(Message* message_)
                     : Step(message_)
@@ -611,7 +611,7 @@ namespace Pistache
 
                 virtual ~ParserBase() = default;
 
-                virtual bool feed(const char* data, size_t len);
+                bool feed(const char* data, size_t len);
                 virtual void reset();
                 State parse();
 
@@ -635,7 +635,6 @@ namespace Pistache
             public:
                 explicit ParserImpl(size_t maxDataSize);
 
-                bool feed(const char* data, size_t len) override;
                 void reset() override;
 
                 std::chrono::steady_clock::time_point time() const

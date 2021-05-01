@@ -1053,12 +1053,6 @@ namespace Pistache
             time_   = std::chrono::steady_clock::now();
         }
 
-        bool Private::ParserImpl<Http::Request>::feed(const char* data, size_t len)
-        {
-            time_ = std::chrono::steady_clock::now();
-            return ParserBase::feed(data, len);
-        }
-
         Private::ParserImpl<Http::Response>::ParserImpl(size_t maxDataSize)
             : ParserBase(maxDataSize)
             , response()

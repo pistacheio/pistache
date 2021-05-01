@@ -18,6 +18,7 @@ namespace Pistache
         if (ret < 0)                      \
         {                                 \
             lastError_ = strerror(errno); \
+            lastErrno_ = errno;           \
             return false;                 \
         }                                 \
     } while (0)
@@ -66,9 +67,28 @@ namespace Pistache
             return send(data.c_str(), data.size());
         }
 
-        bool send(const void* data, size_t size)
+        bool send(const char* data, size_t len)
         {
-            CLIENT_TRY(::send(fd_, data, size, 0));
+            size_t total = 0;
+            while (total < len)
+            {
+                ssize_t n = ::send(fd_, data + total, len - total, MSG_NOSIGNAL);
+                if (n == -1)
+                {
+                    if (errno == EAGAIN || errno == EWOULDBLOCK)
+                    {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                    }
+                    else
+                    {
+                        CLIENT_TRY(n);
+                    }
+                }
+                else
+                {
+                    total += static_cast<size_t>(n);
+                }
+            }
             return true;
         }
 
@@ -115,9 +135,15 @@ namespace Pistache
             return lastError_;
         }
 
+        int lastErrno() const
+        {
+            return lastErrno_;
+        }
+
     private:
-        int fd_;
+        int fd_ = -1;
         std::string lastError_;
+        int lastErrno_ = 0;
     };
 
 #undef CLIENT_TRY
