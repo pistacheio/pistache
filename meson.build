@@ -26,6 +26,48 @@ endif
 
 deps_libpistache = [dependency('threads'), dependency('RapidJSON', fallback: ['rapidjson', 'rapidjson_dep'])]
 
+# Check if -latomic is needed - https://github.com/llvm/llvm-project/blob/main/llvm/cmake/modules/CheckAtomic.cmake
+compiler_id = compiler.get_id()
+
+cxx_atomics_check_code = '''
+#include <atomic>
+std::atomic<int> x;
+std::atomic<short> y;
+std::atomic<char> z;
+int main() {
+	++z;
+	++y;
+	return ++x;
+}
+'''
+has_working_cxx_atomics = compiler.compiles(cxx_atomics_check_code, name: 'std::atomic')
+if (compiler_id == 'clang' or compiler_id == 'gcc') and not has_working_cxx_atomics
+	libatomic_dep = compiler.find_library('atomic')
+	assert(compiler.has_function('__atomic_fetch_add_4', dependencies: libatomic_dep), 'Host compiler appears to require libatomic, but cannot find it.')
+	has_working_cxx_atomics = compiler.compiles(cxx_atomics_check_code, dependencies: libatomic_dep, name: 'std::atomic with libatomic')
+	assert(has_working_cxx_atomics, 'Host compiler must support std::atomic')
+	deps_libpistache += libatomic_dep
+endif
+
+cxx_atomics64_check_code = '''
+#include <atomic>
+#include <cstdint>
+std::atomic<uint64_t> x (0);
+int main() {
+	uint64_t i = x.load(std::memory_order_relaxed);
+	(void)i;
+	return 0;
+}
+'''
+has_working_cxx_atomics64 = compiler.compiles(cxx_atomics64_check_code, name: 'std::atomic<uint64_t>')
+if (compiler_id == 'clang' or compiler_id == 'gcc') and not has_working_cxx_atomics64
+	libatomic_dep = compiler.find_library('atomic')
+	assert(compiler.has_function('__atomic_load_8', dependencies: libatomic_dep), 'Host compiler appears to require libatomic for 64-bit operations, but cannot find it.')
+	has_working_cxx_atomics = compiler.compiles(cxx_atomics64_check_code, dependencies: libatomic_dep, name: 'std::atomic<uint64_t> with libatomic')
+	assert(has_working_cxx_atomics, 'Host compiler must support 64-bit std::atomic')
+	deps_libpistache += libatomic_dep
+endif
+
 if get_option('PISTACHE_USE_SSL')
 	deps_libpistache += dependency('openssl')
 endif
