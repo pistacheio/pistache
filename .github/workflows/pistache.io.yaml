@@ -7,23 +7,23 @@ on:
 
 jobs:
   pistacheio-deploy:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v2
-      
+
       - name: Install dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -qq npm --no-install-recommends --assume-yes
-          sudo npm install --global --silent yarn
-          sudo npm install --global --force --silent npx
-      
+          sudo apt-get -qq update && sudo apt-get -qq install --assume-yes --no-install-recommends yarnpkg
+          sudo update-alternatives --install /usr/bin/yarn yarn /usr/bin/yarnpkg 10
+          sudo yarn global add --silent --no-progress --non-interactive npx
+
       - name: Build docs site
         run: |
           cd pistache.io
           yarn install --non-interactive
           yarn build
-      
+
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
