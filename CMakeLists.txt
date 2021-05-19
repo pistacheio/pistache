@@ -20,6 +20,7 @@ option(PISTACHE_BUILD_TESTS "build tests alongside the project" OFF)
 option(PISTACHE_ENABLE_NETWORK_TESTS "if tests are built, run ones needing network access" ON)
 option(PISTACHE_USE_SSL "add support for SSL server" OFF)
 option(PISTACHE_PIC "Enable pistache PIC" ON)
+option(PISTACHE_BUILD_FUZZ "Build fuzzer for oss-fuzz" OFF)
 
 # require fat LTO objects in static library
 if(CMAKE_INTERPROCEDURAL_OPTIMIZATION OR CMAKE_CXX_FLAGS MATCHES "-flto" OR CMAKE_CXX_FLAGS MATCHES "-flto=thin")
@@ -103,6 +104,10 @@ if (PISTACHE_BUILD_TESTS)
         endif()
     endif()
     add_subdirectory(tests)
+endif()
+
+if (PISTACHE_BUILD_FUZZ) 
+    add_subdirectory(tests/fuzzers)
 endif()
 
 # format target
