@@ -43,6 +43,7 @@ pistache_test(reactor_test)
 pistache_test(threadname_test)
 pistache_test(log_api_test)
 pistache_test(string_logger_test)
+pistache_test(endpoint_initialization_test)
 
 if (PISTACHE_USE_SSL)
 
