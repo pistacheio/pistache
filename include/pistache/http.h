@@ -548,7 +548,7 @@ namespace Pistache
             class BodyStep : public Step
             {
             public:
-                static constexpr auto Id = Meta::Hash::fnv1a("Headers");
+                static constexpr auto Id = Meta::Hash::fnv1a("Body");
 
                 explicit BodyStep(Message* message_)
                     : Step(message_)
@@ -616,16 +616,10 @@ namespace Pistache
                 State parse();
 
                 Step* step();
-                std::chrono::steady_clock::time_point time() const
-                {
-                    return time_;
-                }
 
             protected:
                 std::array<std::unique_ptr<Step>, StepsCount> allSteps;
                 size_t currentStep = 0;
-
-                std::chrono::steady_clock::time_point time_;
 
             private:
                 ArrayStreamBuf<char> buffer;
@@ -643,7 +637,15 @@ namespace Pistache
 
                 void reset() override;
 
+                std::chrono::steady_clock::time_point time() const
+                {
+                    return time_;
+                }
+
                 Request request;
+
+            private:
+                std::chrono::steady_clock::time_point time_;
             };
 
             template <>

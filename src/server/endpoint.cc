@@ -75,7 +75,6 @@ namespace Pistache
 
         void TransportImpl::onReady(const Aio::FdSet& fds)
         {
-            bool handled = false;
             for (const auto& entry : fds)
             {
                 if (entry.getTag() == Polling::Tag(timerFd))
@@ -83,12 +82,11 @@ namespace Pistache
                     uint64_t wakeups;
                     ::read(timerFd, &wakeups, sizeof wakeups);
                     checkIdlePeers();
-                    handled = true;
+                    break;
                 }
             }
 
-            if (!handled)
-                Base::onReady(fds);
+            Base::onReady(fds);
         }
 
         void TransportImpl::setHeaderTimeout(std::chrono::milliseconds timeout)
@@ -114,12 +112,12 @@ namespace Pistache
                 auto elapsed = now - time;
 
                 auto* step = parser->step();
-                if (step->id() == Private::RequestLineStep::Id)
+                if (step->id() == Private::RequestLineStep::Id || step->id() == Private::HeadersStep::Id)
                 {
                     if (elapsed > headerTimeout_ || elapsed > bodyTimeout_)
                         idlePeers.push_back(peer);
                 }
-                else if (step->id() == Private::HeadersStep::Id)
+                else if (step->id() == Private::BodyStep::Id)
                 {
                     if (elapsed > bodyTimeout_)
                         idlePeers.push_back(peer);
@@ -208,7 +206,7 @@ namespace Pistache
         void Endpoint::init(const Endpoint::Options& options)
         {
             listener.init(options.threads_, options.flags_, options.threadsName_);
-            listener.setTransportFactory([&] {
+            listener.setTransportFactory([this, options] {
                 if (!handler_)
                     throw std::runtime_error("Must call setHandler()");
 

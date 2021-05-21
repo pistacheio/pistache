@@ -107,10 +107,6 @@ namespace Pistache
                         handleTimer(std::move(entry_));
                         timers.erase(it->first);
                     }
-                    else
-                    {
-                        throw std::runtime_error("Unknown fd");
-                    }
                 }
                 else if (entry.isWritable())
                 {
@@ -218,11 +214,6 @@ namespace Pistache
             {
                 // Clean up buffers
                 Guard guard(toWriteLock);
-                auto& wq = toWrite[fd];
-                while (wq.size() > 0)
-                {
-                    wq.pop_front();
-                }
                 toWrite.erase(fd);
             }
 
@@ -242,7 +233,7 @@ namespace Pistache
             bool stop = false;
             while (!stop)
             {
-                Guard guard(toWriteLock);
+                std::unique_lock<std::mutex> lock(toWriteLock);
 
                 auto it = toWrite.find(fd);
 
@@ -270,6 +261,7 @@ namespace Pistache
                         reactor()->modifyFd(key(), fd, NotifyOn::Read, Polling::Mode::Edge);
                         stop = true;
                     }
+                    lock.unlock();
                 };
 
                 size_t totalWritten = buffer.offset();
