@@ -217,6 +217,11 @@ namespace Pistache
                 return transport;
             });
 
+            if(handler_) {
+                handler_->setMaxRequestSize(options.maxRequestSize_);
+                handler_->setMaxResponseSize(options.maxResponseSize_);
+            }
+
             options_ = options;
             logger_  = options.logger_;
         }
