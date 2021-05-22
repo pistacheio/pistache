@@ -26,9 +26,7 @@ Pistache has the following third party dependencies
 
 Pistache is released under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0). Contributors are welcome!
 
-Pistache was originally created by Mathieu Stefani, but he is no longer actively maintaining Pistache. A team of volunteers has taken over. To reach the original maintainer, drop a private message to `@octal` in [cpplang Slack channel](https://cpplang.now.sh/).
-
-For those that prefer IRC over Slack, the rag-tag crew of maintainers idle in `#pistache` on Freenode. Please come and join us!
+Pistache was originally created by Mathieu Stefani (`@octal`). He continues to contribute to the maintainence and development of Pistache, supported by a team of volunteers. The maintainers can be reached  in `#pistache` on [Libera.Chat](https://libera.chat/) (ircs://irc.libera.chat:6697). Please come and join us!
 
 The [Launchpad Team](https://launchpad.net/~pistache+team) administers the daily and stable Ubuntu pre-compiled packages.
 
