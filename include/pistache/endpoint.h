@@ -13,94 +13,92 @@
 
 #include <chrono>
 
-namespace Pistache
+namespace Pistache::Http
 {
-    namespace Http
+
+    class Endpoint
     {
-
-        class Endpoint
+    public:
+        struct Options
         {
-        public:
-            struct Options
+            friend class Endpoint;
+
+            Options& threads(int val);
+            Options& threadsName(const std::string& val);
+
+            Options& flags(Flags<Tcp::Options> flags);
+            Options& flags(Tcp::Options tcp_opts)
             {
-                friend class Endpoint;
-
-                Options& threads(int val);
-                Options& threadsName(const std::string& val);
-
-                Options& flags(Flags<Tcp::Options> flags);
-                Options& flags(Tcp::Options tcp_opts)
-                {
-                    flags(Flags<Tcp::Options>(tcp_opts));
-                    return *this;
-                }
-
-                Options& backlog(int val);
-
-                Options& maxRequestSize(size_t val);
-                Options& maxResponseSize(size_t val);
-
-                template <typename Duration>
-                Options& headerTimeout(Duration timeout)
-                {
-                    headerTimeout_ = std::chrono::duration_cast<std::chrono::milliseconds>(timeout);
-                    return *this;
-                }
-
-                template <typename Duration>
-                Options& bodyTimeout(Duration timeout)
-                {
-                    bodyTimeout_ = std::chrono::duration_cast<std::chrono::milliseconds>(timeout);
-                    return *this;
-                }
-
-                Options& logger(PISTACHE_STRING_LOGGER_T logger);
-
-                [[deprecated("Replaced by maxRequestSize(val)")]] Options&
-                maxPayload(size_t val);
-
-            private:
-                // Thread options
-                int threads_;
-                std::string threadsName_;
-
-                // TCP flags
-                Flags<Tcp::Options> flags_;
-                // Backlog size
-                int backlog_;
-
-                // Size options
-                size_t maxRequestSize_;
-                size_t maxResponseSize_;
-
-                // Timeout options
-                std::chrono::milliseconds headerTimeout_;
-                std::chrono::milliseconds bodyTimeout_;
-
-                PISTACHE_STRING_LOGGER_T logger_;
-                Options();
-            };
-            Endpoint();
-            explicit Endpoint(const Address& addr);
-
-            template <typename... Args>
-            void initArgs(Args&&... args)
-            {
-                listener.init(std::forward<Args>(args)...);
+                flags(Flags<Tcp::Options>(tcp_opts));
+                return *this;
             }
 
-            void init(const Options& options = Options());
-            void setHandler(const std::shared_ptr<Handler>& handler);
+            Options& backlog(int val);
 
-            void bind();
-            void bind(const Address& addr);
+            Options& maxRequestSize(size_t val);
+            Options& maxResponseSize(size_t val);
 
-            void serve();
-            void serveThreaded();
+            template <typename Duration>
+            Options& headerTimeout(Duration timeout)
+            {
+                headerTimeout_ = std::chrono::duration_cast<std::chrono::milliseconds>(timeout);
+                return *this;
+            }
 
-            void shutdown();
+            template <typename Duration>
+            Options& bodyTimeout(Duration timeout)
+            {
+                bodyTimeout_ = std::chrono::duration_cast<std::chrono::milliseconds>(timeout);
+                return *this;
+            }
 
-            /*!
+            Options& logger(PISTACHE_STRING_LOGGER_T logger);
+
+            [[deprecated("Replaced by maxRequestSize(val)")]] Options&
+            maxPayload(size_t val);
+
+        private:
+            // Thread options
+            int threads_;
+            std::string threadsName_;
+
+            // TCP flags
+            Flags<Tcp::Options> flags_;
+            // Backlog size
+            int backlog_;
+
+            // Size options
+            size_t maxRequestSize_;
+            size_t maxResponseSize_;
+
+            // Timeout options
+            std::chrono::milliseconds headerTimeout_;
+            std::chrono::milliseconds bodyTimeout_;
+
+            PISTACHE_STRING_LOGGER_T logger_;
+            Options();
+        };
+        Endpoint();
+        explicit Endpoint(const Address& addr);
+
+        template <typename... Args>
+        void initArgs(Args&&... args)
+        {
+            listener.init(std::forward<Args>(args)...);
+        }
+
+        void init(const Options& options = Options());
+        void setHandler(const std::shared_ptr<Handler>& handler);
+
+        void bind();
+        void bind(const Address& addr);
+
+        void serve();
+        void serveThreaded();
+
+        void shutdown();
+
+        /*!
    * \brief Use SSL on this endpoint
    *
    * \param[in] cert Server certificate path
@@ -121,9 +119,9 @@ namespace Pistache
    * [1] https://en.wikipedia.org/wiki/BREACH
    * [2] https://en.wikipedia.org/wiki/CRIME
    */
-            void useSSL(const std::string& cert, const std::string& key, bool use_compression = false);
+        void useSSL(const std::string& cert, const std::string& key, bool use_compression = false);
 
-            /*!
+        /*!
    * \brief Use SSL certificate authentication on this endpoint
    *
    * \param[in] ca_file Certificate Authority file
@@ -163,50 +161,49 @@ namespace Pistache
    *
    * [1] https://www.openssl.org/docs/manmaster/man3/SSL_CTX_set_verify.html
    */
-            void useSSLAuth(std::string ca_file, std::string ca_path = "",
-                            int (*cb)(int, void*) = NULL);
+        void useSSLAuth(std::string ca_file, std::string ca_path = "",
+                        int (*cb)(int, void*) = NULL);
 
-            bool isBound() const { return listener.isBound(); }
+        bool isBound() const { return listener.isBound(); }
 
-            Port getPort() const { return listener.getPort(); }
+        Port getPort() const { return listener.getPort(); }
 
-            Async::Promise<Tcp::Listener::Load>
-            requestLoad(const Tcp::Listener::Load& old);
+        Async::Promise<Tcp::Listener::Load>
+        requestLoad(const Tcp::Listener::Load& old);
 
-            static Options options();
+        static Options options();
 
-        private:
-            template <typename Method>
-            void serveImpl(Method method)
-            {
-#define CALL_MEMBER_FN(obj, pmf) ((obj).*(pmf))
-                if (!handler_)
-                    throw std::runtime_error("Must call setHandler() prior to serve()");
-
-                listener.setHandler(handler_);
-                listener.bind();
-
-                CALL_MEMBER_FN(listener, method)
-                ();
-#undef CALL_MEMBER_FN
-            }
-
-            std::shared_ptr<Handler> handler_;
-            Tcp::Listener listener;
-
-            Options options_;
-            PISTACHE_STRING_LOGGER_T logger_ = PISTACHE_NULL_STRING_LOGGER;
-        };
-
-        template <typename Handler>
-        void listenAndServe(Address addr,
-                            const Endpoint::Options& options = Endpoint::options())
+    private:
+        template <typename Method>
+        void serveImpl(Method method)
         {
-            Endpoint endpoint(addr);
-            endpoint.init(options);
-            endpoint.setHandler(make_handler<Handler>());
-            endpoint.serve();
+#define CALL_MEMBER_FN(obj, pmf) ((obj).*(pmf))
+            if (!handler_)
+                throw std::runtime_error("Must call setHandler() prior to serve()");
+
+            listener.setHandler(handler_);
+            listener.bind();
+
+            CALL_MEMBER_FN(listener, method)
+            ();
+#undef CALL_MEMBER_FN
         }
 
-    } // namespace Http
-} // namespace Pistache
+        std::shared_ptr<Handler> handler_;
+        Tcp::Listener listener;
+
+        Options options_;
+        PISTACHE_STRING_LOGGER_T logger_ = PISTACHE_NULL_STRING_LOGGER;
+    };
+
+    template <typename Handler>
+    void listenAndServe(Address addr,
+                        const Endpoint::Options& options = Endpoint::options())
+    {
+        Endpoint endpoint(addr);
+        endpoint.init(options);
+        endpoint.setHandler(make_handler<Handler>());
+        endpoint.serve();
+    }
+
+} // namespace Pistache::Http

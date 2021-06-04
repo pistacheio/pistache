@@ -9,23 +9,20 @@
 
 #include <pistache/string_logger.h>
 
-namespace Pistache
+namespace Pistache::Log
 {
-    namespace Log
+
+    void StringToStreamLogger::log(Level level, const std::string& message)
     {
-
-        void StringToStreamLogger::log(Level level, const std::string& message)
+        if (out_ && isEnabledFor(level))
         {
-            if (out_ && isEnabledFor(level))
-            {
-                (*out_) << message << std::endl;
-            }
+            (*out_) << message << std::endl;
         }
+    }
 
-        bool StringToStreamLogger::isEnabledFor(Level level) const
-        {
-            return static_cast<int>(level) >= static_cast<int>(level_);
-        }
+    bool StringToStreamLogger::isEnabledFor(Level level) const
+    {
+        return static_cast<int>(level) >= static_cast<int>(level_);
+    }
 
-    } // namespace Log
-} // namespace Pistache
+} // namespace Pistache::Log
