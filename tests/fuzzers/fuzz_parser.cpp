@@ -2,7 +2,7 @@
 
 using namespace Pistache;
 
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
     std::string input(reinterpret_cast<const char*>(data), size);
 
@@ -12,54 +12,84 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 
     // HTTP parsing
     Pistache::Http::Header::CacheControl cc1;
-    try {
+    try
+    {
         cc1.parse(input);
-    } catch(...) {}
+    }
+    catch (...)
+    { }
 
     Pistache::Http::Header::Accept a1;
-    try {
+    try
+    {
         a1.parse(input);
-    } catch(...) {}
+    }
+    catch (...)
+    { }
 
     Pistache::Http::Header::Accept a2;
-    try {
+    try
+    {
         a2.parse(input);
-    } catch (...) {}
+    }
+    catch (...)
+    { }
 
     Pistache::Http::Header::Authorization au;
-    try {
+    try
+    {
         au.parse(input);
-    } catch(...) {}
+    }
+    catch (...)
+    { }
 
     Pistache::Http::Header::Expect e;
-    try {
+    try
+    {
         e.parse(input);
-    } catch(...) {}
+    }
+    catch (...)
+    { }
 
     Pistache::Http::Header::Connection connection;
-    try {
+    try
+    {
         connection.parse(input);
-    } catch(...) {}
+    }
+    catch (...)
+    { }
 
     Pistache::Http::Header::Date d;
-    try {
+    try
+    {
         d.parse(input);
-    } catch(...) {}
+    }
+    catch (...)
+    { }
 
     Pistache::Http::Header::Host h;
-    try {
+    try
+    {
         h.parse(input);
-    } catch(...) {}
+    }
+    catch (...)
+    { }
 
     Pistache::Http::Header::ContentEncoding ce;
-    try {
+    try
+    {
         ce.parse(input);
-    } catch(...) {}
+    }
+    catch (...)
+    { }
 
     Pistache::Http::Header::ContentType ct;
-    try {
+    try
+    {
         ct.parse(input);
-    } catch(...) {}
+    }
+    catch (...)
+    { }
 
     return 0;
 }

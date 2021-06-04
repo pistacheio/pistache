@@ -5,13 +5,14 @@
 
 using namespace Pistache;
 
-TEST(endpoint_initialization_test, initialize_options_before_handler) {
+TEST(endpoint_initialization_test, initialize_options_before_handler)
+{
     Rest::Router router;
     auto handler = router.handler();
     Address addr(Ipv4::any(), Port(0));
     Http::Endpoint endpoint(addr);
 
-    size_t maxReqSize = 123;
+    size_t maxReqSize  = 123;
     size_t maxRespSize = 456;
 
     auto opts = Http::Endpoint::options();
@@ -26,13 +27,14 @@ TEST(endpoint_initialization_test, initialize_options_before_handler) {
     ASSERT_EQ(handler->getMaxResponseSize(), maxRespSize);
 }
 
-TEST(endpoint_initialization_test, initialize_handler_before_options) {
+TEST(endpoint_initialization_test, initialize_handler_before_options)
+{
     Rest::Router router;
     auto handler = router.handler();
     Address addr(Ipv4::any(), Port(0));
     Http::Endpoint endpoint(addr);
 
-    size_t maxReqSize = 123;
+    size_t maxReqSize  = 123;
     size_t maxRespSize = 456;
 
     auto opts = Http::Endpoint::options();
