@@ -14,6 +14,7 @@
 #include <ctime>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <unordered_map>
 
@@ -137,7 +138,7 @@ namespace Pistache::Http
         {
             StreamCursor::Revert revert(cursor);
 
-            auto request = static_cast<Request*>(message);
+            auto* request = static_cast<Request*>(message);
 
             StreamCursor::Token methodToken(cursor);
             if (!match_until(' ', cursor))
@@ -872,9 +873,8 @@ namespace Pistache::Http
 
     DynamicStreamBuf* ResponseWriter::rdbuf() { return &buf_; }
 
-    DynamicStreamBuf* ResponseWriter::rdbuf(DynamicStreamBuf* other)
+    DynamicStreamBuf* ResponseWriter::rdbuf(DynamicStreamBuf* /*other*/)
     {
-        UNUSED(other)
         throw std::domain_error("Unimplemented");
     }
 
@@ -1038,9 +1038,9 @@ namespace Pistache::Http
         , request()
         , time_(std::chrono::steady_clock::now())
     {
-        allSteps[0].reset(new RequestLineStep(&request));
-        allSteps[1].reset(new HeadersStep(&request));
-        allSteps[2].reset(new BodyStep(&request));
+        allSteps[0] = std::make_unique<RequestLineStep>(&request);
+        allSteps[1] = std::make_unique<HeadersStep>(&request);
+        allSteps[2] = std::make_unique<BodyStep>(&request);
     }
 
     void Private::ParserImpl<Http::Request>::reset()
@@ -1055,9 +1055,9 @@ namespace Pistache::Http
         : ParserBase(maxDataSize)
         , response()
     {
-        allSteps[0].reset(new ResponseLineStep(&response));
-        allSteps[1].reset(new HeadersStep(&response));
-        allSteps[2].reset(new BodyStep(&response));
+        allSteps[0] = std::make_unique<ResponseLineStep>(&response);
+        allSteps[1] = std::make_unique<HeadersStep>(&response);
+        allSteps[2] = std::make_unique<BodyStep>(&response);
     }
 
     void Handler::onInput(const char* buffer, size_t len,
@@ -1142,16 +1142,15 @@ namespace Pistache::Http
     Timeout::Timeout(Tcp::Transport* transport_, Http::Version version, Handler* handler_,
                      std::weak_ptr<Tcp::Peer> peer_)
         : handler(handler_)
-        , transport(transport_)
         , version(version)
+        , transport(transport_)
         , armed(false)
         , timerFd(-1)
         , peer(peer_)
     { }
 
-    void Timeout::onTimeout(uint64_t numWakeup)
+    void Timeout::onTimeout(uint64_t /*numWakeup*/)
     {
-        UNUSED(numWakeup)
         auto sp = peer.lock();
         if (!sp)
             return;

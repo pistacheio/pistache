@@ -162,7 +162,7 @@ namespace Pistache::Http
    * [1] https://www.openssl.org/docs/manmaster/man3/SSL_CTX_set_verify.html
    */
         void useSSLAuth(std::string ca_file, std::string ca_path = "",
-                        int (*cb)(int, void*) = NULL);
+                        int (*cb)(int, void*) = nullptr);
 
         bool isBound() const { return listener.isBound(); }
 

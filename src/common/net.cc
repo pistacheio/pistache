@@ -129,7 +129,7 @@ namespace Pistache
     {
         if (data.empty())
             throw std::invalid_argument("Invalid port: empty port");
-        char* end     = 0;
+        char* end     = nullptr;
         long port_num = strtol(data.c_str(), &end, 10);
         if (*end != 0 || port_num < Port::min() || port_num > Port::max())
             throw std::invalid_argument("Invalid port: " + data);
@@ -409,7 +409,7 @@ namespace Pistache
         }
         else
         {
-            char* end = 0;
+            char* end = nullptr;
             long port = strtol(portPart.c_str(), &end, 10);
             if (*end != 0 || port < Port::min() || port > Port::max())
                 throw std::invalid_argument("Invalid port");

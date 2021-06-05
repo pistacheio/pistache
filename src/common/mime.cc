@@ -133,7 +133,7 @@ namespace Pistache::Http::Mime
             MIME_TYPES
 #undef TYPE
             raise("Unknown Media Type");
-        } while (0);
+        } while (false);
 
         top_ = top;
 
@@ -165,7 +165,7 @@ namespace Pistache::Http::Mime
                 MIME_SUBTYPES
 #undef SUB_TYPE
                 sub = Subtype::Ext;
-            } while (0);
+            } while (false);
         }
 
         if (sub == Subtype::Ext || sub == Subtype::Vendor)
@@ -201,7 +201,7 @@ namespace Pistache::Http::Mime
                 MIME_SUFFIXES
 #undef SUFFIX
                 suffix = Suffix::Ext;
-            } while (0);
+            } while (false);
 
             if (suffix == Suffix::Ext)
             {

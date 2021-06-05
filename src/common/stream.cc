@@ -93,7 +93,7 @@ namespace Pistache
 
     DynamicStreamBuf::DynamicStreamBuf(DynamicStreamBuf&& other)
         : data_(std::move(other.data_))
-        , maxSize_(std::move(other.maxSize_))
+        , maxSize_(other.maxSize_)
     {
         setp(other.pptr(), other.epptr());
         other.setp(nullptr, nullptr);
@@ -104,7 +104,7 @@ namespace Pistache
         if (&other != this)
         {
             data_    = std::move(other.data_);
-            maxSize_ = std::move(other.maxSize_);
+            maxSize_ = other.maxSize_;
             setp(other.pptr(), other.epptr());
             other.setp(nullptr, nullptr);
         }

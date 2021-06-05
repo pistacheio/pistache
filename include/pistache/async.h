@@ -52,7 +52,7 @@ namespace Pistache::Async
     {
     public:
         const char* what() const noexcept override { return "Bad any cast"; }
-        virtual ~BadAnyCast() { }
+         ~BadAnyCast() override = default;
     };
 
     enum class State { Pending,
@@ -65,7 +65,7 @@ namespace Pistache::Async
     class PromiseBase
     {
     public:
-        virtual ~PromiseBase() { }
+        virtual ~PromiseBase() = default;
         virtual bool isPending() const   = 0;
         virtual bool isFulfilled() const = 0;
         virtual bool isRejected() const  = 0;
@@ -192,7 +192,7 @@ namespace Pistache::Async
         public:
             virtual void resolve(const std::shared_ptr<Core>& core) = 0;
             virtual void reject(const std::shared_ptr<Core>& core)  = 0;
-            virtual ~Request() { }
+            virtual ~Request() = default;
         };
 
         struct Core
@@ -253,7 +253,7 @@ namespace Pistache::Async
                 state     = State::Fulfilled;
             }
 
-            virtual ~Core() { }
+            virtual ~Core() = default;
         };
 
         template <typename T>
@@ -264,7 +264,7 @@ namespace Pistache::Async
                 , storage()
             { }
 
-            ~CoreT()
+            ~CoreT() override
             {
                 if (allocated)
                 {
@@ -342,7 +342,7 @@ namespace Pistache::Async
                 }
                 catch (const InternalRethrow& e)
                 {
-                    chain_->exc   = std::move(e.exc);
+                    chain_->exc   = e.exc;
                     chain_->state = State::Rejected;
                     for (const auto& req : chain_->requests)
                     {
@@ -359,7 +359,7 @@ namespace Pistache::Async
             virtual void doResolve(const std::shared_ptr<CoreT<T>>& core) = 0;
             virtual void doReject(const std::shared_ptr<CoreT<T>>& core)  = 0;
 
-            virtual ~Continuable() { }
+            ~Continuable() override = default;
 
             size_t resolveCount_;
             size_t rejectCount_;
@@ -464,12 +464,12 @@ namespace Pistache::Async
                 static_assert(sizeof...(Args) == 0,
                               "Can not attach a non-void continuation to a void-Promise");
 
-                void doResolve(const std::shared_ptr<CoreT<void>>& /*core*/)
+                void doResolve(const std::shared_ptr<CoreT<void>>& /*core*/) override
                 {
                     finishResolve(resolve_());
                 }
 
-                void doReject(const std::shared_ptr<CoreT<void>>& core)
+                void doReject(const std::shared_ptr<CoreT<void>>& core) override
                 {
                     reject_(core->exc);
                     for (const auto& req : this->chain_->requests)
@@ -659,13 +659,13 @@ namespace Pistache::Async
                     , reject_(reject)
                 { }
 
-                void doResolve(const std::shared_ptr<CoreT<void>>& /*core*/)
+                void doResolve(const std::shared_ptr<CoreT<void>>& /*core*/) override
                 {
                     auto promise = resolve_();
                     finishResolve(promise);
                 }
 
-                void doReject(const std::shared_ptr<CoreT<void>>& core)
+                void doReject(const std::shared_ptr<CoreT<void>>& core) override
                 {
                     reject_(core->exc);
                     for (const auto& req : core->requests)
@@ -1059,7 +1059,7 @@ namespace Pistache::Async
         Promise(Promise<T>&& other) = default;
         Promise& operator=(Promise<T>&& other) = default;
 
-        virtual ~Promise() { }
+        ~Promise() override = default;
 
         template <typename U>
         static Promise<T> resolved(U&& value)

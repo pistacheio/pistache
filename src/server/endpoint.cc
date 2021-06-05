@@ -65,7 +65,7 @@ namespace Pistache::Http
         spec.it_interval.tv_sec  = 0;
         spec.it_interval.tv_nsec = TimerIntervalNs.count();
 
-        TRY(timerfd_settime(timerFd, 0, &spec, 0));
+        TRY(timerfd_settime(timerFd, 0, &spec, nullptr));
 
         Polling::Tag tag(timerFd);
         poller.addFd(timerFd, Flags<Polling::NotifyOn>(Polling::NotifyOn::Read), Polling::Tag(timerFd));
@@ -195,7 +195,7 @@ namespace Pistache::Http
         return *this;
     }
 
-    Endpoint::Endpoint() { }
+    Endpoint::Endpoint() = default;
 
     Endpoint::Endpoint(const Address& addr)
         : listener(addr)
@@ -242,25 +242,19 @@ namespace Pistache::Http
 
     void Endpoint::shutdown() { listener.shutdown(); }
 
-    void Endpoint::useSSL(const std::string& cert, const std::string& key, bool use_compression)
+    void Endpoint::useSSL([[maybe_unused]] const std::string& cert, [[maybe_unused]] const std::string& key, [[maybe_unused]] bool use_compression)
     {
 #ifndef PISTACHE_USE_SSL
-        (void)cert;
-        (void)key;
-        (void)use_compression;
         throw std::runtime_error("Pistache is not compiled with SSL support.");
 #else
         listener.setupSSL(cert, key, use_compression);
 #endif /* PISTACHE_USE_SSL */
     }
 
-    void Endpoint::useSSLAuth(std::string ca_file, std::string ca_path,
-                              int (*cb)(int, void*))
+    void Endpoint::useSSLAuth([[maybe_unused]] std::string ca_file, [[maybe_unused]] std::string ca_path,
+                              [[maybe_unused]] int (*cb)(int, void*))
     {
 #ifndef PISTACHE_USE_SSL
-        (void)ca_file;
-        (void)ca_path;
-        (void)cb;
         throw std::runtime_error("Pistache is not compiled with SSL support.");
 #else
         listener.setupSSLAuth(ca_file, ca_path, cb);

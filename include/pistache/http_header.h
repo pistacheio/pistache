@@ -69,7 +69,7 @@ namespace Pistache::Http::Header
     class Header
     {
     public:
-        virtual ~Header() { }
+        virtual ~Header() = default;
         virtual const char* name() const = 0;
 
         virtual void parse(const std::string& data);
@@ -494,7 +494,7 @@ namespace Pistache::Http::Header
             : fullDate_(date)
         { }
 
-        void parse(const std::string& data) override;
+        void parse(const std::string& str) override;
         void write(std::ostream& os) const override;
 
         FullDate fullDate() const { return fullDate_; }
@@ -535,7 +535,7 @@ namespace Pistache::Http::Header
             , port_(0)
         { }
 
-        explicit Host(const std::string& host);
+        explicit Host(const std::string& data);
         explicit Host(const std::string& host, Port port)
             : host_(host)
             , port_(port)
@@ -585,7 +585,7 @@ namespace Pistache::Http::Header
         explicit Server(const std::string& token);
         explicit Server(const char* token);
 
-        void parse(const std::string& data) override;
+        void parse(const std::string& token) override;
         void write(std::ostream& os) const override;
 
         std::vector<std::string> tokens() const { return tokens_; }

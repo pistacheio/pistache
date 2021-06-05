@@ -11,7 +11,7 @@ namespace Pistache::ssl
 
     struct SSLCtxDeleter
     {
-        void operator()(void* ptr)
+        void operator()([[maybe_unused]] void* ptr)
         {
 #ifdef PISTACHE_USE_SSL
             SSL_CTX_free(reinterpret_cast<SSL_CTX*>(ptr));
@@ -22,20 +22,16 @@ namespace Pistache::ssl
             // https://www.openssl.org/news/changelog.txt):
             // "Make various cleanup routines no-ops and mark them as deprecated."
             EVP_cleanup();
-#else
-            (void)ptr;
 #endif
         }
     };
 
     struct SSLBioDeleter
     {
-        void operator()(void* ptr)
+        void operator()([[maybe_unused]] void* ptr)
         {
 #ifdef PISTACHE_USE_SSL
             BIO_free(reinterpret_cast<BIO*>(ptr));
-#else
-            (void)ptr;
 #endif
         }
     };

@@ -20,9 +20,9 @@
 namespace Pistache::Http::Header
 {
 
-    void Header::parse(const std::string& str)
+    void Header::parse(const std::string& data)
     {
-        parseRaw(str.c_str(), str.length());
+        parseRaw(data.c_str(), data.length());
     }
 
     void Header::parseRaw(const char* str, size_t len)
@@ -30,10 +30,8 @@ namespace Pistache::Http::Header
         parse(std::string(str, len));
     }
 
-    void Allow::parseRaw(const char* str, size_t len)
+    void Allow::parseRaw(const char* /*str*/, size_t /*len*/)
     {
-        UNUSED(str)
-        UNUSED(len)
     }
 
     const char* encodingString(Encoding encoding)
@@ -136,7 +134,7 @@ namespace Pistache::Http::Header
             {
                 if (match_raw(d.str, d.size, cursor))
                 {
-                    directives_.push_back(CacheDirective(d.repr));
+                    directives_.emplace_back(d.repr);
                     found = true;
                     break;
                 }
@@ -167,8 +165,7 @@ namespace Pistache::Http::Header
                             throw std::runtime_error(
                                 "Invalid caching directive, malformated delta-seconds");
                         }
-                        directives_.push_back(
-                            CacheDirective(d.repr, std::chrono::seconds(secs)));
+                        directives_.emplace_back(d.repr, std::chrono::seconds(secs));
                         break;
                     }
                 }
@@ -322,7 +319,7 @@ namespace Pistache::Http::Header
 
             value_ = val;
         }
-        catch (const std::invalid_argument& e)
+        catch (const std::invalid_argument& /*e*/)
         {
         }
     }
@@ -571,7 +568,7 @@ namespace Pistache::Http::Header
         } while (!cursor.eof());
     }
 
-    void Accept::write(std::ostream& os) const { UNUSED(os) }
+    void Accept::write(std::ostream& /*os*/) const {}
 
     void AccessControlAllowOrigin::parse(const std::string& data) { uri_ = data; }
 
@@ -644,7 +641,7 @@ namespace Pistache::Http::Header
     {
         for (size_t i = 0; i < tokens_.size(); i++)
         {
-            auto& token = tokens_[i];
+            const auto& token = tokens_[i];
             os << token;
             if (i < tokens_.size() - 1)
             {

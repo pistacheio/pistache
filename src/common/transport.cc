@@ -239,7 +239,7 @@ namespace Pistache::Tcp
                 return;
             }
             auto& wq = it->second;
-            if (wq.size() == 0)
+            if (wq.empty())
             {
                 break;
             }
@@ -251,7 +251,7 @@ namespace Pistache::Tcp
 
             auto cleanUp = [&]() {
                 wq.pop_front();
-                if (wq.size() == 0)
+                if (wq.empty())
                 {
                     toWrite.erase(fd);
                     reactor()->modifyFd(key(), fd, NotifyOn::Read, Polling::Mode::Edge);
@@ -269,7 +269,7 @@ namespace Pistache::Tcp
                 if (buffer.isRaw())
                 {
                     auto raw     = buffer.raw();
-                    auto ptr     = raw.data().c_str() + totalWritten;
+                    const auto* ptr = raw.data().c_str() + totalWritten;
                     bytesWritten = sendRawBuffer(fd, ptr, len, flags);
                 }
                 else
@@ -428,7 +428,7 @@ namespace Pistache::Tcp
             spec.it_value.tv_nsec = 0;
         }
 
-        int res = timerfd_settime(entry.fd, 0, &spec, 0);
+        int res = timerfd_settime(entry.fd, 0, &spec, nullptr);
         if (res == -1)
         {
             entry.deferred.reject(Pistache::Error::system("Could not set timer time"));

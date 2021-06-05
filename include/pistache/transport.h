@@ -34,10 +34,10 @@ namespace Pistache::Tcp
 
         void init(const std::shared_ptr<Tcp::Handler>& handler);
 
-        virtual void registerPoller(Polling::Epoll& poller) override;
+        void registerPoller(Polling::Epoll& poller) override;
 
         void handleNewPeer(const std::shared_ptr<Peer>& peer);
-        virtual void onReady(const Aio::FdSet& fds) override;
+        void onReady(const Aio::FdSet& fds) override;
 
         template <typename Buf>
         Async::Promise<ssize_t> asyncWrite(Fd fd, const Buf& buffer, int flags = 0)
@@ -178,7 +178,7 @@ namespace Pistache::Tcp
 
             void disable() { active.store(false, std::memory_order_relaxed); }
 
-            bool isActive() { return active.load(std::memory_order_relaxed); }
+            bool isActive() const { return active.load(std::memory_order_relaxed); }
 
             Fd fd;
             std::chrono::milliseconds value;
@@ -241,7 +241,7 @@ namespace Pistache::Tcp
         void handlePeerQueue();
         void handleNotify();
         void handleTimer(TimerEntry entry);
-        void handlePeer(const std::shared_ptr<Peer>& entry);
+        void handlePeer(const std::shared_ptr<Peer>& peer);
     };
 
 } // namespace Pistache::Tcp

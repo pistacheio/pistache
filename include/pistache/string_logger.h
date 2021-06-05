@@ -28,7 +28,7 @@ namespace Pistache::Log
         virtual void log(Level level, const std::string& message) = 0;
         virtual bool isEnabledFor(Level level) const              = 0;
 
-        virtual ~StringLogger() { }
+        virtual ~StringLogger() = default;
     };
 
     class StringToStreamLogger : public StringLogger
@@ -38,7 +38,7 @@ namespace Pistache::Log
             : level_(level)
             , out_(out)
         { }
-        ~StringToStreamLogger() override { }
+        ~StringToStreamLogger() override = default;
 
         void log(Level level, const std::string& message) override;
         bool isEnabledFor(Level level) const override;
