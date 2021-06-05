@@ -394,9 +394,7 @@ namespace Pistache::Rest
                 using Response = typename Arguments::template At<1>::Type;
 
                 // instantiate template this way
-                constexpr Checks<Request, Response> checks;
-
-                UNUSED(checks);
+                [[maybe_unused]] constexpr Checks<Request, Response> checks;
             }
         } // namespace details
 
