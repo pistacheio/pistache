@@ -6,8 +6,6 @@
 
 #pragma once
 
-#include <pistache/view.h>
-
 #include <cstring>
 #include <limits>
 #include <stdexcept>
@@ -175,10 +173,9 @@ namespace Pistache
 
     namespace helpers
     {
-        inline Address httpAddr(const StringView& view)
+        inline Address httpAddr(const std::string_view& view)
         {
-            auto const str = view.toString();
-            return Address(str);
+            return Address(std::string(view));
         }
     } // namespace helpers
 

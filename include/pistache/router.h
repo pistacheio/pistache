@@ -17,8 +17,6 @@
 #include <pistache/http.h>
 #include <pistache/http_defs.h>
 
-#include "pistache/string_view.h"
-
 namespace Pistache::Rest
 {
 
