@@ -69,7 +69,7 @@ namespace Pistache::Http::Header
     class Header
     {
     public:
-        virtual ~Header() = default;
+        virtual ~Header()                = default;
         virtual const char* name() const = 0;
 
         virtual void parse(const std::string& data);

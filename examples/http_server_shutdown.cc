@@ -8,9 +8,8 @@ class HelloHandler : public Http::Handler
 public:
     HTTP_PROTOTYPE(HelloHandler)
 
-    void onRequest(const Http::Request& request, Http::ResponseWriter response) override
+    void onRequest(const Http::Request& /*request*/, Http::ResponseWriter response) override
     {
-        UNUSED(request);
         response.send(Pistache::Http::Code::Ok, "Hello World\n");
     }
 };

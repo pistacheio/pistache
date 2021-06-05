@@ -568,7 +568,7 @@ namespace Pistache::Http::Header
         } while (!cursor.eof());
     }
 
-    void Accept::write(std::ostream& /*os*/) const {}
+    void Accept::write(std::ostream& /*os*/) const { }
 
     void AccessControlAllowOrigin::parse(const std::string& data) { uri_ = data; }
 

@@ -473,7 +473,7 @@ namespace Pistache::Aio
         template <typename Func, typename... Args>
         void dispatchCall(const Reactor::Key& key, Func func, Args&&... args) const
         {
-            auto decoded = decodeKey(key);
+            auto decoded    = decodeKey(key);
             const auto& wrk = workers_.at(decoded.second);
 
             Reactor::Key originalKey(decoded.first);

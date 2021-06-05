@@ -142,7 +142,7 @@ namespace Pistache::Aio
     class ExecutionContext
     {
     public:
-        virtual ~ExecutionContext() = default;
+        virtual ~ExecutionContext()                             = default;
         virtual Reactor::Impl* makeImpl(Reactor* reactor) const = 0;
     };
 

@@ -23,10 +23,7 @@ class XProtocolVersion : public Http::Header::Header
 public:
     NAME("X-Protocol-Version");
 
-    XProtocolVersion()
-        : maj(0)
-        , min(0)
-    { }
+    XProtocolVersion() = default;
 
     XProtocolVersion(uint32_t major, uint32_t minor)
         : maj(major)
@@ -69,8 +66,8 @@ public:
     }
 
 private:
-    uint32_t maj;
-    uint32_t min;
+    uint32_t maj = 0;
+    uint32_t min = 0;
 };
 
 int main()

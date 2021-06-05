@@ -268,9 +268,9 @@ namespace Pistache::Tcp
 
                 if (buffer.isRaw())
                 {
-                    auto raw     = buffer.raw();
+                    auto raw        = buffer.raw();
                     const auto* ptr = raw.data().c_str() + totalWritten;
-                    bytesWritten = sendRawBuffer(fd, ptr, len, flags);
+                    bytesWritten    = sendRawBuffer(fd, ptr, len, flags);
                 }
                 else
                 {

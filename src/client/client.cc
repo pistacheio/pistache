@@ -109,10 +109,10 @@ namespace Pistache
             {
                 using Http::crlf;
 
-                const auto& res   = request.resource();
+                const auto& res         = request.resource();
                 const auto [host, path] = splitUrl(res);
-                const auto& body         = request.body();
-                const auto& query        = request.query();
+                const auto& body        = request.body();
+                const auto& query       = request.query();
 
                 auto pathStr = std::string(path);
 
@@ -848,7 +848,7 @@ namespace Pistache
                 [](const std::shared_ptr<Connection>& conn) { return conn->isIdle(); });
         }
 
-        size_t ConnectionPool::availableConnections(const std::string&  /*domain*/) const
+        size_t ConnectionPool::availableConnections(const std::string& /*domain*/) const
         {
             return 0;
         }
