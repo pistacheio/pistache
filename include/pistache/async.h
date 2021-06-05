@@ -52,7 +52,7 @@ namespace Pistache::Async
     {
     public:
         const char* what() const noexcept override { return "Bad any cast"; }
-         ~BadAnyCast() override = default;
+        ~BadAnyCast() override = default;
     };
 
     enum class State { Pending,
@@ -65,7 +65,7 @@ namespace Pistache::Async
     class PromiseBase
     {
     public:
-        virtual ~PromiseBase() = default;
+        virtual ~PromiseBase()           = default;
         virtual bool isPending() const   = 0;
         virtual bool isFulfilled() const = 0;
         virtual bool isRejected() const  = 0;
@@ -192,7 +192,7 @@ namespace Pistache::Async
         public:
             virtual void resolve(const std::shared_ptr<Core>& core) = 0;
             virtual void reject(const std::shared_ptr<Core>& core)  = 0;
-            virtual ~Request() = default;
+            virtual ~Request()                                      = default;
         };
 
         struct Core

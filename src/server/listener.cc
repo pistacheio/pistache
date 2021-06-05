@@ -312,7 +312,7 @@ namespace Pistache::Tcp
 
         struct sockaddr_in sock_addr = { 0 };
         socklen_t addrlen            = sizeof(sock_addr);
-        auto* sock_addr_alias         = reinterpret_cast<struct sockaddr*>(&sock_addr);
+        auto* sock_addr_alias        = reinterpret_cast<struct sockaddr*>(&sock_addr);
 
         if (-1 == getsockname(listen_fd, sock_addr_alias, &addrlen))
         {
