@@ -24,7 +24,7 @@ using namespace std;
 vector<byte>::size_type Base64Decoder::CalculateDecodedSize() const
 {
     // If encoded size was zero, so is decoded size...
-    if (m_Base64EncodedString.size() == 0)
+    if (m_Base64EncodedString.empty())
         return 0;
 
     // If non-zero, should always be at least four characters...

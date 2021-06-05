@@ -222,7 +222,7 @@ namespace Pistache::Rest
                          std::move(description));
         }
 
-        SubPath SubPath::path(const std::string& prefix)
+        SubPath SubPath::path(const std::string& prefix) const
         {
             return SubPath(this->prefix + prefix, paths);
         }
@@ -396,7 +396,7 @@ namespace Pistache::Rest
 
         Route::Handler uiHandler = [=](const Rest::Request& req,
                                        Http::ResponseWriter response) {
-            auto res = req.resource();
+            const auto& res = req.resource();
 
             /*
      * @Export might be useful for routing also. Make it public or merge it with
@@ -431,7 +431,7 @@ namespace Pistache::Rest
 
                 bool matches(const Rest::Request& req) const
                 {
-                    auto res_ = req.resource();
+                    const auto& res_ = req.resource();
                     if (value == res_)
                         return true;
 
@@ -443,11 +443,11 @@ namespace Pistache::Rest
 
                 bool isPrefix(const Rest::Request& req)
                 {
-                    auto res_ = req.resource();
+                    const auto& res_ = req.resource();
                     return !res_.compare(0, value.size(), value);
                 }
 
-                const std::string& withTrailingSlash() const
+                [[maybe_unused]] const std::string& withTrailingSlash() const
                 {
                     return trailingSlashValue;
                 }

@@ -142,14 +142,14 @@ namespace Pistache::Aio
     class ExecutionContext
     {
     public:
-        virtual ~ExecutionContext() { }
+        virtual ~ExecutionContext() = default;
         virtual Reactor::Impl* makeImpl(Reactor* reactor) const = 0;
     };
 
     class SyncContext : public ExecutionContext
     {
     public:
-        virtual ~SyncContext() { }
+        ~SyncContext() override = default;
         Reactor::Impl* makeImpl(Reactor* reactor) const override;
     };
 
@@ -161,7 +161,7 @@ namespace Pistache::Aio
             , threadsName_(threadsName)
         { }
 
-        virtual ~AsyncContext() { }
+        ~AsyncContext() override = default;
 
         Reactor::Impl* makeImpl(Reactor* reactor) const override;
 
@@ -208,7 +208,7 @@ namespace Pistache::Aio
 
         Reactor::Key key() const { return key_; };
 
-        virtual ~Handler() { }
+        ~Handler() override = default;
 
     private:
         Reactor* reactor_;

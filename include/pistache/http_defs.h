@@ -229,7 +229,7 @@ namespace Pistache::Http
         HttpError(Code code, std::string reason);
         HttpError(int code, std::string reason);
 
-        ~HttpError() noexcept { }
+        ~HttpError() noexcept override = default;
 
         const char* what() const noexcept override { return reason_.c_str(); }
 

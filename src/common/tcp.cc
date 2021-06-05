@@ -14,21 +14,17 @@ namespace Pistache::Tcp
         : transport_(nullptr)
     { }
 
-    Handler::~Handler() { }
+    Handler::~Handler() = default;
 
     void Handler::associateTransport(Transport* transport)
     {
         transport_ = transport;
     }
 
-    void Handler::onConnection(const std::shared_ptr<Tcp::Peer>& peer)
-    {
-        UNUSED(peer)
-    }
+    void Handler::onConnection(const std::shared_ptr<Tcp::Peer>& /*peer*/)
+    { }
 
-    void Handler::onDisconnection(const std::shared_ptr<Tcp::Peer>& peer)
-    {
-        UNUSED(peer)
-    }
+    void Handler::onDisconnection(const std::shared_ptr<Tcp::Peer>& /*peer*/)
+    { }
 
 } // namespace Pistache::Tcp

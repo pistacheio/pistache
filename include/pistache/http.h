@@ -394,6 +394,7 @@ namespace Pistache
             // C++11: std::weak_ptr move constructor is C++14 only so the default
             // version of move constructor / assignement operator does not work and we
             // have to define it ourself
+            // We're now using C++17, should this be removed?
             ResponseWriter(ResponseWriter&& other);
 
             ResponseWriter& operator=(ResponseWriter&& other) = default;
@@ -701,7 +702,7 @@ namespace Pistache
 
             static std::shared_ptr<RequestParser> getParser(const std::shared_ptr<Tcp::Peer>& peer);
 
-            virtual ~Handler() override { }
+            ~Handler() override = default;
 
         private:
             void onConnection(const std::shared_ptr<Tcp::Peer>& peer) override;

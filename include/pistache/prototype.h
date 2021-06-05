@@ -17,7 +17,7 @@ namespace Pistache
     struct Prototype
     {
     public:
-        virtual ~Prototype() { }
+        virtual ~Prototype() = default;
         virtual std::shared_ptr<Class> clone() const = 0;
     };
 

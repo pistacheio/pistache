@@ -69,6 +69,3 @@ struct PrintException
 };
 
 #define unreachable() __builtin_unreachable()
-
-// Until we require C++17 compiler with [[maybe_unused]]
-#define UNUSED(x) (void)(x);

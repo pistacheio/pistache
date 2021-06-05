@@ -215,10 +215,8 @@ namespace Pistache::Tcp
         handler_ = handler;
     }
 
-    void Listener::pinWorker(size_t worker, const CpuSet& set)
+    void Listener::pinWorker([[maybe_unused]] size_t worker, [[maybe_unused]] const CpuSet& set)
     {
-        UNUSED(worker)
-        UNUSED(set)
 #if 0
     if (ioGroup.empty()) {
         throw std::domain_error("Invalid operation, did you call init() before ?");
@@ -314,7 +312,7 @@ namespace Pistache::Tcp
 
         struct sockaddr_in sock_addr = { 0 };
         socklen_t addrlen            = sizeof(sock_addr);
-        auto sock_addr_alias         = reinterpret_cast<struct sockaddr*>(&sock_addr);
+        auto* sock_addr_alias         = reinterpret_cast<struct sockaddr*>(&sock_addr);
 
         if (-1 == getsockname(listen_fd, sock_addr_alias, &addrlen))
         {
@@ -498,7 +496,7 @@ namespace Pistache::Tcp
         socklen_t peer_addr_len = sizeof(peer_addr);
         // Do not share open FD with forked processes
         int client_fd = ::accept4(
-            listen_fd, (struct sockaddr*)&peer_addr, &peer_addr_len, SOCK_CLOEXEC);
+            listen_fd, reinterpret_cast<struct sockaddr*>(&peer_addr), &peer_addr_len, SOCK_CLOEXEC);
         if (client_fd < 0)
         {
             if (errno == EBADF || errno == ENOTSOCK)

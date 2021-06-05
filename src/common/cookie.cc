@@ -76,9 +76,8 @@ namespace Pistache::Http
         template <>
         struct AttributeMatcher<bool>
         {
-            static void match(StreamCursor& cursor, Cookie* obj, bool Cookie::*attr)
+            static void match(StreamCursor& /*cursor*/, Cookie* obj, bool Cookie::*attr)
             {
-                UNUSED(cursor)
                 obj->*attr = true;
             }
         };

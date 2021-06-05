@@ -388,7 +388,7 @@ namespace Pistache::Rest
 
     void Router::initFromDescription(const Rest::Description& desc)
     {
-        auto paths = desc.rawPaths();
+        const auto& paths = desc.rawPaths();
         for (auto it = paths.flatBegin(), end = paths.flatEnd(); it != end; ++it)
         {
             const auto& paths_ = *it;
@@ -479,14 +479,14 @@ namespace Pistache::Rest
                         std::move(resp));
     }
 
-    Route::Status Router::route(const Http::Request& http_req,
+    Route::Status Router::route(const Http::Request& request,
                                 Http::ResponseWriter response)
     {
-        const auto resource = http_req.resource();
+        const auto& resource = request.resource();
         if (resource.empty())
             throw std::runtime_error("Invalid zero-length URL.");
 
-        auto req  = http_req;
+        auto req  = request;
         auto resp = response.clone();
 
         for (const auto& middleware : middlewares)
