@@ -230,12 +230,12 @@ TEST(headers_test, cache_control)
     Pistache::Http::Header::CacheControl cc15(
         Pistache::Http::CacheDirective::Ext);
     cc15.write(oss);
-    ASSERT_TRUE(oss.str() == "");
+    ASSERT_TRUE(oss.str().empty());
     oss.str("");
 
     Pistache::Http::Header::CacheControl cc16;
     cc16.write(oss);
-    ASSERT_TRUE(oss.str() == "");
+    ASSERT_TRUE(oss.str().empty());
     oss.str("");
 
     Pistache::Http::Header::CacheControl cc12;
@@ -250,10 +250,9 @@ TEST(headers_test, cache_control)
     Pistache::Http::Header::CacheControl cc13;
     std::vector<Pistache::Http::CacheDirective> cd;
 
-    cd.push_back(
-        Pistache::Http::CacheDirective(Pistache::Http::CacheDirective::Public));
-    cd.push_back(Pistache::Http::CacheDirective(
-        Pistache::Http::CacheDirective::MaxAge, std::chrono::seconds(600)));
+    cd.emplace_back(Pistache::Http::CacheDirective::Public);
+    cd.emplace_back(
+        Pistache::Http::CacheDirective::MaxAge, std::chrono::seconds(600));
 
     cc13.addDirectives(cd);
     cc13.write(oss);
@@ -353,7 +352,7 @@ TEST(headers_test, expect_test)
     e.parse("unknown");
     e.write(oss);
 
-    ASSERT_TRUE("" == oss.str());
+    ASSERT_TRUE(oss.str().empty());
     ASSERT_TRUE(e.expectation() == Pistache::Http::Expectation::Ext);
     oss.str("");
 }

@@ -25,7 +25,7 @@ public:
         socklen_t len = sizeof(sin);
 
         uint16_t port = 0;
-        if (getsockname(fd_, (struct sockaddr*)&sin, &len) == -1)
+        if (getsockname(fd_, reinterpret_cast<struct sockaddr*>(&sin), &len) == -1)
         {
             perror("getsockname");
         }
@@ -46,10 +46,9 @@ class DummyHandler : public Pistache::Http::Handler
 public:
     HTTP_PROTOTYPE(DummyHandler)
 
-    void onRequest(const Pistache::Http::Request& request,
+    void onRequest(const Pistache::Http::Request& /*request*/,
                    Pistache::Http::ResponseWriter response) override
     {
-        UNUSED(request);
         response.send(Pistache::Http::Code::Ok, "I am a dummy handler\n");
     }
 };

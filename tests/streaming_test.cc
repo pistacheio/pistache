@@ -15,7 +15,6 @@
 #include <thread>
 #include <vector>
 
-using namespace std;
 using namespace Pistache;
 
 static constexpr size_t N_LETTERS      = 26;
@@ -40,12 +39,12 @@ void dumpData(const Rest::Request& /*req*/, Http::ResponseWriter response)
 
     for (size_t j = 0; j < N_WORKERS; ++j)
     {
-        workers.push_back(std::thread([&jobCounter, &cv, &jobLock, &jobs]() {
+        workers.emplace_back([&jobCounter, &cv, &jobLock, &jobs]() {
             while (jobCounter < JOB_LIMIT)
             {
                 std::unique_lock<Lock> l(jobLock);
                 cv.wait(l, [&jobCounter, &jobs] {
-                    return jobs.size() || !(jobCounter < JOB_LIMIT);
+                    return !jobs.empty() || !(jobCounter < JOB_LIMIT);
                 });
                 if (!jobs.empty())
                 {
@@ -58,7 +57,7 @@ void dumpData(const Rest::Request& /*req*/, Http::ResponseWriter response)
                 }
             }
             cv.notify_all();
-        }));
+        });
     }
 
     auto stream       = response.stream(Http::Code::Ok);
@@ -117,14 +116,14 @@ namespace
 
         return result;
     }
-}
+} // namespace
 
 // from
 // https://stackoverflow.com/questions/6624667/can-i-use-libcurls-curlopt-writefunction-with-a-c11-lambda-expression#14720398
 typedef size_t (*CURL_WRITEFUNCTION_PTR)(void*, size_t, size_t, void*);
 auto curl_callback = [](void* ptr, size_t size, size_t nmemb,
                         void* userdata) -> size_t {
-    auto chunks = static_cast<Chunks*>(userdata);
+    auto* chunks = static_cast<Chunks*>(userdata);
     chunks->emplace_back(static_cast<char*>(ptr), size * nmemb);
     return size * nmemb;
 };
@@ -203,7 +202,7 @@ class HelloHandler : public Http::Handler
 public:
     HTTP_PROTOTYPE(HelloHandler)
 
-    explicit HelloHandler(SyncContext& ctx)
+    [[maybe_unused]] explicit HelloHandler(SyncContext& ctx)
         : ctx_ { ctx }
     { }
 

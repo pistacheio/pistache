@@ -84,7 +84,7 @@ private:
 
         if (it == std::end(metrics))
         {
-            metrics.push_back(Metric(std::move(name), val));
+            metrics.emplace_back(std::move(name), val);
             response.send(Http::Code::Created, std::to_string(val));
         }
         else
