@@ -19,7 +19,6 @@ pistache_test_files = [
 	'request_size_test',
 	'streaming_test',
 	'rest_server_test',
-	'string_view_test',
 	'mailbox_test',
 	'stream_test',
 	'reactor_test',

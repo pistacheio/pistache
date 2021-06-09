@@ -323,18 +323,16 @@ private:
     int auth_succ_count = 0;
 };
 
-bool fill_auth_header(Pistache::Http::Request& request, Pistache::Http::ResponseWriter& response)
+bool fill_auth_header(Pistache::Http::Request& request, Pistache::Http::ResponseWriter& /*response*/)
 {
-    UNUSED(response);
     auto au = Pistache::Http::Header::Authorization();
     au.setBasicUserPassword("foo", "bar");
     request.headers().add<decltype(au)>(au);
     return true;
 }
 
-bool stop_processing(Pistache::Http::Request& request, Pistache::Http::ResponseWriter& response)
+bool stop_processing(Pistache::Http::Request& /*request*/, Pistache::Http::ResponseWriter& response)
 {
-    UNUSED(request);
     response.send(Pistache::Http::Code::No_Content);
     return false;
 }

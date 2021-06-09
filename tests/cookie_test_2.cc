@@ -52,7 +52,7 @@ TEST(cookie_test_2, cookiejar_iterator)
                        const auto name  = (*i).name;
                        const auto value = control.at(name);
                        ASSERT_EQ((*i).value, value);
-                   } while (0);
+                   } while (false);
 
                    // Test "operator->" and pre-increment++
                    do
@@ -62,7 +62,7 @@ TEST(cookie_test_2, cookiejar_iterator)
                        const auto value = control.at(name);
                        ASSERT_EQ(i->value, value);
                        ASSERT_EQ(r->name, i->name);
-                   } while (0);
+                   } while (false);
 
                    // Test "operator->" and post-increment++
                    do
@@ -72,7 +72,7 @@ TEST(cookie_test_2, cookiejar_iterator)
                        const auto value = control.at(name);
                        ASSERT_EQ(i->value, value);
                        ASSERT_NE(r->name, i->name);
-                   } while (0);
+                   } while (false);
 
                    // pre-increment should end the iterator.
                    ++i;

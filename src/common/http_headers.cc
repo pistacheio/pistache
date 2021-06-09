@@ -11,227 +11,221 @@
 #include <unordered_map>
 #include <vector>
 
-namespace Pistache
+namespace Pistache::Http::Header
 {
-    namespace Http
+
+    RegisterHeader(Accept);
+    RegisterHeader(AccessControlAllowOrigin);
+    RegisterHeader(AccessControlAllowHeaders);
+    RegisterHeader(AccessControlExposeHeaders);
+    RegisterHeader(AccessControlAllowMethods);
+    RegisterHeader(Allow);
+    RegisterHeader(CacheControl);
+    RegisterHeader(Connection);
+    RegisterHeader(ContentEncoding);
+    RegisterHeader(TransferEncoding);
+    RegisterHeader(ContentLength);
+    RegisterHeader(ContentType);
+    RegisterHeader(Authorization);
+    RegisterHeader(Date);
+    RegisterHeader(Expect);
+    RegisterHeader(Host);
+    RegisterHeader(Location);
+    RegisterHeader(Server);
+    RegisterHeader(UserAgent);
+
+    std::string toLowercase(std::string str)
     {
-        namespace Header
+        std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+        return str;
+    }
+
+    bool LowercaseEqualStatic(const std::string& dynamic,
+                              const std::string& statik)
+    {
+        return std::equal(
+            dynamic.begin(), dynamic.end(), statik.begin(), statik.end(),
+            [](const char& a, const char& b) { return std::tolower(a) == b; });
+    }
+
+    Registry& Registry::instance()
+    {
+        static Registry instance;
+
+        return instance;
+    }
+
+    Registry::Registry() = default;
+
+    Registry::~Registry() = default;
+
+    void Registry::registerHeader(const std::string& name,
+                                  Registry::RegistryFunc func)
+    {
+        auto it = registry.find(name);
+        if (it != std::end(registry))
         {
+            throw std::runtime_error("Header already registered");
+        }
 
-            RegisterHeader(Accept);
-            RegisterHeader(AccessControlAllowOrigin);
-            RegisterHeader(AccessControlAllowHeaders);
-            RegisterHeader(AccessControlExposeHeaders);
-            RegisterHeader(AccessControlAllowMethods);
-            RegisterHeader(Allow);
-            RegisterHeader(CacheControl);
-            RegisterHeader(Connection);
-            RegisterHeader(ContentEncoding);
-            RegisterHeader(TransferEncoding);
-            RegisterHeader(ContentLength);
-            RegisterHeader(ContentType);
-            RegisterHeader(Authorization);
-            RegisterHeader(Date);
-            RegisterHeader(Expect);
-            RegisterHeader(Host);
-            RegisterHeader(Location);
-            RegisterHeader(Server);
-            RegisterHeader(UserAgent);
+        registry.insert(std::make_pair(name, std::move(func)));
+    }
 
-            std::string toLowercase(std::string str)
-            {
-                std::transform(str.begin(), str.end(), str.begin(), ::tolower);
-                return str;
-            }
+    std::vector<std::string> Registry::headersList()
+    {
+        std::vector<std::string> names;
+        names.reserve(registry.size());
 
-            bool LowercaseEqualStatic(const std::string& dynamic,
-                                      const std::string& statik)
-            {
-                return std::equal(
-                    dynamic.begin(), dynamic.end(), statik.begin(), statik.end(),
-                    [](const char& a, const char& b) { return std::tolower(a) == b; });
-            }
+        for (const auto& header : registry)
+        {
+            names.push_back(header.first);
+        }
 
-            Registry& Registry::instance()
-            {
-                static Registry instance;
+        return names;
+    }
 
-                return instance;
-            }
+    std::unique_ptr<Header> Registry::makeHeader(const std::string& name)
+    {
+        auto it = registry.find(name);
+        if (it == std::end(registry))
+        {
+            throw std::runtime_error("Unknown header");
+        }
 
-            Registry::Registry() { }
+        return it->second();
+    }
 
-            Registry::~Registry() { }
+    bool Registry::isRegistered(const std::string& name)
+    {
+        auto it = registry.find(name);
+        return it != std::end(registry);
+    }
 
-            void Registry::registerHeader(const std::string& name,
-                                          Registry::RegistryFunc func)
-            {
-                auto it = registry.find(name);
-                if (it != std::end(registry))
-                {
-                    throw std::runtime_error("Header already registered");
-                }
+    Collection& Collection::add(const std::shared_ptr<Header>& header)
+    {
+        headers.insert(std::make_pair(header->name(), header));
 
-                registry.insert(std::make_pair(name, std::move(func)));
-            }
+        return *this;
+    }
 
-            std::vector<std::string> Registry::headersList()
-            {
-                std::vector<std::string> names;
-                names.reserve(registry.size());
+    Collection& Collection::addRaw(const Raw& raw)
+    {
+        rawHeaders.insert(std::make_pair(raw.name(), raw));
+        return *this;
+    }
 
-                for (const auto& header : registry)
-                {
-                    names.push_back(header.first);
-                }
+    std::shared_ptr<const Header> Collection::get(const std::string& name) const
+    {
+        auto header = getImpl(name);
+        if (!header.first)
+        {
+            throw std::runtime_error("Could not find header");
+        }
 
-                return names;
-            }
+        return header.second;
+    }
 
-            std::unique_ptr<Header> Registry::makeHeader(const std::string& name)
-            {
-                auto it = registry.find(name);
-                if (it == std::end(registry))
-                {
-                    throw std::runtime_error("Unknown header");
-                }
+    std::shared_ptr<Header> Collection::get(const std::string& name)
+    {
+        auto header = getImpl(name);
+        if (!header.first)
+        {
+            throw std::runtime_error("Could not find header");
+        }
 
-                return it->second();
-            }
+        return header.second;
+    }
 
-            bool Registry::isRegistered(const std::string& name)
-            {
-                auto it = registry.find(name);
-                return it != std::end(registry);
-            }
+    Raw Collection::getRaw(const std::string& name) const
+    {
+        auto it = rawHeaders.find(name);
+        if (it == std::end(rawHeaders))
+        {
+            throw std::runtime_error("Could not find header");
+        }
 
-            Collection& Collection::add(const std::shared_ptr<Header>& header)
-            {
-                headers.insert(std::make_pair(header->name(), header));
+        return it->second;
+    }
 
-                return *this;
-            }
+    std::shared_ptr<const Header>
+    Collection::tryGet(const std::string& name) const
+    {
+        auto header = getImpl(name);
+        if (!header.first)
+            return nullptr;
 
-            Collection& Collection::addRaw(const Raw& raw)
-            {
-                rawHeaders.insert(std::make_pair(raw.name(), raw));
-                return *this;
-            }
+        return header.second;
+    }
 
-            std::shared_ptr<const Header> Collection::get(const std::string& name) const
-            {
-                auto header = getImpl(name);
-                if (!header.first)
-                {
-                    throw std::runtime_error("Could not find header");
-                }
+    std::shared_ptr<Header> Collection::tryGet(const std::string& name)
+    {
+        auto header = getImpl(name);
+        if (!header.first)
+            return nullptr;
 
-                return header.second;
-            }
+        return header.second;
+    }
 
-            std::shared_ptr<Header> Collection::get(const std::string& name)
-            {
-                auto header = getImpl(name);
-                if (!header.first)
-                {
-                    throw std::runtime_error("Could not find header");
-                }
+    std::optional<Raw> Collection::tryGetRaw(const std::string& name) const
+    {
+        auto it = rawHeaders.find(name);
+        if (it == std::end(rawHeaders))
+        {
+            return std::nullopt;
+        }
 
-                return header.second;
-            }
+        return std::optional<Raw>(it->second);
+    }
 
-            Raw Collection::getRaw(const std::string& name) const
-            {
-                auto it = rawHeaders.find(name);
-                if (it == std::end(rawHeaders))
-                {
-                    throw std::runtime_error("Could not find header");
-                }
+    bool Collection::has(const std::string& name) const
+    {
+        return getImpl(name).first;
+    }
 
-                return it->second;
-            }
+    std::vector<std::shared_ptr<Header>> Collection::list() const
+    {
+        std::vector<std::shared_ptr<Header>> ret;
+        ret.reserve(headers.size());
+        for (const auto& h : headers)
+        {
+            ret.push_back(h.second);
+        }
 
-            std::shared_ptr<const Header>
-            Collection::tryGet(const std::string& name) const
-            {
-                auto header = getImpl(name);
-                if (!header.first)
-                    return nullptr;
+        return ret;
+    }
 
-                return header.second;
-            }
+    bool Collection::remove(const std::string& name)
+    {
+        auto tit = headers.find(name);
+        if (tit == std::end(headers))
+        {
+            auto rit = rawHeaders.find(name);
+            if (rit == std::end(rawHeaders))
+                return false;
 
-            std::shared_ptr<Header> Collection::tryGet(const std::string& name)
-            {
-                auto header = getImpl(name);
-                if (!header.first)
-                    return nullptr;
+            rawHeaders.erase(rit);
+            return true;
+        }
+        headers.erase(tit);
+        return true;
+    }
 
-                return header.second;
-            }
+    void Collection::clear()
+    {
+        headers.clear();
+        rawHeaders.clear();
+    }
 
-            std::optional<Raw> Collection::tryGetRaw(const std::string& name) const
-            {
-                auto it = rawHeaders.find(name);
-                if (it == std::end(rawHeaders))
-                {
-                    return std::nullopt;
-                }
+    std::pair<bool, std::shared_ptr<Header>>
+    Collection::getImpl(const std::string& name) const
+    {
+        auto it = headers.find(name);
+        if (it == std::end(headers))
+        {
+            return std::make_pair(false, nullptr);
+        }
 
-                return std::optional<Raw>(it->second);
-            }
+        return std::make_pair(true, it->second);
+    }
 
-            bool Collection::has(const std::string& name) const
-            {
-                return getImpl(name).first;
-            }
-
-            std::vector<std::shared_ptr<Header>> Collection::list() const
-            {
-                std::vector<std::shared_ptr<Header>> ret;
-                ret.reserve(headers.size());
-                for (const auto& h : headers)
-                {
-                    ret.push_back(h.second);
-                }
-
-                return ret;
-            }
-
-            bool Collection::remove(const std::string& name)
-            {
-                auto tit = headers.find(name);
-                if (tit == std::end(headers))
-                {
-                    auto rit = rawHeaders.find(name);
-                    if (rit == std::end(rawHeaders))
-                        return false;
-
-                    rawHeaders.erase(rit);
-                    return true;
-                }
-                headers.erase(tit);
-                return true;
-            }
-
-            void Collection::clear()
-            {
-                headers.clear();
-                rawHeaders.clear();
-            }
-
-            std::pair<bool, std::shared_ptr<Header>>
-            Collection::getImpl(const std::string& name) const
-            {
-                auto it = headers.find(name);
-                if (it == std::end(headers))
-                {
-                    return std::make_pair(false, nullptr);
-                }
-
-                return std::make_pair(true, it->second);
-            }
-
-        } // namespace Header
-    } // namespace Http
-} // namespace Pistache
+} // namespace Pistache::Http::Header

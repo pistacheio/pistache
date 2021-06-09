@@ -29,7 +29,7 @@ namespace Pistache
     public:
         Mailbox() { data.store(nullptr); }
 
-        virtual ~Mailbox() { }
+        virtual ~Mailbox() = default;
 
         const T* get() const
         {
@@ -269,7 +269,7 @@ namespace Pistache
             : event_fd(-1)
         { }
 
-        ~PollableQueue()
+        ~PollableQueue() override
         {
             if (event_fd != -1)
                 close(event_fd);

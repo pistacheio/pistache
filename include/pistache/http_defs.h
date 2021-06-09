@@ -12,10 +12,8 @@
 #include <stdexcept>
 #include <string>
 
-namespace Pistache
+namespace Pistache::Http
 {
-    namespace Http
-    {
 
 #define HTTP_METHODS           \
     METHOD(Options, "OPTIONS") \
@@ -125,126 +123,125 @@ namespace Pistache
     CHARSET(Utf32 - LE, "utf-32le")         \
     CHARSET(Unicode - 11, "unicode-1-1")
 
-        enum class Method {
+    enum class Method {
 #define METHOD(m, _) m,
-            HTTP_METHODS
+        HTTP_METHODS
 #undef METHOD
-        };
+    };
 
-        enum class Code {
+    enum class Code {
 #define CODE(value, name, _) name = value,
-            STATUS_CODES
+        STATUS_CODES
 #undef CODE
+    };
+
+    enum class Version {
+        Http10, // HTTP/1.0
+        Http11 // HTTP/1.1
+    };
+
+    enum class ConnectionControl { Close,
+                                   KeepAlive,
+                                   Ext };
+
+    enum class Expectation { Continue,
+                             Ext };
+
+    class CacheDirective
+    {
+    public:
+        enum Directive {
+            NoCache,
+            NoStore,
+            MaxAge,
+            MaxStale,
+            MinFresh,
+            NoTransform,
+            OnlyIfCached,
+            Public,
+            Private,
+            MustRevalidate,
+            ProxyRevalidate,
+            SMaxAge,
+            Ext
         };
 
-        enum class Version {
-            Http10, // HTTP/1.0
-            Http11 // HTTP/1.1
-        };
+        CacheDirective()
+            : directive_()
+            , data()
+        { }
 
-        enum class ConnectionControl { Close,
-                                       KeepAlive,
-                                       Ext };
+        explicit CacheDirective(Directive directive);
+        CacheDirective(Directive directive, std::chrono::seconds delta);
 
-        enum class Expectation { Continue,
-                                 Ext };
+        Directive directive() const { return directive_; }
+        std::chrono::seconds delta() const;
 
-        class CacheDirective
+    private:
+        void init(Directive directive, std::chrono::seconds delta);
+        Directive directive_;
+        // Poor way of representing tagged unions in C++
+        union
         {
-        public:
-            enum Directive {
-                NoCache,
-                NoStore,
-                MaxAge,
-                MaxStale,
-                MinFresh,
-                NoTransform,
-                OnlyIfCached,
-                Public,
-                Private,
-                MustRevalidate,
-                ProxyRevalidate,
-                SMaxAge,
-                Ext
-            };
+            uint64_t maxAge;
+            uint64_t sMaxAge;
+            uint64_t maxStale;
+            uint64_t minFresh;
+        } data;
+    };
 
-            CacheDirective()
-                : directive_()
-                , data()
-            { }
+    // 3.3.1 Full Date
+    class FullDate
+    {
+    public:
+        using time_point = std::chrono::system_clock::time_point;
+        FullDate()
+            : date_()
+        { }
 
-            explicit CacheDirective(Directive directive);
-            CacheDirective(Directive directive, std::chrono::seconds delta);
+        enum class Type { RFC1123,
+                          RFC850,
+                          AscTime };
 
-            Directive directive() const { return directive_; }
-            std::chrono::seconds delta() const;
+        explicit FullDate(time_point date)
+            : date_(date)
+        { }
 
-        private:
-            void init(Directive directive, std::chrono::seconds delta);
-            Directive directive_;
-            // Poor way of representing tagged unions in C++
-            union
-            {
-                uint64_t maxAge;
-                uint64_t sMaxAge;
-                uint64_t maxStale;
-                uint64_t minFresh;
-            } data;
-        };
+        time_point date() const { return date_; }
+        void write(std::ostream& os, Type type = Type::RFC1123) const;
 
-        // 3.3.1 Full Date
-        class FullDate
-        {
-        public:
-            using time_point = std::chrono::system_clock::time_point;
-            FullDate()
-                : date_()
-            { }
+        static FullDate fromString(const std::string& str);
 
-            enum class Type { RFC1123,
-                              RFC850,
-                              AscTime };
+    private:
+        time_point date_;
+    };
 
-            explicit FullDate(time_point date)
-                : date_(date)
-            { }
+    const char* methodString(Method method);
+    const char* versionString(Version version);
+    const char* codeString(Code code);
 
-            time_point date() const { return date_; }
-            void write(std::ostream& os, Type type = Type::RFC1123) const;
+    std::ostream& operator<<(std::ostream& os, Version version);
+    std::ostream& operator<<(std::ostream& os, Method method);
+    std::ostream& operator<<(std::ostream& os, Code code);
 
-            static FullDate fromString(const std::string& str);
+    struct HttpError : public std::exception
+    {
+        HttpError(Code code, std::string reason);
+        HttpError(int code, std::string reason);
 
-        private:
-            time_point date_;
-        };
+        ~HttpError() noexcept override = default;
 
-        const char* methodString(Method method);
-        const char* versionString(Version version);
-        const char* codeString(Code code);
+        const char* what() const noexcept override { return reason_.c_str(); }
 
-        std::ostream& operator<<(std::ostream& os, Version version);
-        std::ostream& operator<<(std::ostream& os, Method method);
-        std::ostream& operator<<(std::ostream& os, Code code);
+        int code() const { return code_; }
+        std::string reason() const { return reason_; }
 
-        struct HttpError : public std::exception
-        {
-            HttpError(Code code, std::string reason);
-            HttpError(int code, std::string reason);
+    private:
+        int code_;
+        std::string reason_;
+    };
 
-            ~HttpError() noexcept { }
-
-            const char* what() const noexcept override { return reason_.c_str(); }
-
-            int code() const { return code_; }
-            std::string reason() const { return reason_; }
-
-        private:
-            int code_;
-            std::string reason_;
-        };
-
-    } // namespace Http
-} // namespace Pistache
+} // namespace Pistache::Http
 
 namespace std
 {

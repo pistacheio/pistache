@@ -15,8 +15,7 @@ using namespace Pistache;
 Async::Promise<int> doAsync(int N)
 {
     Async::Promise<int> promise(
-        [=](Async::Resolver& resolve, Async::Rejection& reject) {
-            UNUSED(reject)
+        [=](Async::Resolver& resolve, Async::Rejection& /*reject*/) {
             std::thread thr(
                 [=](Async::Resolver resolve) mutable {
                     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -34,8 +33,7 @@ template <typename T, typename Func>
 Async::Promise<T> doAsyncTimed(std::chrono::seconds time, T val, Func func)
 {
     Async::Promise<T> promise(
-        [=](Async::Resolver& resolve, Async::Rejection& reject) {
-            UNUSED(reject)
+        [=](Async::Resolver& resolve, Async::Rejection& /*reject*/) {
             std::thread thr(
                 [=](Async::Resolver resolve) mutable {
                     std::this_thread::sleep_for(time);
@@ -51,8 +49,7 @@ Async::Promise<T> doAsyncTimed(std::chrono::seconds time, T val, Func func)
 
 TEST(async_test, basic_test)
 {
-    Async::Promise<int> p1([](Async::Resolver& resolv, Async::Rejection& reject) {
-        UNUSED(reject)
+    Async::Promise<int> p1([](Async::Resolver& resolv, Async::Rejection& /*reject*/) {
         resolv(10);
     });
 
@@ -69,8 +66,7 @@ TEST(async_test, basic_test)
 
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
-    Async::Promise<int> p3([](Async::Resolver& resolv, Async::Rejection& reject) {
-        UNUSED(resolv)
+    Async::Promise<int> p3([](Async::Resolver& /*resolv*/, Async::Rejection& reject) {
         reject(std::runtime_error("Because I decided"));
     });
 
@@ -93,8 +89,7 @@ TEST(async_test, basic_test)
 TEST(async_test, error_test)
 {
     Async::Promise<int> p1(
-        [](Async::Resolver& resolve, Async::Rejection& reject) {
-            UNUSED(reject)
+        [](Async::Resolver& resolve, Async::Rejection& /*reject*/) {
             ASSERT_THROW(resolve(10.5), Async::BadType);
         });
 }
@@ -102,8 +97,7 @@ TEST(async_test, error_test)
 TEST(async_test, void_promise)
 {
     Async::Promise<void> p1(
-        [](Async::Resolver& resolve, Async::Rejection& reject) {
-            UNUSED(reject)
+        [](Async::Resolver& resolve, Async::Rejection& /*reject*/) {
             resolve();
         });
 
@@ -115,14 +109,12 @@ TEST(async_test, void_promise)
     ASSERT_TRUE(thenCalled);
 
     Async::Promise<int> p2(
-        [](Async::Resolver& resolve, Async::Rejection& reject) {
-            UNUSED(reject)
+        [](Async::Resolver& resolve, Async::Rejection& /*reject*/) {
             ASSERT_THROW(resolve(), Async::Error);
         });
 
     Async::Promise<void> p3(
-        [](Async::Resolver& resolve, Async::Rejection& reject) {
-            UNUSED(reject)
+        [](Async::Resolver& resolve, Async::Rejection& /*reject*/) {
             ASSERT_THROW(resolve(10), Async::Error);
         });
 }
@@ -130,8 +122,7 @@ TEST(async_test, void_promise)
 TEST(async_test, chain_test)
 {
     Async::Promise<int> p1(
-        [](Async::Resolver& resolve, Async::Rejection& reject) {
-            UNUSED(reject)
+        [](Async::Resolver& resolve, Async::Rejection& /*reject*/) {
             resolve(10);
         });
 
@@ -140,8 +131,7 @@ TEST(async_test, chain_test)
               Async::NoExcept);
 
     Async::Promise<int> p2(
-        [](Async::Resolver& resolve, Async::Rejection& reject) {
-            UNUSED(reject)
+        [](Async::Resolver& resolve, Async::Rejection& /*reject*/) {
             resolve(10);
         });
 
@@ -156,16 +146,14 @@ TEST(async_test, chain_test)
                       Bar };
 
     Async::Promise<Test> p3(
-        [](Async::Resolver& resolve, Async::Rejection& reject) {
-            UNUSED(reject)
+        [](Async::Resolver& resolve, Async::Rejection& /*reject*/) {
             resolve(Test::Foo);
         });
 
     p3.then(
           [](Test result) {
               return Async::Promise<std::string>(
-                  [=](Async::Resolver& resolve, Async::Rejection& reject) {
-                      UNUSED(reject)
+                  [=](Async::Resolver& resolve, Async::Rejection& /*reject*/) {
                       switch (result)
                       {
                       case Test::Foo:
@@ -180,8 +168,7 @@ TEST(async_test, chain_test)
         .then([](std::string str) { ASSERT_EQ(str, "Foo"); }, Async::NoExcept);
 
     Async::Promise<Test> p4(
-        [](Async::Resolver& resolve, Async::Rejection& reject) {
-            UNUSED(reject)
+        [](Async::Resolver& resolve, Async::Rejection& /*reject*/) {
             resolve(Test::Bar);
         });
 
@@ -201,8 +188,7 @@ TEST(async_test, chain_test)
           },
           Async::NoExcept)
         .then(
-            [](std::string str) {
-                UNUSED(str)
+            [](std::string /*str*/) {
                 ASSERT_TRUE(false);
             },
             [](std::exception_ptr exc) {
@@ -326,8 +312,7 @@ TEST(async_test, when_any)
 TEST(async_test, rethrow_test)
 {
     auto p1 = Async::Promise<void>(
-        [](Async::Resolver& resolve, Async::Rejection& reject) {
-            UNUSED(resolve)
+        [](Async::Resolver& /*resolve*/, Async::Rejection& reject) {
             reject(std::runtime_error("Because"));
         });
 
@@ -464,8 +449,7 @@ TEST(async_test, stress_multithreaded_test)
     for (size_t i = 0; i < Ops; ++i)
     {
         auto& wrk = workers[wrkIndex];
-        wrk->doWork(static_cast<int>(i)).then([&](int seq) {
-            UNUSED(seq)
+        wrk->doWork(static_cast<int>(i)).then([&](int /*seq*/) {
             ++resolved;
         },
                                               Async::NoExcept);
@@ -494,9 +478,8 @@ TEST(async_test, chain_rejects)
     bool ok = false;
     std::unique_ptr<Async::Rejection> rejecter;
     Async::Promise<int> promise(
-        [&](Async::Resolver& resolve, Async::Rejection& reject) {
-            UNUSED(resolve)
-            rejecter.reset(new Async::Rejection(std::move(reject)));
+        [&](Async::Resolver& /*resolve*/, Async::Rejection& reject) {
+            rejecter = std::make_unique<Async::Rejection>(std::move(reject));
         });
     promise.then(
         [](int v) -> Async::Promise<int> {

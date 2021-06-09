@@ -394,6 +394,7 @@ namespace Pistache
             // C++11: std::weak_ptr move constructor is C++14 only so the default
             // version of move constructor / assignement operator does not work and we
             // have to define it ourself
+            // We're now using C++17, should this be removed?
             ResponseWriter(ResponseWriter&& other);
 
             ResponseWriter& operator=(ResponseWriter&& other) = default;
@@ -548,7 +549,7 @@ namespace Pistache
             class BodyStep : public Step
             {
             public:
-                static constexpr auto Id = Meta::Hash::fnv1a("Headers");
+                static constexpr auto Id = Meta::Hash::fnv1a("Body");
 
                 explicit BodyStep(Message* message_)
                     : Step(message_)
@@ -616,16 +617,10 @@ namespace Pistache
                 State parse();
 
                 Step* step();
-                std::chrono::steady_clock::time_point time() const
-                {
-                    return time_;
-                }
 
             protected:
                 std::array<std::unique_ptr<Step>, StepsCount> allSteps;
                 size_t currentStep = 0;
-
-                std::chrono::steady_clock::time_point time_;
 
             private:
                 ArrayStreamBuf<char> buffer;
@@ -643,7 +638,15 @@ namespace Pistache
 
                 void reset() override;
 
+                std::chrono::steady_clock::time_point time() const
+                {
+                    return time_;
+                }
+
                 Request request;
+
+            private:
+                std::chrono::steady_clock::time_point time_;
             };
 
             template <>
@@ -699,7 +702,7 @@ namespace Pistache
 
             static std::shared_ptr<RequestParser> getParser(const std::shared_ptr<Tcp::Peer>& peer);
 
-            virtual ~Handler() override { }
+            ~Handler() override = default;
 
         private:
             void onConnection(const std::shared_ptr<Tcp::Peer>& peer) override;

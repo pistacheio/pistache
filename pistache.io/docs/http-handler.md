@@ -115,7 +115,7 @@ if (request.resource() == "/doc" && request.method == Http::Method::Get) {
 
 ## Controlling timeout
 
-Sometimes, you might require to timeout after a certain amount of time. For example, if you are designing an HTTP API with soft real-time constraints, you will have a time constraint to send a response back to the client. That is why Pistache provides the ability to control the timeout on a per-request basis. To arm a timeout on a response, you can use the `timeoufterAfter()` member function directly on the `ResponseWriter` object:
+Sometimes, you might require to timeout after a certain amount of time. For example, if you are designing an HTTP API with soft real-time constraints, you will have a time constraint to send a response back to the client. That is why Pistache provides the ability to control the timeout on a per-request basis. To arm a timeout on a response, you can use the `timeoutAfter()` member function directly on the `ResponseWriter` object:
 
 ```cpp
 response.timeoutAfter(std::chrono::milliseconds(500));

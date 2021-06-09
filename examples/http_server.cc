@@ -29,7 +29,7 @@ struct LoadMonitor
     void start()
     {
         shutdown_ = false;
-        thread.reset(new std::thread(std::bind(&LoadMonitor::run, this)));
+        thread    = std::make_unique<std::thread>([this] { run(); });
     }
 
     void shutdown()
@@ -95,7 +95,7 @@ class MyHandler : public Http::Handler
 
                 using namespace Http;
 
-                auto query = req.query();
+                const auto& query = req.query();
                 if (query.has("chunked"))
                 {
                     std::cout << "Using chunked encoding" << std::endl;
@@ -166,10 +166,9 @@ class MyHandler : public Http::Handler
     }
 
     void onTimeout(
-        const Http::Request& req,
+        const Http::Request& /*req*/,
         Http::ResponseWriter response) override
     {
-        UNUSED(req);
         response
             .send(Http::Code::Request_Timeout, "Timeout")
             .then([=](ssize_t) {}, PrintException());
