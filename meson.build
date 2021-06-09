@@ -106,3 +106,5 @@ endif
 if get_option('PISTACHE_BUILD_DOCS')
 	subdir('docs')
 endif
+
+run_command('git', 'config', '--local', 'core.hooksPath', '.hooks')
