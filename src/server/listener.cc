@@ -442,7 +442,7 @@ namespace Pistache::Tcp
 
     void Listener::handleNewConnection()
     {
-        struct sockaddr_in peer_addr;
+        struct sockaddr_storage peer_addr;
         int client_fd = acceptConnection(peer_addr);
 
         void* ssl = nullptr;
@@ -479,19 +479,20 @@ namespace Pistache::Tcp
         make_non_blocking(client_fd);
 
         std::shared_ptr<Peer> peer;
+        auto* peer_alias = reinterpret_cast<struct sockaddr*>(&peer_addr);
         if (this->useSSL_)
         {
-            peer = Peer::CreateSSL(client_fd, Address::fromUnix(&peer_addr), ssl);
+            peer = Peer::CreateSSL(client_fd, Address::fromUnix(peer_alias), ssl);
         }
         else
         {
-            peer = Peer::Create(client_fd, Address::fromUnix(&peer_addr));
+            peer = Peer::Create(client_fd, Address::fromUnix(peer_alias));
         }
 
         dispatchPeer(peer);
     }
 
-    int Listener::acceptConnection(struct sockaddr_in& peer_addr) const
+    int Listener::acceptConnection(struct sockaddr_storage& peer_addr) const
     {
         socklen_t peer_addr_len = sizeof(peer_addr);
         // Do not share open FD with forked processes

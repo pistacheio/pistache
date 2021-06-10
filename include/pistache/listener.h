@@ -107,7 +107,7 @@ namespace Pistache::Tcp
         TransportFactory defaultTransportFactory() const;
 
         void handleNewConnection();
-        int acceptConnection(struct sockaddr_in& peer_addr) const;
+        int acceptConnection(struct sockaddr_storage& peer_addr) const;
         void dispatchPeer(const std::shared_ptr<Peer>& peer);
 
         bool useSSL_            = false;
