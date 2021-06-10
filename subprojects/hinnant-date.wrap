@@ -1,0 +1,9 @@
+[wrap-file]
+source_url = https://github.com/HowardHinnant/date/archive/v3.0.0.tar.gz
+source_filename = date-3.0.0.tar.gz
+source_hash = 87bba2eaf0ebc7ec539e5e62fc317cb80671a337c1fb1b84cb9e4d42c6dbebe3
+directory = date-3.0.0
+patch_url = https://wrapdb.mesonbuild.com/v2/hinnant-date_3.0.0-1/get_patch
+patch_filename = hinnant-date-3.0.0-1-wrap.zip
+patch_hash = 6ccaf70732d8bdbd1b6d5fdf3e1b935c23bf269bda12fdfd0e561276f63432fe
+

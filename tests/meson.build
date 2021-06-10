@@ -1,5 +1,6 @@
 curl_dep = dependency('libcurl')
 gtest_main_dep = dependency('gtest', main: true, fallback: ['gtest', 'gtest_main_dep'])
+cpp_httplib_dep = dependency('cpp-httplib', fallback: ['cpp-httplib', 'cpp_httplib_dep'])
 
 pistache_test_files = [
 	'mime_test',
@@ -43,7 +44,8 @@ foreach test_name : pistache_test_files
 			dependencies: [
 				pistache_dep,
 				gtest_main_dep,
-				curl_dep
+				curl_dep,
+				cpp_httplib_dep
 			]
 		),
 		timeout: 60,

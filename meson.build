@@ -24,7 +24,11 @@ if get_option('b_coverage')
 	add_project_arguments(compiler.get_supported_arguments(['-fstack-protector-all', '--param=ssp-buffer-size=4']), language: 'cpp')
 endif
 
-deps_libpistache = [dependency('threads'), dependency('RapidJSON', fallback: ['rapidjson', 'rapidjson_dep'])]
+deps_libpistache = [
+	dependency('threads'),
+	dependency('RapidJSON', fallback: ['rapidjson', 'rapidjson_dep']),
+	dependency('hinnant-date', fallback: ['hinnant-date', 'date_dep'])
+]
 
 # Check if -latomic is needed - https://github.com/llvm/llvm-project/blob/main/llvm/cmake/modules/CheckAtomic.cmake
 compiler_id = compiler.get_id()
