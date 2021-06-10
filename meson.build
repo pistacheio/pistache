@@ -107,4 +107,9 @@ if get_option('PISTACHE_BUILD_DOCS')
 	subdir('docs')
 endif
 
-run_command('git', 'config', '--local', 'core.hooksPath', '.hooks')
+if not meson.is_subproject()
+	git = find_program('git', required: false)
+	if git.found()
+		run_command(git, 'config', '--local', 'core.hooksPath', meson.source_root()/'.hooks')
+	endif
+endif
