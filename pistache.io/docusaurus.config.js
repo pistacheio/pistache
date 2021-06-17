@@ -54,8 +54,8 @@ module.exports = {
               href: 'https://stackoverflow.com/questions/tagged/pistache',
             },
             {
-              label: '#pistache on Freenode',
-              href: 'irc://chat.freenode.net',
+              label: '#pistache on Libera.Chat',
+              href: 'https://web.libera.chat/#pistache',
             },
           ],
         },
