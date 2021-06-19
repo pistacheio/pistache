@@ -42,6 +42,7 @@ else()
     target_include_directories(pistache PRIVATE ${RAPIDJSON_INCLUDE_DIRS})
 endif()
 
+target_include_directories(pistache PRIVATE ${CMAKE_SOURCE_DIR}/subprojects/hinnant-date/include)
 target_include_directories(pistache PUBLIC ${PISTACHE_INCLUDE})
 
 if (BUILD_SHARED_LIBS)

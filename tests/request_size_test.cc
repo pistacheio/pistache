@@ -139,7 +139,7 @@ TEST(request_size, manual_construction)
         }
 
     private:
-        tag placeholder;
+        [[maybe_unused]] tag placeholder;
     };
 
     // General test parameters.

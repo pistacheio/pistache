@@ -45,7 +45,8 @@ foreach test_name : pistache_test_files
 				pistache_dep,
 				gtest_main_dep,
 				curl_dep,
-				cpp_httplib_dep
+				cpp_httplib_dep,
+				date_dep
 			]
 		),
 		timeout: 60,
