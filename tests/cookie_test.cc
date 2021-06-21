@@ -1,7 +1,7 @@
 #include "gtest/gtest.h"
 
 #include <pistache/cookie.h>
-#include <pistache/thirdparty/date.h>
+#include <date/date.h>
 
 using namespace Pistache;
 using namespace Pistache::Http;

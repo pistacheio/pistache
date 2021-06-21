@@ -36,8 +36,11 @@
 .idea
 
 # Clangd cache
-.cache
+/.cache/clangd
 
 # Meson Wrap DB cache
 /subprojects/*
 !/subprojects/*.wrap
+
+!/subprojects/cpp-httplib
+!/subprojects/hinnant-date

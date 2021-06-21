@@ -5,7 +5,11 @@ function(pistache_test test_name)
     set(TEST_SOURCE ${test_name}.cc)
 
     add_executable(${TEST_EXECUTABLE} ${TEST_SOURCE})
-    target_include_directories(${TEST_EXECUTABLE} PRIVATE ${CURL_INCLUDE_DIRS})
+    target_include_directories(${TEST_EXECUTABLE} PRIVATE
+        ${CURL_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/subprojects/hinnant-date/include
+        ${CMAKE_SOURCE_DIR}/subprojects/cpp-httplib
+    )
     # CMake 3.20 and upstream GTest define GTest::gtest, older versions define GTest::GTest
     if (TARGET GTest::gtest)
         target_link_libraries(${TEST_EXECUTABLE} GTest::gtest GTest::gtest_main pistache_static ${CURL_LIBRARIES})

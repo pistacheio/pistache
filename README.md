@@ -21,6 +21,7 @@ Pistache has the following third party dependencies
 - [Googletest](https://github.com/google/googletest)
 - [OpenSSL](https://www.openssl.org/)
 - [RapidJSON](https://rapidjson.org/)
+- [Hinnant Date](https://github.com/HowardHinnant/date)
 
 ## Contributing
 

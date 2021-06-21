@@ -12,7 +12,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
 #endif
-#include <pistache/thirdparty/date.h>
+#include <date/date.h>
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
