@@ -1,4 +1,10 @@
 /*
+ * SPDX-FileCopyrightText: 2016 Mathieu Stefani
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
    Mathieu Stefani, 14 mai 2016
 
    Swagger serializer for RapidJSON

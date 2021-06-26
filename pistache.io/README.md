@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2021 Andrea Pappacoda
+
+SPDX-License-Identifier: CC0-1.0
+-->
+
 # Website
 
 This website is built using [Docusaurus 2](https://docusaurus.io/), a modern static website generator.

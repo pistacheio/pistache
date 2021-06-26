@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2015 Mathieu Stefani
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /* http_header.h
    Mathieu Stefani, 19 August 2015
 

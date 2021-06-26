@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2021 Andrea Pappacoda
+//
+// SPDX-License-Identifier: Apache-2.0
+
 /**
  * Creating a sidebar enables you to:
  - create an ordered group of docs

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2021 Andrea Pappacoda
+#
+# SPDX-License-Identifier: Apache-2.0
+
 curl_dep = dependency('libcurl')
 gtest_main_dep = dependency('gtest', main: true, fallback: ['gtest', 'gtest_main_dep'])
 cpp_httplib_dep = dependency('cpp-httplib', fallback: ['cpp-httplib', 'cpp_httplib_dep'])

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2021 Andrea Pappacoda
+#
+# SPDX-License-Identifier: Apache-2.0
+
 pistache_example_files = [
 	'custom_header',
 	'hello_server',

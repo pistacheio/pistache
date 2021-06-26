@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2015 Mathieu Stefani
+#
+# SPDX-License-Identifier: Apache-2.0
+
 find_package(CURL REQUIRED)
 
 function(pistache_test test_name)

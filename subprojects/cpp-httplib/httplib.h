@@ -1,9 +1,6 @@
+// SPDX-FileCopyrightText: 2021 Yuji Hirose
 //
-//  httplib.h
-//
-//  Copyright (c) 2021 Yuji Hirose. All rights reserved.
-//  MIT License
-//
+// SPDX-License-Identifier: MIT
 
 #ifndef CPPHTTPLIB_HTTPLIB_H
 #define CPPHTTPLIB_HTTPLIB_H

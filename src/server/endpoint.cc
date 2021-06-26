@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2016 Mathieu Stefani
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /* endpoint.cc
    Mathieu Stefani, 22 janvier 2016
 

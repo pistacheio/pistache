@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2016 Mathieu Stefani
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /* timer_pool.h
    Mathieu Stefani, 09 février 2016
 

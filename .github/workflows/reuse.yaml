@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: 2021 Andrea Pappacoda
+#
+# SPDX-License-Identifier: CC0-1.0
+
+name: REUSE Compliance Check
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: REUSE Compliance Check
+      uses: fsfe/reuse-action@v1

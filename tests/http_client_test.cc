@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2018 knowledge4igor
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include <pistache/client.h>
 #include <pistache/endpoint.h>
 #include <pistache/http.h>

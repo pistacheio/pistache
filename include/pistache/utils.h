@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2019 Louis Solofrizzo
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /* utils.h
    Louis Solofrizzo 2019-10-17
 

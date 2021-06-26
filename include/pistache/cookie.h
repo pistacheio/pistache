@@ -1,4 +1,10 @@
 /*
+ * SPDX-FileCopyrightText: 2016 Mathieu Stefani
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
    Mathieu Stefani, 16 janvier 2016
 
    Representation of a Cookie as per http://tools.ietf.org/html/rfc6265

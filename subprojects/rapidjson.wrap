@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2021 Andrea Pappacoda
+#
+# SPDX-License-Identifier: CC0-1.0
+
 [wrap-file]
 directory = rapidjson-1.1.0
 

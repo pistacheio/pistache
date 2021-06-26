@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2018 hasankandemir1993
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include "gtest/gtest.h"
 
 #include <pistache/cookie.h>

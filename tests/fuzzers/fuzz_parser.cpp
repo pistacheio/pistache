@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2021 David Korczynski
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include <pistache/http.h>
 
 using namespace Pistache;

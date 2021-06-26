@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2019 Oleg Burchakov
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include "pistache/endpoint.h"
 #include <signal.h>
 

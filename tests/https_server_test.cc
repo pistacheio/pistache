@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2019 Louis Solofrizzo
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include <array>
 
 #include <pistache/client.h>
