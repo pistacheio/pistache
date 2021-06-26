@@ -4,7 +4,7 @@
 
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: pistache
-Upstream-Contact: Dennis Jenkins <dennis.jenkins.75@gmail.com>
+Upstream-Contact: Kip Warner <kip@thevertigo.com>
 Source: https://github.com/pistacheio/pistache.git
 Comment: Upstream's Debianization.
 
