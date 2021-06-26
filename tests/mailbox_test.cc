@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2018 jcastro
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include "gtest/gtest.h"
 #include <pistache/mailbox.h>
 

@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2021 Kip Warner
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 (Provide a general summary of your changes in the Title above.)
 
 ## Description

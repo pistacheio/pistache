@@ -1,6 +1,10 @@
+# SPDX-FileCopyrightText: 2019 Kip Warner
+#
+# SPDX-License-Identifier: Apache-2.0
+
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: pistache
-Upstream-Contact: Dennis Jenkins <dennis.jenkins.75@gmail.com>
+Upstream-Contact: Kip Warner <kip@thevertigo.com>
 Source: https://github.com/pistacheio/pistache.git
 Comment: Upstream's Debianization.
 
@@ -11,5 +15,4 @@ License: Apache-2.0
  and license notices. Contributors provide an express grant of patent rights.
  Licensed works, modifications, and larger works may be distributed under
  different terms and without source code.
-
 

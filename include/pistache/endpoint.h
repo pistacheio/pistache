@@ -1,4 +1,10 @@
 /*
+ * SPDX-FileCopyrightText: 2016 Mathieu Stefani
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
    Mathieu Stefani, 22 janvier 2016
 
    An Http endpoint

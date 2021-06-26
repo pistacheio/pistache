@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# SPDX-FileCopyrightText: 2020 Dennis Jenkins
+#
+# SPDX-License-Identifier: Apache-2.0
+
 # Run this script to create new SSL certs for pistache HTTPS unit tests.
 # Passphrases are disabled on all keys.  Do not use these certs/keys in
 # production; they are for unit tests only!

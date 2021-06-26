@@ -1,7 +1,8 @@
 /*
-    Copyright (C) 2019-2020, Kip Warner.
-    Released under the terms of Apache License 2.0.
-*/
+ * SPDX-FileCopyrightText: 2019 Kip Warner
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 // Multiple include protection...
 #ifndef _BASE_64_H_

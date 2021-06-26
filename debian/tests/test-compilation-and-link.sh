@@ -1,9 +1,8 @@
 #!/bin/sh
+
+# SPDX-FileCopyrightText: 2019 Kip Warner
 #
-#   Pistache.
-#   Copyright (C) 2015-2020 Mathieu Stefani. Released under the terms of the
-#   Apache License 2.0.
-#
+# SPDX-License-Identifier: Apache-2.0
 
 # Bail on any errors...
 set -e

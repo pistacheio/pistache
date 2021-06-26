@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2021 Andrea Pappacoda
+#
+# SPDX-License-Identifier: Apache-2.0
+
 configure_file(input: 'server.crt', output: 'server.crt', copy: true)
 configure_file(input: 'server.key', output: 'server.key', copy: true)
 configure_file(input: 'client.key', output: 'client.key', copy: true)

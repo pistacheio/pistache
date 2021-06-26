@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2021 Andrea Pappacoda
+//
+// SPDX-License-Identifier: Apache-2.0
+
 import React from 'react';
 import clsx from 'clsx';
 import styles from './HomepageFeatures.module.css';

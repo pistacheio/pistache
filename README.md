@@ -1,8 +1,15 @@
+<!--
+SPDX-FileCopyrightText: 2016 Mathieu Stefani
+
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # Pistache
 
 [![N|Solid](pistache.io/static/img/logo.png)](https://www.github.com/pistacheio/pistache)
 
 [![Build Status](https://travis-ci.org/pistacheio/pistache.svg?branch=master)](https://travis-ci.org/pistacheio/pistache)
+[![REUSE status](https://api.reuse.software/badge/github.com/pistacheio/pistache)](https://api.reuse.software/info/github.com/pistacheio/pistache)
 
 Pistache is a modern and elegant HTTP and REST framework for C++. It is entirely written in pure-C++17 and provides a clear and pleasant API.
 

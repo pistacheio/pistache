@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2019 knowledge4igor
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include <pistache/stream.h>
 
 #include "gtest/gtest.h"

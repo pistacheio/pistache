@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 Kip Warner
+#
+# SPDX-License-Identifier: Apache-2.0
+
 Source: pistache
 Section: libdevel
 Priority: optional

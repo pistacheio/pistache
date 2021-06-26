@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2019 mohsenomidi
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include <pistache/async.h>
 #include <pistache/client.h>
 #include <pistache/common.h>

@@ -1,4 +1,10 @@
 /*
+ * SPDX-FileCopyrightText: 2016 Mathieu Stefani
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
    Mathieu Stefani, 15 février 2016
 
    Example of custom headers registering

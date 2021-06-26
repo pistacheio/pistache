@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2020 Michael Ellison
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /* log.h
    Michael Ellison, 27 May 2020
 

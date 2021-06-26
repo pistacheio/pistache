@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2017 Mathieu Stefani
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /* traqnsport.cc
    Mathieu Stefani, 02 July 2017
 

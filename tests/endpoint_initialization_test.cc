@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2021 bbarbisch
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include <pistache/endpoint.h>
 #include <pistache/router.h>
 

@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2018 Ian Roddis
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include "gtest/gtest.h"
 
 #include <pistache/client.h>

@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2020 hyperxor
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #pragma once
 
 #ifdef PISTACHE_USE_SSL

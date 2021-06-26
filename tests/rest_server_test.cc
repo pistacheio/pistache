@@ -1,8 +1,8 @@
 /*
-   Mathieu Stefani, 07 février 2016
-
-   Example of a REST endpoint with routing
-*/
+ * SPDX-FileCopyrightText: 2018 Pablo Ghiglino
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #include "gtest/gtest.h"
 

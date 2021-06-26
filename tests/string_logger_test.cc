@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2020 Michael Ellison
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include <utility>
 #include <vector>
 

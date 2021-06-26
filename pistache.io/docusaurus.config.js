@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2021 Andrea Pappacoda
+//
+// SPDX-License-Identifier: Apache-2.0
+
 module.exports = {
   title: 'Pistache',
   tagline: 'An elegant C++ REST framework.',
@@ -78,7 +82,6 @@ module.exports = {
       {
         docs: {
           sidebarPath: require.resolve('./sidebars.js'),
-          // Please change this to your repo.
           editUrl:
             'https://github.com/pistacheio/pistache/edit/master/pistache.io/',
         },

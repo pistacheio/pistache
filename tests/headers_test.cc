@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2015 Mathieu Stefani
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include <pistache/http.h>
 #include <date/date.h>
 

@@ -1,9 +1,8 @@
 #!/usr/bin/make -f
+
+# SPDX-FileCopyrightText: 2019 Kip Warner
 #
-#   Pistache.
-#   Copyright (C) 2015-2019 Mathieu Stefani. Released under the terms of the
-#   Apache License 2.0.
-#
+# SPDX-License-Identifier: Apache-2.0
 
 # Output every command that modifies files on the build system...
 DH_VERBOSE = 1

@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2015 Mathieu Stefani
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /* http_defs.h
    Mathieu Stefani, 01 September 2015
 

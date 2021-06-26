@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2015 Mathieu Stefani
+#
+# SPDX-License-Identifier: Apache-2.0
+
 file (GLOB COMMON_SOURCE_FILES "common/*.cc")
 file (GLOB SERVER_SOURCE_FILES "server/*.cc")
 file (GLOB CLIENT_SOURCE_FILES "client/*.cc")

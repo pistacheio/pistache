@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2016 Mathieu Stefani
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /* router_test.cc
    Mathieu Stefani, 06 janvier 2016
 

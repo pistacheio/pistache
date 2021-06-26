@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2021 Andrea Pappacoda
+#
+# SPDX-License-Identifier: Apache-2.0
+
 doxygen = find_program('doxygen')
 dot = find_program('dot')
 mscgen = find_program('mscgen', required: false)
