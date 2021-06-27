@@ -1,13 +1,13 @@
+---
+title: Asynchronous HTTP programming
+---
+
 <!--
 SPDX-FileCopyrightText: 2016 Mathieu Stefani
 SPDX-FileCopyrightText: 2021 Andrea Pappacoda
 
 SPDX-License-Identifier: Apache-2.0
 -->
-
----
-title: Asynchronous HTTP programming
----
 
 Interfaces provided by Pistaches are _asynchronous_ and _non-blocking_. Asynchronous programming allows for code to continue executing even if the result of a given call is not available yet. Calls that provide an asynchronous interface are referred to _asynchronous calls_.
 
