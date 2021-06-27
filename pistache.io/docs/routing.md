@@ -1,13 +1,13 @@
+---
+title: Routing
+---
+
 <!--
 SPDX-FileCopyrightText: 2016 Mathieu Stefani
 SPDX-FileCopyrightText: 2021 Andrea Pappacoda
 
 SPDX-License-Identifier: Apache-2.0
 -->
-
----
-title: Routing
----
 
 HTTP routing consists of binding an HTTP route to a C++ callback. A special component called an HTTP router will be in charge of dispatching HTTP requests to the right C++ callback. A route is composed of an HTTP verb associated to a resource:
 
