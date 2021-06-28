@@ -1,0 +1,36 @@
+# SPDX-FileCopyrightText: 2021 Andrea Pappacoda <andrea@pappacoda.it>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: autopkgtest
+
+on:
+  [push, pull_request]
+
+defaults:
+  run:
+    shell: sh
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install dependencies
+      run: |
+        sudo apt -qq update
+        sudo apt -qq install autopkgtest genisoimage qemu-system vmdb2 meson cppcheck debhelper-compat dh-exec libc6-dev libcurl4-openssl-dev libgtest-dev libssl-dev libstdc++6 lintian pkg-config rapidjson-dev valgrind devscripts --no-install-recommends
+
+    - name: Build image
+      run: |
+        sudo autopkgtest-build-qemu --size 12G testing $HOME/autopkgtest-testing.img
+
+    - name: Build Debian package
+      run: |
+        ./debian/rules get-orig-source
+        debuild -S -sa -uc -us
+
+    - name: Run autopkgtest
+      run: autopkgtest ../pistache_*.dsc -- qemu --timeout-reboot=120 $HOME/autopkgtest-testing.img
