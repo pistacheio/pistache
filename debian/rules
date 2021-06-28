@@ -84,7 +84,7 @@ $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM).orig.tar.gz:
 		-DPISTACHE_USE_SSL=true													\
 		--prefix=/usr															\
 		--wrap-mode=nodownload													\
-	&& meson dist -C $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM) --no-tests --formats=gztar	\
+	&& meson dist -C $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM) --formats=gztar	\
 	&& cd $(PACKAGE_DIR)/$(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)					\
 	&& mkdir $(DEB_SOURCE)-$(DEB_VERSION_UPSTREAM)								\
 	&& cp -r $(SOURCE_DIR)/.github $(DEB_SOURCE)-$(DEB_VERSION_UPSTREAM)		\
