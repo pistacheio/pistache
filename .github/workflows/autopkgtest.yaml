@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2021 Andrea Pappacoda <andrea@pappacoda.it>
+#
+# SPDX-License-Identifier: Apache-2.0
+
 name: autopkgtest
 
 on:
