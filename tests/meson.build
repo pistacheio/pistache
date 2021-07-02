@@ -53,7 +53,7 @@ foreach test_name : pistache_test_files
 				date_dep
 			]
 		),
-		timeout: 60,
+		timeout: 600,
 		workdir: meson.current_build_dir(),
 		is_parallel: false
 	)
