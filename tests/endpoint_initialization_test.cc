@@ -7,7 +7,7 @@
 #include <pistache/endpoint.h>
 #include <pistache/router.h>
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 using namespace Pistache;
 

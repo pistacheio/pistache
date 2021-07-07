@@ -9,7 +9,7 @@
 
 #include <pistache/string_logger.h>
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 using namespace Pistache;
 

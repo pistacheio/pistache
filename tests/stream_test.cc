@@ -6,7 +6,7 @@
 
 #include <pistache/stream.h>
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 #include <climits>
 #include <cstdio>

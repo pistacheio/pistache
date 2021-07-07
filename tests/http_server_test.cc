@@ -11,7 +11,7 @@
 #include <pistache/http.h>
 #include <pistache/peer.h>
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 #include <chrono>
 #include <condition_variable>
