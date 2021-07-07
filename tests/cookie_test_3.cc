@@ -48,7 +48,7 @@ TEST(http_client_test, one_client_with_one_request_with_onecookie)
     const std::string server_address = "localhost:" + server.getPort().toString();
     std::cout << "Server address: " << server_address << "\n";
 
-    Http::Client client;
+    Http::Experimental::Client client;
     client.init();
 
     std::vector<Async::Promise<Http::Response>> responses;
@@ -87,7 +87,7 @@ TEST(http_client_test, one_client_with_one_request_with_several_cookies)
     const std::string server_address = "localhost:" + server.getPort().toString();
     std::cout << "Server address: " << server_address << "\n";
 
-    Http::Client client;
+    Http::Experimental::Client client;
     client.init();
 
     std::vector<Async::Promise<Http::Response>> responses;

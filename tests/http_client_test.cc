@@ -101,7 +101,7 @@ TEST(http_client_test, one_client_with_one_request)
     const std::string server_address = "localhost:" + server.getPort().toString();
     std::cout << "Server address: " << server_address << "\n";
 
-    Http::Client client;
+    Http::Experimental::Client client;
     client.init();
 
     auto rb       = client.get(server_address);
@@ -138,7 +138,7 @@ TEST(http_client_test, one_client_with_multiple_requests)
     const std::string server_address = "localhost:" + server.getPort().toString();
     std::cout << "Server address: " << server_address << "\n";
 
-    Http::Client client;
+    Http::Experimental::Client client;
     client.init();
 
     std::vector<Async::Promise<Http::Response>> responses;
@@ -184,11 +184,11 @@ TEST(http_client_test, multiple_clients_with_one_request)
     std::cout << "Server address: " << server_address << "\n";
 
     const int CLIENT_SIZE = 3;
-    Http::Client client1;
+    Http::Experimental::Client client1;
     client1.init();
-    Http::Client client2;
+    Http::Experimental::Client client2;
     client2.init();
-    Http::Client client3;
+    Http::Experimental::Client client3;
     client3.init();
 
     std::vector<Async::Promise<Http::Response>> responses;
@@ -249,7 +249,7 @@ TEST(http_client_test, timeout_reject)
     const std::string server_address = "localhost:" + server.getPort().toString();
     std::cout << "Server address: " << server_address << "\n";
 
-    Http::Client client;
+    Http::Experimental::Client client;
     client.init();
 
     auto rb       = client.get(server_address).timeout(std::chrono::milliseconds(1000));
@@ -284,8 +284,8 @@ TEST(
     const std::string server_address = "localhost:" + server.getPort().toString();
     std::cout << "Server address: " << server_address << "\n";
 
-    Http::Client client;
-    auto opts = Http::Client::options().maxConnectionsPerHost(1).threads(2);
+    Http::Experimental::Client client;
+    auto opts = Http::Experimental::Client::options().maxConnectionsPerHost(1).threads(2);
     client.init(opts);
 
     std::vector<Async::Promise<Http::Response>> responses;
@@ -333,8 +333,8 @@ TEST(
     const std::string server_address = "localhost:" + server.getPort().toString();
     std::cout << "Server address: " << server_address << "\n";
 
-    Http::Client client;
-    auto opts = Http::Client::options().maxConnectionsPerHost(2).threads(1);
+    Http::Experimental::Client client;
+    auto opts = Http::Experimental::Client::options().maxConnectionsPerHost(2).threads(1);
     client.init(opts);
 
     std::vector<Async::Promise<Http::Response>> responses;
@@ -380,7 +380,7 @@ TEST(http_client_test, test_client_timeout)
     const std::string server_address = "localhost:" + server.getPort().toString();
     std::cout << "Server address: " << server_address << "\n";
 
-    Http::Client client;
+    Http::Experimental::Client client;
     client.init();
 
     std::vector<Async::Promise<Http::Response>> responses;
@@ -441,7 +441,7 @@ TEST(http_client_test, client_sends_query)
     const std::string server_address = "localhost:" + server.getPort().toString();
     std::cout << "Server address: " << server_address << "\n";
 
-    Http::Client client;
+    Http::Experimental::Client client;
     client.init();
 
     std::string queryStr;
@@ -513,8 +513,8 @@ TEST(http_client_test, client_get_large_content)
     const std::string server_address = "localhost:" + server.getPort().toString();
     std::cout << "Server address: " << server_address << "\n";
 
-    Http::Client client;
-    auto opts = Http::Client::options().maxResponseSize(8192);
+    Http::Experimental::Client client;
+    auto opts = Http::Experimental::Client::options().maxResponseSize(8192);
     client.init(opts);
 
     auto response = client.get(server_address).send();
@@ -554,8 +554,8 @@ TEST(http_client_test, client_do_not_get_large_content)
     const std::string server_address = "localhost:" + server.getPort().toString();
     std::cout << "Server address: " << server_address << "\n";
 
-    Http::Client client;
-    auto opts = Http::Client::options().maxResponseSize(4096);
+    Http::Experimental::Client client;
+    auto opts = Http::Experimental::Client::options().maxResponseSize(4096);
     client.init(opts);
 
     auto response       = client.get(server_address).send();

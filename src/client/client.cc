@@ -26,7 +26,7 @@
 #include <sstream>
 #include <string>
 
-namespace Pistache::Http
+namespace Pistache::Http::Experimental
 {
     using NotifyOn = Polling::NotifyOn;
 

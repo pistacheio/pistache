@@ -33,9 +33,9 @@ int main(int argc, char* argv[])
         count = std::stoi(argv[2]);
     }
 
-    Http::Client client;
+    Http::Experimental::Client client;
 
-    auto opts = Http::Client::options().threads(1).maxConnectionsPerHost(8);
+    auto opts = Http::Experimental::Client::options().threads(1).maxConnectionsPerHost(8);
     client.init(opts);
 
     std::vector<Async::Promise<Http::Response>> responses;

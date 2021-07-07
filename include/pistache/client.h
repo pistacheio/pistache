@@ -27,7 +27,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace Pistache::Http
+namespace Pistache::Http::Experimental
 {
 
     namespace Default
