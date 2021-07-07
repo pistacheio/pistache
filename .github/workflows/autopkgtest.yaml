@@ -99,10 +99,21 @@ jobs:
     # Currently this sometimes fails on i386 with
     #   <VirtSubproc>: failure: timed out waiting for 'login prompt on serial
     #     console'
-    # and on arm64 and armhf with
+    # on arm64 and armhf with
     #   host login: <VirtSubproc>: failure: The VM does not start a root shell
     #     on ttyS1 or hvc1 already. The only other supported login mechanism is
     #     through --user and -*** the guest ttyS0
+    # on almost all architectures with
+    #   ERROR: testbed failure: sent `auxverb_debug_fail', got `timeout',
+    #     expected `ok...'
 
     - name: Run autopkgtest
-      run: autopkgtest ../pistache_*.dsc -- autopkgtest-virt-qemu --dpkg-architecture=${{ matrix.arch }} --timeout-reboot=120 --ram-size=3072 $HOME/autopkgtest-testing.img
+      run: |
+        exit_code=0
+        autopkgtest ../pistache_*.dsc -- autopkgtest-virt-qemu --dpkg-architecture=${{ matrix.arch }} --timeout-reboot=120 --ram-size=3072 $HOME/autopkgtest-testing.img || exit_code=$?
+        if [ $exit_code -eq 16 ]
+        then
+          echo "::warning::autopkgtest failed, but it's not your fault"
+        else
+          exit $exit_code
+        fi
