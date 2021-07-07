@@ -10,8 +10,8 @@
    Unit tests for the rest router
 */
 
-#include "gtest/gtest.h"
 #include <algorithm>
+#include <gtest/gtest.h>
 
 #include <pistache/common.h>
 #include <pistache/endpoint.h>

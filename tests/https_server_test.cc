@@ -10,7 +10,7 @@
 #include <pistache/endpoint.h>
 #include <pistache/http.h>
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 #include <curl/curl.h>
 

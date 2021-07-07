@@ -7,7 +7,7 @@
 #include <pistache/mailbox.h>
 #include <pistache/reactor.h>
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 #include <chrono>
 #include <iostream>
