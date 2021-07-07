@@ -194,7 +194,7 @@ struct PingHandler : public Http::Handler
 int clientLogicFunc(size_t response_size, const std::string& server_page,
                     int timeout_seconds, int wait_seconds)
 {
-    Http::Client client;
+    Http::Experimental::Client client;
     client.init();
 
     std::vector<Async::Promise<Http::Response>> responses;
@@ -401,7 +401,7 @@ TEST(http_server_test, server_with_static_file)
     const std::string server_address = "localhost:" + server.getPort().toString();
     LOGGER("test", "Server address: " << server_address);
 
-    Http::Client client;
+    Http::Experimental::Client client;
     client.init();
     auto rb       = client.get(server_address);
     auto response = rb.send();
@@ -443,7 +443,7 @@ TEST(http_server_test, server_request_copies_address)
     const std::string server_address = "localhost:" + server.getPort().toString();
     LOGGER("test", "Server address: " << server_address);
 
-    Http::Client client;
+    Http::Experimental::Client client;
     client.init();
     auto rb       = client.get(server_address);
     auto response = rb.send();
@@ -511,7 +511,7 @@ TEST(http_server_test, response_size_captured)
     // Use the built-in http client, but this test is interested in testing
     // that the ResponseWriter in the server stashed the correct size and code
     // values.
-    Http::Client client;
+    Http::Experimental::Client client;
     client.init();
     auto rb       = client.get(server_address);
     auto response = rb.send();

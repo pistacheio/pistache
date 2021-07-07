@@ -40,7 +40,7 @@ struct HelloHandlerWithDelay : public Http::Handler
 int clientLogicFunc(int response_size, const std::string& server_page,
                     int wait_seconds)
 {
-    Http::Client client;
+    Http::Experimental::Client client;
     client.init();
 
     std::vector<Async::Promise<Http::Response>> responses;

@@ -49,8 +49,8 @@ void testRequestSizes(const std::string& url,
     RequestSizeTestSets testResults;
     std::mutex resultsetMutex;
 
-    Http::Client client;
-    auto client_opts = Http::Client::options().threads(3).maxConnectionsPerHost(3);
+    Http::Experimental::Client client;
+    auto client_opts = Http::Experimental::Client::options().threads(3).maxConnectionsPerHost(3);
     client.init(client_opts);
 
     std::vector<Async::Promise<Http::Response>> responses;
