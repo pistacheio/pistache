@@ -248,12 +248,12 @@ namespace Pistache::Http
 
     void Endpoint::shutdown() { listener.shutdown(); }
 
-    void Endpoint::useSSL([[maybe_unused]] const std::string& cert, [[maybe_unused]] const std::string& key, [[maybe_unused]] bool use_compression)
+    void Endpoint::useSSL([[maybe_unused]] const std::string& cert, [[maybe_unused]] const std::string& key, [[maybe_unused]] bool use_compression, [[maybe_unused]] int (*pass_cb)(char *, int, int, void *))
     {
 #ifndef PISTACHE_USE_SSL
         throw std::runtime_error("Pistache is not compiled with SSL support.");
 #else
-        listener.setupSSL(cert, key, use_compression);
+        listener.setupSSL(cert, key, use_compression, pass_cb);
 #endif /* PISTACHE_USE_SSL */
     }
 
