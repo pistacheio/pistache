@@ -169,7 +169,7 @@ namespace Pistache
         } // namespace Uri
 
         // Remove when RequestBuilder will be out of namespace Experimental
-        namespace Experimental {class RequestBuilder; };
+        namespace Experimental {class RequestBuilder; }
 
         // 5. Request
         class Request : public Message
