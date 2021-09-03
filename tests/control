@@ -1,0 +1,6 @@
+# SPDX-FileCopyrightText: 2019 Kip Warner
+#
+# SPDX-License-Identifier: Apache-2.0
+
+Tests: test-compilation-and-link.sh
+Depends: libpistache-dev, g++, pkg-config
