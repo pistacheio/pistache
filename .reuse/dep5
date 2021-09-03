@@ -1,8 +1,0 @@
-Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: pistache
-Upstream-Contact: Mathieu Stefani <auquetal@gmail.com>
-Source: https://github.com/pistacheio/pistache
-
-Files: debian/*
-Copyright: 2019 Kip Warner
-License: Apache-2.0
