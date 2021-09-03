@@ -1,0 +1,75 @@
+# SPDX-FileCopyrightText: 2019 Kip Warner
+#
+# SPDX-License-Identifier: Apache-2.0
+
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: pistache
+Upstream-Contact: Kip Warner <kip@thevertigo.com>
+Source: https://github.com/pistacheio/pistache.git
+License: Apache-2.0
+Copyright: 2015 Mathieu Stefani
+
+Files: *
+Copyright: 2015 Mathieu Stefani
+License: Apache-2.0
+
+Files: debian/*
+Copyright: 2019 Kip Warner
+License: Apache-2.0
+
+Files: meson.build meson_options.txt */meson.build
+Copyright: 2021 Andrea Pappacoda
+License: Apache-2.0
+
+Files: pistache.io/static/img/undraw*.svg
+Copyright: 2021 Katerina Limpitsouni
+License: unDraw
+ All images, assets and vectors published on unDraw can be used for free. You can use them for noncommercial and commercial purposes. You do not need to ask permission from or provide credit to the creator or unDraw.
+ .
+ More precisely, unDraw grants you an nonexclusive, worldwide copyright license to download, copy, modify, distribute, perform, and use the assets provided from unDraw for free, including for commercial purposes, without permission from or attributing the creator or unDraw. This license does not include the right to compile assets, vectors or images from unDraw to replicate a similar or competing service, in any form or distribute the assets in packs or otherwise. This extends to automated and non-automated ways to link, embed, scrape, search or download the assets included on the website without our consent.
+ .
+ Regarding brand logos that are included:
+ Are registered trademarks of their respected owners. Are included on a promotional basis and do not represent an association with unDraw or its users. Do not indicate any kind of endorsement of the trademark holder towards unDraw, nor vice versa. Are provided with the sole purpose to represent the actual brand/service/company that has registered the trademark and must not be used otherwise.
+
+Files: subprojects/cpp-httplib/*
+Copyright: 2017 Yuji Hirose
+License: Expat
+
+Files: subprojects/hinnant-date/*
+Copyright: 2015 Howard Hinnant
+License: Expat
+
+License: Apache-2.0
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+ .
+ http://www.apache.org/licenses/LICENSE-2.0
+ .
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ .
+ On Debian systems, the complete text of the Apache License Version 2.0
+ can be found in `/usr/share/common-licenses/Apache-2.0'.
+
+License: Expat
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the "Software"), to deal
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
+ .
+ The above copyright notice and this permission notice shall be included in
+ all copies or substantial portions of the Software.
+ .
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ THE SOFTWARE.

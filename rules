@@ -1,0 +1,83 @@
+#!/usr/bin/make -f
+
+# SPDX-FileCopyrightText: 2019 Kip Warner
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# Output every command that modifies files on the build system...
+# export DH_VERBOSE = 1
+
+# Set flags for how the package will be compiled and built. Note separated with
+#  white space and not comma, as per DPM § 4.9.1...
+
+# Set various group related security hardening build flags for format,
+#  fortify, stackprotector, relro, bindnow, and pie...
+export DH_BUILD_MAINT_OPTIONS = hardening=+all
+
+export LC_ALL = C.UTF-8
+
+# Should be avoided since debhelper 9
+# https://www.debian.org/doc/manuals/debmake-doc/ch05.en.html#variablesrules
+# Including only the necessary variables
+include /usr/share/dpkg/pkg-info.mk
+
+# Directory containing package since may not be called from current working
+#  directory. MAKEFILE_LIST pre-defined by Make and appended each time another
+#  makefile is included, so first one should be debian/rules...
+PACKAGE_DIR = $(abspath $(dir $(firstword $(MAKEFILE_LIST))))
+
+# Source directory...
+SOURCE_DIR  = $(abspath $(PACKAGE_DIR)/../)
+
+# Main packaging script based on debhelper 7 syntax. The % is an implicit
+#  pattern rule that acts as a universal target...
+%:
+	dh $@ --buildsystem=meson
+
+# Configure source...
+override_dh_auto_configure:
+	dh_auto_configure -- \
+		--default-library=both \
+		-DPISTACHE_BUILD_EXAMPLES=true \
+		-DPISTACHE_BUILD_TESTS=true \
+		-DPISTACHE_ENABLE_NETWORK_TESTS=false \
+		-DPISTACHE_BUILD_DOCS=false \
+		-DPISTACHE_USE_SSL=true \
+
+#override_dh_auto_test: https://github.com/pistacheio/pistache/blob/f3080e9e4e7ce5d0cb866b5d6320d51205c33ff0/debian/rules#L53-L63
+
+# get-orig-source is deprecated since version 4.1.4 of the Debian Policy
+# Prepare an upstream vanilla distribution tarball as per DPM § 4.9...
+#  http://wiki.debian.org/onlyjob/get-orig-source
+get-orig-source: $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM).orig.tar.gz $(info I: $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM))
+	@
+
+# Prepare an upstream vanilla distribution tarball...
+# meson dist does not include .github in the source tarball (mesonbuild/meson#8541)
+# so it is necessary to manually add the folder to the archive
+$(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM).orig.tar.gz:
+	@echo "# Preparing source for $(DEB_SOURCE) v$(DEB_VERSION_UPSTREAM)..."
+	cd $(SOURCE_DIR) \
+	&& cd $(PACKAGE_DIR) \
+	&& meson setup $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM) .. \
+		--buildtype=plain \
+		-DPISTACHE_BUILD_EXAMPLES=true \
+		-DPISTACHE_BUILD_TESTS=true \
+		-DPISTACHE_ENABLE_NETWORK_TESTS=false \
+		-DPISTACHE_BUILD_DOCS=false \
+		-DPISTACHE_USE_SSL=true \
+		--prefix=/usr \
+		--wrap-mode=nodownload \
+	&& meson dist -C $(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM) --formats=gztar \
+	&& cd $(PACKAGE_DIR)/$(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM) \
+	&& mkdir $(DEB_SOURCE)-$(DEB_VERSION_UPSTREAM) \
+	&& cp -r $(SOURCE_DIR)/.github $(DEB_SOURCE)-$(DEB_VERSION_UPSTREAM) \
+	&& gunzip $(PACKAGE_DIR)/$(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)/meson-dist/$(DEB_SOURCE)-$(DEB_VERSION_UPSTREAM).tar.gz \
+	&& tar --append --file=$(PACKAGE_DIR)/$(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)/meson-dist/$(DEB_SOURCE)-$(DEB_VERSION_UPSTREAM).tar $(DEB_SOURCE)-$(DEB_VERSION_UPSTREAM)/.github \
+	&& gzip $(PACKAGE_DIR)/$(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)/meson-dist/$(DEB_SOURCE)-$(DEB_VERSION_UPSTREAM).tar \
+	&& mv $(PACKAGE_DIR)/$(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)/meson-dist/$(DEB_SOURCE)-$(DEB_VERSION_UPSTREAM).tar.gz $(SOURCE_DIR)/../$@
+	@echo "# Cleaning up..."
+	$(RM) -r $(PACKAGE_DIR)/$(DEB_SOURCE)_$(DEB_VERSION_UPSTREAM)
+
+# Targets which aren't actual products...
+.PHONY: get-orig-source override_dh_auto_configure# override_dh_auto_test
