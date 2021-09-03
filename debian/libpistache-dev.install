@@ -1,4 +1,0 @@
-usr/include
-usr/lib/*/pkgconfig
-usr/lib/*/libpistache*.a
-usr/lib/*/libpistache*.so

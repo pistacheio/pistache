@@ -74,7 +74,7 @@ But until then currently Pistache has partially compliant upstream Debianization
 
 #### Supported Architectures
 
-Currently Pistache is built and tested on a number of [architectures](https://wiki.debian.org/SupportedArchitectures). Some of these are suitable for desktop or server use and others for embedded environments. As of this writing we do not currently have any MIPS related packages that have been either built or tested. The `ppc64el` builds are occasionally tested on POWER9 hardware, courtesy of IBM.
+Currently Pistache is built and tested on a number of [architectures](https://wiki.debian.org/SupportedArchitectures). Some of these are suitable for desktop or server use and others for embedded environments. As of this writing we do not currently have any MIPS related packages that have been either built or tested.
 
 - amd64
 - arm64
@@ -227,47 +227,6 @@ Some other Meson options:
 | PISTACHE_ENABLE_NETWORK_TESTS | True    | Run unit tests requiring remote network access |
 | PISTACHE_BUILD_EXAMPLES       | False   | Build all of the example apps                  |
 | PISTACHE_BUILD_DOCS           | False   | Build Doxygen docs                             |
-
-## Continuous Integration Testing
-
-It is important that all patches pass unit testing. Unfortunately developers make all kinds of changes to their local development environment that can have unintended consequences. This can means sometimes tests on the developer's computer pass when they should not, and other times failing when they should not have.
-
-To properly validate that things are working, continuous integration (CI) is required. This means compiling, performing local in-tree unit tests, installing through the system package manager, and finally testing the actually installed build artifacts to ensure they do what the user expects them to do.
-
-The key thing to remember is that in order to do this properly, this all needs to be done within a realistic end user system that hasn't been unintentionally modified by a developer. This might mean a chroot container with the help of QEMU and KVM to verify that everything is working as expected. The hermetically sealed test environment validates that the developer's expected steps for compilation, linking, unit testing, and post installation testing are actually replicable.
-
-There are [different ways](https://wiki.debian.org/qa.debian.org#Other_distributions) of performing CI on different distros. The most common one is via the international [DEP-8](https://dep-team.pages.debian.net/deps/dep8/) standard as used by hundreds of different operating systems.
-
-### Autopkgtest
-
-On Debian based distributions, `autopkgtest` implements the DEP-8 standard. To create and use a build image environment for Ubuntu, follow these steps. First install the autopkgtest(1) tools:
-
-```sh
-$ sudo apt install autopkgtest
-```
-
-Next create the test image, substituting `groovy` or `amd64` for other releases or architectures:
-
-```sh
-$ autopkgtest-buildvm-ubuntu-cloud -r groovy -a amd64
-```
-
-Generate a Pistache source package in the parent directory of `pistache_source`:
-
-```sh
-$ cd pistache_source
-$ sudo apt build-dep pistache
-$ ./debian/rules get-orig-source
-$ debuild -S -sa -uc -us
-```
-
-Test the source package on the host architecture in QEMU with KVM support and 8GB of RAM and four CPUs:
-
-```sh
-$ autopkgtest --shell-fail --apt-upgrade ../pistache_(...).dsc -- \
-      qemu --ram-size=8192 --cpus=4 --show-boot path_to_build_image.img \
-      --qemu-options='-enable-kvm'
-```
 
 ## Example
 
