@@ -5,6 +5,7 @@
  */
 
 #include <array>
+#include <cstring>
 
 #include <pistache/client.h>
 #include <pistache/endpoint.h>
@@ -56,7 +57,7 @@ struct ServeFileHandler : public Http::Handler
     }
 };
 
-TEST(http_client_test, basic_tls_request)
+TEST(https_server_test, basic_tls_request)
 {
     Http::Endpoint server(Address("localhost", Pistache::Port(0)));
     auto flags       = Tcp::Options::ReuseAddr;
@@ -96,7 +97,7 @@ TEST(http_client_test, basic_tls_request)
     ASSERT_EQ(buffer, "Hello, World!");
 }
 
-TEST(http_client_test, basic_tls_request_with_chained_server_cert)
+TEST(https_server_test, basic_tls_request_with_chained_server_cert)
 {
     Http::Endpoint server(Address("localhost", Pistache::Port(0)));
     auto flags       = Tcp::Options::ReuseAddr;
@@ -137,7 +138,7 @@ TEST(http_client_test, basic_tls_request_with_chained_server_cert)
     ASSERT_EQ(buffer, "Hello, World!");
 }
 
-TEST(http_client_test, basic_tls_request_with_auth)
+TEST(https_server_test, basic_tls_request_with_auth)
 {
     Http::Endpoint server(Address("localhost", Pistache::Port(0)));
     auto flags       = Tcp::Options::ReuseAddr;
@@ -181,7 +182,7 @@ TEST(http_client_test, basic_tls_request_with_auth)
     ASSERT_EQ(buffer, "Hello, World!");
 }
 
-TEST(http_client_test, basic_tls_request_with_auth_no_client_cert)
+TEST(https_server_test, basic_tls_request_with_auth_no_client_cert)
 {
     Http::Endpoint server(Address("localhost", Pistache::Port(0)));
     auto flags       = Tcp::Options::ReuseAddr;
@@ -222,7 +223,7 @@ TEST(http_client_test, basic_tls_request_with_auth_no_client_cert)
     ASSERT_NE(res, CURLE_OK);
 }
 
-TEST(http_client_test, basic_tls_request_with_auth_client_cert_not_signed)
+TEST(https_server_test, basic_tls_request_with_auth_client_cert_not_signed)
 {
     Http::Endpoint server(Address("localhost", Pistache::Port(0)));
     auto flags       = Tcp::Options::ReuseAddr;
@@ -275,7 +276,7 @@ static int verify_callback(int verify, void* ctx)
     return 1;
 }
 
-TEST(http_client_test, basic_tls_request_with_auth_with_cb)
+TEST(https_server_test, basic_tls_request_with_auth_with_cb)
 {
     Http::Endpoint server(Address("localhost", Pistache::Port(0)));
     auto flags       = Tcp::Options::ReuseAddr;
@@ -321,7 +322,7 @@ TEST(http_client_test, basic_tls_request_with_auth_with_cb)
     callback_called = false;
 }
 
-TEST(http_client_test, basic_tls_request_with_servefile)
+TEST(https_server_test, basic_tls_request_with_servefile)
 {
     Http::Endpoint server(Address("localhost", Pistache::Port(0)));
     auto flags       = Tcp::Options::ReuseAddr;
@@ -368,4 +369,49 @@ TEST(http_client_test, basic_tls_request_with_servefile)
 
     ASSERT_EQ(res, CURLE_OK);
     ASSERT_EQ(buffer.rfind("-----BEGIN CERTIFICATE-----", 0), 0u);
+}
+
+TEST(https_server_test, basic_tls_request_with_password_cert)
+{
+    Http::Endpoint server(Address("localhost", Pistache::Port(0)));
+
+    const auto passwordCallback = [](char* buf, int size, int /*rwflag*/, void* /*u*/) -> int
+    {
+        static constexpr const char* const password = "test";
+        std::strncpy(buf, password, size);
+        return static_cast<int>(std::strlen(password));
+    };
+
+    server.init(Http::Endpoint::options().flags(Tcp::Options::ReuseAddr));
+    server.setHandler(Http::make_handler<HelloHandler>());
+    server.useSSL("./certs/server_protected.crt", "./certs/server_protected.key", false, passwordCallback);
+    server.serveThreaded();
+
+    CURL* curl;
+    CURLcode res;
+    std::string buffer;
+
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    curl = curl_easy_init();
+    ASSERT_NE(curl, nullptr);
+
+    const auto url = getServerUrl(server);
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_CAINFO, "./certs/rootCA.crt");
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &write_cb);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
+
+    /* Skip hostname check */
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+
+    res = curl_easy_perform(curl);
+
+    curl_easy_cleanup(curl);
+    curl_global_cleanup();
+
+    server.shutdown();
+
+    ASSERT_EQ(res, CURLE_OK);
+    ASSERT_EQ(buffer, "Hello, World!");
 }

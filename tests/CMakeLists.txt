@@ -63,6 +63,8 @@ if (PISTACHE_USE_SSL)
     configure_file("certs/server_from_intermediate.crt" "certs/server_from_intermediate.crt" COPYONLY)
     configure_file("certs/server_from_intermediate.key" "certs/server_from_intermediate.key" COPYONLY)
     configure_file("certs/intermediateCA.crt" "certs/intermediateCA.crt" COPYONLY)
+    configure_file("certs/server_protected.crt" "certs/server_protected.crt" COPYONLY)
+    configure_file("certs/server_protected.key" "certs/server_protected.key" COPYONLY)
 
     pistache_test(https_server_test)
 endif (PISTACHE_USE_SSL)
