@@ -84,7 +84,8 @@ namespace Pistache::Tcp
 
         ssl::SSLCtxPtr ssl_create_context(const std::string& cert,
                                           const std::string& key,
-                                          bool use_compression)
+                                          bool use_compression,
+                                          int (*cb)(char *, int, int, void *))
         {
             const SSL_METHOD* method = SSLv23_server_method();
 
@@ -103,6 +104,12 @@ namespace Pistache::Tcp
                         + ssl_print_errors_to_string();
                     throw std::runtime_error(err);
                 }
+            }
+
+            if (cb != NULL)
+            {
+                /* Use the user-defined callback for password if provided */
+                SSL_CTX_set_default_passwd_cb(GetSSLContext(ctx), cb);
             }
 
 /* Function introduced in 1.0.2 */
@@ -576,14 +583,16 @@ namespace Pistache::Tcp
     }
 
     void Listener::setupSSL(const std::string& cert_path,
-                            const std::string& key_path, bool use_compression)
+                            const std::string& key_path,
+                            bool use_compression,
+                            int (*cb_password)(char *, int, int, void *))
     {
         SSL_load_error_strings();
         OpenSSL_add_ssl_algorithms();
 
         try
         {
-            ssl_ctx_ = ssl_create_context(cert_path, key_path, use_compression);
+            ssl_ctx_ = ssl_create_context(cert_path, key_path, use_compression, cb_password);
         }
         catch (std::exception& e)
         {

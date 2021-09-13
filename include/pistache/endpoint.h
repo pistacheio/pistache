@@ -109,7 +109,8 @@ namespace Pistache::Http
    *
    * \param[in] cert Server certificate path
    * \param[in] key Server key path
-   * \param[in] use_compression Wether or not use compression on the encryption
+   * \param[in] use_compression Whether or not use compression on the encryption
+   * \param[in] cb_password OpenSSL callback for a potential key password. See SSL_CTX_set_default_passwd_cb
    *
    * Setup the SSL configuration for an endpoint. In order to do that, this
    * function will init OpenSSL constants and load *all* algorithms. It will
@@ -125,7 +126,8 @@ namespace Pistache::Http
    * [1] https://en.wikipedia.org/wiki/BREACH
    * [2] https://en.wikipedia.org/wiki/CRIME
    */
-        void useSSL(const std::string& cert, const std::string& key, bool use_compression = false);
+        void useSSL(const std::string& cert, const std::string& key,
+            bool use_compression = false, int (*cb_password)(char *, int, int, void *) = NULL);
 
         /*!
    * \brief Use SSL certificate authentication on this endpoint
