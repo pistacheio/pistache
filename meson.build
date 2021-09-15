@@ -88,7 +88,7 @@ if meson.version().version_compare('>=0.57.0')
 else
 	# Ugly workaround for reading a file
 	version_data_raw = run_command(
-		find_program('python3'), '-c', 'print(open("version.txt").read())'
+		import('python').find_installation(), '-c', 'print(open("version.txt").read())'
 	).stdout().strip().split('\n')
 endif
 version_data_conf = configuration_data()
