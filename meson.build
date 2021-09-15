@@ -104,7 +104,7 @@ pistache_soversion_str = '.'.join([version_data_conf.get_unquoted('SONAME_VERSIO
 
 incl_pistache = include_directories('include')
 
-subdir('include')
+subdir('include'/'pistache')
 subdir('src')
 if get_option('PISTACHE_BUILD_TESTS')
 	subdir('tests')
