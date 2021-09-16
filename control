@@ -8,7 +8,8 @@ Priority: optional
 Maintainer: Kip Warner <kip@thevertigo.com>
 Standards-Version: 4.6.0
 Build-Depends: debhelper-compat (= 12),
-               meson (>= 0.50.0)
+               meson (>= 0.50.0),
+               python3-distutils
 Build-Depends-Arch: pkg-config,
                     libssl-dev,
                     rapidjson-dev,
