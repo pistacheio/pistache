@@ -28,7 +28,10 @@ if get_option('b_coverage')
 	add_project_arguments(compiler.get_supported_arguments(['-fstack-protector-all', '--param=ssp-buffer-size=4']), language: 'cpp')
 endif
 
-date_dep = dependency('hinnant-date', fallback: ['hinnant-date', 'date_dep'])
+date_dep = dependency('howardhinnant-date', required: false)
+if not date_dep.found()
+	date_dep = dependency('hinnant-date', fallback: ['hinnant-date', 'date_dep'])
+endif
 deps_libpistache = [
 	dependency('threads'),
 	dependency('RapidJSON', fallback: ['rapidjson', 'rapidjson_dep']),
