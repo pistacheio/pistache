@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
 [![autopkgtest](https://github.com/pistacheio/pistache/actions/workflows/autopkgtest.yaml/badge.svg)](https://github.com/pistacheio/pistache/actions/workflows/autopkgtest.yaml)
 [![REUSE status](https://api.reuse.software/badge/github.com/pistacheio/pistache)](https://api.reuse.software/info/github.com/pistacheio/pistache)
 
-Pistache is a modern and elegant HTTP and REST framework for C++. It is entirely written in pure-C++17 and provides a clear and pleasant API.
+Pistache is a modern and elegant HTTP and REST framework for C++. It is entirely written in pure-C++17[*](#linux-only) and provides a clear and pleasant API.
 
 ## Documentation
 
@@ -252,3 +252,5 @@ int main() {
 ## Project status
 
 Pistache hasn't yet hit the 1.0 release. This means that the project is _unstable_ but not _unusable_. In fact, most of the code is production ready; you can use Pistache to develop a RESTful API without issues, but the HTTP client has a few issues in it that make it buggy.
+
+<b id="linux-only">\*</b> While most code uses modern C++, Pistache makes use of some Linux-specific APIs where the standard library doesn't provide alternatives, and works only on that OS. See [#6](https://github.com/pistacheio/pistache/issues/6#issuecomment-242398225) for details. If you know how to help, please contribute a PR to add support for your desired platform :)
