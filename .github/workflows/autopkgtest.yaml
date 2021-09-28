@@ -32,8 +32,7 @@ jobs:
     - name: Checkout Debian data
       uses: actions/checkout@v2
       with:
-        repository: Tachi107/pistache
-        ref: debian-watch
+        ref: debian
         path: debian
 
     # The Debian repository is needed by autopkgtest-build-qemu when building
