@@ -32,7 +32,8 @@ jobs:
     - name: Checkout Debian data
       uses: actions/checkout@v2
       with:
-        ref: debian
+        repository: Tachi107/pistache
+        ref: debian-watch
         path: debian
 
     # The Debian repository is needed by autopkgtest-build-qemu when building
@@ -90,7 +91,8 @@ jobs:
 
     - name: Build Debian package source
       run: |
-        ./debian/rules get-orig-source
+        uscan
+        cd ../pistache-*/
         dpkg-source --build .
 
     # The increased timeout is needed because the CI can be too slow to boot
