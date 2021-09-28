@@ -3,28 +3,25 @@
 # SPDX-License-Identifier: Apache-2.0
 
 Source: pistache
-Section: libdevel
+Section: libs
 Priority: optional
 Maintainer: Kip Warner <kip@thevertigo.com>
 Standards-Version: 4.6.0
-Build-Depends: debhelper-compat (= 12),
-               meson (>= 0.50.0),
-               python3-distutils
-Build-Depends-Arch: pkg-config,
-                    libssl-dev,
-                    rapidjson-dev,
+Build-Depends: debhelper-compat (= 12), meson (>= 0.50.0), python3-distutils
+Build-Depends-Arch: libcurl4-openssl-dev,
                     libgtest-dev (>= 1.8.0) | googletest (>= 1.8.0),
-                    libcurl4-openssl-dev
+                    libssl-dev,
+                    pkg-config,
+                    rapidjson-dev
 Vcs-Git: https://github.com/pistacheio/pistache.git
-Vcs-browser: https://github.com/pistacheio/pistache
+Vcs-Browser: https://github.com/pistacheio/pistache
 Homepage: http://pistache.io
 Rules-Requires-Root: no
 
 Package: libpistache0
 Architecture: any
 Pre-Depends: ${misc:Pre-Depends}
-Depends: ${misc:Depends},
-         ${shlibs:Depends}
+Depends: ${misc:Depends}, ${shlibs:Depends}
 Description: elegant C++ REST framework
  Pistache is a modern and elegant HTTP and REST framework for C++.
  It is entirely written in pure C++17 and provides a clear and pleasant API.
@@ -35,12 +32,13 @@ Description: elegant C++ REST framework
  This package contains the shared library built with TLS support.
 
 Package: libpistache-dev
+Section: libdevel
 Architecture: any
 Pre-Depends: ${misc:Pre-Depends}
-Depends: ${misc:Depends},
-         libpistache0 (= ${binary:Version}),
+Depends: libpistache0 (= ${binary:Version}),
          libssl-dev,
-         rapidjson-dev
+         rapidjson-dev,
+         ${misc:Depends}
 Description: elegant C++ REST framework - development files
  Pistache is a modern and elegant HTTP and REST framework for C++.
  It is entirely written in pure C++17 and provides a clear and pleasant API.

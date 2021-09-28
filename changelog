@@ -1,5 +1,5 @@
-pistache (0.0.002-pistache1) impish; urgency=medium
+pistache (0.0.002-1) UNRELEASED; urgency=low
 
-  * Latest upstream.
+  * Initial release. Closes: #929593
 
- -- Kip Warner <kip@thevertigo.com>  Sun, 27 Dec 2020 16:40:00 -0700
+ -- Kip Warner <kip@thevertigo.com>  Tue, 28 Sep 2021 14:45:20 +0000
