@@ -138,6 +138,7 @@ namespace Pistache::Tcp
                 throw std::runtime_error(err);
             }
 
+            SSL_CTX_set_mode(GetSSLContext(ctx), SSL_MODE_ENABLE_PARTIAL_WRITE);
             return ctx;
         }
 
