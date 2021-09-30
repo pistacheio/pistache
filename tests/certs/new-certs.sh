@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# SPDX-FileCopyrightText: 2020 Dennis Jenkins
+#
+# SPDX-License-Identifier: Apache-2.0
+
 # Run this script to create new SSL certs for pistache HTTPS unit tests.
 # Passphrases are disabled on all keys.  Do not use these certs/keys in
 # production; they are for unit tests only!
@@ -79,6 +83,21 @@ openssl x509 -req -in server_from_intermediate.csr -days ${DAYS} -sha256 -extfil
 
 rm -f server_from_intermediate.csr || exit $?
 
+log "Create server_protected.key"
+openssl genrsa -aes128 -passout pass:test -out server_protected.key ${BITS} || exit $?
+
+log "Create server_protected.csr"
+openssl req -new -sha256 -passin pass:test -key server_protected.key \
+  -subj "/C=US/ST=WA/O=Pistache/CN=server" \
+  -out server_protected.csr || exit $?
+
+log "Create server_protected.crt"
+openssl x509 -req -in server_protected.csr -days ${DAYS} -sha256 -extfile openssl.conf \
+  -CA rootCA.crt -CAkey rootCA.key -set_serial 01 \
+  -extensions server -out server_protected.crt || exit $?
+
+rm -f server_protected.csr || exit $?
+
 log "Verify server certificate"
 openssl verify -purpose sslserver -CAfile rootCA.crt server.crt || exit $?
 
@@ -90,6 +109,9 @@ openssl verify -purpose sslserver -partial_chain -CAfile intermediateCA.crt serv
 
 log "Verify server_from_intermediate certificate against root using intermediate"
 openssl verify -purpose sslserver -untrusted intermediateCA.crt -CAfile rootCA.crt server_from_intermediate.crt || exit $?
+
+log "Verify server_protected certificate"
+openssl verify -purpose sslserver -CAfile rootCA.crt server_protected.crt || exit $?
 
 log "Create server_from_intermediate_with_chain.crt"
 cat server_from_intermediate.crt intermediateCA.crt > server_from_intermediate_with_chain.crt

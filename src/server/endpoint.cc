@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2016 Mathieu Stefani
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /* endpoint.cc
    Mathieu Stefani, 22 janvier 2016
 
@@ -9,110 +15,264 @@
 #include <pistache/peer.h>
 #include <pistache/tcp.h>
 
-namespace Pistache {
-namespace Http {
+#include <array>
+#include <chrono>
 
-Endpoint::Options::Options()
-    : threads_(1), flags_(), backlog_(Const::MaxBacklog),
-      maxRequestSize_(Const::DefaultMaxRequestSize),
-      maxResponseSize_(Const::DefaultMaxResponseSize),
-      logger_(PISTACHE_NULL_STRING_LOGGER) {}
+namespace Pistache::Http
+{
 
-Endpoint::Options &Endpoint::Options::threads(int val) {
-  threads_ = val;
-  return *this;
-}
+    class TransportImpl : public Tcp::Transport
+    {
+    public:
+        using Base = Tcp::Transport;
 
-Endpoint::Options &Endpoint::Options::threadsName(const std::string &val) {
-  threadsName_ = val;
-  return *this;
-}
+        explicit TransportImpl(const std::shared_ptr<Tcp::Handler>& handler);
 
-Endpoint::Options &Endpoint::Options::flags(Flags<Tcp::Options> flags) {
-  flags_ = flags;
-  return *this;
-}
+        void registerPoller(Polling::Epoll& poller) override;
+        void onReady(const Aio::FdSet& fds) override;
 
-Endpoint::Options &Endpoint::Options::backlog(int val) {
-  backlog_ = val;
-  return *this;
-}
+        void setHeaderTimeout(std::chrono::milliseconds timeout);
+        void setBodyTimeout(std::chrono::milliseconds timeout);
 
-Endpoint::Options &Endpoint::Options::maxRequestSize(size_t val) {
-  maxRequestSize_ = val;
-  return *this;
-}
+        std::shared_ptr<Aio::Handler> clone() const override;
 
-Endpoint::Options &Endpoint::Options::maxPayload(size_t val) {
-  return maxRequestSize(val);
-}
+    private:
+        std::shared_ptr<Tcp::Handler> handler_;
+        std::chrono::milliseconds headerTimeout_;
+        std::chrono::milliseconds bodyTimeout_;
 
-Endpoint::Options &Endpoint::Options::maxResponseSize(size_t val) {
-  maxResponseSize_ = val;
-  return *this;
-}
+        int timerFd;
 
-Endpoint::Options &Endpoint::Options::logger(PISTACHE_STRING_LOGGER_T logger) {
-  logger_ = logger;
-  return *this;
-}
+        void checkIdlePeers();
+    };
 
-Endpoint::Endpoint() {}
+    TransportImpl::TransportImpl(const std::shared_ptr<Tcp::Handler>& handler)
+        : Tcp::Transport(handler)
+        , handler_(handler)
+    { }
 
-Endpoint::Endpoint(const Address &addr) : listener(addr) {}
+    void TransportImpl::registerPoller(Polling::Epoll& poller)
+    {
+        Base::registerPoller(poller);
 
-void Endpoint::init(const Endpoint::Options &options) {
-  listener.init(options.threads_, options.flags_, options.threadsName_);
-  maxRequestSize_ = options.maxRequestSize_;
-  maxResponseSize_ = options.maxResponseSize_;
-  logger_ = options.logger_;
-}
+        timerFd = TRY_RET(timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK));
 
-void Endpoint::setHandler(const std::shared_ptr<Handler> &handler) {
-  handler_ = handler;
-  handler_->setMaxRequestSize(maxRequestSize_);
-  handler_->setMaxResponseSize(maxResponseSize_);
-}
+        static constexpr auto TimerInterval   = std::chrono::milliseconds(500);
+        static constexpr auto TimerIntervalNs = std::chrono::duration_cast<std::chrono::nanoseconds>(TimerInterval);
 
-void Endpoint::bind() { listener.bind(); }
+        static_assert(
+            TimerInterval < std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::seconds(1)),
+            "Timer frequency should be less than 1 second");
 
-void Endpoint::bind(const Address &addr) { listener.bind(addr); }
+        itimerspec spec;
+        spec.it_value.tv_sec  = 0;
+        spec.it_value.tv_nsec = TimerIntervalNs.count();
 
-void Endpoint::serve() { serveImpl(&Tcp::Listener::run); }
+        spec.it_interval.tv_sec  = 0;
+        spec.it_interval.tv_nsec = TimerIntervalNs.count();
 
-void Endpoint::serveThreaded() { serveImpl(&Tcp::Listener::runThreaded); }
+        TRY(timerfd_settime(timerFd, 0, &spec, nullptr));
 
-void Endpoint::shutdown() { listener.shutdown(); }
+        Polling::Tag tag(timerFd);
+        poller.addFd(timerFd, Flags<Polling::NotifyOn>(Polling::NotifyOn::Read), Polling::Tag(timerFd));
+    }
 
-void Endpoint::useSSL(const std::string &cert, const std::string &key, bool use_compression) {
+    void TransportImpl::onReady(const Aio::FdSet& fds)
+    {
+        for (const auto& entry : fds)
+        {
+            if (entry.getTag() == Polling::Tag(timerFd))
+            {
+                uint64_t wakeups;
+                ::read(timerFd, &wakeups, sizeof wakeups);
+                checkIdlePeers();
+                break;
+            }
+        }
+
+        Base::onReady(fds);
+    }
+
+    void TransportImpl::setHeaderTimeout(std::chrono::milliseconds timeout)
+    {
+        headerTimeout_ = timeout;
+    }
+    void TransportImpl::setBodyTimeout(std::chrono::milliseconds timeout)
+    {
+        bodyTimeout_ = timeout;
+    }
+
+    void TransportImpl::checkIdlePeers()
+    {
+        std::vector<std::shared_ptr<Tcp::Peer>> idlePeers;
+
+        for (const auto& peerPair : peers)
+        {
+            const auto& peer = peerPair.second;
+            auto parser      = Http::Handler::getParser(peer);
+            auto time        = parser->time();
+
+            auto now     = std::chrono::steady_clock::now();
+            auto elapsed = now - time;
+
+            auto* step = parser->step();
+            if (step->id() == Private::RequestLineStep::Id || step->id() == Private::HeadersStep::Id)
+            {
+                if (elapsed > headerTimeout_ || elapsed > bodyTimeout_)
+                    idlePeers.push_back(peer);
+            }
+            else if (step->id() == Private::BodyStep::Id)
+            {
+                if (elapsed > bodyTimeout_)
+                    idlePeers.push_back(peer);
+            }
+        }
+
+        for (const auto& idlePeer : idlePeers)
+        {
+            ResponseWriter response(Http::Version::Http11, this, static_cast<Http::Handler*>(handler_.get()), idlePeer);
+            response.send(Http::Code::Request_Timeout).then([=](ssize_t) { removePeer(idlePeer); }, [=](std::exception_ptr) { removePeer(idlePeer); });
+        }
+    }
+
+    std::shared_ptr<Aio::Handler> TransportImpl::clone() const
+    {
+        auto transport = std::make_shared<TransportImpl>(handler_->clone());
+        transport->setHeaderTimeout(headerTimeout_);
+        transport->setBodyTimeout(bodyTimeout_);
+        return transport;
+    }
+
+    Endpoint::Options::Options()
+        : threads_(1)
+        , flags_()
+        , backlog_(Const::MaxBacklog)
+        , maxRequestSize_(Const::DefaultMaxRequestSize)
+        , maxResponseSize_(Const::DefaultMaxResponseSize)
+        , headerTimeout_(Const::DefaultHeaderTimeout)
+        , bodyTimeout_(Const::DefaultBodyTimeout)
+        , logger_(PISTACHE_NULL_STRING_LOGGER)
+    { }
+
+    Endpoint::Options& Endpoint::Options::threads(int val)
+    {
+        threads_ = val;
+        return *this;
+    }
+
+    Endpoint::Options& Endpoint::Options::threadsName(const std::string& val)
+    {
+        threadsName_ = val;
+        return *this;
+    }
+
+    Endpoint::Options& Endpoint::Options::flags(Flags<Tcp::Options> flags)
+    {
+        flags_ = flags;
+        return *this;
+    }
+
+    Endpoint::Options& Endpoint::Options::backlog(int val)
+    {
+        backlog_ = val;
+        return *this;
+    }
+
+    Endpoint::Options& Endpoint::Options::maxRequestSize(size_t val)
+    {
+        maxRequestSize_ = val;
+        return *this;
+    }
+
+    Endpoint::Options& Endpoint::Options::maxPayload(size_t val)
+    {
+        return maxRequestSize(val);
+    }
+
+    Endpoint::Options& Endpoint::Options::maxResponseSize(size_t val)
+    {
+        maxResponseSize_ = val;
+        return *this;
+    }
+
+    Endpoint::Options& Endpoint::Options::logger(PISTACHE_STRING_LOGGER_T logger)
+    {
+        logger_ = logger;
+        return *this;
+    }
+
+    Endpoint::Endpoint() = default;
+
+    Endpoint::Endpoint(const Address& addr)
+        : listener(addr)
+    { }
+
+    void Endpoint::init(const Endpoint::Options& options)
+    {
+        listener.init(options.threads_, options.flags_, options.threadsName_);
+        listener.setTransportFactory([this, options] {
+            if (!handler_)
+                throw std::runtime_error("Must call setHandler()");
+
+            auto transport = std::make_shared<TransportImpl>(handler_);
+            transport->setHeaderTimeout(options.headerTimeout_);
+            transport->setBodyTimeout(options.bodyTimeout_);
+
+            return transport;
+        });
+
+        if (handler_)
+        {
+            handler_->setMaxRequestSize(options.maxRequestSize_);
+            handler_->setMaxResponseSize(options.maxResponseSize_);
+        }
+
+        options_ = options;
+        logger_  = options.logger_;
+    }
+
+    void Endpoint::setHandler(const std::shared_ptr<Handler>& handler)
+    {
+        handler_ = handler;
+        handler_->setMaxRequestSize(options_.maxRequestSize_);
+        handler_->setMaxResponseSize(options_.maxResponseSize_);
+    }
+
+    void Endpoint::bind() { listener.bind(); }
+
+    void Endpoint::bind(const Address& addr) { listener.bind(addr); }
+
+    void Endpoint::serve() { serveImpl(&Tcp::Listener::run); }
+
+    void Endpoint::serveThreaded() { serveImpl(&Tcp::Listener::runThreaded); }
+
+    void Endpoint::shutdown() { listener.shutdown(); }
+
+    void Endpoint::useSSL([[maybe_unused]] const std::string& cert, [[maybe_unused]] const std::string& key, [[maybe_unused]] bool use_compression, [[maybe_unused]] int (*pass_cb)(char *, int, int, void *))
+    {
 #ifndef PISTACHE_USE_SSL
-  (void)cert;
-  (void)key;
-  (void)use_compression;
-  throw std::runtime_error("Pistache is not compiled with SSL support.");
+        throw std::runtime_error("Pistache is not compiled with SSL support.");
 #else
-  listener.setupSSL(cert, key, use_compression);
+        listener.setupSSL(cert, key, use_compression, pass_cb);
 #endif /* PISTACHE_USE_SSL */
-}
+    }
 
-void Endpoint::useSSLAuth(std::string ca_file, std::string ca_path,
-                          int (*cb)(int, void *)) {
+    void Endpoint::useSSLAuth([[maybe_unused]] std::string ca_file, [[maybe_unused]] std::string ca_path,
+                              [[maybe_unused]] int (*cb)(int, void*))
+    {
 #ifndef PISTACHE_USE_SSL
-  (void)ca_file;
-  (void)ca_path;
-  (void)cb;
-  throw std::runtime_error("Pistache is not compiled with SSL support.");
+        throw std::runtime_error("Pistache is not compiled with SSL support.");
 #else
-  listener.setupSSLAuth(ca_file, ca_path, cb);
+        listener.setupSSLAuth(ca_file, ca_path, cb);
 #endif /* PISTACHE_USE_SSL */
-}
+    }
 
-Async::Promise<Tcp::Listener::Load>
-Endpoint::requestLoad(const Tcp::Listener::Load &old) {
-  return listener.requestLoad(old);
-}
+    Async::Promise<Tcp::Listener::Load>
+    Endpoint::requestLoad(const Tcp::Listener::Load& old)
+    {
+        return listener.requestLoad(old);
+    }
 
-Endpoint::Options Endpoint::options() { return Options(); }
+    Endpoint::Options Endpoint::options() { return Options(); }
 
-} // namespace Http
-} // namespace Pistache
+} // namespace Pistache::Http

@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2016 Mathieu Stefani
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /* timer_pool.h
    Mathieu Stefani, 09 février 2016
 
@@ -21,46 +27,52 @@
 #include <cassert>
 #include <unistd.h>
 
-namespace Pistache {
+namespace Pistache
+{
 
-class TimerPool {
-public:
-  explicit TimerPool(size_t initialSize = Const::DefaultTimerPoolSize);
+    class TimerPool
+    {
+    public:
+        explicit TimerPool(size_t initialSize = Const::DefaultTimerPoolSize);
 
-  struct Entry {
+        struct Entry
+        {
 
-    friend class TimerPool;
+            friend class TimerPool;
 
-    Entry();
-    ~Entry();
+            Entry();
+            ~Entry();
 
-    Fd fd() const;
+            Fd fd() const;
 
-    void initialize();
+            void initialize();
 
-    template <typename Duration> void arm(Duration duration) {
-      assert(fd_ != -1 && "Entry is not initialized");
+            template <typename Duration>
+            void arm(Duration duration)
+            {
+                assert(fd_ != -1 && "Entry is not initialized");
 
-      armMs(std::chrono::duration_cast<std::chrono::milliseconds>(duration));
-    }
+                armMs(std::chrono::duration_cast<std::chrono::milliseconds>(duration));
+            }
 
-    void disarm();
+            void disarm();
 
-    void registerReactor(const Aio::Reactor::Key &key, Aio::Reactor *reactor);
+            void registerReactor(const Aio::Reactor::Key& key, Aio::Reactor* reactor);
 
-  private:
-    void armMs(std::chrono::milliseconds value);
-    enum class State : uint32_t { Idle, Used };
-    std::atomic<uint32_t> state;
-    Fd fd_;
-    bool registered;
-  };
+        private:
+            void armMs(std::chrono::milliseconds value);
+            enum class State : uint32_t { Idle,
+                                          Used };
+            std::atomic<uint32_t> state;
+            Fd fd_;
+            bool registered;
+        };
 
-  std::shared_ptr<Entry> pickTimer();
-  static void releaseTimer(const std::shared_ptr<Entry> &timer);
+        std::shared_ptr<Entry> pickTimer();
+        static void releaseTimer(const std::shared_ptr<Entry>& timer);
 
-private:
-  std::vector<std::shared_ptr<Entry>> timers;
-};
+    private:
+        std::vector<std::shared_ptr<Entry>> timers;
+    };
 
 } // namespace Pistache

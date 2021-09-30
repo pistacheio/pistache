@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2019 Louis Solofrizzo
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /* utils.h
    Louis Solofrizzo 2019-10-17
 
@@ -34,6 +40,6 @@
  *
  * [1] https://www.openssl.org/docs/manmaster/man3/SSL_sendfile.html
  */
-ssize_t SSL_sendfile(SSL *out, int in, off_t *offset, size_t count);
+ssize_t SSL_sendfile(SSL* out, int in, off_t* offset, size_t count);
 
 #endif /* PISTACHE_USE_SSL */

@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2020 Michael Ellison
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /* log.cc
    Michael Ellison, 27 May 2020
 
@@ -9,20 +15,20 @@
 
 #include <pistache/string_logger.h>
 
-namespace Pistache {
-namespace Log {
+namespace Pistache::Log
+{
 
-void StringToStreamLogger::log(Level level, const std::string &message) {
-  if (out_ && isEnabledFor(level)) {
-    (*out_) << message << std::endl;
-  }
-}
+    void StringToStreamLogger::log(Level level, const std::string& message)
+    {
+        if (out_ && isEnabledFor(level))
+        {
+            (*out_) << message << std::endl;
+        }
+    }
 
-bool StringToStreamLogger::isEnabledFor(Level level) const {
-  return static_cast<int>(level) >= static_cast<int>(level_);
-}
+    bool StringToStreamLogger::isEnabledFor(Level level) const
+    {
+        return static_cast<int>(level) >= static_cast<int>(level_);
+    }
 
-} // namespace Log
-} // namespace Pistache
-
-
+} // namespace Pistache::Log

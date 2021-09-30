@@ -1,9 +1,15 @@
-OUTPUT_DIRECTORY       = @CMAKE_CURRENT_BINARY_DIR@/docs/
-INPUT                  = @CMAKE_SOURCE_DIR@/README.md @CMAKE_SOURCE_DIR@/src/ @CMAKE_SOURCE_DIR@/include/ @CMAKE_SOURCE_DIR@/examples/ @CMAKE_SOURCE_DIR@/docs/
-USE_MDFILE_AS_MAINPAGE = @CMAKE_SOURCE_DIR@/README.md
+/**
+ * SPDX-FileCopyrightText: 2019 Arthur de Araújo Farias
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+OUTPUT_DIRECTORY       = @CURRENT_BUILD_DIR@/docs/
+INPUT                  = @SOURCE_DIR@/README.md @SOURCE_DIR@/src/ @SOURCE_DIR@/include/ @SOURCE_DIR@/examples/ @SOURCE_DIR@/docs/
+USE_MDFILE_AS_MAINPAGE = @SOURCE_DIR@/README.md
 EXCLUDE_PATTERNS       = */.git/*
+EXCLUDE_PATTERNS      += */subprojects/*
 EXCLUDE_PATTERNS      += */tests/*
-EXCLUDE_PATTERNS      += */third-party/*
 
 DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = @PROJECT_NAME@

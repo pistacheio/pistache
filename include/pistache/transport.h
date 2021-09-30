@@ -1,4 +1,10 @@
 /*
+ * SPDX-FileCopyrightText: 2016 Mathieu Stefani
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
    Mathieu Stefani, 26 janvier 2016
 
    Transport TCP layer
@@ -8,7 +14,6 @@
 
 #include <pistache/async.h>
 #include <pistache/mailbox.h>
-#include <pistache/optional.h>
 #include <pistache/reactor.h>
 #include <pistache/stream.h>
 
@@ -16,191 +21,233 @@
 #include <deque>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <unordered_map>
 
-namespace Pistache {
-namespace Tcp {
+namespace Pistache::Tcp
+{
 
-class Peer;
-class Handler;
+    class Peer;
+    class Handler;
 
-class Transport : public Aio::Handler {
-public:
-  explicit Transport(const std::shared_ptr<Tcp::Handler> &handler);
-  Transport(const Transport &) = delete;
-  Transport &operator=(const Transport &) = delete;
+    class Transport : public Aio::Handler
+    {
+    public:
+        explicit Transport(const std::shared_ptr<Tcp::Handler>& handler);
 
-  void init(const std::shared_ptr<Tcp::Handler> &handler);
+        Transport(const Transport&) = delete;
+        Transport& operator=(const Transport&) = delete;
 
-  void registerPoller(Polling::Epoll &poller) override;
+        void init(const std::shared_ptr<Tcp::Handler>& handler);
 
-  void handleNewPeer(const std::shared_ptr<Peer> &peer);
-  void onReady(const Aio::FdSet &fds) override;
+        void registerPoller(Polling::Epoll& poller) override;
 
-  template <typename Buf>
-  Async::Promise<ssize_t> asyncWrite(Fd fd, const Buf &buffer, int flags = 0) {
-    // Always enqueue reponses for sending. Giving preference to consumer
-    // context means chunked responses could be sent out of order.
-    return Async::Promise<ssize_t>(
-        [=](Async::Deferred<ssize_t> deferred) mutable {
-          BufferHolder holder{buffer};
-          WriteEntry write(std::move(deferred), std::move(holder), fd, flags);
-          writesQueue.push(std::move(write));
-        });
-  }
+        void handleNewPeer(const std::shared_ptr<Peer>& peer);
+        void onReady(const Aio::FdSet& fds) override;
 
-  Async::Promise<rusage> load() {
-    return Async::Promise<rusage>([=](Async::Deferred<rusage> deferred) {
-      loadRequest_ = std::move(deferred);
-      notifier.notify();
-    });
-  }
+        template <typename Buf>
+        Async::Promise<ssize_t> asyncWrite(Fd fd, const Buf& buffer, int flags = 0)
+        {
+            // Always enqueue reponses for sending. Giving preference to consumer
+            // context means chunked responses could be sent out of order.
+            return Async::Promise<ssize_t>(
+                [=](Async::Deferred<ssize_t> deferred) mutable {
+                    BufferHolder holder { buffer };
+                    WriteEntry write(std::move(deferred), std::move(holder), fd, flags);
+                    writesQueue.push(std::move(write));
+                });
+        }
 
-  template <typename Duration>
-  void armTimer(Fd fd, Duration timeout, Async::Deferred<uint64_t> deferred) {
-    armTimerMs(fd,
-               std::chrono::duration_cast<std::chrono::milliseconds>(timeout),
-               std::move(deferred));
-  }
+        Async::Promise<rusage> load()
+        {
+            return Async::Promise<rusage>([=](Async::Deferred<rusage> deferred) {
+                loadRequest_ = std::move(deferred);
+                notifier.notify();
+            });
+        }
 
-  void disarmTimer(Fd fd);
+        template <typename Duration>
+        void armTimer(Fd fd, Duration timeout, Async::Deferred<uint64_t> deferred)
+        {
+            armTimerMs(fd,
+                       std::chrono::duration_cast<std::chrono::milliseconds>(timeout),
+                       std::move(deferred));
+        }
 
-  std::shared_ptr<Aio::Handler> clone() const override;
+        void disarmTimer(Fd fd);
 
-  void flush();
+        std::shared_ptr<Aio::Handler> clone() const override;
 
-private:
-  enum WriteStatus { FirstTry, Retry };
+        void flush();
 
-  struct BufferHolder {
-    enum Type { Raw, File };
+    private:
+        enum WriteStatus { FirstTry,
+                           Retry };
 
-    explicit BufferHolder(const RawBuffer &buffer, off_t offset = 0)
-        : _raw(buffer), size_(buffer.size()), offset_(offset), type(Raw) {}
+        struct BufferHolder
+        {
+            enum Type { Raw,
+                        File };
 
-    explicit BufferHolder(const FileBuffer &buffer, off_t offset = 0)
-        : _fd(buffer.fd()), size_(buffer.size()), offset_(offset), type(File) {}
+            explicit BufferHolder(const RawBuffer& buffer, off_t offset = 0)
+                : _raw(buffer)
+                , size_(buffer.size())
+                , offset_(offset)
+                , type(Raw)
+            { }
 
-    bool isFile() const { return type == File; }
-    bool isRaw() const { return type == Raw; }
-    size_t size() const { return size_; }
-    size_t offset() const { return offset_; }
+            explicit BufferHolder(const FileBuffer& buffer, off_t offset = 0)
+                : _fd(buffer.fd())
+                , size_(buffer.size())
+                , offset_(offset)
+                , type(File)
+            { }
 
-    Fd fd() const {
-      if (!isFile())
-        throw std::runtime_error("Tried to retrieve fd of a non-filebuffer");
-      return _fd;
-    }
+            bool isFile() const { return type == File; }
+            bool isRaw() const { return type == Raw; }
+            size_t size() const { return size_; }
+            size_t offset() const { return offset_; }
 
-    RawBuffer raw() const {
-      if (!isRaw())
-        throw std::runtime_error("Tried to retrieve raw data of a non-buffer");
-      return _raw;
-    }
+            Fd fd() const
+            {
+                if (!isFile())
+                    throw std::runtime_error("Tried to retrieve fd of a non-filebuffer");
+                return _fd;
+            }
 
-    BufferHolder detach(size_t offset = 0) {
-      if (!isRaw())
-        return BufferHolder(_fd, size_, offset);
+            RawBuffer raw() const
+            {
+                if (!isRaw())
+                    throw std::runtime_error("Tried to retrieve raw data of a non-buffer");
+                return _raw;
+            }
 
-      auto detached = _raw.copy(offset);
-      return BufferHolder(detached);
-    }
+            BufferHolder detach(size_t offset = 0)
+            {
+                if (!isRaw())
+                    return BufferHolder(_fd, size_, offset);
 
-  private:
-    BufferHolder(Fd fd, size_t size, off_t offset = 0)
-        : _fd(fd), size_(size), offset_(offset), type(File) {}
+                auto detached = _raw.copy(offset);
+                return BufferHolder(detached);
+            }
 
-    RawBuffer _raw;
-    Fd _fd;
+        private:
+            BufferHolder(Fd fd, size_t size, off_t offset = 0)
+                : _fd(fd)
+                , size_(size)
+                , offset_(offset)
+                , type(File)
+            { }
 
-    size_t size_ = 0;
-    off_t offset_ = 0;
-    Type type;
-  };
+            RawBuffer _raw;
+            Fd _fd;
 
-  struct WriteEntry {
-    WriteEntry(Async::Deferred<ssize_t> deferred_, BufferHolder buffer_,
-               Fd peerFd_, int flags_ = 0)
-        : deferred(std::move(deferred_)), buffer(std::move(buffer_)),
-          flags(flags_), peerFd(peerFd_) {}
+            size_t size_  = 0;
+            off_t offset_ = 0;
+            Type type;
+        };
 
-    Async::Deferred<ssize_t> deferred;
-    BufferHolder buffer;
-    int flags = 0;
-    Fd peerFd = -1;
-  };
+        struct WriteEntry
+        {
+            WriteEntry(Async::Deferred<ssize_t> deferred_, BufferHolder buffer_,
+                       Fd peerFd_, int flags_ = 0)
+                : deferred(std::move(deferred_))
+                , buffer(std::move(buffer_))
+                , flags(flags_)
+                , peerFd(peerFd_)
+            { }
 
-  struct TimerEntry {
-    TimerEntry(Fd fd_, std::chrono::milliseconds value_,
-               Async::Deferred<uint64_t> deferred_)
-        : fd(fd_), value(value_), deferred(std::move(deferred_)), active() {
-      active.store(true, std::memory_order_relaxed);
-    }
+            Async::Deferred<ssize_t> deferred;
+            BufferHolder buffer;
+            int flags = 0;
+            Fd peerFd = -1;
+        };
 
-    TimerEntry(TimerEntry &&other)
-        : fd(other.fd), value(other.value), deferred(std::move(other.deferred)),
-          active(other.active.load()) {}
+        struct TimerEntry
+        {
+            TimerEntry(Fd fd_, std::chrono::milliseconds value_,
+                       Async::Deferred<uint64_t> deferred_)
+                : fd(fd_)
+                , value(value_)
+                , deferred(std::move(deferred_))
+                , active()
+            {
+                active.store(true, std::memory_order_relaxed);
+            }
 
-    void disable() { active.store(false, std::memory_order_relaxed); }
+            TimerEntry(TimerEntry&& other)
+                : fd(other.fd)
+                , value(other.value)
+                , deferred(std::move(other.deferred))
+                , active(other.active.load())
+            { }
 
-    bool isActive() { return active.load(std::memory_order_relaxed); }
+            void disable() { active.store(false, std::memory_order_relaxed); }
 
-    Fd fd;
-    std::chrono::milliseconds value;
-    Async::Deferred<uint64_t> deferred;
-    std::atomic<bool> active;
-  };
+            bool isActive() const { return active.load(std::memory_order_relaxed); }
 
-  struct PeerEntry {
-    explicit PeerEntry(std::shared_ptr<Peer> peer_) : peer(std::move(peer_)) {}
+            Fd fd;
+            std::chrono::milliseconds value;
+            Async::Deferred<uint64_t> deferred;
+            std::atomic<bool> active;
+        };
 
-    std::shared_ptr<Peer> peer;
-  };
-  using Lock = std::mutex;
-  using Guard = std::lock_guard<Lock>;
+        struct PeerEntry
+        {
+            explicit PeerEntry(std::shared_ptr<Peer> peer_)
+                : peer(std::move(peer_))
+            { }
 
-  PollableQueue<WriteEntry> writesQueue;
-  std::unordered_map<Fd, std::deque<WriteEntry>> toWrite;
-  Lock toWriteLock;
+            std::shared_ptr<Peer> peer;
+        };
+        using Lock  = std::mutex;
+        using Guard = std::lock_guard<Lock>;
 
-  PollableQueue<TimerEntry> timersQueue;
-  std::unordered_map<Fd, TimerEntry> timers;
+        PollableQueue<WriteEntry> writesQueue;
+        std::unordered_map<Fd, std::deque<WriteEntry>> toWrite;
+        Lock toWriteLock;
 
-  PollableQueue<PeerEntry> peersQueue;
-  std::unordered_map<Fd, std::shared_ptr<Peer>> peers;
+        PollableQueue<TimerEntry> timersQueue;
+        std::unordered_map<Fd, TimerEntry> timers;
 
-  Async::Deferred<rusage> loadRequest_;
-  NotifyFd notifier;
+        PollableQueue<PeerEntry> peersQueue;
 
-  std::shared_ptr<Tcp::Handler> handler_;
+        Async::Deferred<rusage> loadRequest_;
+        NotifyFd notifier;
 
-  bool isPeerFd(Fd fd) const;
-  bool isTimerFd(Fd fd) const;
-  bool isPeerFd(Polling::Tag tag) const;
-  bool isTimerFd(Polling::Tag tag) const;
+        std::shared_ptr<Tcp::Handler> handler_;
 
-  std::shared_ptr<Peer> &getPeer(Fd fd);
-  std::shared_ptr<Peer> &getPeer(Polling::Tag tag);
+    protected:
+        void removePeer(const std::shared_ptr<Peer>& peer);
+        std::unordered_map<Fd, std::shared_ptr<Peer>> peers;
 
-  void armTimerMs(Fd fd, std::chrono::milliseconds value,
-                  Async::Deferred<uint64_t> deferred);
+    private:
+        bool isPeerFd(Fd fd) const;
+        bool isTimerFd(Fd fd) const;
+        bool isPeerFd(Polling::Tag tag) const;
+        bool isTimerFd(Polling::Tag tag) const;
 
-  void armTimerMsImpl(TimerEntry entry);
+        std::shared_ptr<Peer>& getPeer(Fd fd);
+        std::shared_ptr<Peer>& getPeer(Polling::Tag tag);
 
-  // This will attempt to drain the write queue for the fd
-  void asyncWriteImpl(Fd fd);
-  ssize_t sendRawBuffer(Fd fd, const char *buffer, size_t len, int flags);
-  ssize_t sendFile(Fd fd, Fd file, off_t offset, size_t len);
+        void armTimerMs(Fd fd, std::chrono::milliseconds value,
+                        Async::Deferred<uint64_t> deferred);
 
-  void handlePeerDisconnection(const std::shared_ptr<Peer> &peer);
-  void handleIncoming(const std::shared_ptr<Peer> &peer);
-  void handleWriteQueue(bool flush = false);
-  void handleTimerQueue();
-  void handlePeerQueue();
-  void handleNotify();
-  void handleTimer(TimerEntry entry);
-  void handlePeer(const std::shared_ptr<Peer> &entry);
-};
+        void armTimerMsImpl(TimerEntry entry);
 
-} // namespace Tcp
-} // namespace Pistache
+        // This will attempt to drain the write queue for the fd
+        void asyncWriteImpl(Fd fd);
+        ssize_t sendRawBuffer(Fd fd, const char* buffer, size_t len, int flags);
+        ssize_t sendFile(Fd fd, Fd file, off_t offset, size_t len);
+
+        void handlePeerDisconnection(const std::shared_ptr<Peer>& peer);
+        void handleIncoming(const std::shared_ptr<Peer>& peer);
+        void handleWriteQueue(bool flush = false);
+        void handleTimerQueue();
+        void handlePeerQueue();
+        void handleNotify();
+        void handleTimer(TimerEntry entry);
+        void handlePeer(const std::shared_ptr<Peer>& peer);
+    };
+
+} // namespace Pistache::Tcp

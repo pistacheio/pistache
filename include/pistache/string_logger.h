@@ -1,3 +1,9 @@
+/*
+ * SPDX-FileCopyrightText: 2020 Michael Ellison
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /* log.h
    Michael Ellison, 27 May 2020
 
@@ -7,41 +13,45 @@
 
 #pragma once
 
-#include <memory>
 #include <iostream>
+#include <memory>
 
-namespace Pistache {
-namespace Log {
+namespace Pistache::Log
+{
 
-enum class Level {
-  TRACE,
-  DEBUG,
-  INFO,
-  WARN,
-  ERROR,
-  FATAL
-};
+    enum class Level {
+        TRACE,
+        DEBUG,
+        INFO,
+        WARN,
+        ERROR,
+        FATAL
+    };
 
-class StringLogger {
-public:
-  virtual void log(Level level, const std::string &message) = 0;
-  virtual bool isEnabledFor(Level level) const = 0;
+    class StringLogger
+    {
+    public:
+        virtual void log(Level level, const std::string& message) = 0;
+        virtual bool isEnabledFor(Level level) const              = 0;
 
-  virtual ~StringLogger() {}
-};
+        virtual ~StringLogger() = default;
+    };
 
-class StringToStreamLogger : public StringLogger {
-public:
-  explicit StringToStreamLogger(Level level, std::ostream *out = &std::cerr)
-    : level_(level), out_(out) {}
-  ~StringToStreamLogger() override {}
+    class StringToStreamLogger : public StringLogger
+    {
+    public:
+        explicit StringToStreamLogger(Level level, std::ostream* out = &std::cerr)
+            : level_(level)
+            , out_(out)
+        { }
+        ~StringToStreamLogger() override = default;
 
-  void log(Level level, const std::string &message) override;
-  bool isEnabledFor(Level level) const override;
-private:
-  Level level_;
-  std::ostream* out_;
-};
+        void log(Level level, const std::string& message) override;
+        bool isEnabledFor(Level level) const override;
 
-} // namespace Log
-} // namespace Pistache
+    private:
+        Level level_;
+        std::ostream* out_;
+    };
+
+} // namespace Pistache::Log
