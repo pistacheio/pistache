@@ -1,0 +1,148 @@
+# SPDX-FileCopyrightText: 2021 Andrea Pappacoda <andrea@pappacoda.it>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# To build the Debian package of the current commit and the previous one
+# I could use uscan twice. This works for pull requests but doesn't for push
+# on master, because uscan can only download the latest commit of a specific
+# branch or a tag. To build the current package in PRs I first edit d/watch
+# to point to the contributor's repo and to the PR branch so that it
+# downloads that source, and then repeat without editing d/watch, because it
+# already points to the correct "previous" commit, that is the main branch.
+# I think that using the dawidd6/action-download-artifact Action to download
+# the Debian package of the previous commit when pushing to master is the
+# only solution that would enable us to run this Action also on: push.
+
+name: abipkgdiff
+
+on:
+#  push:
+#    branches: master
+#    paths-ignore: pistache.io/**
+  pull_request:
+    paths-ignore: pistache.io/**
+
+# The default Debian shell (dash) is faster than bash at running scripts, and
+# using bash when it is not needed doesn't make sense.
+defaults:
+  run:
+    shell: sh
+
+jobs:
+  abi:
+    runs-on: ubuntu-latest
+
+    env:
+      DEBFULLNAME: ${{ github.actor }}
+
+    steps:
+    - name: Checkout current (push)
+      if: github.event_name == 'push'
+      uses: actions/checkout@v2
+      with:
+        path: current
+        fetch-depth: 2
+
+    - name: Checkout current (pull_request)
+      if: github.event_name == 'pull_request'
+      uses: actions/checkout@v2
+      with:
+        path: current
+        repository: ${{ github.actor }}/pistache
+        ref: ${{ github.head_ref }}
+
+    - name: Set current commit hash
+      id: hash_current
+      working-directory: current
+      run: |
+        echo "hash_current_long=$(git rev-parse HEAD)" >> $GITHUB_ENV
+        echo "hash_current_short=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+    - name: Set previous commit hash (push)
+      if: github.event_name == 'push'
+      id: hash_previous
+      working-directory: current
+      run: |
+        echo "hash_previous_long=$(git rev-parse HEAD~1)" >> $GITHUB_ENV
+        echo "hash_previous_short=$(git rev-parse --short HEAD~1)" >> $GITHUB_ENV
+
+    - name: Checkout previous (push)
+      if: github.event_name == 'push'
+      uses: actions/checkout@v2
+      with:
+        path: previous
+        ref: ${{ steps.hash.outputs.previous }}
+
+    - name: Checkout previous (pull_request)
+      if: github.event_name == 'pull_request'
+      uses: actions/checkout@v2
+      with:
+        path: previous
+        ref: master
+        repository: pistacheio/pistache
+
+    - name: Set previous commit hash (pull_request)
+      if: github.event_name == 'pull_request'
+      working-directory: previous
+      run: |
+        echo "hash_previous_long=$(git rev-parse HEAD)" >> $GITHUB_ENV
+        echo "hash_previous_short=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+    - name: Checkout Debian data in current
+      uses: actions/checkout@v2
+      with:
+        ref: debian
+        path: current/debian
+
+    - name: Checkout Debian data in previous
+      uses: actions/checkout@v2
+      with:
+        ref: debian
+        path: previous/debian
+
+    - name: Install dependencies
+      working-directory: current
+      run: |
+        sudo apt -qq update
+        sudo apt -qq install abigail-tools devscripts tree
+        sudo apt -qq build-dep .
+
+    # This tells uscan to download the source from the user who submitted
+    # the PR instead of using upstream HEAD
+    - name: Build current Debian package (pull_request)
+      if: github.event_name == 'pull_request'
+      working-directory: current
+      run: |
+        sed --posix --in-place 's|pistacheio|${{ github.actor }}|g' debian/watch
+        sed --posix --in-place 's|HEAD|heads/${{ github.head_ref }}|g' debian/watch
+        uscan
+        cd ../pistache-*+git*.${{ env.hash_current_short }}/
+        DEB_BUILD_OPTIONS=nocheck debuild -uc -us
+
+    - name: Build previous Debian package (pull_request)
+      if: github.event_name == 'pull_request'
+      working-directory: previous
+      run: |
+        uscan
+        cd ../pistache-*+git*.${{ env.hash_previous_short }}/
+        DEB_BUILD_OPTIONS=nocheck debuild -uc -us
+
+    - name: Build current Debian package (push)
+      if: github.event_name == 'push'
+      working-directory: current
+      env:
+        DEBEMAIL: ${{ github.event.pusher.email }}
+        DEBFULLNAME: ${{ github.event.pusher.name }}
+      run: |
+        uscan
+        cd ../pistache-*/
+        DEB_BUILD_OPTIONS=nocheck debuild -uc -us
+
+    - name: Run abipkgdiff
+      run: abipkgdiff
+           --debug-info-pkg1 libpistache[0-9]-dbgsym_*${{ env.hash_previous_short }}*.*deb
+           --debug-info-pkg2 libpistache[0-9]-dbgsym_*${{ env.hash_current_short  }}*.*deb
+           --devel-pkg1      libpistache-dev_*${{ env.hash_previous_short }}*.deb
+           --devel-pkg2      libpistache-dev_*${{ env.hash_current_short  }}*.deb
+           libpistache[0-9]_*${{ env.hash_previous_short }}*.deb
+           libpistache[0-9]_*${{ env.hash_current_short  }}*.deb
