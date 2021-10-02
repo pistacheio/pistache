@@ -139,6 +139,7 @@ namespace Pistache::Tcp
             }
 
             SSL_CTX_set_mode(GetSSLContext(ctx), SSL_MODE_ENABLE_PARTIAL_WRITE);
+            SSL_CTX_set_mode(GetSSLContext(ctx), SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
             return ctx;
         }
 
