@@ -5,7 +5,7 @@
 project(
 	'pistache',
 	'cpp',
-	version: '0.0.002',
+	version: '0.0.003', # TODO: This should be assigned dynamically from version.txt
 	license: 'Apache-2.0',
 	default_options: [
 		'cpp_std=c++17',
@@ -59,7 +59,6 @@ int main() {
 has_working_cxx_atomics = compiler.links(cxx_atomics_check_code, name: 'std::atomic')
 if (compiler_id == 'clang' or compiler_id == 'gcc') and not has_working_cxx_atomics
 	libatomic_dep = compiler.find_library('atomic')
-	assert(compiler.has_function('__atomic_fetch_add_4', dependencies: libatomic_dep), 'Host compiler appears to require libatomic, but cannot find it.')
 	has_working_cxx_atomics = compiler.links(cxx_atomics_check_code, dependencies: libatomic_dep, name: 'std::atomic with libatomic')
 	assert(has_working_cxx_atomics, 'Host compiler must support std::atomic')
 	deps_libpistache += libatomic_dep
@@ -78,7 +77,6 @@ int main() {
 has_working_cxx_atomics64 = compiler.links(cxx_atomics64_check_code, name: 'std::atomic<uint64_t>')
 if (compiler_id == 'clang' or compiler_id == 'gcc') and not has_working_cxx_atomics64
 	libatomic_dep = compiler.find_library('atomic')
-	assert(compiler.has_function('__atomic_load_8', dependencies: libatomic_dep), 'Host compiler appears to require libatomic for 64-bit operations, but cannot find it.')
 	has_working_cxx_atomics = compiler.links(cxx_atomics64_check_code, dependencies: libatomic_dep, name: 'std::atomic<uint64_t> with libatomic')
 	assert(has_working_cxx_atomics, 'Host compiler must support 64-bit std::atomic')
 	deps_libpistache += libatomic_dep
