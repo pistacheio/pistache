@@ -17,7 +17,7 @@ project(
 	meson_version: '>=0.50.0'
 )
 
-if host_machine.system() != 'linux'
+if host_machine.system() not in ['linux', 'darwin']
 	error('Pistache currenly only supports Linux. See https://github.com/pistacheio/pistache/issues/6#issuecomment-242398225 for more information')
 endif
 
