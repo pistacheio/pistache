@@ -12,8 +12,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+file(READ "version.txt" VERSION_FILE_RAW)
+string(STRIP "${VERSION_FILE_RAW}" VERSION_FILE)
+
 project (pistache
-    LANGUAGES C CXX)
+    LANGUAGES C CXX
+    VERSION ${VERSION_FILE})
 
 include(GNUInstallDirs)
 
@@ -42,50 +46,17 @@ if (PISTACHE_USE_SSL)
     find_package(OpenSSL REQUIRED COMPONENTS SSL Crypto)
 endif ()
 
-# Set release version...
+# Set version numbers in a header file
 
-    # Retrieve from external file...
-    file(READ "version.txt" VERSION_FILE)
-
-    # Extract version...
-
-        # Major...
-        string(REGEX MATCH "VERSION_MAJOR *([0-9]*)" _ ${VERSION_FILE})
-        set(VERSION_MAJOR ${CMAKE_MATCH_1})
-
-        # Minor...
-        string(REGEX MATCH "VERSION_MINOR *([0-9]+)" _ ${VERSION_FILE})
-        set(VERSION_MINOR ${CMAKE_MATCH_1})
-
-        # Patch...
-        string(REGEX MATCH "VERSION_PATCH *([0-9]+)" _ ${VERSION_FILE})
-        set(VERSION_PATCH ${CMAKE_MATCH_1})
-
-        # Git date...
-        string(REGEX MATCH "VERSION_GIT_DATE *([0-9]+)" _ ${VERSION_FILE})
-        set(VERSION_GIT_DATE ${CMAKE_MATCH_1})
-
-        # Full version
-        set(VERSION        ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}-git${VERSION_GIT_DATE})
-
-    # Make available in a header file...
-    configure_file (
-        "include/pistache/version.h.in"
-        "include/pistache/version.h"
-        @ONLY
-    )
-
-# Set public interface version...
-
-    # Major should be incremented every time a non-backward compatible change
-    #  occurs in the ABI...
-    string(REGEX MATCH "SONAME_VERSION_MAJOR *([0-9]*)" _ ${VERSION_FILE})
-    set(SONAME_VERSION_MAJOR ${CMAKE_MATCH_1})
-
-    # Minor should be incremented every time a backward compatible change occurs
-    #  in the ABI...
-    string(REGEX MATCH "SONAME_VERSION_MINOR *([0-9]+)" _ ${VERSION_FILE})
-    set(SONAME_VERSION_MINOR ${CMAKE_MATCH_1})
+set(VERSION_MAJOR    ${pistache_VERSION_MAJOR})
+set(VERSION_MINOR    ${pistache_VERSION_MINOR})
+set(VERSION_PATCH    ${pistache_VERSION_PATCH})
+set(VERSION_GIT_DATE ${pistache_VERSION_TWEAK})
+configure_file (
+    "include/pistache/version.h.in"
+    "include/pistache/version.h"
+    @ONLY
+)
 
 add_subdirectory (src)
 
