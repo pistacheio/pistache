@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2021 Hugo Rodrigues
+#
+# SPDX-License-Identifier: CC0-1.0
+
+name: RPM Lint
+
+on:
+    push:
+        branches:
+            - rpm
+    pull_request:
+        branches:
+            - rpm
+
+jobs:
+    lint:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v2
+
+            - name: Install depedencies
+              run: sudo apt-get -qq update && sudo apt-get -qq install --assume-yes --no-install-recommends rpmlint
+
+            - name: Lint
+              run: rpmlint SPECS/*.spec
