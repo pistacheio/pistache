@@ -2,9 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-configure_file(input: 'version.h.in', output: 'version.h', configuration: version_data_conf, install: get_option('PISTACHE_INSTALL'), install_dir: get_option('includedir')/'pistache')
+configure_file(input: 'version.h.in', output: 'version.h', configuration: version_conf, install: get_option('PISTACHE_INSTALL'), install_dir: get_option('includedir')/'pistache')
 
-install_headers([
+install_headers(
 	'async.h',
 	'base64.h',
 	'client.h',
@@ -41,7 +41,7 @@ install_headers([
 	'type_checkers.h',
 	'typeid.h',
 	'utils.h',
-	'view.h'
-], subdir: 'pistache')
+	'view.h',
+	subdir: 'pistache')
 
 install_subdir('serializer', install_dir: get_option('includedir')/'pistache')

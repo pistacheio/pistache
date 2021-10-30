@@ -5,7 +5,7 @@
 project(
 	'pistache',
 	'cpp',
-	version: '0.0.003', # TODO: This should be assigned dynamically from version.txt
+	version: '0.0.3', # In Meson 0.57 this can be replaced with files('version.txt')
 	license: 'Apache-2.0',
 	default_options: [
 		'cpp_std=c++17',
@@ -86,26 +86,27 @@ if get_option('PISTACHE_USE_SSL')
 	deps_libpistache += dependency('openssl')
 endif
 
-version_data_raw = ''
+version_array = []
 if meson.version().version_compare('>=0.57.0')
-	fs = import('fs')
-	version_data_raw = fs.read('version.txt').split('\n')
+	version_array = import('fs').read('version.txt').strip().split('.')
 else
 	# Ugly workaround for reading a file
-	version_data_raw = run_command(
+	version_array = run_command(
 		import('python').find_installation(), '-c', 'print(open("version.txt").read())'
-	).stdout().strip().split('\n')
+	).stdout().strip().split('.')
 endif
-version_data_conf = configuration_data()
-foreach _ : version_data_raw
-	if _ != ''
-		__ = _.split(' ')
-		version_data_conf.set(__[0], __[-1])
-	endif
-endforeach
 
-pistache_version_str = '.'.join([version_data_conf.get_unquoted('VERSION_MAJOR'), version_data_conf.get_unquoted('VERSION_MINOR'), version_data_conf.get_unquoted('VERSION_PATCH')])
-pistache_soversion_str = '.'.join([version_data_conf.get_unquoted('SONAME_VERSION_MAJOR'), version_data_conf.get_unquoted('SONAME_VERSION_MINOR')])
+version_major    = version_array[0]
+version_minor    = version_array[1]
+version_patch    = version_array[2]
+version_git_date = version_array[3]
+version_str      = '@0@.@1@.@2@'.format(version_major, version_minor, version_patch)
+
+version_conf = configuration_data()
+version_conf.set('VERSION_MAJOR',    version_major)
+version_conf.set('VERSION_MINOR',    version_minor)
+version_conf.set('VERSION_PATCH',    version_patch)
+version_conf.set('VERSION_GIT_DATE', version_git_date)
 
 incl_pistache = include_directories('include')
 
