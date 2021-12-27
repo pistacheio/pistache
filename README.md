@@ -77,6 +77,7 @@ Currently Pistache is built and tested on a number of [architectures](https://wi
 - armhf
 - i386
 - ppc64el
+- riscv64
 - s390x
 
 #### Ubuntu PPA (Unstable)
