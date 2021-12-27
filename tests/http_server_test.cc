@@ -131,6 +131,37 @@ struct HandlerWithSlowPage : public Http::Handler
 
 std::atomic<size_t> HandlerWithSlowPage::counter { 0 };
 
+struct HandlerWithSlowPageConcurrentCounter : public Http::Handler
+{
+    HTTP_PROTOTYPE(HandlerWithSlowPageConcurrentCounter)
+
+    explicit HandlerWithSlowPageConcurrentCounter(int delay = 0)
+        : delay_(delay)
+    { }
+
+    void onRequest(const Http::Request& request,
+                   Http::ResponseWriter writer) override
+    {
+        if (request.resource() != SLOW_PAGE)
+            writer.send(Http::Code::Not_Found);
+
+        LOGGER("server", "onRequest [" << std::to_string(++concurrent_requests) << "] Slow page reference counted!");
+        std::this_thread::sleep_for(std::chrono::seconds(delay_));
+        LOGGER("server", "onRequest [" << std::to_string(--concurrent_requests) << "] Slow page reference counted!");
+
+        const std::string message = "Done";
+        writer.send(Http::Code::Ok, message);
+        LOGGER("server", "Sent: " << message);
+    }
+
+    static size_t getConcurrentRequests() noexcept { return concurrent_requests; }
+
+    int delay_;
+    static std::atomic<size_t> concurrent_requests;
+};
+
+std::atomic<size_t> HandlerWithSlowPageConcurrentCounter::concurrent_requests { 0 };
+
 struct FileHandler : public Http::Handler
 {
     HTTP_PROTOTYPE(FileHandler)
@@ -312,15 +343,15 @@ TEST(http_server_test, multiple_client_with_requests_to_multithreaded_server)
     LOGGER("test", "Server address: " << server_address);
 
     const int NO_TIMEOUT                = 0;
-    const int SIX_SECONDS_TIMOUT        = 6;
+    const int SIX_SECONDS_TIMEOUT       = 6;
     const int FIRST_CLIENT_REQUEST_SIZE = 4;
     std::future<int> result1(std::async(clientLogicFunc,
                                         FIRST_CLIENT_REQUEST_SIZE, server_address,
-                                        NO_TIMEOUT, SIX_SECONDS_TIMOUT));
+                                        NO_TIMEOUT, SIX_SECONDS_TIMEOUT));
     const int SECOND_CLIENT_REQUEST_SIZE = 5;
     std::future<int> result2(
         std::async(clientLogicFunc, SECOND_CLIENT_REQUEST_SIZE, server_address,
-                   NO_TIMEOUT, SIX_SECONDS_TIMOUT));
+                   NO_TIMEOUT, SIX_SECONDS_TIMEOUT));
 
     int res1 = result1.get();
     int res2 = result2.get();
@@ -832,4 +863,57 @@ TEST(http_server_test, client_multiple_requests_disconnects_handled)
     server.shutdown();
 
     ASSERT_EQ(result, true);
+}
+
+TEST(http_server_test, multiple_client_with_requests_to_shutting_down_multithreaded_server)
+{
+    const Pistache::Address address("localhost", Pistache::Port(0));
+
+    const int CLIENT_SIZE = 30;
+
+    Http::Endpoint server(address);
+    auto flags       = Tcp::Options::ReuseAddr;
+    auto server_opts = Http::Endpoint::options().flags(flags).threads(CLIENT_SIZE);
+    server.init(server_opts);
+    auto handler = Http::make_handler<HandlerWithSlowPageConcurrentCounter>(10);
+    server.setHandler(handler);
+    server.serveThreaded();
+
+    const std::string server_address = "localhost:" + server.getPort().toString();
+    LOGGER("test", "Server address: " << server_address);
+
+    std::vector<Http::Experimental::Client> clients(CLIENT_SIZE);
+
+    std::vector<Async::Promise<Http::Response>> responses;
+    std::atomic<int> response_counter = 0;
+
+    for (auto& client : clients)
+    {
+        client.init();
+
+        auto request_builder  = client.get(server_address);
+        auto response_promise = request_builder.send();
+        response_promise.then(
+            [&response_counter](Http::Response response) {
+                if (response.code() == Http::Code::Ok)
+                    ++response_counter;
+            },
+            Async::IgnoreException);
+        responses.push_back(std::move(response_promise));
+    }
+
+    auto sync = Async::whenAll(std::begin(responses), std::end(responses));
+    Async::Barrier<std::vector<Http::Response>> barrier(sync);
+
+    barrier.wait_for(std::chrono::seconds(5));
+
+    // This should block until all concurrent requests are complete...
+    server.shutdown();
+
+    ASSERT_EQ(handler.get()->getConcurrentRequests(), 0);
+
+    for (auto& client : clients)
+        client.shutdown();
+
+    ASSERT_EQ(response_counter, CLIENT_SIZE);
 }
