@@ -355,8 +355,9 @@ namespace Pistache::Tcp
         }
         else
         {
-#endif /* PISTACHE_USE_SSL */
-            bytesWritten = ::send(fd, buffer, len, flags);
+#endif /* PISTACHE_USE_SSL */ 
+           //Change to fix Issue#1007. https://github.com/pistacheio/pistache/issues/1007
+            bytesWritten = ::send(fd, buffer, len, flags|MSG_NOSIGNAL);
 #ifdef PISTACHE_USE_SSL
         }
 #endif /* PISTACHE_USE_SSL */
