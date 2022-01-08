@@ -267,3 +267,46 @@ TEST_F(StreamingTests, ChunkedStream)
     EXPECT_EQ(chunks[1], "world");
     EXPECT_EQ(chunks[2], "!");
 }
+
+TEST_F(StreamingTests, ChunkedStreamDisconnect)
+{
+    SyncContext ctx;
+
+    // force unbuffered
+    curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, 1);
+
+    Init(std::make_shared<HelloHandler>(ctx));
+
+    std::thread thread([&]() {
+        CURLM *multi_handle;
+        int still_running = 1;
+
+        multi_handle = curl_multi_init();
+        curl_multi_add_handle(multi_handle, curl);
+
+        // This sequence of _perform, _poll, _perform starts a requests (all 3 are needed)
+        curl_multi_perform(multi_handle, &still_running);
+        if(still_running){
+            curl_multi_poll(multi_handle, NULL, 0, 1000, NULL);
+            curl_multi_perform(multi_handle, &still_running);
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        
+        // Hard-close the client request & socket before server is done responding
+        curl_multi_cleanup(multi_handle);
+    });
+
+    std::unique_lock<std::mutex> lk { ctx.m };
+    ctx.cv.wait(lk, [&ctx] { return ctx.flag; });
+
+    //Bad behavior might take a few seconds...
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+
+    if (thread.joinable())
+    {
+        thread.join();
+    }
+
+    // Don't care about response content, this test will fail if SIGINT is raised
+}
