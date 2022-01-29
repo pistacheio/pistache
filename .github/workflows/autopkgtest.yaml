@@ -66,24 +66,8 @@ jobs:
         sudo apt -qq update
         sudo apt -qq autopurge '*yarn*' '*npm*' '*node*'
         sudo rm -rf /usr/local/lib/node_modules
-        sudo apt --assume-yes install genisoimage qemu-system vmdb2/testing devscripts --no-install-recommends qemu-user-static/testing qemu-efi-aarch64 qemu-efi-arm ovmf ovmf-ia32 && sudo apt-mark auto qemu-user-static qemu-efi-aarch64 qemu-efi-arm ovmf ovmf-ia32
+        sudo apt --assume-yes install autopkgtest/testing genisoimage qemu-system vmdb2/testing devscripts --no-install-recommends qemu-user-static/testing qemu-efi-aarch64 qemu-efi-arm ovmf ovmf-ia32 && sudo apt-mark auto qemu-user-static qemu-efi-aarch64 qemu-efi-arm ovmf ovmf-ia32
         sudo apt -qq build-dep .
-
-    # Build and install autopkgtest from the latest master (5.17), since
-    # previous versions can't build non-x86 images. It is done in a nested /tmp
-    # directory because otherwise debuild would try to write in /, resulting in
-    # an error.
-    - name: Install autopkgtest from source
-      run: |
-        mkdir --parent /tmp/autopkgtest-build
-        curl --silent --output /tmp/autopkgtest-build/autopkgtest-5.17.tar --proto https --tlsv1.3 --http2-prior-knowledge https://salsa.debian.org/ci-team/autopkgtest/-/archive/debian/5.17/autopkgtest-debian-5.17.tar
-        tar --extract --file=/tmp/autopkgtest-build/autopkgtest-5.17.tar --directory=/tmp/autopkgtest-build
-        cd /tmp/autopkgtest-build/autopkgtest-debian-5.17
-        sudo apt -qq build-dep . --default-release=testing
-        DEB_BUILD_OPTIONS=nocheck debuild --unsigned-source --unsigned-changes
-        sudo apt -qq install ../autopkgtest*.deb
-        cd -
-        rm -rf /tmp/autopkgtest-build
 
     - name: Build image
       run: sudo autopkgtest-build-qemu --architecture ${{ matrix.arch }} --size 12G testing $HOME/autopkgtest-testing.img
