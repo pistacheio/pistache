@@ -25,6 +25,7 @@
 #include <unordered_map>
 
 #include <fcntl.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -735,6 +736,33 @@ namespace Pistache::Http
         }
 
         return peer_.lock();
+    }
+
+    
+    bool ResponseStream::isOpen()
+    {
+        return !isClosed();
+    }
+
+    bool ResponseStream::isClosed()
+    {
+        //function proposed in stackoverflow post
+        //https://stackoverflow.com/questions/5640144/c-how-to-use-select-to-see-if-a-socket-has-closed#comment109826639_5640189
+
+        auto fd = peer()->fd();
+        fd_set rfd;
+        FD_ZERO(&rfd);
+        FD_SET(fd, &rfd);
+        timeval tv = { 0 };
+
+        //+1 neccessary described in https://www.man7.org/linux/man-pages/man2/select.2.html
+        select(fd + 1, &rfd, 0, 0, &tv);
+
+        if (!FD_ISSET(fd, &rfd))
+            return false;
+        int n = 0;
+        ioctl(fd, FIONREAD, &n);
+        return n == 0;
     }
 
     void ResponseStream::flush()
