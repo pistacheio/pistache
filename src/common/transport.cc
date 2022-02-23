@@ -370,6 +370,7 @@ namespace Pistache::Tcp
         else
         {
 #endif /* PISTACHE_USE_SSL */
+            //MSG_NOSIGNAL is used to prevent SIGPIPE on client connection termination
             bytesWritten = ::send(fd, buffer, len, flags | MSG_NOSIGNAL);
 #ifdef PISTACHE_USE_SSL
         }

@@ -737,6 +737,11 @@ namespace Pistache::Http
         return peer_.lock();
     }
 
+    /**
+     * @brief Checks if the socket is still alive     *
+     * This is done by checking if there is a present error on the socket.     *
+     * @return returns true if the connection is still alive, false otherwise.
+     */
     bool ResponseStream::isOpen()
     {
         auto fd = peer()->fd();
