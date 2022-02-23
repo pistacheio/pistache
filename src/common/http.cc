@@ -737,6 +737,12 @@ namespace Pistache::Http
         return peer_.lock();
     }
 
+    bool ResponseStream::isOpen()
+    {
+        auto fd = peer()->fd();
+        return transport_->getLastError(fd) == 0;
+    }
+
     void ResponseStream::flush()
     {
         timeout_.disarm();

@@ -169,7 +169,10 @@ namespace Pistache
         } // namespace Uri
 
         // Remove when RequestBuilder will be out of namespace Experimental
-        namespace Experimental {class RequestBuilder; }
+        namespace Experimental
+        {
+            class RequestBuilder;
+        }
 
         // 5. Request
         class Request : public Message
@@ -317,6 +320,8 @@ namespace Pistache
             friend ResponseStream& operator<<(ResponseStream& stream, const T& val);
 
             std::streamsize write(const char* data, std::streamsize sz);
+
+            bool isOpen();
 
             void flush();
             void ends();

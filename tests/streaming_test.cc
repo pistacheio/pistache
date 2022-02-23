@@ -217,18 +217,28 @@ public:
         std::unique_lock<std::mutex> lk(ctx_.m);
         auto stream = response.stream(Http::Code::Ok);
 
-        stream << "Hello ";
-        stream.flush();
+        auto chunks = {
+            "Hello ",
+            "world",
+            "!",
+        };
 
-        std::this_thread::sleep_for(std::chrono::seconds(2));
+        for (const auto& chunk : chunks)
+        {
+            if (stream.isOpen())
+            {
+                stream << chunk;
+                stream.flush();
+                std::this_thread::sleep_for(std::chrono::seconds(2));
+            }
+            else
+            {
+                break;
+            }
+        }
 
-        stream << "world";
-        stream.flush();
-
-        std::this_thread::sleep_for(std::chrono::seconds(2));
-
-        stream << "!";
-        stream.ends();
+        if (stream.isOpen())
+            stream.ends();
 
         ctx_.flag = true;
         lk.unlock();
@@ -278,7 +288,7 @@ TEST_F(StreamingTests, ChunkedStreamDisconnect)
     Init(std::make_shared<HelloHandler>(ctx));
 
     std::thread thread([&]() {
-        CURLM *multi_handle;
+        CURLM* multi_handle;
         int still_running = 1;
 
         multi_handle = curl_multi_init();
@@ -286,13 +296,14 @@ TEST_F(StreamingTests, ChunkedStreamDisconnect)
 
         // This sequence of _perform, _poll, _perform starts a requests (all 3 are needed)
         curl_multi_perform(multi_handle, &still_running);
-        if(still_running){
+        if (still_running)
+        {
             curl_multi_poll(multi_handle, NULL, 0, 1000, NULL);
             curl_multi_perform(multi_handle, &still_running);
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
-        
+
         // Hard-close the client request & socket before server is done responding
         curl_multi_cleanup(multi_handle);
     });
