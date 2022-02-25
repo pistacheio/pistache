@@ -322,6 +322,7 @@ namespace Pistache
             std::streamsize write(const char* data, std::streamsize sz);
 
             bool isOpen();
+            bool isClosed();
 
             void flush();
             void ends();

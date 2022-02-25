@@ -133,20 +133,6 @@ namespace Pistache::Tcp
         }
     }
 
-    int Transport::getLastError(Fd fd) const
-    {
-        int error     = 0;
-        socklen_t len = sizeof(error);
-        auto success  = getsockopt(fd, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&error), &len);
-
-        if (success != 0)
-        {
-            throw std::runtime_error("getsockopt failed");
-        }
-
-        return error;
-    }
-
     void Transport::disarmTimer(Fd fd)
     {
         auto it = timers.find(fd);
