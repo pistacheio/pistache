@@ -2,13 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-cmake_minimum_required (VERSION 3.11)
+cmake_minimum_required (VERSION 3.10)
 
 set(CMAKE_BUILD_TYPE_INIT Release)
 
 # CMAKE Pin cxx compiler to CXX17
 set(CMAKE_CXX_STANDARD 17)
-
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -47,7 +46,6 @@ if (PISTACHE_USE_SSL)
 endif ()
 
 # Set version numbers in a header file
-
 set(VERSION_MAJOR    ${pistache_VERSION_MAJOR})
 set(VERSION_MINOR    ${pistache_VERSION_MINOR})
 set(VERSION_PATCH    ${pistache_VERSION_PATCH})
@@ -58,7 +56,26 @@ configure_file (
     @ONLY
 )
 
-add_subdirectory (src)
+# cmake package config
+set(CONFIG_INSTALL_DIR "lib/cmake/${PROJECT_NAME}")
+set(GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
+set(VERSION_CONFIG_FILE "${GENERATED_DIR}/${PROJECT_NAME}ConfigVersion.cmake")
+set(PROJECT_CONFIG_FILE "${GENERATED_DIR}/${PROJECT_NAME}Config.cmake")
+set(TARGETS_EXPORT_NAME "${PROJECT_NAME}Targets")
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+    "${PROJECT_SOURCE_DIR}/cmake/pistacheConfig.cmake.in"
+    "${PROJECT_CONFIG_FILE}"
+    INSTALL_DESTINATION "${CONFIG_INSTALL_DIR}"
+)
+write_basic_package_version_file(
+    "${VERSION_CONFIG_FILE}"
+    VERSION "${${PROJECT_NAME}_VERSION}"
+    COMPATIBILITY SameMajorVersion
+)
+
+# src
+add_subdirectory(src)
 
 if (PISTACHE_BUILD_TESTS)
     include(CTest)
@@ -93,3 +110,4 @@ add_custom_target(format
     WORKING_DIRECTORY
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
+

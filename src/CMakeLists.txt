@@ -6,7 +6,7 @@ file (GLOB COMMON_SOURCE_FILES "common/*.cc")
 file (GLOB SERVER_SOURCE_FILES "server/*.cc")
 file (GLOB CLIENT_SOURCE_FILES "client/*.cc")
 
-file (GLOB INCLUDE_FILES ${PROJECT_SOURCE_DIR}/include/pistache/*h)
+file (GLOB INCLUDE_FILES ${PROJECT_SOURCE_DIR}/include/pistache/*.h)
 
 set(SOURCE_FILES
     ${COMMON_SOURCE_FILES}
@@ -14,11 +14,12 @@ set(SOURCE_FILES
     ${CLIENT_SOURCE_FILES}
     ${INCLUDE_FILES}
 )
+set(PUBLIC_HEADER_FILES ${INCLUDE_FILES})
 
+# target pistache object
 add_library(pistache OBJECT ${SOURCE_FILES})
 set_target_properties(pistache PROPERTIES POSITION_INDEPENDENT_CODE ${PISTACHE_PIC})
 add_definitions(-DONLY_C_LOCALE=1)
-
 set(PISTACHE_INCLUDE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
@@ -49,15 +50,32 @@ endif()
 target_include_directories(pistache PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../subprojects/hinnant-date/include)
 target_include_directories(pistache PUBLIC ${PISTACHE_INCLUDE})
 
+
+# target pistache_static
+add_library(pistache_static STATIC $<TARGET_OBJECTS:pistache>)
+target_link_libraries(pistache_static PRIVATE Threads::Threads ${CMAKE_REQUIRED_LIBRARIES})
+target_include_directories(pistache_static INTERFACE ${PISTACHE_INCLUDE})
+set_target_properties(pistache_static PROPERTIES
+    OUTPUT_NAME ${PROJECT_NAME}
+)
+set_target_properties(pistache_static PROPERTIES
+    PUBLIC_HEADER ${PUBLIC_HEADER_FILES})
+set(PISTACHE_TARGETS pistache_static)
+
+# target pistache_shared
 if (BUILD_SHARED_LIBS)
     add_library(pistache_shared SHARED $<TARGET_OBJECTS:pistache>)
     target_link_libraries(pistache_shared PRIVATE Threads::Threads ${CMAKE_REQUIRED_LIBRARIES})
     target_include_directories(pistache_shared INTERFACE ${PISTACHE_INCLUDE})
+    set_target_properties(pistache_shared PROPERTIES
+        OUTPUT_NAME ${PROJECT_NAME}
+        VERSION ${pistache_VERSION}
+        SOVERSION ${pistache_VERSION_MAJOR}
+    )
+    set_target_properties(pistache_shared PROPERTIES
+        PUBLIC_HEADER ${PUBLIC_HEADER_FILES})
+    set(PISTACHE_TARGETS ${PISTACHE_TARGETS} pistache_shared)
 endif ()
-
-add_library(pistache_static STATIC $<TARGET_OBJECTS:pistache>)
-target_link_libraries(pistache_static PRIVATE Threads::Threads ${CMAKE_REQUIRED_LIBRARIES})
-target_include_directories(pistache_static INTERFACE ${PISTACHE_INCLUDE})
 
 if (PISTACHE_USE_SSL)
     target_compile_definitions(pistache PUBLIC PISTACHE_USE_SSL)
@@ -71,14 +89,31 @@ if (PISTACHE_USE_SSL)
     endif ()
 endif ()
 
-if (BUILD_SHARED_LIBS)
-    set_target_properties(pistache_shared PROPERTIES
-        OUTPUT_NAME ${PROJECT_NAME}
-        VERSION ${pistache_VERSION}
-        SOVERSION ${pistache_VERSION_MAJOR}
-    )
-endif ()
 
-set_target_properties(pistache_static PROPERTIES
-    OUTPUT_NAME ${PROJECT_NAME}
+# cmake package install
+install(
+    TARGETS ${PISTACHE_TARGETS}
+    EXPORT "${TARGETS_EXPORT_NAME}"
+    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+    PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
 )
+install(
+    FILES ${PUBLIC_HEADER_FILES}
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME})
+install(
+    FILES "${CMAKE_CURRENT_BINARY_DIR}/../include/pistache/version.h"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}"
+)
+install(
+    FILES "${PROJECT_CONFIG_FILE}" "${VERSION_CONFIG_FILE}"
+    DESTINATION "${CONFIG_INSTALL_DIR}"
+)
+install(
+    EXPORT "${TARGETS_EXPORT_NAME}"
+    FILE "${PROJECT_NAME}Targets.cmake"
+    DESTINATION "${CONFIG_INSTALL_DIR}"
+    NAMESPACE "${PROJECT_NAME}::"
+)
+

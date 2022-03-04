@@ -1,0 +1,17 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(RapidJSON)
+find_dependency(Threads)
+
+include("${CMAKE_CURRENT_LIST_DIR}/@TARGETS_EXPORT_NAME@.cmake")
+
+set_and_check(pistache_INCLUDE_DIRS "@CMAKE_INSTALL_FULL_INCLUDEDIR@" )
+if(BUILD_WITH_STATIC_PISTACHE)
+    set(pistache_LIBRARIES pistache::pistache_static)
+    check_required_components("pistache_static")
+else()
+    set(pistache_LIBRARIES pistache::pistache_shared)
+    check_required_components("pistache_shared")
+endif()
+
