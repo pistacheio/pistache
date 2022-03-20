@@ -77,8 +77,12 @@ if (BUILD_SHARED_LIBS)
         VERSION ${pistache_VERSION}
         SOVERSION ${pistache_VERSION_MAJOR}
     )
+
+    install(TARGETS pistache_shared)
 endif ()
 
 set_target_properties(pistache_static PROPERTIES
     OUTPUT_NAME ${PROJECT_NAME}
 )
+
+install(TARGETS pistache_static)
