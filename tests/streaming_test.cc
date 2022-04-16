@@ -166,6 +166,7 @@ public:
 
         url = "http://localhost:" + std::to_string(endpoint.getPort()) + "/";
 
+        curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION,
                          static_cast<CURL_WRITEFUNCTION_PTR>(curl_callback));
