@@ -22,9 +22,7 @@ pistache_test_files = [
 	'http_client_test',
 	'listener_test',
 	'request_size_test',
-	'streaming_test',
 	'rest_server_test',
-	'rest_swagger_server_test',
 	'mailbox_test',
 	'stream_test',
 	'reactor_test',
@@ -35,6 +33,12 @@ pistache_test_files = [
 if get_option('PISTACHE_ENABLE_NETWORK_TESTS')
 	pistache_test_files += 'net_test'
 endif
+
+if get_option('PISTACHE_ENABLE_FLAKY_TESTS')
+    pistache_test_files += 'streaming_test'
+    pistache_test_files += 'rest_swagger_server_test'
+endif
+
 if get_option('PISTACHE_USE_SSL')
 	pistache_test_files += 'https_server_test'
 	subdir('certs')
