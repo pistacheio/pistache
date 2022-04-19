@@ -33,6 +33,7 @@ namespace Pistache::Http
 
         void setHeaderTimeout(std::chrono::milliseconds timeout);
         void setBodyTimeout(std::chrono::milliseconds timeout);
+        void setKeepaliveTimeout(std::chrono::milliseconds timeout);
 
         std::shared_ptr<Aio::Handler> clone() const override;
 
@@ -40,10 +41,13 @@ namespace Pistache::Http
         std::shared_ptr<Tcp::Handler> handler_;
         std::chrono::milliseconds headerTimeout_;
         std::chrono::milliseconds bodyTimeout_;
+        std::chrono::milliseconds keepaliveTimeout_;
 
         int timerFd;
 
         void checkIdlePeers();
+        bool checkTimeout(bool idle, Private::StepId id, std::chrono::milliseconds elapsed);
+        void closePeer(std::shared_ptr<Tcp::Peer>& peer);
     };
 
     TransportImpl::TransportImpl(const std::shared_ptr<Tcp::Handler>& handler)
@@ -101,6 +105,10 @@ namespace Pistache::Http
     {
         bodyTimeout_ = timeout;
     }
+    void TransportImpl::setKeepaliveTimeout(std::chrono::milliseconds timeout)
+    {
+        keepaliveTimeout_ = timeout;
+    }
 
     void TransportImpl::checkIdlePeers()
     {
@@ -113,25 +121,54 @@ namespace Pistache::Http
             auto time        = parser->time();
 
             auto now     = std::chrono::steady_clock::now();
-            auto elapsed = now - time;
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - time);
 
             auto* step = parser->step();
-            if (step->id() == Private::RequestLineStep::Id || step->id() == Private::HeadersStep::Id)
+            if (checkTimeout(peer->isIdle(), step->id(), elapsed))
             {
-                if (elapsed > headerTimeout_ || elapsed > bodyTimeout_)
-                    idlePeers.push_back(peer);
-            }
-            else if (step->id() == Private::BodyStep::Id)
-            {
-                if (elapsed > bodyTimeout_)
-                    idlePeers.push_back(peer);
+                idlePeers.push_back(peer);
             }
         }
 
-        for (const auto& idlePeer : idlePeers)
+        for (auto& idlePeer : idlePeers)
         {
-            ResponseWriter response(Http::Version::Http11, this, static_cast<Http::Handler*>(handler_.get()), idlePeer);
-            response.send(Http::Code::Request_Timeout).then([=](ssize_t) { removePeer(idlePeer); }, [=](std::exception_ptr) { removePeer(idlePeer); });
+            closePeer(idlePeer);
+        }
+    }
+    bool TransportImpl::checkTimeout(bool idle, Private::StepId id, std::chrono::milliseconds elapsed)
+    {
+        if (idle)
+        {
+            return elapsed > keepaliveTimeout_;
+        }
+        else
+        {
+            if (id == Private::RequestLineStep::Id || id == Private::HeadersStep::Id)
+            {
+                return elapsed > headerTimeout_ || elapsed > bodyTimeout_;
+            }
+            else if (id == Private::BodyStep::Id)
+            {
+                return elapsed > bodyTimeout_;
+            }
+            else
+            {
+                return false;
+            }
+        }
+    }
+    void TransportImpl::closePeer(std::shared_ptr<Tcp::Peer>& peer)
+    {
+        // true: there is no http request on the keepalive peer -> only call removePeer
+        // false: there is at least one http request on the peer(keepalive or not) -> send 408 message firsst, then call removePeer
+        if (peer->isIdle())
+        {
+            removePeer(peer);
+        }
+        else
+        {
+            ResponseWriter response(Http::Version::Http11, this, static_cast<Http::Handler*>(handler_.get()), peer);
+            response.send(Http::Code::Request_Timeout).then([=](ssize_t) { removePeer(peer); }, [=](std::exception_ptr) { removePeer(peer); });
         }
     }
 
@@ -140,6 +177,7 @@ namespace Pistache::Http
         auto transport = std::make_shared<TransportImpl>(handler_->clone());
         transport->setHeaderTimeout(headerTimeout_);
         transport->setBodyTimeout(bodyTimeout_);
+        transport->setKeepaliveTimeout(keepaliveTimeout_);
         return transport;
     }
 
@@ -151,6 +189,7 @@ namespace Pistache::Http
         , maxResponseSize_(Const::DefaultMaxResponseSize)
         , headerTimeout_(Const::DefaultHeaderTimeout)
         , bodyTimeout_(Const::DefaultBodyTimeout)
+        , keepaliveTimeout_(Const::DefaultKeepaliveTimeout)
         , logger_(PISTACHE_NULL_STRING_LOGGER)
     { }
 
@@ -217,6 +256,7 @@ namespace Pistache::Http
             auto transport = std::make_shared<TransportImpl>(handler_);
             transport->setHeaderTimeout(options.headerTimeout_);
             transport->setBodyTimeout(options.bodyTimeout_);
+            transport->setKeepaliveTimeout(options.keepaliveTimeout_);
 
             return transport;
         });
@@ -248,7 +288,7 @@ namespace Pistache::Http
 
     void Endpoint::shutdown() { listener.shutdown(); }
 
-    void Endpoint::useSSL([[maybe_unused]] const std::string& cert, [[maybe_unused]] const std::string& key, [[maybe_unused]] bool use_compression, [[maybe_unused]] int (*pass_cb)(char *, int, int, void *))
+    void Endpoint::useSSL([[maybe_unused]] const std::string& cert, [[maybe_unused]] const std::string& key, [[maybe_unused]] bool use_compression, [[maybe_unused]] int (*pass_cb)(char*, int, int, void*))
     {
 #ifndef PISTACHE_USE_SSL
         throw std::runtime_error("Pistache is not compiled with SSL support.");

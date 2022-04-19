@@ -344,7 +344,7 @@ namespace Pistache::Http
                 if (Header::LowercaseEqualStatic(name, "cookie"))
                 {
                     message->cookies_.removeAllCookies(); // removing existing cookies before
-                        // re-adding them.
+                                                          // re-adding them.
                     message->cookies_.addFromRaw(cursor.offset(start), cursor.diff(start));
                 }
                 else if (Header::LowercaseEqualStatic(name, "set-cookie"))
@@ -694,10 +694,10 @@ namespace Pistache::Http
         {
             std::ostream os(&buf_);
             /* @Todo @Major:
-     * Correctly handle non-keep alive requests
-     * Do not put Keep-Alive if version == Http::11 and request.keepAlive ==
-     * true
-     */
+             * Correctly handle non-keep alive requests
+             * Do not put Keep-Alive if version == Http::11 and request.keepAlive ==
+             * true
+             */
             // writeHeader<Header::Connection>(os, ConnectionControl::KeepAlive);
             // if (!os) throw Error("Response exceeded buffer size");
             writeHeader<Header::TransferEncoding>(os, Header::Encoding::Chunked);
@@ -828,6 +828,13 @@ namespace Pistache::Http
                                                      const size_t size,
                                                      const Mime::MediaType& mime)
     {
+        if (!peer_.expired())
+        {
+            auto curPeer = peer_.lock();
+            curPeer->setIdle(true); // change peer state to idle
+            Http::Handler::getParser(curPeer)->reset(); // reset the timeout time
+        }
+
         response_.code_ = code;
 
         if (mime.isValid())
@@ -909,10 +916,10 @@ namespace Pistache::Http
             OUT(writeCookies(response_.cookies(), buf_));
 
             /* @Todo @Major:
-     * Correctly handle non-keep alive requests
-     * Do not put Keep-Alive if version == Http::11 and request.keepAlive ==
-     * true
-     */
+             * Correctly handle non-keep alive requests
+             * Do not put Keep-Alive if version == Http::11 and request.keepAlive ==
+             * true
+             */
             // OUT(writeHeader<Header::Connection>(os, ConnectionControl::KeepAlive));
             OUT(writeHeader<Header::ContentLength>(os, len));
 
@@ -1103,6 +1110,7 @@ namespace Pistache::Http
                     response.headers().add<Header::Connection>(ConnectionControl::Close);
                 }
 
+                peer->setIdle(false); // change peer state to not idle
                 onRequest(request, std::move(response));
                 parser->reset();
             }
