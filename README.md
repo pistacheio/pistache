@@ -221,6 +221,7 @@ Some other Meson options:
 | ----------------------------- | ------- | ---------------------------------------------- |
 | PISTACHE_USE_SSL              | False   | Build server with SSL support                  |
 | PISTACHE_BUILD_TESTS          | False   | Build all of the unit tests                    |
+| PISTACHE_ENABLE_FLAKY_TESTS   | True    | Run unit tests that are known to be flaky      |
 | PISTACHE_ENABLE_NETWORK_TESTS | True    | Run unit tests requiring remote network access |
 | PISTACHE_BUILD_EXAMPLES       | False   | Build all of the example apps                  |
 | PISTACHE_BUILD_DOCS           | False   | Build Doxygen docs                             |
