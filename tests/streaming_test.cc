@@ -287,12 +287,13 @@ TEST_F(StreamingTests, ChunkedStreamDisconnect)
         // This sequence of _perform, _poll, _perform starts a requests (all 3 are needed)
         curl_multi_perform(multi_handle, &still_running);
         if(still_running){
-            curl_multi_poll(multi_handle, NULL, 0, 1000, NULL);
+            // curl_multi_poll(multi_handle, NULL, 0, 1000, NULL);
+            curl_multi_wait(multi_handle, NULL, 0, 1000, NULL);
             curl_multi_perform(multi_handle, &still_running);
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
-        
+
         // Hard-close the client request & socket before server is done responding
         curl_multi_cleanup(multi_handle);
     });
