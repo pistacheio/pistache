@@ -26,11 +26,11 @@ override_dh_auto_configure:
 	dh_auto_configure -- \
 		--default-library=both \
 		-DPISTACHE_BUILD_EXAMPLES=true \
-		-DPISTACHE_ENABLE_FLAKY_TESTS=false \
 		-DPISTACHE_BUILD_TESTS=true \
-		-DPISTACHE_ENABLE_NETWORK_TESTS=false \
 		-DPISTACHE_BUILD_DOCS=false \
 		-DPISTACHE_USE_SSL=true
 
-#override_dh_auto_test: https://github.com/pistacheio/pistache/blob/f3080e9e4e7ce5d0cb866b5d6320d51205c33ff0/debian/rules#L53-L63
-
+override_dh_auto_test:
+	dh_auto_test -- \
+		--no-suite=network \
+		--no-suite=flaky
