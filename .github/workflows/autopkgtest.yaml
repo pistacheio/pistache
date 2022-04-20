@@ -10,8 +10,13 @@ on:
   pull_request:
     paths-ignore: pistache.io/**
 
-# The default Debian shell (dash) is faster than bash at running scripts, and
-# using bash when it is not needed doesn't make sense.
+# This ensures that jobs get canceled when force-pushing
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# The default Debian shell (dash) is faster than bash at running scripts,
+# and using bash when it is not needed doesn't make sense.
 defaults:
   run:
     shell: sh
