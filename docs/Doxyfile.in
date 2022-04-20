@@ -1,8 +1,6 @@
-/**
- * SPDX-FileCopyrightText: 2019 Arthur de Araújo Farias
- *
- * SPDX-License-Identifier: Apache-2.0
- */
+# SPDX-FileCopyrightText: 2019 Arthur de Araújo Farias
+# 
+# SPDX-License-Identifier: Apache-2.0
 
 OUTPUT_DIRECTORY       = @CURRENT_BUILD_DIR@/docs/
 INPUT                  = @SOURCE_DIR@/README.md @SOURCE_DIR@/src/ @SOURCE_DIR@/include/ @SOURCE_DIR@/examples/ @SOURCE_DIR@/docs/
