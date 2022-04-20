@@ -65,21 +65,20 @@ jobs:
     # figure it out.
     - name: Install dependencies
       run: |
-        sudo apt -qq install debian-archive-keyring
+        sudo apt install debian-archive-keyring
         printf 'Enabled: yes\nTypes: deb\nURIs: http://debian-archive.trafficmanager.net/debian/\nSuites: testing\nComponents: main\nSigned-By: /usr/share/keyrings/debian-archive-keyring.gpg\n' | sudo tee /etc/apt/sources.list.d/debian.sources
         printf 'Package: *\nPin: release o=Debian,a=testing\nPin-Priority: 400\n' | sudo tee /etc/apt/preferences.d/99debian-testing
-        sudo apt -qq update
-        sudo apt -qq autopurge '*yarn*' '*npm*' '*node*'
+        sudo apt update
+        sudo apt autopurge '*yarn*' '*npm*' '*node*'
         sudo rm -rf /usr/local/lib/node_modules
         sudo apt --assume-yes install autopkgtest/testing genisoimage qemu-system vmdb2/testing devscripts --no-install-recommends qemu-user-static/testing qemu-efi-aarch64 qemu-efi-arm ovmf ovmf-ia32 && sudo apt-mark auto qemu-user-static qemu-efi-aarch64 qemu-efi-arm ovmf ovmf-ia32
-        sudo apt -qq build-dep .
 
     - name: Build image
       run: sudo autopkgtest-build-qemu --architecture ${{ matrix.arch }} --size 12G testing $HOME/autopkgtest-testing.img
 
     - name: Build Debian package source
       run: |
-        uscan
+        uscan --verbose
         cd ../pistache-*/
         dpkg-source --build .
 
