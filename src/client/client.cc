@@ -10,6 +10,8 @@
    Implementation of the Http client
 */
 
+#error "WE GOT HERE, EVERYTHING IS OKAY"
+
 #include <pistache/client.h>
 #include <pistache/common.h>
 #include <pistache/http.h>
