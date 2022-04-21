@@ -32,5 +32,4 @@ override_dh_auto_configure:
 
 override_dh_auto_test:
 	dh_auto_test -- \
-		--no-suite=network \
-		--no-suite=flaky
+		--no-suite=network
