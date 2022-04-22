@@ -108,17 +108,17 @@ namespace Pistache::Rest
     }
 
     /**
- * A request URI is made of various path segments.
- * Since all routes handled by a router are naturally
- * represented as a tree, this class provides support for it.
- * It is possible to perform tree-based routing search instead
- * of linear one.
- * This class holds all data for a given path segment, meaning
- * that it holds the associated route handler (if any) and all
- * next child routes (by means of fixed routes, parametric,
- * optional parametric and splats).
- * Each child is in turn a SegmentTreeNode.
- */
+     * A request URI is made of various path segments.
+     * Since all routes handled by a router are naturally
+     * represented as a tree, this class provides support for it.
+     * It is possible to perform tree-based routing search instead
+     * of linear one.
+     * This class holds all data for a given path segment, meaning
+     * that it holds the associated route handler (if any) and all
+     * next child routes (by means of fixed routes, parametric,
+     * optional parametric and splats).
+     * Each child is in turn a SegmentTreeNode.
+     */
     class SegmentTreeNode
     {
     private:
@@ -128,13 +128,13 @@ namespace Pistache::Rest
                                  Splat };
 
         /**
-   * string_view are very efficient when working with the
-   * substring function (massively used for routing) but are
-   * non-owning. To let the content survive after it is firstly
-   * created, their content is stored in this reference pointer
-   * that is in charge of managing their lifecycle (create on add,
-   * reset on remove).
-   */
+         * string_view are very efficient when working with the
+         * substring function (massively used for routing) but are
+         * non-owning. To let the content survive after it is firstly
+         * created, their content is stored in this reference pointer
+         * that is in charge of managing their lifecycle (create on add,
+         * reset on remove).
+         */
         std::shared_ptr<char> resource_ref_;
 
         std::unordered_map<std::string_view, std::shared_ptr<SegmentTreeNode>> fixed_;
@@ -145,28 +145,28 @@ namespace Pistache::Rest
         std::shared_ptr<Route> route_;
 
         /**
-   * Common web servers (nginx, httpd, IIS) collapse multiple
-   * forward slashes to a single one. This regex is used to
-   * obtain the same result.
-   */
+         * Common web servers (nginx, httpd, IIS) collapse multiple
+         * forward slashes to a single one. This regex is used to
+         * obtain the same result.
+         */
         static std::regex multiple_slash;
 
         static SegmentType getSegmentType(const std::string_view& fragment);
 
         /**
-   * Fetches the route associated to a given path.
-   * \param[in] path Requested resource path. Must have no leading slash
-   * and no multiple slashes:
-   * eg:
-   * - auth/login is valid
-   * - /auth/login is invalid
-   * - auth//login is invalid
-   * \param[in,out] params Contains all the parameters parsed so far.
-   * \param[in,out] splats Contains all the splats parsed so far.
-   * \returns Tuple containing the route, the list of all parsed parameters
-   * and the list of all parsed splats.
-   * \throws std::runtime_error An empty path was given
-   */
+         * Fetches the route associated to a given path.
+         * \param[in] path Requested resource path. Must have no leading slash
+         * and no multiple slashes:
+         * eg:
+         * - auth/login is valid
+         * - /auth/login is invalid
+         * - auth//login is invalid
+         * \param[in,out] params Contains all the parameters parsed so far.
+         * \param[in,out] splats Contains all the splats parsed so far.
+         * \returns Tuple containing the route, the list of all parsed parameters
+         * and the list of all parsed splats.
+         * \throws std::runtime_error An empty path was given
+         */
         std::tuple<std::shared_ptr<Route>, std::vector<TypedParam>,
                    std::vector<TypedParam>>
         findRoute(const std::string_view& path, std::vector<TypedParam>& params,
@@ -177,53 +177,53 @@ namespace Pistache::Rest
         explicit SegmentTreeNode(const std::shared_ptr<char>& resourceReference);
 
         /**
-   * Sanitizes a resource URL by removing any duplicate slash, leading
-   * slash and trailing slash.
-   * @param path URL to sanitize.
-   * @return Sanitized URL.
-   */
+         * Sanitizes a resource URL by removing any duplicate slash, leading
+         * slash and trailing slash.
+         * @param path URL to sanitize.
+         * @return Sanitized URL.
+         */
         static std::string sanitizeResource(const std::string& path);
 
         /**
-   * Associates a route handler to a given path.
-   * \param[in] path Requested resource path. Must have no leading and trailing
-   * slashes and no multiple slashes:
-   * eg:
-   * - auth/login is valid
-   * - /auth/login is invalid
-   * - auth/login/ is invalid
-   * - auth//login is invalid
-   * \param[in] handler Handler to associate to path.
-   * \param[in] resource_reference \see SegmentTreeNode::resource_ref_
-   * \throws std::runtime_error An empty path was given
-   */
+         * Associates a route handler to a given path.
+         * \param[in] path Requested resource path. Must have no leading and trailing
+         * slashes and no multiple slashes:
+         * eg:
+         * - auth/login is valid
+         * - /auth/login is invalid
+         * - auth/login/ is invalid
+         * - auth//login is invalid
+         * \param[in] handler Handler to associate to path.
+         * \param[in] resource_reference See SegmentTreeNode::resource_ref_ (private)
+         * \throws std::runtime_error An empty path was given
+         */
         void addRoute(const std::string_view& path, const Route::Handler& handler,
                       const std::shared_ptr<char>& resource_reference);
 
         /**
-   * Removes the route handler associated to a given path.
-   * \param[in] path Requested resource path. Must have no leading slash
-   * and no multiple slashes:
-   * eg:
-   * - auth/login is valid
-   * - /auth/login is invalid
-   * - auth//login is invalid
-   * \throws std::runtime_error An empty path was given
-   */
+         * Removes the route handler associated to a given path.
+         * \param[in] path Requested resource path. Must have no leading slash
+         * and no multiple slashes:
+         * eg:
+         * - auth/login is valid
+         * - /auth/login is invalid
+         * - auth//login is invalid
+         * \throws std::runtime_error An empty path was given
+         */
         bool removeRoute(const std::string_view& path);
 
         /**
-   * Finds the correct route for the given path.
-   * \param[in] path Requested resource path. Must have no leading slash
-   * and no multiple slashes:
-   * eg:
-   * - auth/login is valid
-   * - /auth/login is invalid
-   * - auth//login is invalid
-   * \throws std::runtime_error An empty path was given
-   * \return Found route with its resolved parameters and splats (if no route
-   * is found, first element of the tuple is a null pointer).
-   */
+         * Finds the correct route for the given path.
+         * \param[in] path Requested resource path. Must have no leading slash
+         * and no multiple slashes:
+         * eg:
+         * - auth/login is valid
+         * - /auth/login is invalid
+         * - auth//login is invalid
+         * \throws std::runtime_error An empty path was given
+         * \return Found route with its resolved parameters and splats (if no route
+         * is found, first element of the tuple is a null pointer).
+         */
         std::tuple<std::shared_ptr<Route>, std::vector<TypedParam>,
                    std::vector<TypedParam>>
         findRoute(const std::string_view& path) const;
@@ -293,17 +293,17 @@ namespace Pistache::Rest
             HTTP_PROTOTYPE(RouterHandler)
 
             /**
-   * Used for immutable router. Useful if all the routes are
-   * defined at compile time (and for backward compatibility)
-   * \param[in] router Immutable router.
-   */
+             * Used for immutable router. Useful if all the routes are
+             * defined at compile time (and for backward compatibility)
+             * \param[in] router Immutable router.
+             */
             explicit RouterHandler(const Rest::Router& router);
 
             /**
-   * Used for mutable router. Useful if it is required to
-   * add/remove routes at runtime.
-   * \param[in] router Pointer to a (mutable) router.
-   */
+             * Used for mutable router. Useful if it is required to
+             * add/remove routes at runtime.
+             * \param[in] router Pointer to a (mutable) router.
+             */
             explicit RouterHandler(std::shared_ptr<Rest::Router> router);
 
             void onRequest(const Http::Request& req,
