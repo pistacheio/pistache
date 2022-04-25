@@ -76,7 +76,7 @@ jobs:
     - name: Create .orig tarball
       run: |
         repo_name=$(echo ${{ github.repository }} | cut -d / -f 2)
-        debian_version=$(dpkg-parsechangelog --show-field Version | cut -d - -f 1)
+        debian_version=$(dpkg-parsechangelog --show-field Version | awk -F - 'sub(FS $NF,x)')
         cd ..
         tar --exclude-vcs --exclude=debian -cvzf pistache_"$debian_version".orig.tar.gz "$repo_name"
 
