@@ -36,7 +36,7 @@ pistache_test_files = [
 
 network_tests = ['net_test']
 
-flaky_tests = ['streaming_test', 'rest_swagger_server_test']
+flaky_tests = ['rest_swagger_server_test']
 
 if get_option('PISTACHE_USE_SSL')
 	pistache_test_files += 'https_server_test'
