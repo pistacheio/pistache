@@ -92,7 +92,8 @@ if meson.version().version_compare('>=0.57.0')
 else
 	# Ugly workaround for reading a file
 	version_array = run_command(
-		import('python').find_installation(), '-c', 'print(open("version.txt").read())'
+		find_program('python3'), '-c', 'print(open("version.txt").read())',
+		check: true
 	).stdout().strip().split('.')
 endif
 
@@ -125,6 +126,6 @@ endif
 if not meson.is_subproject()
 	git = find_program('git', required: false)
 	if git.found()
-		run_command(git, 'config', '--local', 'core.hooksPath', meson.source_root()/'.hooks')
+		run_command(git, 'config', '--local', 'core.hooksPath', meson.source_root()/'.hooks', check: false)
 	endif
 endif
