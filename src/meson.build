@@ -55,7 +55,7 @@ import('pkgconfig').generate(
 	libpistache,
 	name: 'Pistache',
 	description: 'An elegant C++ REST framework',
-	url: 'http://pistache.io',
+	url: 'https://pistacheio.github.io/pistache/',
 	version: '@0@-git@1@'.format(version_str, version_git_date),
 	filebase: 'libpistache'
 )
