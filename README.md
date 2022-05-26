@@ -15,7 +15,7 @@ Pistache is a modern and elegant HTTP and REST framework for C++. It is entirely
 
 ## Documentation
 
-We are still looking for a volunteer to document fully the API. In the mean time, partial documentation is available at [pistache.io](http://pistache.io). If you are interested in helping with this, please open an issue ticket.
+We are still looking for a volunteer to document fully the API. In the mean time, partial documentation is available at [pistacheio.github.io/pistache/](https://pistacheio.github.io/pistache/). If you are interested in helping with this, please open an issue ticket.
 
 A comparison of Pistache to other C++ RESTful APIs was created by guteksan and is available [here](https://github.com/guteksan/REST-CPP-benchmark).
 
