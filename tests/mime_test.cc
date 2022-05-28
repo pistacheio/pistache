@@ -9,6 +9,8 @@
 #include <pistache/http.h>
 #include <pistache/mime.h>
 
+#include <locale>
+
 using namespace Pistache::Http;
 using namespace Pistache::Http::Mime;
 
@@ -58,6 +60,8 @@ void parse(const char* str, std::function<void(const MediaType&)> testFunc)
 
 TEST(mime_test, valid_parsing_test)
 {
+    std::locale::global(std::locale(""));
+
     parse("application/json", [](const MediaType& m1) {
         ASSERT_TRUE(m1 == MIME(Application, Json));
         ASSERT_FALSE(m1.q().has_value());
@@ -124,6 +128,8 @@ TEST(mime_test, valid_parsing_test)
         ASSERT_TRUE(m11.q().value_or(Q(0)) == Q(83));
         ASSERT_TRUE(m11.getParam("charset").value_or("") == "ISO-8859-4");
     });
+
+    std::locale::global(std::locale::classic());
 }
 
 TEST(mime_test, invalid_parsing)
