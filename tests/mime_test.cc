@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include <pistache/http.h>
@@ -13,6 +14,7 @@
 
 using namespace Pistache::Http;
 using namespace Pistache::Http::Mime;
+using testing::ThrowsMessage;
 
 TEST(mime_test, basic_test)
 {
@@ -156,6 +158,21 @@ TEST(mime_test, invalid_parsing)
     ASSERT_THROW(
         MediaType::fromString("text/html; q=0.21; charset=ISO-8859-4;  "),
         HttpError);
+
+    // From https://github.com/pistacheio/pistache/pull/1077
+    EXPECT_THAT([] { MediaType::fromString("text/html; q=0."); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+    EXPECT_THAT([] { MediaType::fromString("text/html; q=00.0"); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+    EXPECT_THAT([] { MediaType::fromString("text/html; q=0.0.0"); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+    EXPECT_THAT([] { MediaType::fromString("text/html; q=.0"); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+    EXPECT_THAT([] { MediaType::fromString("text/html; q=."); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+    EXPECT_THAT([] { MediaType::fromString("text/html; q=1."); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+    EXPECT_THAT([] { MediaType::fromString("text/html; q=1.001"); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+    EXPECT_THAT([] { MediaType::fromString("text/html; q=.1"); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+    EXPECT_THAT([] { MediaType::fromString("text/html; q=0.1234"); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+    EXPECT_THAT([] { MediaType::fromString("text/html; q=a"); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+    EXPECT_THAT([] { MediaType::fromString("text/html; q=0.a"); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+    EXPECT_THAT([] { MediaType::fromString("text/html; q=1.a"); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+    EXPECT_THAT([] { MediaType::fromString("text/html; q=a.1"); }, ThrowsMessage<HttpError>("Invalid quality factor"));
 }
 
 TEST(mime_test, should_parse_case_insensitive_issue_179)

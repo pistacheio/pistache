@@ -4,6 +4,7 @@
 
 curl_dep = dependency('libcurl')
 gtest_main_dep = dependency('gtest', main: true, fallback: ['gtest', 'gtest_main_dep'])
+gmock_dep = dependency('gmock', version: '>=1.11.0', fallback: ['gtest', 'gmock_dep'])
 cpp_httplib_dep = dependency('cpp-httplib', fallback: ['cpp-httplib', 'cpp_httplib_dep'])
 
 pistache_test_files = [
@@ -60,6 +61,7 @@ foreach test_name : pistache_test_files
 				pistache_dep,
 				deps_libpistache,
 				gtest_main_dep,
+				gmock_dep,
 				curl_dep,
 				cpp_httplib_dep
 			]
