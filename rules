@@ -21,12 +21,19 @@ export LC_ALL = C.UTF-8
 %:
 	dh $@ --buildsystem=meson
 
+# Check if tests are disabled
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+  test := true
+else
+  test := false
+endif
+
 # Configure source...
 override_dh_auto_configure:
 	dh_auto_configure -- \
 		--default-library=both \
 		-DPISTACHE_BUILD_EXAMPLES=true \
-		-DPISTACHE_BUILD_TESTS=true \
+		-DPISTACHE_BUILD_TESTS=$(test) \
 		-DPISTACHE_BUILD_DOCS=false \
 		-DPISTACHE_USE_SSL=true
 
