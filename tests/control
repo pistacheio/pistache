@@ -3,4 +3,4 @@
 # SPDX-License-Identifier: Apache-2.0
 
 Tests: test-compilation-and-link.sh
-Depends: libpistache-dev, g++, pkg-config
+Depends: @, g++ | c++-compiler, pkg-config

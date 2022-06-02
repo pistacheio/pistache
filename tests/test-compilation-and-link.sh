@@ -7,14 +7,8 @@
 # Bail on any errors...
 set -e
 
-# Create a working directory...
-BUILD_DIR=$(mktemp -d)
-
-# On exit or any other abnormality cleanup our build artifacts...
-trap "rm -rf $BUILD_DIR" 0 INT QUIT ABRT PIPE TERM
-
-# Enter our build directory...
-cd $BUILD_DIR
+# Enter autopkgtest's temp directory, cleaned up automatically
+cd "$AUTOPKGTEST_TMP"
 cat <<EOF > pistache_test.cpp
 #include <pistache/endpoint.h>
 
@@ -26,7 +20,7 @@ int main()
 
 EOF
 
-g++ -o pistache_test pistache_test.cpp -std=c++17 -Wall -Werror `pkg-config --cflags --libs libpistache`
+c++ -o pistache_test pistache_test.cpp -std=c++17 -Wall -Werror $(pkg-config --cflags --libs libpistache)
 echo "build: OK"
 [ -x pistache_test ]
 ./pistache_test
