@@ -16,7 +16,7 @@ Build-Depends-Arch: libcurl4-openssl-dev,
                     rapidjson-dev
 Vcs-Git: https://github.com/pistacheio/pistache.git
 Vcs-Browser: https://github.com/pistacheio/pistache
-Homepage: http://pistache.io
+Homepage: https://pistacheio.github.io/pistache/
 Rules-Requires-Root: no
 
 Package: libpistache0
