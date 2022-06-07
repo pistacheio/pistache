@@ -1,0 +1,50 @@
+Author: Andrea Pappacoda <andrea@pappacoda.it>
+Forwarded: not-needed
+Last-Update: 2022-06-07
+
+From 8dbc150348d5ffeac1e281038dc2a83f2b8b9eec Mon Sep 17 00:00:00 2001
+From: Andrea Pappacoda <andrea@pappacoda.it>
+Date: Tue, 7 Jun 2022 11:36:20 +0200
+Subject: [PATCH] disable gmock 1.11 tests
+
+---
+ tests/mime_test.cc | 16 ----------------
+ 1 file changed, 16 deletions(-)
+
+diff --git a/tests/mime_test.cc b/tests/mime_test.cc
+index 14252f7..d889b19 100644
+--- a/tests/mime_test.cc
++++ b/tests/mime_test.cc
+@@ -4,7 +4,6 @@
+  * SPDX-License-Identifier: Apache-2.0
+  */
+ 
+-#include <gmock/gmock-matchers.h>
+ #include <gtest/gtest.h>
+ 
+ #include <pistache/http.h>
+@@ -158,21 +157,6 @@ TEST(mime_test, invalid_parsing)
+     ASSERT_THROW(
+         MediaType::fromString("text/html; q=0.21; charset=ISO-8859-4;  "),
+         HttpError);
+-
+-    // From https://github.com/pistacheio/pistache/pull/1077
+-    EXPECT_THAT([] { MediaType::fromString("text/html; q=0."); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+-    EXPECT_THAT([] { MediaType::fromString("text/html; q=00.0"); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+-    EXPECT_THAT([] { MediaType::fromString("text/html; q=0.0.0"); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+-    EXPECT_THAT([] { MediaType::fromString("text/html; q=.0"); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+-    EXPECT_THAT([] { MediaType::fromString("text/html; q=."); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+-    EXPECT_THAT([] { MediaType::fromString("text/html; q=1."); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+-    EXPECT_THAT([] { MediaType::fromString("text/html; q=1.001"); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+-    EXPECT_THAT([] { MediaType::fromString("text/html; q=.1"); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+-    EXPECT_THAT([] { MediaType::fromString("text/html; q=0.1234"); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+-    EXPECT_THAT([] { MediaType::fromString("text/html; q=a"); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+-    EXPECT_THAT([] { MediaType::fromString("text/html; q=0.a"); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+-    EXPECT_THAT([] { MediaType::fromString("text/html; q=1.a"); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+-    EXPECT_THAT([] { MediaType::fromString("text/html; q=a.1"); }, ThrowsMessage<HttpError>("Invalid quality factor"));
+ }
+ 
+ TEST(mime_test, should_parse_case_insensitive_issue_179)
+-- 
+2.35.1
+
