@@ -189,6 +189,8 @@ namespace Pistache::Http
 
         static Options options();
 
+        std::vector<std::shared_ptr<Tcp::Peer>> getAllPeer();
+
     private:
         template <typename Method>
         void serveImpl(Method method)

@@ -315,4 +315,8 @@ namespace Pistache::Http
 
     Endpoint::Options Endpoint::options() { return Options(); }
 
+    std::vector<std::shared_ptr<Tcp::Peer>> Endpoint::getAllPeer()
+    {
+        return listener.getAllPeer();
+    }
 } // namespace Pistache::Http

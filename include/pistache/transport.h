@@ -80,6 +80,8 @@ namespace Pistache::Tcp
 
         void flush();
 
+        std::deque<std::shared_ptr<Peer>> getAllPeer();
+
     private:
         enum WriteStatus { FirstTry,
                            Retry };
