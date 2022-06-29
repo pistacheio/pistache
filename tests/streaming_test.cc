@@ -126,9 +126,8 @@ namespace
 
 // from
 // https://stackoverflow.com/questions/6624667/can-i-use-libcurls-curlopt-writefunction-with-a-c11-lambda-expression#14720398
-typedef size_t (*CURL_WRITEFUNCTION_PTR)(void*, size_t, size_t, void*);
-auto curl_callback = [](void* ptr, size_t size, size_t nmemb,
-                        void* userdata) -> size_t {
+auto curl_callback = +[](void* ptr, size_t size, size_t nmemb,
+                         void* userdata) -> size_t {
     auto* chunks = static_cast<Chunks*>(userdata);
     chunks->emplace_back(static_cast<char*>(ptr), size * nmemb);
     return size * nmemb;
@@ -167,8 +166,7 @@ public:
         url = "http://localhost:" + std::to_string(endpoint.getPort()) + "/";
 
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION,
-                         static_cast<CURL_WRITEFUNCTION_PTR>(curl_callback));
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_callback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &chunks);
         curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
     }
@@ -268,46 +266,65 @@ TEST_F(StreamingTests, ChunkedStream)
     EXPECT_EQ(chunks[2], "!");
 }
 
-TEST_F(StreamingTests, ChunkedStreamDisconnect)
+class ClientDisconnectHandler : public Http::Handler
 {
-    SyncContext ctx;
+public:
+    HTTP_PROTOTYPE(ClientDisconnectHandler)
 
-    // force unbuffered
-    curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, 1);
+    void onRequest(const Http::Request&, Http::ResponseWriter response) override
+    {
+        auto stream = response.stream(Http::Code::Ok);
 
-    Init(std::make_shared<HelloHandler>(ctx));
+        stream << "Hello ";
+        stream.flush();
 
-    std::thread thread([&]() {
-        CURLM *multi_handle;
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+
+        stream << "world";
+        stream.flush();
+
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+
+        stream << "!";
+        stream.ends();
+    }
+};
+
+TEST(StreamingTest, ClientDisconnect)
+{
+    Http::Endpoint endpoint(Address(IP::loopback(), Port(0)));
+    endpoint.init(Http::Endpoint::options().flags(Tcp::Options::ReuseAddr));
+    endpoint.setHandler(Http::make_handler<ClientDisconnectHandler>());
+    endpoint.serveThreaded();
+
+    const std::string url = "http://localhost:" + std::to_string(endpoint.getPort());
+
+    std::thread thread([&url]() {
+        CURL* curl = curl_easy_init();
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+
+        CURLM* curlm      = curl_multi_init();
         int still_running = 1;
+        curl_multi_add_handle(curlm, curl);
 
-        multi_handle = curl_multi_init();
-        curl_multi_add_handle(multi_handle, curl);
-
-        // This sequence of _perform, _poll, _perform starts a requests (all 3 are needed)
-        curl_multi_perform(multi_handle, &still_running);
-        if(still_running){
-            // curl_multi_poll(multi_handle, NULL, 0, 1000, NULL);
-            curl_multi_wait(multi_handle, NULL, 0, 1000, NULL);
-            curl_multi_perform(multi_handle, &still_running);
+        // This sequence of _perform, _wait, _perform starts a requests (all 3 are needed)
+        curl_multi_perform(curlm, &still_running);
+        if (still_running)
+        {
+            curl_multi_wait(curlm, NULL, 0, 1000, NULL);
+            curl_multi_perform(curlm, &still_running);
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
         // Hard-close the client request & socket before server is done responding
-        curl_multi_cleanup(multi_handle);
+        curl_multi_cleanup(curlm);
+        curl_easy_cleanup(curl);
     });
-
-    std::unique_lock<std::mutex> lk { ctx.m };
-    ctx.cv.wait(lk, [&ctx] { return ctx.flag; });
-
-    //Bad behavior might take a few seconds...
-    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
     if (thread.joinable())
     {
         thread.join();
     }
 
-    // Don't care about response content, this test will fail if SIGINT is raised
+    // Don't care about response content, this test will fail if SIGPIPE is raised
 }

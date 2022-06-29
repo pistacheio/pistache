@@ -52,10 +52,10 @@ if meson.version().version_compare('>=0.54.0')
 endif
 
 import('pkgconfig').generate(
-   libpistache,
-   name: 'Pistache',
-   description: 'An elegant C++ REST framework',
-   url: 'http://pistache.io',
-   version: '@0@-git@1@'.format(version_str, version_git_date),
-   filebase: 'libpistache'
+	libpistache,
+	name: 'Pistache',
+	description: 'An elegant C++ REST framework',
+	url: 'https://pistacheio.github.io/pistache/',
+	version: '@0@-git@1@'.format(version_str, version_git_date),
+	filebase: 'libpistache'
 )

@@ -19,8 +19,6 @@ project (pistache
     LANGUAGES C CXX
     VERSION ${VERSION_FILE})
 
-include(GNUInstallDirs)
-
 add_compile_options(-Wall -Wextra -Wpedantic -Wconversion -Wno-sign-conversion -Wno-missing-field-initializers)
 
 option(BUILD_SHARED_LIBS "build shared library" ON)
@@ -94,3 +92,6 @@ add_custom_target(format
     WORKING_DIRECTORY
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+install(CODE "message(FATAL_ERROR \"Please use Meson to install Pistache.
+See the README for details: https://github.com/pistacheio/pistache#building-from-source\")")
