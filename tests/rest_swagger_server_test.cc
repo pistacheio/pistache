@@ -13,11 +13,18 @@
 #include <pistache/router.h>
 #include <pistache/serializer/rapidjson.h>
 
+#if ___GNUG__ <= 7
+#include <experimental/filesystem>
+#else
 #include <filesystem>
+#endif
 #include <httplib.h>
 
 using namespace std;
 using namespace Pistache;
+#if ___GNUG__ <= 7
+using namespace std::experimental;
+#endif
 
 class SwaggerEndpoint
 {

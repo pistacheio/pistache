@@ -15,8 +15,14 @@
 #include <pistache/http_header.h>
 
 #include <algorithm>
-#include <filesystem>
 #include <sstream>
+#if __GNUG__ <= 7
+#include <experimental/filesystem>
+using namespace std::experimental;
+#else
+#include <filesystem>
+using namespace std;
+#endif
 
 namespace Pistache::Rest
 {
@@ -382,7 +388,7 @@ namespace Pistache::Rest
 
     Swagger& Swagger::uiDirectory(std::string dir)
     {
-        uiDirectory_ = std::filesystem::canonical(dir).string();
+        uiDirectory_ = filesystem::canonical(dir).string();
         return *this;
     }
 
@@ -495,7 +501,7 @@ namespace Pistache::Rest
             else if (ui.isPrefix(req))
             {
                 auto file = ui.stripPrefix(req);
-                auto path = std::filesystem::canonical(uiDir.join(file)).string();
+                auto path = filesystem::canonical(uiDir.join(file)).string();
 
                 // Check if the requested file is contained in the uiDirectory
                 // to prevent path traversal vulnerabilities.
