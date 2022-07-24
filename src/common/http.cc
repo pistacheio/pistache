@@ -645,6 +645,48 @@ namespace Pistache::Http
 
     const Uri::Query& Request::query() const { return query_; }
 
+    void Request::putData(std::string name, std::shared_ptr<void> data)
+    {
+        auto it = data_.find(name);
+        if (it != std::end(data_))
+        {
+            throw std::runtime_error("The data already exists");
+        }
+
+        data_.insert(std::make_pair(std::move(name), std::move(data)));
+    }
+
+    std::shared_ptr<void> Request::getData(const std::string &name) const
+    {
+        auto data = tryGetData(name);
+        if (data == nullptr)
+        {
+            throw std::runtime_error("The data does not exist");
+        }
+
+        return data;
+    }
+
+    std::shared_ptr<void> Request::tryGetData(const std::string &name) const
+    {
+        auto it = data_.find(name);
+        if (it == std::end(data_))
+            return nullptr;
+
+        return it->second;
+    }
+
+    void Request::removeData(const std::string &name)
+    {
+        auto it = data_.find(name);
+        if (it == std::end(data_))
+        {
+            throw std::runtime_error("The data does not exist");
+        }
+
+        data_.erase(it);
+    }
+
     const Address& Request::address() const { return address_; }
 
     std::chrono::milliseconds Request::timeout() const { return timeout_; }
