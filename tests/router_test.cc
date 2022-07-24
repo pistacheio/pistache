@@ -293,18 +293,19 @@ TEST(router_test, test_bind_shared_ptr)
     endpoint->shutdown();
 }
 
-class User {
+class User
+{
 
 public:
     User() = default;
-    
-    auto &getUserName() const
+
+    auto& getUserName() const
     {
         return username;
     }
 
 private:
-    std::string username{"SomeUserName"};
+    std::string username { "SomeUserName" };
 };
 
 class HandlerWithAuthMiddleware : public MyHandler
@@ -339,7 +340,7 @@ public:
     }
 
     void handle(
-        const Pistache::Rest::Request &request,
+        const Pistache::Rest::Request& request,
         Pistache::Http::ResponseWriter response)
     {
         ASSERT_TRUE(request.tryGetData("User"));

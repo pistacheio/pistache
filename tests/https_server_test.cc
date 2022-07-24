@@ -375,8 +375,7 @@ TEST(https_server_test, basic_tls_request_with_password_cert)
 {
     Http::Endpoint server(Address("localhost", Pistache::Port(0)));
 
-    const auto passwordCallback = [](char* buf, int size, int /*rwflag*/, void* /*u*/) -> int
-    {
+    const auto passwordCallback = [](char* buf, int size, int /*rwflag*/, void * /*u*/) -> int {
         static constexpr const char* const password = "test";
         std::strncpy(buf, password, size);
         return static_cast<int>(std::strlen(password));

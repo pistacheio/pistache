@@ -656,7 +656,7 @@ namespace Pistache::Http
         data_.insert(std::make_pair(std::move(name), std::move(data)));
     }
 
-    std::shared_ptr<void> Request::getData(const std::string &name) const
+    std::shared_ptr<void> Request::getData(const std::string& name) const
     {
         auto data = tryGetData(name);
         if (data == nullptr)
@@ -667,7 +667,7 @@ namespace Pistache::Http
         return data;
     }
 
-    std::shared_ptr<void> Request::tryGetData(const std::string &name) const
+    std::shared_ptr<void> Request::tryGetData(const std::string& name) const
     {
         auto it = data_.find(name);
         if (it == std::end(data_))
@@ -676,7 +676,7 @@ namespace Pistache::Http
         return it->second;
     }
 
-    void Request::removeData(const std::string &name)
+    void Request::removeData(const std::string& name)
     {
         auto it = data_.find(name);
         if (it == std::end(data_))
