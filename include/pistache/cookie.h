@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <ctime>
 #include <list>
 #include <map>
@@ -60,8 +61,14 @@ namespace Pistache::Http
         using Storage        = std::unordered_map<
             std::string, HashMapCookies>; // "name" -> Hashmap("value" -> Cookie)
 
-        struct iterator : std::iterator<std::bidirectional_iterator_tag, Cookie>
+        struct iterator
         {
+            using iterator_category = std::bidirectional_iterator_tag;
+            using value_type = Cookie;
+            using difference_type = std::ptrdiff_t;
+            using pointer = value_type*;
+            using reference = value_type&;
+
             explicit iterator(const Storage::const_iterator& _iterator)
                 : iter_storage(_iterator)
                 , iter_cookie_values()
