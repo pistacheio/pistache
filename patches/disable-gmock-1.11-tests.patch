@@ -1,18 +1,39 @@
 Author: Andrea Pappacoda <andrea@pappacoda.it>
 Forwarded: not-needed
-Last-Update: 2022-06-07
+Last-Update: 2022-07-27
 
-From 8dbc150348d5ffeac1e281038dc2a83f2b8b9eec Mon Sep 17 00:00:00 2001
+From 7d35b981171925a9565101d9c0e12c719255315a Mon Sep 17 00:00:00 2001
 From: Andrea Pappacoda <andrea@pappacoda.it>
-Date: Tue, 7 Jun 2022 11:36:20 +0200
+Date: Wed, 27 Jul 2022 12:05:51 +0200
 Subject: [PATCH] disable gmock 1.11 tests
 
 ---
- tests/mime_test.cc | 16 ----------------
- 1 file changed, 16 deletions(-)
+ tests/meson.build  |  2 --
+ tests/mime_test.cc | 17 -----------------
+ 2 files changed, 19 deletions(-)
 
+diff --git a/tests/meson.build b/tests/meson.build
+index d747615..358f285 100644
+--- a/tests/meson.build
++++ b/tests/meson.build
+@@ -4,7 +4,6 @@
+ 
+ curl_dep = dependency('libcurl')
+ gtest_main_dep = dependency('gtest', main: true, fallback: ['gtest', 'gtest_main_dep'])
+-gmock_dep = dependency('gmock', version: '>=1.11.0', fallback: ['gtest', 'gmock_dep'])
+ cpp_httplib_dep = dependency('cpp-httplib', fallback: ['cpp-httplib', 'cpp_httplib_dep'])
+ 
+ pistache_test_files = [
+@@ -61,7 +60,6 @@ foreach test_name : pistache_test_files
+ 				pistache_dep,
+ 				deps_libpistache,
+ 				gtest_main_dep,
+-				gmock_dep,
+ 				curl_dep,
+ 				cpp_httplib_dep
+ 			]
 diff --git a/tests/mime_test.cc b/tests/mime_test.cc
-index 14252f7..d889b19 100644
+index 14252f7..01d70f9 100644
 --- a/tests/mime_test.cc
 +++ b/tests/mime_test.cc
 @@ -4,7 +4,6 @@
@@ -23,7 +44,15 @@ index 14252f7..d889b19 100644
  #include <gtest/gtest.h>
  
  #include <pistache/http.h>
-@@ -158,21 +157,6 @@ TEST(mime_test, invalid_parsing)
+@@ -14,7 +13,6 @@
+ 
+ using namespace Pistache::Http;
+ using namespace Pistache::Http::Mime;
+-using testing::ThrowsMessage;
+ 
+ TEST(mime_test, basic_test)
+ {
+@@ -158,21 +156,6 @@ TEST(mime_test, invalid_parsing)
      ASSERT_THROW(
          MediaType::fromString("text/html; q=0.21; charset=ISO-8859-4;  "),
          HttpError);
