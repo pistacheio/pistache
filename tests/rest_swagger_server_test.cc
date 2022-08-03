@@ -15,16 +15,15 @@
 
 #if ___GNUG__ <= 7
 #include <experimental/filesystem>
+namespace filesystem = std::experimental::filesystem;
 #else
 #include <filesystem>
+namespace filesystem = std::filesystem;
 #endif
 #include <httplib.h>
 
 using namespace std;
 using namespace Pistache;
-#if ___GNUG__ <= 7
-using namespace std::experimental;
-#endif
 
 class SwaggerEndpoint
 {

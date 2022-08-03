@@ -18,10 +18,10 @@
 #include <sstream>
 #if __GNUG__ <= 7
 #include <experimental/filesystem>
-using namespace std::experimental;
+namespace filesystem = std::experimental::filesystem;
 #else
 #include <filesystem>
-using namespace std;
+namespace filesystem = std::filesystem;
 #endif
 
 namespace Pistache::Rest
