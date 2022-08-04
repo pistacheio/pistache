@@ -324,7 +324,7 @@ public:
                 auth_succ_count++;
 
                 auto user = std::make_shared<User>();
-                request.putData("User", user);
+                request.putAttribute("User", user);
                 return true;
             }
             else
@@ -343,9 +343,9 @@ public:
         const Pistache::Rest::Request& request,
         Pistache::Http::ResponseWriter response)
     {
-        ASSERT_TRUE(request.tryGetData("User"));
+        ASSERT_TRUE(request.tryGetAttribute("User"));
 
-        auto user = request.getDataAs<User>("User");
+        auto user = request.getAttributeAs<User>("User");
         ASSERT_EQ(user->getUserName(), "SomeUserName");
 
         MyHandler::handle(request, std::move(response));
