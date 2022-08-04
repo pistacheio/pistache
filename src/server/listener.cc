@@ -85,7 +85,7 @@ namespace Pistache::Tcp
         ssl::SSLCtxPtr ssl_create_context(const std::string& cert,
                                           const std::string& key,
                                           bool use_compression,
-                                          int (*cb)(char *, int, int, void *))
+                                          int (*cb)(char*, int, int, void*))
         {
             const SSL_METHOD* method = SSLv23_server_method();
 
@@ -587,7 +587,7 @@ namespace Pistache::Tcp
     void Listener::setupSSL(const std::string& cert_path,
                             const std::string& key_path,
                             bool use_compression,
-                            int (*cb_password)(char *, int, int, void *))
+                            int (*cb_password)(char*, int, int, void*))
     {
         SSL_load_error_strings();
         OpenSSL_add_ssl_algorithms();

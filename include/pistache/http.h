@@ -169,7 +169,10 @@ namespace Pistache
         } // namespace Uri
 
         // Remove when RequestBuilder will be out of namespace Experimental
-        namespace Experimental {class RequestBuilder; }
+        namespace Experimental
+        {
+            class RequestBuilder;
+        }
 
         // 5. Request
         class Request : public Message
@@ -191,6 +194,17 @@ namespace Pistache
             const std::string& resource() const;
 
             const Uri::Query& query() const;
+
+            void putAttribute(std::string name, std::shared_ptr<void> data);
+            std::shared_ptr<void> getAttribute(const std::string& name) const;
+            std::shared_ptr<void> tryGetAttribute(const std::string& name) const;
+            void removeAttribute(const std::string& name);
+
+            template <class T>
+            std::shared_ptr<T> getAttributeAs(const std::string& name) const
+            {
+                return std::static_pointer_cast<T>(getAttribute(name));
+            }
 
 /* @Investigate: this is disabled because of a lock in the shared_ptr /
    weak_ptr implementation of libstdc++. Under contention, we experience a
@@ -230,6 +244,8 @@ namespace Pistache
 #endif
             Address address_;
             std::chrono::milliseconds timeout_ = std::chrono::milliseconds(0);
+
+            std::unordered_map<std::string, std::shared_ptr<void>> data_;
         };
 
         class Handler;

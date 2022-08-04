@@ -145,7 +145,7 @@ namespace Pistache::Rest
         {
             auto group = paths(name);
             auto it    = std::find_if(std::begin(group), std::end(group),
-                                      [&](const Path& p) { return p.method == method; });
+                                   [&](const Path& p) { return p.method == method; });
             return it != std::end(group);
         }
 
@@ -168,7 +168,7 @@ namespace Pistache::Rest
         {
             auto group = paths(name);
             auto it    = std::find_if(std::begin(group), std::end(group),
-                                      [&](const Path& p) { return p.method == method; });
+                                   [&](const Path& p) { return p.method == method; });
 
             if (it != std::end(group))
             {

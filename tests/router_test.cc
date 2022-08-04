@@ -293,6 +293,21 @@ TEST(router_test, test_bind_shared_ptr)
     endpoint->shutdown();
 }
 
+class User
+{
+
+public:
+    User() = default;
+
+    auto& getUserName() const
+    {
+        return username;
+    }
+
+private:
+    std::string username { "SomeUserName" };
+};
+
 class HandlerWithAuthMiddleware : public MyHandler
 {
 public:
@@ -307,6 +322,9 @@ public:
             if (auth->getMethod() == Pistache::Http::Header::Authorization::Method::Basic)
             {
                 auth_succ_count++;
+
+                auto user = std::make_shared<User>();
+                request.putAttribute("User", user);
                 return true;
             }
             else
@@ -319,6 +337,18 @@ public:
         {
             return false;
         }
+    }
+
+    void handle(
+        const Pistache::Rest::Request& request,
+        Pistache::Http::ResponseWriter response)
+    {
+        ASSERT_TRUE(request.tryGetAttribute("User"));
+
+        auto user = request.getAttributeAs<User>("User");
+        ASSERT_EQ(user->getUserName(), "SomeUserName");
+
+        MyHandler::handle(request, std::move(response));
     }
 
     int getAuthCount() { return auth_count; }
