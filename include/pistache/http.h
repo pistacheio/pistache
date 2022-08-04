@@ -195,15 +195,15 @@ namespace Pistache
 
             const Uri::Query& query() const;
 
-            void putData(std::string name, std::shared_ptr<void> data);
-            std::shared_ptr<void> getData(const std::string& name) const;
-            std::shared_ptr<void> tryGetData(const std::string& name) const;
-            void removeData(const std::string& name);
+            void putAttribute(std::string name, std::shared_ptr<void> data);
+            std::shared_ptr<void> getAttribute(const std::string& name) const;
+            std::shared_ptr<void> tryGetAttribute(const std::string& name) const;
+            void removeAttribute(const std::string& name);
 
             template <class T>
-            std::shared_ptr<T> getDataAs(const std::string& name) const
+            std::shared_ptr<T> getAttributeAs(const std::string& name) const
             {
-                return std::static_pointer_cast<T>(getData(name));
+                return std::static_pointer_cast<T>(getAttribute(name));
             }
 
 /* @Investigate: this is disabled because of a lock in the shared_ptr /

@@ -645,7 +645,7 @@ namespace Pistache::Http
 
     const Uri::Query& Request::query() const { return query_; }
 
-    void Request::putData(std::string name, std::shared_ptr<void> data)
+    void Request::putAttribute(std::string name, std::shared_ptr<void> data)
     {
         auto it = data_.find(name);
         if (it != std::end(data_))
@@ -656,9 +656,9 @@ namespace Pistache::Http
         data_.insert(std::make_pair(std::move(name), std::move(data)));
     }
 
-    std::shared_ptr<void> Request::getData(const std::string& name) const
+    std::shared_ptr<void> Request::getAttribute(const std::string& name) const
     {
-        auto data = tryGetData(name);
+        auto data = tryGetAttribute(name);
         if (data == nullptr)
         {
             throw std::runtime_error("The data does not exist");
@@ -667,7 +667,7 @@ namespace Pistache::Http
         return data;
     }
 
-    std::shared_ptr<void> Request::tryGetData(const std::string& name) const
+    std::shared_ptr<void> Request::tryGetAttribute(const std::string& name) const
     {
         auto it = data_.find(name);
         if (it == std::end(data_))
@@ -676,12 +676,12 @@ namespace Pistache::Http
         return it->second;
     }
 
-    void Request::removeData(const std::string& name)
+    void Request::removeAttribute(const std::string& name)
     {
         auto it = data_.find(name);
         if (it == std::end(data_))
         {
-            throw std::runtime_error("The data does not exist");
+            return;
         }
 
         data_.erase(it);
