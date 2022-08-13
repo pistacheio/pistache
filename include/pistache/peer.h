@@ -45,11 +45,6 @@ namespace Pistache::Tcp
         static std::shared_ptr<Peer> Create(Fd fd, const Address& addr);
         static std::shared_ptr<Peer> CreateSSL(Fd fd, const Address& addr, void* ssl);
 
-        // true: there is no http request on the keepalive peer -> only call removePeer
-        // false: there is at least one http request on the peer(keepalive or not) -> send 408 message firsst, then call removePeer
-        void setIdle(bool bIdle);
-        bool isIdle() const;
-
         const Address& address() const;
         const std::string& hostname();
         Fd fd() const;
@@ -80,7 +75,6 @@ namespace Pistache::Tcp
 
         void* ssl_ = nullptr;
         const size_t id_;
-        bool isIdle_ = false;
     };
 
     std::ostream& operator<<(std::ostream& os, Peer& peer);
