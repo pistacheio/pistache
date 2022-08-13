@@ -13,13 +13,8 @@
 
 #include <httplib.h>
 
-#include <chrono>
-#include <thread>
-
 using namespace std;
 using namespace Pistache;
-
-static constexpr auto KEEPALIVE_TIMEOUT = std::chrono::seconds(2);
 
 class StatsEndpoint
 {
@@ -31,7 +26,6 @@ public:
     void init(size_t thr = 2)
     {
         auto opts = Http::Endpoint::options().threads(static_cast<int>(thr));
-        opts.keepaliveTimeout(KEEPALIVE_TIMEOUT);
         httpEndpoint->init(opts);
         setupRoutes();
     }
@@ -45,11 +39,6 @@ public:
     void shutdown() { httpEndpoint->shutdown(); }
 
     Port getPort() const { return httpEndpoint->getPort(); }
-
-    std::vector<std::shared_ptr<Tcp::Peer>> getAllPeer()
-    {
-        return httpEndpoint->getAllPeer();
-    }
 
 private:
     void setupRoutes()
@@ -152,56 +141,6 @@ TEST(rest_server_test, response_status_code_test)
     res = client.Post("/read/function1", body, "invalid");
     EXPECT_EQ(res->status, 415);
     EXPECT_EQ(res->body, "Unknown Media Type");
-
-    stats.shutdown();
-}
-
-TEST(rest_server_test, keepalive_test)
-{
-    int thr = 1;
-    Address addr(Ipv4::any(), Port(0));
-    StatsEndpoint stats(addr);
-    stats.init(thr);
-    stats.start();
-    Port port = stats.getPort();
-
-    // server timeout
-    {
-        httplib::Client client("localhost", port);
-        client.set_keep_alive(true);
-        auto peer = stats.getAllPeer();
-
-        auto res = client.Get("/read/hostname");
-        ASSERT_EQ(res->status, 200);
-        peer           = stats.getAllPeer();
-        auto peerPort1 = (*peer.begin())->address().port();
-        ASSERT_EQ(peer.size(), 1);
-
-        res = client.Get("/read/hostname");
-        ASSERT_EQ(res->status, 200);
-        peer           = stats.getAllPeer();
-        auto peerPort2 = (*peer.begin())->address().port();
-        ASSERT_EQ(peerPort1, peerPort2);
-
-        std::this_thread::sleep_for(KEEPALIVE_TIMEOUT + std::chrono::milliseconds(700));
-        peer = stats.getAllPeer();
-        ASSERT_EQ(peer.size(), 0);
-    }
-    // client timeout
-    {
-        {
-            httplib::Client client("localhost", port);
-            client.set_keep_alive(true);
-
-            auto res = client.Get("/read/hostname");
-            ASSERT_EQ(res->status, 200);
-            auto peer = stats.getAllPeer();
-            ASSERT_EQ(peer.size(), 1);
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(700));
-        auto peer = stats.getAllPeer();
-        ASSERT_EQ(peer.size(), 0);
-    }
 
     stats.shutdown();
 }

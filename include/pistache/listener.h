@@ -87,11 +87,9 @@ namespace Pistache::Tcp
         void pinWorker(size_t worker, const CpuSet& set);
 
         void setupSSL(const std::string& cert_path, const std::string& key_path,
-                      bool use_compression, int (*cb_password)(char*, int, int, void*));
+                      bool use_compression, int (*cb_password)(char *, int, int, void *));
         void setupSSLAuth(const std::string& ca_file, const std::string& ca_path,
                           int (*cb)(int, void*));
-
-        std::vector<std::shared_ptr<Tcp::Peer>> getAllPeer();
 
     private:
         Address addr_;

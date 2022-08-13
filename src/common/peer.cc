@@ -61,9 +61,6 @@ namespace Pistache::Tcp
 
     const Address& Peer::address() const { return addr; }
 
-    void Peer::setIdle(bool bIdle) { isIdle_ = bIdle; }
-    bool Peer::isIdle() const { return isIdle_; }
-
     const std::string& Peer::hostname()
     {
         if (hostname_.empty())
