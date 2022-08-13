@@ -13,7 +13,17 @@
 #include <pistache/router.h>
 #include <pistache/serializer/rapidjson.h>
 
-#if ___GNUG__ <= 7
+#if __clang__
+#if __has_include(<filesystem>)
+#include <filesystem>
+namespace filesystem = std::filesystem;
+#pragma message "using clang std::filesystem"
+#else
+#include <experimental/filesystem>
+namespace filesystem = std::experimental::filesystem;
+#pragma message "using clang std::experimental::filesystem"
+#endif
+#elif __GNUG__ <= 7
 #include <experimental/filesystem>
 namespace filesystem = std::experimental::filesystem;
 #else
