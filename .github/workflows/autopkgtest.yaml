@@ -24,54 +24,23 @@ defaults:
 jobs:
   test:
     runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        arch: [ amd64, arm64, armhf, i386, ppc64el ] # , s390x
+    container:
+      image: debian:testing
 
     steps:
+    - name: Install dependencies
+      run: |
+        apt -y update
+        apt -y install autopkgtest dpkg-dev --no-install-recommends
+
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Checkout Debian data
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         ref: debian
         path: debian
-
-    # The Debian repository is needed by autopkgtest-build-qemu when building
-    # for foreign architectures, since the tool tries to install
-    # linux-image-${{ matrix.arch }}, that is unavailable on Ubuntu; adding
-    # the Debian Testing repo and lowering its priority solves the issue
-    # while not risking to break the system mixing Debian and Ubuntu pkgs.
-    # The pgp key required to use the repository is downloaded through the
-    # debain-archive-keyring package, and instead of using the deprecated
-    # apt-key utility to add the keyring to the trusted ones I use the
-    # Signed-By option (deb822 source format), as recommended in the Debian
-    # wiki (https://wiki.debian.org/DebianRepository/UseThirdParty).
-    # Node.js stuff is purged since it is not needed and for whatever reason
-    # causes a warning to be generated when building autopkgtest.
-    # Also qemu-system-gui is holded to prevent installation since it is not
-    # needed, and both vmdb2 and qemu-user-static are installed from testing
-    # because the version available in Ubuntu does not work; the old vmdb2
-    # causes image generation failures for all architectures, qemu-user-static
-    # only for arm64, but causes autopkgtest to fail for armhf and ppc64el.
-    # The debian-archive.trafficmanager.net mirror is used since it is the
-    # Azure mirror, and GitHub Actions run on that network.
-    # The --no-install-recommends apt option is important, as installing
-    # recommended packages causes autopkgtest to fail for arm64 and armhf;
-    # I don't know why, I don't know how, I only know that it tooks hours to
-    # figure it out.
-    - name: Install dependencies
-      run: |
-        sudo apt install debian-archive-keyring
-        printf 'Enabled: yes\nTypes: deb\nURIs: http://debian-archive.trafficmanager.net/debian/\nSuites: testing\nComponents: main\nSigned-By: /usr/share/keyrings/debian-archive-keyring.gpg\n' | sudo tee /etc/apt/sources.list.d/debian.sources
-        printf 'Package: *\nPin: release o=Debian,a=testing\nPin-Priority: 400\n' | sudo tee /etc/apt/preferences.d/99debian-testing
-        sudo apt update
-        sudo apt autopurge '*yarn*' '*npm*' '*node*'
-        sudo rm -rf /usr/local/lib/node_modules
-        sudo apt --assume-yes install autopkgtest/testing genisoimage qemu-system vmdb2/testing dpkg-dev --no-install-recommends qemu-user-static/testing qemu-efi-aarch64 qemu-efi-arm ovmf ovmf-ia32 && sudo apt-mark auto qemu-user-static qemu-efi-aarch64 qemu-efi-arm ovmf ovmf-ia32
 
     - name: Create .orig tarball
       run: |
@@ -83,34 +52,10 @@ jobs:
     - name: Build Debian package source
       run: dpkg-source --build .
 
-    - name: Build image
-      run: sudo autopkgtest-build-qemu --architecture ${{ matrix.arch }} --size 12G testing $HOME/autopkgtest-testing.img
-
-    # The increased timeout is needed because the CI can be too slow to boot
-    # the image. --dpkg-architecture is needed because autopkgtest-virt-qemu
-    # defaults to the host arch instead of reading it from the image.
-    # The ram size is set to 3072 MB because the default 1 GiB is not enough
-    # to build Pistache, the amount must be less than 4 GiB otherwise the i386
-    # image won't boot, ppc64el requires it to be aligned to 256 MiB and an
-    # amout not convertible to a GiB integer causes arm64 to fail, while extra
-    # CPU cores can't be used as they can cause arm runs to fail with the error
-    # below. Instead of explicitly calling autopkgtest-virt-qemu it should be
-    # enough to just write qemu.
-    # Currently this sometimes fails on i386 with
-    #   <VirtSubproc>: failure: timed out waiting for 'login prompt on serial
-    #     console'
-    # on arm64 and armhf with
-    #   host login: <VirtSubproc>: failure: The VM does not start a root shell
-    #     on ttyS1 or hvc1 already. The only other supported login mechanism is
-    #     through --user and -*** the guest ttyS0
-    # on almost all architectures with
-    #   ERROR: testbed failure: sent `auxverb_debug_fail', got `timeout',
-    #     expected `ok...'
-
     - name: Run autopkgtest
       run: |
         exit_code=0
-        autopkgtest ../pistache_*.dsc -- qemu --dpkg-architecture=${{ matrix.arch }} --timeout-reboot=120 --ram-size=3072 $HOME/autopkgtest-testing.img || exit_code=$?
+        autopkgtest ../pistache_*.dsc -- null || exit_code=$?
         if [ $exit_code -eq 16 ]
         then
           echo "::warning::autopkgtest failed, but it's not your fault"
