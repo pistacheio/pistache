@@ -6,12 +6,6 @@ cmake_minimum_required (VERSION 3.11)
 
 set(CMAKE_BUILD_TYPE_INIT Release)
 
-# CMAKE Pin cxx compiler to CXX17
-set(CMAKE_CXX_STANDARD 17)
-
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
 file(READ "version.txt" VERSION_FILE_RAW)
 string(STRIP "${VERSION_FILE_RAW}" VERSION_FILE)
 
@@ -93,5 +87,8 @@ add_custom_target(format
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-install(CODE "message(FATAL_ERROR \"Please use Meson to install Pistache.
+# CMake 3.21 defines this automatically
+if (PROJECT_IS_TOP_LEVEL OR CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+    install(CODE "message(FATAL_ERROR \"Please use Meson to install Pistache.
 See the README for details: https://github.com/pistacheio/pistache#building-from-source\")")
+endif()
