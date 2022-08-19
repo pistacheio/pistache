@@ -45,14 +45,14 @@ jobs:
     - name: Install dependencies (Debian)
       if: contains(matrix.os, 'debian')
       run: |
-        if [ ${{ matrix.compiler }} = gcc ]; then compiler=g++; else compiler=clang; fi
+        if [ ${{ matrix.compiler }} = gcc ]; then compiler=g++; else compiler="clang lld"; fi
         apt -y update
         apt -y install $compiler meson pkg-config cmake rapidjson-dev libssl-dev libgtest-dev libcurl4-openssl-dev git ca-certificates curl gpg gpgv gpg-agent lcov llvm-dev --no-install-recommends
 
     - name: Install dependencies (Red Hat)
       if: contains(matrix.os, 'redhat')
       run: |
-        if [ ${{ matrix.compiler }} = gcc ]; then compiler=gcc-c++; else compiler=clang; fi
+        if [ ${{ matrix.compiler }} = gcc ]; then compiler=gcc-c++; else compiler=llvm-toolset; fi
         microdnf -y install $compiler pkgconf cmake libcurl-devel git python3-pip
         pip3 install meson ninja
 
@@ -62,8 +62,8 @@ jobs:
 
     - name: Configure Meson
       run: |
-        if [ ${{ matrix.compiler }} = gcc ]; then CXX=g++; else CXX=clang++; fi
-        export CXX
+        if [ ${{ matrix.compiler }} = gcc ]; then CXX=g++; else CXX=clang++ CXX_LD=lld; fi
+        export CXX CXX_LD
         meson setup build -DPISTACHE_BUILD_TESTS=true --buildtype=debug -Db_coverage=true -Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false
       env:
         CC: ${{ matrix.compiler }}
