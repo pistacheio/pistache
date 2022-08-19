@@ -6,12 +6,6 @@ cmake_minimum_required (VERSION 3.11)
 
 set(CMAKE_BUILD_TYPE_INIT Release)
 
-# CMAKE Pin cxx compiler to CXX17
-set(CMAKE_CXX_STANDARD 17)
-
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
 file(READ "version.txt" VERSION_FILE_RAW)
 string(STRIP "${VERSION_FILE_RAW}" VERSION_FILE)
 
