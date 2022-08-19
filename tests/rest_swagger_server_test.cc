@@ -13,8 +13,15 @@
 #include <pistache/router.h>
 #include <pistache/serializer/rapidjson.h>
 
-#include <filesystem>
 #include <httplib.h>
+
+#if __has_include(<filesystem>)
+#include <filesystem>
+namespace filesystem = std::filesystem;
+#else
+#include <experimental/filesystem>
+namespace filesystem = std::experimental::filesystem;
+#endif
 
 using namespace std;
 using namespace Pistache;
