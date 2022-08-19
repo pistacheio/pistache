@@ -93,5 +93,8 @@ add_custom_target(format
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-install(CODE "message(FATAL_ERROR \"Please use Meson to install Pistache.
+# CMake 3.21 defines this automatically
+if (PROJECT_IS_TOP_LEVEL OR CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+    install(CODE "message(FATAL_ERROR \"Please use Meson to install Pistache.
 See the README for details: https://github.com/pistacheio/pistache#building-from-source\")")
+endif()
