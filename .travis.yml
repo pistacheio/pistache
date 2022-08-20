@@ -5,8 +5,24 @@
 language: cpp
 
 os: linux
-dist: jammy
-arch: [ amd64, arm64, ppc64le, s390x ]
+# jammy is currently only available on amd64
+#dist: jammy
+#arch: [ amd64, arm64, ppc64le, s390x ]
+
+# Use an explicit job list until jammy is supported on all archs
+jobs:
+  include:
+  - dist: jammy
+    arch: amd64
+    addons:
+      apt:
+        packages: libhowardhinnant-date-dev
+  - dist: focal
+    arch: arm64
+  - dist: focal
+    arch: ppc64le
+  - dist: focal
+    arch: s390x
 
 branches:
   only: master
@@ -19,9 +35,9 @@ addons:
     - pkg-config
     - cmake
     - rapidjson-dev
-    - libhowardhinnant-date-dev
     - libssl-dev
     - libgtest-dev
+    - libgmock-dev
     - libcurl4-openssl-dev
 
 script:
