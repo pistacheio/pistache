@@ -48,7 +48,7 @@ jobs:
         if [ ${{ matrix.compiler }} = gcc ]; then compiler=g++; else compiler="clang lld"; fi
         if [ "$(apt-cache -qq pkgnames libhowardhinnant-date-dev)" ]; then datepkg=libhowardhinnant-date-dev; else datepkg=''; fi
         apt -y update
-        apt -y install $compiler meson pkg-config cmake rapidjson-dev libssl-dev libgtest-dev libcurl4-openssl-dev git ca-certificates curl gpg gpgv gpg-agent lcov llvm-dev --no-install-recommends
+        apt -y install $compiler meson pkg-config cmake rapidjson-dev libssl-dev '?name(libgmock-dev) (?version([1-9]\.[1-9][3-9]) | ?version([1-9]\.[2-9][0-9]))' libcurl4-openssl-dev git ca-certificates curl gpg gpgv gpg-agent lcov llvm-dev --no-install-recommends
 
     - name: Install dependencies (Red Hat)
       if: contains(matrix.os, 'redhat')

@@ -33,8 +33,7 @@ addons:
     - cmake
     - rapidjson-dev
     - libssl-dev
-    - libgtest-dev
-    - libgmock-dev
+    - "'?name(libgmock-dev) (?version([1-9]\.[1-9][3-9]) | ?version([1-9]\.[2-9][0-9]))'"
     - libcurl4-openssl-dev
 
 script:
