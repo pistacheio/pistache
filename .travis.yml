@@ -14,9 +14,6 @@ jobs:
   include:
   - dist: jammy
     arch: amd64
-    addons:
-      apt:
-        packages: libhowardhinnant-date-dev
   - dist: focal
     arch: arm64
   - dist: focal
