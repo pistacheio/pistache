@@ -32,10 +32,20 @@ if get_option('b_coverage')
 	add_project_arguments(compiler.get_supported_arguments(['-fstack-protector-all', '--param=ssp-buffer-size=4']), language: 'cpp')
 endif
 
+# howardhinnant/date has several names - look for them, from the most
+# to the least explicit name.
+# In Meson 0.60.0, this can be replaced with a simpler:
+#
+#     dependency('howardhinnant-date', 'hinnant-date', 'date')
+#
 date_dep = dependency('howardhinnant-date', required: false)
 if not date_dep.found()
-	date_dep = dependency('hinnant-date', fallback: ['hinnant-date', 'date_dep'])
+	date_dep = dependency('hinnant-date', required: false)
 endif
+if not date_dep.found()
+	date_dep = dependency('date', fallback: ['hinnant-date', 'date_dep'])
+endif
+
 deps_libpistache = [
 	dependency('threads'),
 	dependency('RapidJSON', fallback: ['rapidjson', 'rapidjson_dep']),
