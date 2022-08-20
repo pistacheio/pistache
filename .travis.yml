@@ -35,6 +35,7 @@ addons:
     - libssl-dev
     - '"?name(libhowardhinnant-date-dev)"'
     - '"?name(libgmock-dev) (?version([1-9]\.[1-9][1-9]) | ?version([1-9]\.[2-9][0-9]))"'
+    - '"?name(libcpp-httplib-dev)"'
     - libcurl4-openssl-dev
 
 script:
