@@ -42,5 +42,5 @@ addons:
 
 script:
 - meson setup build -DPISTACHE_BUILD_TESTS=true
-- ninja -C build
+- ninja -C build -j2
 - meson test -C build --verbose
