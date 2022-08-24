@@ -5,8 +5,8 @@
 module.exports = {
   title: 'Pistache',
   tagline: 'An elegant C++ REST framework.',
-  url: 'https://pistache.io',
-  baseUrl: '/',
+  url: 'https://pistacheio.github.io',
+  baseUrl: '/pistache/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
   favicon: 'img/logo.png',

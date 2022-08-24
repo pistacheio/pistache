@@ -17,6 +17,14 @@
 #include <algorithm>
 #include <sstream>
 
+#if __has_include(<filesystem>)
+#include <filesystem>
+namespace filesystem = std::filesystem;
+#else
+#include <experimental/filesystem>
+namespace filesystem = std::experimental::filesystem;
+#endif
+
 namespace Pistache::Rest
 {
 
@@ -144,7 +152,7 @@ namespace Pistache::Rest
         {
             auto group = paths(name);
             auto it    = std::find_if(std::begin(group), std::end(group),
-                                   [&](const Path& p) { return p.method == method; });
+                                      [&](const Path& p) { return p.method == method; });
             return it != std::end(group);
         }
 
@@ -167,7 +175,7 @@ namespace Pistache::Rest
         {
             auto group = paths(name);
             auto it    = std::find_if(std::begin(group), std::end(group),
-                                   [&](const Path& p) { return p.method == method; });
+                                      [&](const Path& p) { return p.method == method; });
 
             if (it != std::end(group))
             {
@@ -381,7 +389,7 @@ namespace Pistache::Rest
 
     Swagger& Swagger::uiDirectory(std::string dir)
     {
-        uiDirectory_ = std::move(dir);
+        uiDirectory_ = filesystem::canonical(dir).string();
         return *this;
     }
 
@@ -405,9 +413,9 @@ namespace Pistache::Rest
             const auto& res = req.resource();
 
             /*
-     * @Export might be useful for routing also. Make it public or merge it with
-     * the Fragment class
-     */
+             * @Export might be useful for routing also. Make it public or merge it with
+             * the Fragment class
+             */
 
             struct Path
             {
@@ -494,9 +502,21 @@ namespace Pistache::Rest
             else if (ui.isPrefix(req))
             {
                 auto file = ui.stripPrefix(req);
-                auto path = uiDir.join(file);
-                Http::serveFile(response, path);
-                return Route::Result::Ok;
+                auto path = filesystem::canonical(uiDir.join(file)).string();
+
+                // Check if the requested file is contained in the uiDirectory
+                // to prevent path traversal vulnerabilities.
+                // In C++20, use std::string::starts_with()
+                if (path.rfind(uiDirectory_, 0) == 0)
+                {
+                    Http::serveFile(response, path);
+                    return Route::Result::Ok;
+                }
+                else
+                {
+                    response.send(Http::Code::Not_Found);
+                    return Route::Result::Failure;
+                }
             }
 
             else if (res == apiPath_)

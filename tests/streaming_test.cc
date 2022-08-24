@@ -278,105 +278,20 @@ TEST_F(StreamingTests, ChunkedStreamDisconnect)
     Init(std::make_shared<HelloHandler>(ctx));
 
     std::thread thread([&]() {
-        CURLM* multi_handle;
+        CURLM *multi_handle;
         int still_running = 1;
+        curl_multi_add_handle(curlm, curl);
 
-        multi_handle = curl_multi_init();
-        curl_multi_add_handle(multi_handle, curl);
-
-        // This sequence of _perform, _poll, _perform starts a requests (all 3 are needed)
-        curl_multi_perform(multi_handle, &still_running);
+        // This sequence of _perform, _wait, _perform starts a requests (all 3 are needed)
+        curl_multi_perform(curlm, &still_running);
         if (still_running)
         {
-            curl_multi_poll(multi_handle, NULL, 0, 1000, NULL);
-            curl_multi_perform(multi_handle, &still_running);
+            curl_multi_wait(curlm, NULL, 0, 1000, NULL);
+            curl_multi_perform(curlm, &still_running);
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
-        // Hard-close the client request & socket before server is done responding
-        curl_multi_cleanup(multi_handle);
-    });
-
-    std::unique_lock<std::mutex> lk { ctx.m };
-    ctx.cv.wait(lk, [&ctx] { return ctx.flag; });
-
-    //Bad behavior might take a few seconds...
-    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-
-    if (thread.joinable())
-    {
-        thread.join();
-    }
-
-    // Don't care about response content, this test will fail if SIGINT is raised
-}
-
-class IsOpenHandler : public Http::Handler
-{
-public:
-    HTTP_PROTOTYPE(IsOpenHandler)
-
-    [[maybe_unused]] explicit IsOpenHandler(SyncContext& ctx)
-        : ctx_ { ctx }
-    { }
-
-    void onRequest(const Http::Request&, Http::ResponseWriter response) override
-    {
-        std::unique_lock<std::mutex> lk(ctx_.m);
-        auto stream = response.stream(Http::Code::Ok);
-
-        stream << "Hallo world!";
-        stream.flush();
-
-        ASSERT_EQ(stream.isOpen(), true);
-        ASSERT_EQ(stream.isClosed(), false);
-
-        std::this_thread::sleep_for(std::chrono::seconds(2));
-
-        ASSERT_EQ(stream.isOpen(), false);
-        ASSERT_EQ(stream.isClosed(), true);
-
-        stream.ends();
-
-        ASSERT_EQ(stream.isOpen(), false);
-        ASSERT_EQ(stream.isClosed(), true);
-
-        ctx_.flag = true;
-        lk.unlock();
-        ctx_.cv.notify_one();
-    }
-
-private:
-    SyncContext& ctx_;
-};
-
-TEST_F(StreamingTests, IsStreamOpen)
-{
-    SyncContext ctx;
-
-    // force unbuffered
-    curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, 1);
-
-    Init(std::make_shared<IsOpenHandler>(ctx));
-
-    std::thread thread([&]() {
-        CURLM* multi_handle;
-        int still_running = 1;
-
-        multi_handle = curl_multi_init();
-        curl_multi_add_handle(multi_handle, curl);
-
-        // This sequence of _perform, _poll, _perform starts a requests (all 3 are needed)
-        curl_multi_perform(multi_handle, &still_running);
-        if (still_running)
-        {
-            curl_multi_poll(multi_handle, NULL, 0, 1000, NULL);
-            curl_multi_perform(multi_handle, &still_running);
-        }
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
+        
         // Hard-close the client request & socket before server is done responding
         curl_multi_cleanup(multi_handle);
     });

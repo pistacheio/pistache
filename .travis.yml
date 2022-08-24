@@ -1,306 +1,44 @@
-# SPDX-FileCopyrightText: 2016 Mathieu Stefani
+# SPDX-FileCopyrightText: 2022 Andrea Pappacoda <andrea@pappacoda.it>
 #
 # SPDX-License-Identifier: Apache-2.0
 
 language: cpp
 
 os: linux
-dist: focal
+# jammy is currently only available on amd64
+#dist: jammy
+#arch: [ amd64, arm64, ppc64le, s390x ]
 
-branches:
-  only:
-    - master
-
-# Note that we're not making use of the matrix expansion that Travis provides -
-# it doesn't work very well for our collection of builds that each require a
-# combination of environment variables and packages that need to be defined
-# per-job in the jobs.include list. Jobs defined in the include key don't
-# modify or extend job specifications from the matrix, and actually add a whole
-# new job to the matrix (!), so using the matrix would leave us with a
-# subset of jobs being under-specified.
-# To get around this, we're using YAML anchors and aliases to avoid repeating
-# config across different builds.
-
-# The following keys prefixed with an underscore are not directly interpreted by
-# Travis, and are used to provide a centralised config store for config that
-# gets referenced inside the jobs.include map.
-# The apt addon can take nested lists in its subkeys (and flattens them), so we
-# use that to our advantage to merge a list of generic packages with a list of
-# job-specific packages in YAML.
-_apt_pkgs: &_apt_pkgs
-  - 'apport'
-  - 'cmake'
-  - 'libssl-dev'
-  - 'libcurl4-openssl-dev'
-  - 'gdb'
-  - 'lcov'
-  - 'cppcheck'
-  - 'clang-format-10'
-  - 'python3-pip'
-  - 'python3-setuptools'
-  - 'ninja-build'
-  - 'libblocksruntime-dev'
-  - 'rapidjson-dev'
-  - 'libgtest-dev'
-
-_env_clang_6: &_env_clang_6
-  - CC=clang-6.0
-  - CXX=clang++-6.0
-  - COV_TOOL=llvm-cov-6.0
-  - COV_TOOL_ARGS=gcov
-
-_env_clang_7: &_env_clang_7
-  - CC=clang-7
-  - CXX=clang++-7
-  - COV_TOOL=llvm-cov-7
-  - COV_TOOL_ARGS=gcov
-
-_env_clang_8: &_env_clang_8
-  - CC=clang-8
-  - CXX=clang++-8
-  - COV_TOOL=llvm-cov-8
-  - COV_TOOL_ARGS=gcov
-
-_env_clang_9: &_env_clang_9
-  - CC=clang-9
-  - CXX=clang++-9
-  - COV_TOOL=llvm-cov-9
-  - COV_TOOL_ARGS=gcov
-
-_env_clang_10: &_env_clang_10
-  - CC=clang-10
-  - CXX=clang++-10
-  - COV_TOOL=llvm-cov-10
-  - COV_TOOL_ARGS=gcov
-
-_env_gcc_7: &_env_gcc_7
-  - CC=gcc-7
-  - CXX=g++-7
-  - COV_TOOL=gcov-7
-  - COV_TOOL_ARGS=
-
-_env_gcc_8: &_env_gcc_8
-  - CC=gcc-8
-  - CXX=g++-8
-  - COV_TOOL=gcov-8
-  - COV_TOOL_ARGS=
-
-_env_gcc_9: &_env_gcc_9
-  - CC=gcc-9
-  - CXX=g++-9
-  - COV_TOOL=gcov-9
-  - COV_TOOL_ARGS=
-
-_env_gcc_10: &_env_gcc_10
-  - CC=gcc-10
-  - CXX=g++-10
-  - COV_TOOL=gcov-10
-  - COV_TOOL_ARGS=
-
+# Use an explicit job list until jammy is supported on all archs
 jobs:
   include:
-  # Linux clang builds
-  - arch: amd64
-    env: *_env_clang_6
-    addons:
-      apt:
-        packages:
-          - *_apt_pkgs
-          - ['clang-6.0', 'llvm-6.0-tools', 'libstdc++-7-dev']
+  - dist: jammy
+    arch: amd64
+  - dist: focal
+    arch: arm64
+  - dist: focal
+    arch: ppc64le
+  - dist: focal
+    arch: s390x
 
-  - arch: amd64
-    env: *_env_clang_7
-    addons:
-      apt:
-        packages:
-          - *_apt_pkgs
-          - ['clang-7', 'llvm-7-tools', 'libstdc++-7-dev']
+branches:
+  only: master
 
-  - arch: amd64
-    env: *_env_clang_8
-    addons:
-      apt:
-        packages:
-          - *_apt_pkgs
-          - ['clang-8', 'llvm-8-tools', 'libstdc++-8-dev']
-
-  - arch: amd64
-    env: *_env_clang_9
-    addons:
-      apt:
-        packages:
-          - *_apt_pkgs
-          - ['clang-9', 'llvm-9-tools', 'libstdc++-9-dev']
-
-  - arch: amd64
-    env: *_env_clang_10
-    addons:
-      apt:
-        packages:
-          - *_apt_pkgs
-          - ['clang-10', 'llvm-10-tools', 'libstdc++-10-dev']
-
-  # Linux GCC builds
-  - arch: amd64
-    env: *_env_gcc_7
-    addons:
-      apt:
-        packages:
-          - *_apt_pkgs
-          - ['g++-7']
-
-  - arch: amd64
-    env: *_env_gcc_8
-    addons:
-      apt:
-        packages:
-          - *_apt_pkgs
-          - ['g++-8']
-
-  - arch: amd64
-    env: *_env_gcc_9
-    addons:
-      apt:
-        packages:
-          - *_apt_pkgs
-          - ['g++-9']
-
-  - arch: amd64
-    env: *_env_gcc_10
-    addons:
-      apt:
-        packages:
-          - *_apt_pkgs
-          - ['g++-10']
-
-  - arch: ppc64le
-    env: *_env_gcc_8
-    addons:
-      apt:
-        packages:
-          - *_apt_pkgs
-          - ['g++-8']
-
-  - arch: s390x
-    env: *_env_gcc_8
-    addons:
-      apt:
-        packages:
-          - *_apt_pkgs
-          - ['g++-8']
-
-  - arch: arm64
-    env: *_env_gcc_8
-    addons:
-      apt:
-        packages:
-          - *_apt_pkgs
-          - ['g++-8']
-
-before_install:
-  # Check source code formatting
-  - if [ $TRAVIS_PULL_REQUEST != "false" ]; then changed_src=$(git diff --name-only master...HEAD | egrep "\.(h|cc)$" | grep -v "include/pistache/thirdparty" || [ $? == 1 ]); fi
-  - if [ ! -z "$changed_src" ]; then git-clang-format-10 --quiet --binary $(which clang-format-10) --diff master HEAD -- $changed_src > ./clang-format-diff; fi
-  - if [ -s ./clang-format-diff ]; then cat ./clang-format-diff && echo "Format source code according to .clang-format rules. Make sure to run ninja clang-format" && false; fi
-
-install:
-  - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
-  - mkdir -p ${DEPS_DIR} && cd ${DEPS_DIR}
-  # Install latest Meson version
-  - sudo pip3 install -qqq --ignore-installed meson
-
-before_script:
-  - cd ${TRAVIS_BUILD_DIR}
-
-  # Enable core dumps
-  - ulimit -c
-  - ulimit -a -S
-  - ulimit -a -H
-    # Make sure that crash reports are generated for all executables.
-  - mkdir -p ~/.config/apport
-  - printf '[main]\nunpackaged=true\n' >> ~/.config/apport/settings
-
-  # Print debug system information
-  - cat /proc/sys/kernel/core_pattern
-  - cat /etc/default/apport || true
-  - systemctl list-units --type=service --state=running --no-pager || true
-
-  # Meson debug build
-  - meson setup meson_build_debug
-    --buildtype=debug
-    -Db_coverage=true
-    -DPISTACHE_BUILD_TESTS=true
-    -DPISTACHE_BUILD_EXAMPLES=true
-    -DPISTACHE_USE_SSL=true
-
-  # Meson debug build, no SSL
-  - meson setup meson_build_debug_nossl
-    --buildtype=debug
-    -Db_coverage=true
-    -DPISTACHE_BUILD_TESTS=true
-    -DPISTACHE_BUILD_EXAMPLES=true
-    -DPISTACHE_USE_SSL=false
-
-  # Meson release build, both libs
-  - meson setup meson_build_release
-    --buildtype=release
-    --default-library=both
-    -DPISTACHE_USE_SSL=true
-
-  # CMake debug build
-  - cmake -S .
-    -B cmake_build_debug
-    -DCMAKE_BUILD_TYPE=Debug
-    -DPISTACHE_BUILD_TESTS=true
-    -DPISTACHE_USE_SSL=true
-
-  # CMake debug build, no SSL
-  - cmake -S .
-    -B cmake_build_debug-nossl
-    -DCMAKE_BUILD_TYPE=Debug
-    -DPISTACHE_BUILD_TESTS=true
-    -DPISTACHE_USE_SSL=false
-
-  # CMake release build
-  - cmake -S .
-    -B cmake_build_release
-    -DCMAKE_BUILD_TYPE=Release
-    -DPISTACHE_USE_SSL=true
+addons:
+  apt:
+    update: true
+    packages:
+    - meson
+    - pkg-config
+    - cmake
+    - rapidjson-dev
+    - libssl-dev
+    - '"?name(libhowardhinnant-date-dev)"'
+    - '"?name(libgmock-dev) (?version([1-9]\.[1-9][1-9]) | ?version([1-9]\.[2-9][0-9]))"'
+    - '"?name(libcpp-httplib-dev)"'
+    - libcurl4-openssl-dev
 
 script:
-  # Set the ulimit
-  - ulimit -c unlimited -S
-
-  # Meson debug build
-  - meson compile -C meson_build_debug --jobs 2 && meson test -C meson_build_debug --print-errorlogs --no-stdsplit
-
-  # Meson debug build, no SSL
-  - meson compile -C meson_build_debug_nossl --jobs 2 && meson test -C meson_build_debug_nossl --print-errorlogs --no-stdsplit
-
-  # Meson release build
-  - meson compile -C meson_build_release --jobs 2
-
-  # CMake debug build
-  - CTEST_OUTPUT_ON_FAILURE=True cmake --build cmake_build_debug --parallel 2 --target all test
-
-  # CMake debug build, no SSL
-  - CTEST_OUTPUT_ON_FAILURE=True cmake --build cmake_build_debug-nossl --parallel 2 --target all test
-
-  # CMake release build
-  - cmake --build cmake_build_release --parallel 2
-
-after_failure:
-  - CRASHFILES=$(find /var/crash/ -mindepth 1 -maxdepth 1 -print)
-  - echo "$CRASHFILES"
-    # Unpack the apport crash file into a temporary directory and get the
-    # executable and core dump to pass to GDB.
-    # Call gdb with the absolute path since it isn't on the PATH.
-  - |
-    if [ -n "$CRASHFILES" ]; then echo "$CRASHFILES" | while IFS= read -r CRASH; do echo "Crash report: $CRASH"; DIR="/tmp/$(basename $CRASH).d"; apport-unpack "$CRASH" "$DIR"; EXE=$(cat $DIR/ExecutablePath); CORE="$DIR/CoreDump"; echo "Coredump $CORE for $EXE"; /usr/bin/gdb $EXE $CORE -ex "thread apply all bt" -ex "set pagination 0" -batch; done; fi
-
-after_success:
-  - sudo su -c "echo 'if [ \"\$1\" = \"-v\" ] ; then $COV_TOOL --version ; else $COV_TOOL $COV_TOOL_ARGS \$@ ; fi' > /usr/local/bin/cov-tool" && sudo chmod +x /usr/local/bin/cov-tool
-  - lcov --capture --gcov-tool cov-tool --directory . --output-file coverage.info
-  - lcov --remove coverage.info '/usr/*' '*tests/*' '*examples/*' '*subprojects/*' --output-file coverage.info
-  - lcov --list coverage.info
-  - bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
+- meson setup build -DPISTACHE_BUILD_TESTS=true
+- ninja -C build -j2
+- meson test -C build --verbose

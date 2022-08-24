@@ -32,10 +32,20 @@ if get_option('b_coverage')
 	add_project_arguments(compiler.get_supported_arguments(['-fstack-protector-all', '--param=ssp-buffer-size=4']), language: 'cpp')
 endif
 
+# howardhinnant/date has several names - look for them, from the most
+# to the least explicit name.
+# In Meson 0.60.0, this can be replaced with a simpler:
+#
+#     dependency('howardhinnant-date', 'hinnant-date', 'date')
+#
 date_dep = dependency('howardhinnant-date', required: false)
 if not date_dep.found()
-	date_dep = dependency('hinnant-date', fallback: ['hinnant-date', 'date_dep'])
+	date_dep = dependency('hinnant-date', required: false)
 endif
+if not date_dep.found()
+	date_dep = dependency('date', fallback: ['hinnant-date', 'date_dep'])
+endif
+
 deps_libpistache = [
 	dependency('threads'),
 	dependency('RapidJSON', fallback: ['rapidjson', 'rapidjson_dep']),
@@ -80,6 +90,17 @@ if (compiler_id == 'clang' or compiler_id == 'gcc') and not has_working_cxx_atom
 	has_working_cxx_atomics = compiler.links(cxx_atomics64_check_code, dependencies: libatomic_dep, name: 'std::atomic<uint64_t> with libatomic')
 	assert(has_working_cxx_atomics, 'Host compiler must support 64-bit std::atomic')
 	deps_libpistache += libatomic_dep
+endif
+
+# Workaround https://github.com/pistacheio/pistache/issues/1068
+if compiler_id == 'gcc' and compiler.version().version_compare('<9.1') or compiler_id == 'clang'
+	cpp_fs_dep = compiler.find_library('stdc++fs', required: false)
+	if not cpp_fs_dep.found()
+		cpp_fs_dep = compiler.find_library('c++fs', required: false)
+	endif
+	if cpp_fs_dep.found()
+		deps_libpistache += cpp_fs_dep
+	endif
 endif
 
 if get_option('PISTACHE_USE_SSL')

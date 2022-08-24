@@ -8,14 +8,16 @@ SPDX-License-Identifier: Apache-2.0
 
 [![N|Solid](pistache.io/static/img/logo.png)](https://www.github.com/pistacheio/pistache)
 
+[![linux](https://github.com/pistacheio/pistache/actions/workflows/linux.yaml/badge.svg)](https://github.com/pistacheio/pistache/actions/workflows/linux.yaml)
 [![autopkgtest](https://github.com/pistacheio/pistache/actions/workflows/autopkgtest.yaml/badge.svg)](https://github.com/pistacheio/pistache/actions/workflows/autopkgtest.yaml)
+[![codecov](https://codecov.io/gh/pistacheio/pistache/branch/master/graph/badge.svg)](https://codecov.io/gh/pistacheio/pistache)
 [![REUSE status](https://api.reuse.software/badge/github.com/pistacheio/pistache)](https://api.reuse.software/info/github.com/pistacheio/pistache)
 
 Pistache is a modern and elegant HTTP and REST framework for C++. It is entirely written in pure-C++17[*](#linux-only) and provides a clear and pleasant API.
 
 ## Documentation
 
-We are still looking for a volunteer to document fully the API. In the mean time, partial documentation is available at [pistache.io](http://pistache.io). If you are interested in helping with this, please open an issue ticket.
+We are still looking for a volunteer to document fully the API. In the mean time, partial documentation is available at [pistacheio.github.io/pistache/](https://pistacheio.github.io/pistache/). If you are interested in helping with this, please open an issue ticket.
 
 A comparison of Pistache to other C++ RESTful APIs was created by guteksan and is available [here](https://github.com/guteksan/REST-CPP-benchmark).
 
@@ -244,6 +246,10 @@ int main() {
   Http::listenAndServe<HelloHandler>(Pistache::Address("*:9080"));
 }
 ```
+
+## Tutorials
+
+* [Adding a REST API with Pistache](https://www.youtube.com/watch?v=9BCO5W_Kw3Q), Utah Cpp Programmers, 20 July 2022.
 
 ## Project status
 

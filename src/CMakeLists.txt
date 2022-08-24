@@ -17,11 +17,11 @@ set(SOURCE_FILES
 
 add_library(pistache OBJECT ${SOURCE_FILES})
 set_target_properties(pistache PROPERTIES POSITION_INDEPENDENT_CODE ${PISTACHE_PIC})
+target_compile_features(pistache PRIVATE cxx_std_17)
 add_definitions(-DONLY_C_LOCALE=1)
 
 set(PISTACHE_INCLUDE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
 find_package(RapidJSON QUIET)
