@@ -832,7 +832,9 @@ namespace Pistache::Http
         {
             auto curPeer = peer_.lock();
             curPeer->setIdle(true); // change peer state to idle
-            Http::Handler::getParser(curPeer)->reset(); // reset the timeout time
+
+            // It will result in double free
+            // Http::Handler::getParser(curPeer)->reset(); // reset the timeout time
         }
 
         response_.code_ = code;

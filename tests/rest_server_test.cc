@@ -156,7 +156,7 @@ TEST(rest_server_test, response_status_code_test)
     stats.shutdown();
 }
 
-TEST(rest_server_test, keepalive_test)
+TEST(rest_server_test, keepalive_server_timeout)
 {
     int thr = 1;
     Address addr(Ipv4::any(), Port(0));
@@ -165,43 +165,94 @@ TEST(rest_server_test, keepalive_test)
     stats.start();
     Port port = stats.getPort();
 
-    // server timeout
+    httplib::Client client("localhost", port);
+    client.set_keep_alive(true);
+    auto peer = stats.getAllPeer();
+
+    // first request
+    auto res = client.Get("/read/hostname");
+    ASSERT_EQ(res->status, 200);
+    peer           = stats.getAllPeer();
+    auto peerPort1 = (*peer.begin())->address().port();
+    ASSERT_EQ(peer.size(), 1);
+
+    // second request
+    res = client.Get("/read/hostname");
+    ASSERT_EQ(res->status, 200);
+    peer           = stats.getAllPeer();
+    auto peerPort2 = (*peer.begin())->address().port();
+    // first and second use the same connection
+    ASSERT_EQ(peerPort1, peerPort2);
+
+    // The server checks the connection status once every 500 milliseconds.
+    // wait for timeout, check whether the server has closed the connection
+    std::this_thread::sleep_for(KEEPALIVE_TIMEOUT + std::chrono::milliseconds(700));
+    peer = stats.getAllPeer();
+    ASSERT_EQ(peer.size(), 0);
+
+    stats.shutdown();
+}
+
+TEST(rest_server_test, keepalive_client_timeout)
+{
+    int thr = 1;
+    Address addr(Ipv4::any(), Port(0));
+    StatsEndpoint stats(addr);
+    stats.init(thr);
+    stats.start();
+    Port port = stats.getPort();
+
     {
         httplib::Client client("localhost", port);
         client.set_keep_alive(true);
-        auto peer = stats.getAllPeer();
 
         auto res = client.Get("/read/hostname");
         ASSERT_EQ(res->status, 200);
-        peer           = stats.getAllPeer();
-        auto peerPort1 = (*peer.begin())->address().port();
+        auto peer = stats.getAllPeer();
         ASSERT_EQ(peer.size(), 1);
-
-        res = client.Get("/read/hostname");
-        ASSERT_EQ(res->status, 200);
-        peer           = stats.getAllPeer();
-        auto peerPort2 = (*peer.begin())->address().port();
-        ASSERT_EQ(peerPort1, peerPort2);
-
-        std::this_thread::sleep_for(KEEPALIVE_TIMEOUT + std::chrono::milliseconds(700));
-        peer = stats.getAllPeer();
-        ASSERT_EQ(peer.size(), 0);
+        // The client actively closes the connection
     }
-    // client timeout
+    // The server checks the connection status once every 500 milliseconds.
+    // check whether the server has closed the connection
+    std::this_thread::sleep_for(std::chrono::milliseconds(700));
+    auto peer = stats.getAllPeer();
+    ASSERT_EQ(peer.size(), 0);
+
+    stats.shutdown();
+}
+
+TEST(rest_server_test, keepalive_multithread_client_request)
+{
+    int thr = 1;
+    Address addr(Ipv4::any(), Port(0));
+    StatsEndpoint stats(addr);
+    stats.init(thr);
+    stats.start();
+    Port port = stats.getPort();
+
+    int THR_NUMBER = 10;
+    std::vector<std::thread> threads;
+    for (int i = 0; i < THR_NUMBER; ++i)
     {
-        {
+        threads.push_back(std::thread([&port] {
             httplib::Client client("localhost", port);
             client.set_keep_alive(true);
 
             auto res = client.Get("/read/hostname");
             ASSERT_EQ(res->status, 200);
-            auto peer = stats.getAllPeer();
-            ASSERT_EQ(peer.size(), 1);
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(700));
-        auto peer = stats.getAllPeer();
-        ASSERT_EQ(peer.size(), 0);
+            std::this_thread::sleep_for(KEEPALIVE_TIMEOUT + std::chrono::milliseconds(700));
+        }));
     }
+    std::this_thread::sleep_for(std::chrono::milliseconds(700));
+    auto peer = stats.getAllPeer();
+    ASSERT_EQ(peer.size(), THR_NUMBER);
+
+    for (auto it = threads.begin(); it != threads.end(); ++it)
+    {
+        it->join();
+    }
+    peer = stats.getAllPeer();
+    ASSERT_EQ(peer.size(), 0);
 
     stats.shutdown();
 }
