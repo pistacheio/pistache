@@ -738,31 +738,18 @@ namespace Pistache::Http
         return peer_.lock();
     }
 
-    
     bool ResponseStream::isOpen()
     {
-        return !isClosed();
+        int error     = 0;
+        socklen_t len = sizeof(error);
+        int ret       = getsockopt(peer()->fd(), SOL_SOCKET, SO_ERROR, &error, &len);
+
+        return ret == 0 && error == 0;
     }
 
     bool ResponseStream::isClosed()
     {
-        //function proposed in stackoverflow post
-        //https://stackoverflow.com/questions/5640144/c-how-to-use-select-to-see-if-a-socket-has-closed#comment109826639_5640189
-
-        auto fd = peer()->fd();
-        fd_set rfd;
-        FD_ZERO(&rfd);
-        FD_SET(fd, &rfd);
-        timeval tv = { 0 };
-
-        //+1 neccessary described in https://www.man7.org/linux/man-pages/man2/select.2.html
-        select(fd + 1, &rfd, 0, 0, &tv);
-
-        if (!FD_ISSET(fd, &rfd))
-            return false;
-        int n = 0;
-        ioctl(fd, FIONREAD, &n);
-        return n == 0;
+        return !isOpen();
     }
 
     void ResponseStream::flush()
