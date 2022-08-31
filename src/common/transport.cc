@@ -256,7 +256,10 @@ namespace Pistache::Tcp
             Async::Deferred<ssize_t> deferred = std::move(entry.deferred);
 
             auto cleanUp = [&]() {
-                wq.pop_front();
+                if (!wq.empty())
+                {
+                    wq.pop_front();
+                }
                 if (wq.empty())
                 {
                     toWrite.erase(fd);
