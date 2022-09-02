@@ -265,9 +265,9 @@ public:
     }
 
     /*
-   * we need to leak the socket through child process and verify that socket is
-   * still bound after child has quit
-   */
+     * we need to leak the socket through child process and verify that socket is
+     * still bound after child has quit
+     */
     void try_to_leak_socket(const Pistache::Tcp::Options options)
     {
         pid_t id = fork();
@@ -275,8 +275,7 @@ public:
         {
             auto server = prepare_listener(options);
             server->bind();
-            std::system(
-                "sleep 10 <&- &"); // leak open socket to child of our child process
+            std::system("sleep 10 <&- &"); // leak open socket to child of our child process
             exit(0);
         }
 
