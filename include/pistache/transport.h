@@ -35,7 +35,7 @@ namespace Pistache::Tcp
     public:
         explicit Transport(const std::shared_ptr<Tcp::Handler>& handler);
 
-        Transport(const Transport&) = delete;
+        Transport(const Transport&)            = delete;
         Transport& operator=(const Transport&) = delete;
 
         void init(const std::shared_ptr<Tcp::Handler>& handler);
@@ -79,6 +79,8 @@ namespace Pistache::Tcp
         std::shared_ptr<Aio::Handler> clone() const override;
 
         void flush();
+
+        std::deque<std::shared_ptr<Peer>> getAllPeer();
 
     private:
         enum WriteStatus { FirstTry,

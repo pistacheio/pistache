@@ -359,7 +359,7 @@ namespace Pistache::Tcp
         else
         {
 #endif /* PISTACHE_USE_SSL */
-            //MSG_NOSIGNAL is used to prevent SIGPIPE on client connection termination
+            // MSG_NOSIGNAL is used to prevent SIGPIPE on client connection termination
             bytesWritten = ::send(fd, buffer, len, flags | MSG_NOSIGNAL);
 #ifdef PISTACHE_USE_SSL
         }
@@ -588,6 +588,19 @@ namespace Pistache::Tcp
     std::shared_ptr<Peer>& Transport::getPeer(Polling::Tag tag)
     {
         return getPeer(static_cast<Fd>(tag.value()));
+    }
+
+    std::deque<std::shared_ptr<Peer>> Transport::getAllPeer()
+    {
+        std::deque<std::shared_ptr<Peer>> dqPeers;
+        for (const auto& peerPair : peers)
+        {
+            if (isPeerFd(peerPair.first))
+            {
+                dqPeers.push_back(peerPair.second);
+            }
+        }
+        return dqPeers;
     }
 
 } // namespace Pistache::Tcp
