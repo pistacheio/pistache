@@ -33,6 +33,7 @@ pistache_test_files = [
 	'threadname_test',
 	'typeid_test',
 	'view_test',
+	'remove_routes_ut'
 ]
 
 network_tests = ['net_test']

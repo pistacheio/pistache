@@ -23,7 +23,7 @@ function(pistache_test test_name)
     add_test(${test_name} ${TEST_EXECUTABLE})
 endfunction()
 
-
+pistache_test(remove_routes_ut)
 pistache_test(mime_test)
 pistache_test(headers_test)
 pistache_test(async_test)
