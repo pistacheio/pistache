@@ -225,6 +225,12 @@ Some other Meson options:
 | PISTACHE_BUILD_EXAMPLES               | False   | Build all of the example apps                  |
 | PISTACHE_BUILD_DOCS                   | False   | Build Doxygen docs                             |
 | PISTACHE_USE_CONTENT_ENCODING_DEFLATE | False   | Build with deflate content encoding support    |
+| PISTACHE_SSL_LIB_DIR                  | ''      | Specify library directory for SSL libraries    |
+| PISTACHE_SSL_INC_DIR                  | ''      | Specify header directory for SSL libraries     |
+
+If PISTACHE_USE_SSL is set to True, then by default build system uses OS-provided location for OpenSSL headers and libraries.
+PISTACHE_SSL_LIB_DIR and PISTACHE_SSL_INC_DIR can be used to override library and header paths to a custom openSSL library.
+Please note that these options are only applied if PISTACHE_USE_SSL is True, and both options are not empty, otherwise defaults are used.
 
 ## Example
 

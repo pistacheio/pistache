@@ -116,7 +116,16 @@ if compiler_id == 'gcc' and compiler.version().version_compare('<9.1') or compil
 endif
 
 if get_option('PISTACHE_USE_SSL')
-	deps_libpistache += dependency('openssl')
+	ssl_lib_dir = get_option('PISTACHE_SSL_LIB_DIR')
+	ssl_hdr_dir = get_option('PISTACHE_SSL_INC_DIR')
+	if ssl_lib_dir != '' and ssl_hdr_dir != ''
+		deps_libpistache += declare_dependency(
+			link_args : ['-L' + ssl_lib_dir, '-lcrypto', '-lssl', '-ldl'],
+			include_directories : include_directories(ssl_hdr_dir)
+		)
+	else
+		deps_libpistache += dependency('openssl')
+	endif
 endif
 
 version_array = []
