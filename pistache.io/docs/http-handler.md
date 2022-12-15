@@ -109,7 +109,7 @@ stream << "PO" << "NG" << ends;
 In addition to text content serving, Pistache provides a way to serve static files through the `Http::serveFile` function:
 
 ```cpp
-if (request.resource() == "/doc" && request.method == Http::Method::Get) {
+if (request.resource() == "/doc" && request.method() == Http::Method::Get) {
     Http::serveFile(response, "README.md");
 }
 ```
