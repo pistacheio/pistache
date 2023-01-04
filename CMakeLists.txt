@@ -62,6 +62,7 @@ if (PISTACHE_BUILD_TESTS)
         FetchContent_Declare(
             googletest
             GIT_REPOSITORY https://github.com/google/googletest.git
+            GIT_TAG "origin/main"
             GIT_SHALLOW true
         )
         set(BUILD_GMOCK OFF CACHE BOOL "")
