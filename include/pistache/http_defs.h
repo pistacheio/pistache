@@ -21,16 +21,46 @@
 namespace Pistache::Http
 {
 
-#define HTTP_METHODS           \
-    METHOD(Options, "OPTIONS") \
-    METHOD(Get, "GET")         \
-    METHOD(Post, "POST")       \
-    METHOD(Head, "HEAD")       \
-    METHOD(Put, "PUT")         \
-    METHOD(Patch, "PATCH")     \
-    METHOD(Delete, "DELETE")   \
-    METHOD(Trace, "TRACE")     \
-    METHOD(Connect, "CONNECT")
+#define HTTP_METHODS                               \
+    METHOD(Options, "OPTIONS")                     \
+    METHOD(Get, "GET")                             \
+    METHOD(Post, "POST")                           \
+    METHOD(Head, "HEAD")                           \
+    METHOD(Put, "PUT")                             \
+    METHOD(Patch, "PATCH")                         \
+    METHOD(Delete, "DELETE")                       \
+    METHOD(Trace, "TRACE")                         \
+    METHOD(Connect, "CONNECT")                     \
+    METHOD(Acl, "ACL")                             \
+    METHOD(BaselineControl, "BASELINE-CONTROL")    \
+    METHOD(Bind, "BIND")                           \
+    METHOD(Checkin, "CHECKIN")                     \
+    METHOD(Checkout, "CHECKOUT")                   \
+    METHOD(Copy, "COPY")                           \
+    METHOD(Label, "LABEL")                         \
+    METHOD(Link, "LINK")                           \
+    METHOD(Lock, "LOCK")                           \
+    METHOD(Merge, "MERGE")                         \
+    METHOD(Mkactivity, "MKACTIVITY")               \
+    METHOD(Mkcalendar, "MKCALENDAR")               \
+    METHOD(Mkcol, "MKCOL")                         \
+    METHOD(Mkredirectref, "MKREDIRECTREF")         \
+    METHOD(Mkworkspace, "MKWORKSPACE")             \
+    METHOD(Move, "MOVE")                           \
+    METHOD(Orderpatch, "ORDERPATCH")               \
+    METHOD(Pri, "PRI")                             \
+    METHOD(Propfind, "PROPFIND")                   \
+    METHOD(Proppatch, "PROPPATCH")                 \
+    METHOD(Rebind, "REBIND")                       \
+    METHOD(Report, "REPORT")                       \
+    METHOD(Search, "SEARCH")                       \
+    METHOD(Unbind, "UNBIND")                       \
+    METHOD(Uncheckout, "UNCHECKOUT")               \
+    METHOD(Unlink, "UNLINK")                       \
+    METHOD(Unlock, "UNLOCK")                       \
+    METHOD(Update, "UPDATE")                       \
+    METHOD(Updateredirectref, "UPDATEREDIRECTREF") \
+    METHOD(VersionControl, "VERSION-CONTROL")
 
 // 10. Status Code Definitions
 #define STATUS_CODES                                                          \
