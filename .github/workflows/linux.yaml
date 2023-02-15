@@ -56,8 +56,12 @@ jobs:
       if: contains(matrix.os, 'redhat')
       run: |
         if [ ${{ matrix.compiler }} = gcc ]; then compiler=gcc-c++; else compiler=llvm-toolset; fi
-        microdnf -y install $compiler pkgconf cmake libcurl-devel git python3-pip
-        pip3 install meson ninja
+        microdnf -y install $compiler pkgconf cmake libcurl-devel git python3-pip unzip
+        curl -LO https://github.com/ninja-build/ninja/releases/latest/download/ninja-linux.zip
+        unzip ninja-linux.zip
+        mv ninja /usr/local/bin
+        rm ninja-linux.zip
+        pip3 install meson
 
     - uses: actions/checkout@v3
       with:
