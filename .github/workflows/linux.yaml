@@ -22,6 +22,7 @@ jobs:
         os: [ 'debian:stable', 'debian:testing', 'registry.access.redhat.com/ubi8/ubi-minimal', 'registry.access.redhat.com/ubi9/ubi-minimal' ]
         compiler: [ 'gcc', 'clang' ]
         sanitizer: [ 'address', 'undefined', 'none' ] # ThreadSanitizer reports errors
+        tls: [ 'true', 'false' ]
         exclude:
           - os: 'registry.access.redhat.com/ubi8/ubi-minimal'
             sanitizer: 'address'
@@ -56,7 +57,7 @@ jobs:
       if: contains(matrix.os, 'redhat')
       run: |
         if [ ${{ matrix.compiler }} = gcc ]; then compiler=gcc-c++; else compiler=llvm-toolset; fi
-        microdnf -y install $compiler pkgconf cmake libcurl-devel git python3-pip unzip
+        microdnf -y install $compiler pkgconf cmake openssl-devel libcurl-devel git python3-pip unzip
         curl -LO https://github.com/ninja-build/ninja/releases/latest/download/ninja-linux.zip
         unzip ninja-linux.zip
         mv ninja /usr/local/bin
@@ -71,7 +72,7 @@ jobs:
       run: |
         if [ ${{ matrix.compiler }} = gcc ]; then CXX=g++; else CXX=clang++ CXX_LD=lld; fi
         export CXX CXX_LD
-        meson setup build -DPISTACHE_BUILD_TESTS=true --buildtype=debug -Db_coverage=true -Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false
+        meson setup build -DPISTACHE_BUILD_TESTS=true -DPISTACHE_USE_SSL=${{ matrix.tls }} --buildtype=debug -Db_coverage=true -Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false
       env:
         CC: ${{ matrix.compiler }}
 
@@ -84,7 +85,7 @@ jobs:
     - name: Coverage
       if: ${{ !contains(matrix.os, 'redhat') }}
       run: |
-        mkdir --parents $HOME/.local/bin
+        mkdir -p $HOME/.local/bin
         if [ "${{ matrix.compiler }}" = 'clang' ]; then printf 'llvm-cov gcov "$@"' > $HOME/.local/bin/cov.sh; else printf 'gcov "$@"' > $HOME/.local/bin/cov.sh; fi && chmod +x $HOME/.local/bin/cov.sh
         lcov --capture --output-file coverage.info --directory . --gcov-tool $HOME/.local/bin/cov.sh --exclude '/usr/*' --exclude "${HOME}"'/.cache/*' --exclude '*/tests/*' --exclude '*/subprojects/*'
         lcov --list coverage.info
