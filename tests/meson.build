@@ -40,7 +40,10 @@ network_tests = ['net_test']
 flaky_tests = []
 
 if get_option('PISTACHE_USE_SSL')
-	pistache_test_files += 'https_server_test'
+	pistache_test_files += [
+		'https_server_test',
+		'listener_tls_test'
+	]
 	subdir('certs')
 endif
 
