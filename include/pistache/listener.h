@@ -87,7 +87,8 @@ namespace Pistache::Tcp
         void pinWorker(size_t worker, const CpuSet& set);
 
         void setupSSL(const std::string& cert_path, const std::string& key_path,
-                      bool use_compression, int (*cb_password)(char*, int, int, void*));
+                      bool use_compression, int (*cb_password)(char*, int, int, void*),
+                      std::chrono::milliseconds sslHandshakeTimeout = Const::DefaultSSLHandshakeTimeout);
         void setupSSLAuth(const std::string& ca_file, const std::string& ca_path,
                           int (*cb)(int, void*));
         std::vector<std::shared_ptr<Tcp::Peer>> getAllPeer();
@@ -121,6 +122,9 @@ namespace Pistache::Tcp
         ssl::SSLCtxPtr ssl_ctx_ = nullptr;
 
         PISTACHE_STRING_LOGGER_T logger_ = PISTACHE_NULL_STRING_LOGGER;
+
+        // This should be moved after "ssl_ctx_" in the next ABI change
+        std::chrono::milliseconds sslHandshakeTimeout_ = Const::DefaultSSLHandshakeTimeout;
     };
 
 } // namespace Pistache::Tcp

@@ -65,6 +65,13 @@ namespace Pistache::Http
                 return *this;
             }
 
+            template <typename Duration>
+            Options& sslHandshakeTimeout(Duration timeout)
+            {
+                sslHandshakeTimeout_ = std::chrono::duration_cast<std::chrono::milliseconds>(timeout);
+                return *this;
+            }
+
             Options& logger(PISTACHE_STRING_LOGGER_T logger);
 
             [[deprecated("Replaced by maxRequestSize(val)")]] Options&
@@ -90,6 +97,8 @@ namespace Pistache::Http
             std::chrono::milliseconds keepaliveTimeout_;
 
             PISTACHE_STRING_LOGGER_T logger_;
+            // This should be moved after "keepaliveTimeout_" in the next ABI change
+            std::chrono::milliseconds sslHandshakeTimeout_;
             Options();
         };
         Endpoint();

@@ -86,7 +86,7 @@ namespace Pistache
         explicit ArrayStreamBuf(size_t maxSize)
             : StreamBuf<CharT>()
             , bytes()
-            , maxSize(maxSize)
+            , maxSize_(maxSize)
         {
             bytes.clear();
             Base::setg(bytes.data(), bytes.data(), bytes.data() + bytes.size());
@@ -102,7 +102,7 @@ namespace Pistache
 
         bool feed(const char* data, size_t len)
         {
-            if (bytes.size() + len > maxSize)
+            if (bytes.size() + len > maxSize_)
             {
                 return false;
             }
@@ -123,7 +123,7 @@ namespace Pistache
 
     private:
         std::vector<CharT> bytes;
-        size_t maxSize = Const::MaxBuffer;
+        size_t maxSize_ = Const::MaxBuffer;
     };
 
     struct RawBuffer final
@@ -132,10 +132,10 @@ namespace Pistache
         RawBuffer(std::string data, size_t length);
         RawBuffer(const char* data, size_t length);
 
-        RawBuffer(const RawBuffer&) = default;
+        RawBuffer(const RawBuffer&)            = default;
         RawBuffer& operator=(const RawBuffer&) = default;
         RawBuffer(RawBuffer&&)                 = default;
-        RawBuffer& operator=(RawBuffer&&) = default;
+        RawBuffer& operator=(RawBuffer&&)      = default;
 
         ~RawBuffer() = default;
 
@@ -170,7 +170,7 @@ namespace Pistache
 
         DynamicStreamBuf(size_t size, size_t maxSize);
 
-        DynamicStreamBuf(const DynamicStreamBuf& other) = delete;
+        DynamicStreamBuf(const DynamicStreamBuf& other)            = delete;
         DynamicStreamBuf& operator=(const DynamicStreamBuf& other) = delete;
 
         DynamicStreamBuf(DynamicStreamBuf&& other);
@@ -241,7 +241,7 @@ namespace Pistache
                 , active(true)
             { }
 
-            Revert(const Revert&) = delete;
+            Revert(const Revert&)            = delete;
             Revert& operator=(const Revert&) = delete;
 
             ~Revert()
