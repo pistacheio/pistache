@@ -191,6 +191,8 @@ namespace Pistache::Http
         , bodyTimeout_(Const::DefaultBodyTimeout)
         , keepaliveTimeout_(Const::DefaultKeepaliveTimeout)
         , logger_(PISTACHE_NULL_STRING_LOGGER)
+        // This should be moved after "keepaliveTimeout_" in the next ABI change
+        , sslHandshakeTimeout_(Const::DefaultSSLHandshakeTimeout)
     { }
 
     Endpoint::Options& Endpoint::Options::threads(int val)
@@ -293,7 +295,7 @@ namespace Pistache::Http
 #ifndef PISTACHE_USE_SSL
         throw std::runtime_error("Pistache is not compiled with SSL support.");
 #else
-        listener.setupSSL(cert, key, use_compression, pass_cb);
+        listener.setupSSL(cert, key, use_compression, pass_cb, options_.sslHandshakeTimeout_);
 #endif /* PISTACHE_USE_SSL */
     }
 

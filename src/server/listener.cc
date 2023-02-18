@@ -40,6 +40,8 @@
 
 #endif /* PISTACHE_USE_SSL */
 
+using namespace std::chrono_literals;
+
 namespace Pistache::Tcp
 {
 
@@ -475,6 +477,24 @@ namespace Pistache::Tcp
                 throw ServerError(err.c_str());
             }
 
+            // If user requested SSL handshake timeout, enable it on the socket.
+            //  This is sometimes necessary if a client connects, sends nothing,
+            //  or possibly refuses to accept any bytes, and never completes a
+            //  handshake. This would have left SSL_accept hanging indefinitely
+            //  and is effectively a DoS...
+            if (sslHandshakeTimeout_ > 0ms)
+            {
+                struct timeval timeout;
+
+                timeout.tv_sec = std::chrono::duration_cast<std::chrono::seconds>(sslHandshakeTimeout_).count();
+
+                const auto residual_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(sslHandshakeTimeout_) - std::chrono::duration_cast<std::chrono::seconds>(sslHandshakeTimeout_);
+                timeout.tv_usec                  = residual_microseconds.count();
+
+                TRY(::setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)));
+                TRY(::setsockopt(client_fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)));
+            }
+
             SSL_set_fd(ssl_data, client_fd);
             SSL_set_accept_state(ssl_data);
 
@@ -487,6 +507,19 @@ namespace Pistache::Tcp
                 close(client_fd);
                 return;
             }
+
+            // Remove socket timeouts if they were enabled now that we have
+            //  handshaked...
+            if (sslHandshakeTimeout_ > 0ms)
+            {
+                struct timeval timeout;
+                timeout.tv_sec  = 0;
+                timeout.tv_usec = 0;
+
+                TRY(::setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)));
+                TRY(::setsockopt(client_fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)));
+            }
+
             ssl = static_cast<void*>(ssl_data);
         }
 #endif /* PISTACHE_USE_SSL */
@@ -587,7 +620,8 @@ namespace Pistache::Tcp
     void Listener::setupSSL(const std::string& cert_path,
                             const std::string& key_path,
                             bool use_compression,
-                            int (*cb_password)(char*, int, int, void*))
+                            int (*cb_password)(char*, int, int, void*),
+                            std::chrono::milliseconds sslHandshakeTimeout)
     {
         SSL_load_error_strings();
         OpenSSL_add_ssl_algorithms();
@@ -601,6 +635,7 @@ namespace Pistache::Tcp
             PISTACHE_LOG_STRING_FATAL(logger_, e.what());
             throw;
         }
+        sslHandshakeTimeout_ = sslHandshakeTimeout;
         useSSL_ = true;
     }
 
