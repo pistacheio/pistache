@@ -132,10 +132,10 @@ namespace Pistache
         RawBuffer(std::string data, size_t length);
         RawBuffer(const char* data, size_t length);
 
-        RawBuffer(const RawBuffer&) = default;
+        RawBuffer(const RawBuffer&)            = default;
         RawBuffer& operator=(const RawBuffer&) = default;
         RawBuffer(RawBuffer&&)                 = default;
-        RawBuffer& operator=(RawBuffer&&) = default;
+        RawBuffer& operator=(RawBuffer&&)      = default;
 
         ~RawBuffer() = default;
 
@@ -170,7 +170,7 @@ namespace Pistache
 
         DynamicStreamBuf(size_t size, size_t maxSize);
 
-        DynamicStreamBuf(const DynamicStreamBuf& other) = delete;
+        DynamicStreamBuf(const DynamicStreamBuf& other)            = delete;
         DynamicStreamBuf& operator=(const DynamicStreamBuf& other) = delete;
 
         DynamicStreamBuf(DynamicStreamBuf&& other);
@@ -241,7 +241,7 @@ namespace Pistache
                 , active(true)
             { }
 
-            Revert(const Revert&) = delete;
+            Revert(const Revert&)            = delete;
             Revert& operator=(const Revert&) = delete;
 
             ~Revert()

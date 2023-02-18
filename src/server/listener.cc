@@ -636,7 +636,7 @@ namespace Pistache::Tcp
             throw;
         }
         sslHandshakeTimeout_ = sslHandshakeTimeout;
-        useSSL_ = true;
+        useSSL_              = true;
     }
 
 #endif /* PISTACHE_USE_SSL */
