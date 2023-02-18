@@ -86,7 +86,7 @@ namespace Pistache
         explicit ArrayStreamBuf(size_t maxSize)
             : StreamBuf<CharT>()
             , bytes()
-            , maxSize(maxSize)
+            , maxSize_(maxSize)
         {
             bytes.clear();
             Base::setg(bytes.data(), bytes.data(), bytes.data() + bytes.size());
@@ -102,7 +102,7 @@ namespace Pistache
 
         bool feed(const char* data, size_t len)
         {
-            if (bytes.size() + len > maxSize)
+            if (bytes.size() + len > maxSize_)
             {
                 return false;
             }
@@ -123,7 +123,7 @@ namespace Pistache
 
     private:
         std::vector<CharT> bytes;
-        size_t maxSize = Const::MaxBuffer;
+        size_t maxSize_ = Const::MaxBuffer;
     };
 
     struct RawBuffer final
