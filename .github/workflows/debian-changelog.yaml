@@ -5,10 +5,8 @@ name: debian-changelog
 
 on:
   push:
-    branches:
-    - master
-  paths:
-    - version.txt
+    branches: [ master ]
+    paths: version.txt
 
 defaults:
   run:
