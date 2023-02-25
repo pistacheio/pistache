@@ -609,7 +609,7 @@ namespace Pistache::Tcp
         SSL_CTX_set_verify(GetSSLContext(ssl_ctx_),
                            SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT | SSL_VERIFY_CLIENT_ONCE,
 /* Callback type did change in 1.0.1 */
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
                            (int (*)(int, X509_STORE_CTX*))cb
 #else
                            (SSL_verify_cb)cb
