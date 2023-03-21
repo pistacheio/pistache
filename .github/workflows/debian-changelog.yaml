@@ -20,10 +20,12 @@ jobs:
 
     - name: Install dependencies
       run: |
-        apt update
-        apt -y install --no-install-recommends devscripts git
+        sudo apt update
+        sudo apt -y install --no-install-recommends devscripts git
 
     - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
 
     - name: Update debian/changelog
       run: |
