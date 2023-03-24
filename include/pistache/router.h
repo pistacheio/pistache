@@ -417,7 +417,31 @@ namespace Pistache::Rest
         }
 
         template <typename Result, typename Cls, typename... Args, typename Obj>
+        Route::Handler bind(Result (Cls::*func)(Args...) const, Obj obj)
+        {
+            details::static_checks<details::BindChecks, Args...>();
+
+            return [=](const Rest::Request& request, Http::ResponseWriter response) {
+                (obj->*func)(request, std::move(response));
+
+                return Route::Result::Ok;
+            };
+        }
+
+        template <typename Result, typename Cls, typename... Args, typename Obj>
         Route::Handler bind(Result (Cls::*func)(Args...), std::shared_ptr<Obj> objPtr)
+        {
+            details::static_checks<details::BindChecks, Args...>();
+
+            return [=](const Rest::Request& request, Http::ResponseWriter response) {
+                (objPtr.get()->*func)(request, std::move(response));
+
+                return Route::Result::Ok;
+            };
+        }
+
+        template <typename Result, typename Cls, typename... Args, typename Obj>
+        Route::Handler bind(Result (Cls::*func)(Args...) const, std::shared_ptr<Obj> objPtr)
         {
             details::static_checks<details::BindChecks, Args...>();
 
