@@ -218,9 +218,9 @@ namespace Pistache::Http
                         if (!request->query_.has(key)) {
                             request->query_.add(std::move(key), std::move(value));
                         } else {
-                        // If an existing param, append it to the current value seperated by ','
-                        // so that down stream the values will be converted to std::vector of multiple values.
-                            std::string newValue = request->query_.get(key).get();
+                            // If an existing param, append it to the current value seperated by ','
+                            // so that down stream the values will be converted to std::vector of multiple values.
+                            std::string newValue = request->query_.get(key).value();
                             newValue += "," + value;
                             request->query_.update(key, std::move(newValue));
                         }
