@@ -14,8 +14,8 @@
 
 namespace Pistache::Version
 {
-    static constexpr int Major = @VERSION_MAJOR@;
-    static constexpr int Minor = @VERSION_MINOR@;
-    static constexpr int Patch = @VERSION_PATCH@;
-    static constexpr int Git   = @VERSION_GIT_DATE@;
+    static constexpr int Major = 0;
+    static constexpr int Minor = 1;
+    static constexpr int Patch = 1;
+    static constexpr int Git   = 20230521;
 } // namespace Pistache::Version

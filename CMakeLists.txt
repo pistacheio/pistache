@@ -46,8 +46,8 @@ set(VERSION_MINOR    ${pistache_VERSION_MINOR})
 set(VERSION_PATCH    ${pistache_VERSION_PATCH})
 set(VERSION_GIT_DATE ${pistache_VERSION_TWEAK})
 configure_file (
-    "include/pistache/version.h.in"
-    "include/pistache/version.h"
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/pistache/version.h.in
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/pistache/version.h
     @ONLY
 )
 
