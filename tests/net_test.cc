@@ -106,8 +106,8 @@ TEST(net_test, address_creation)
     ASSERT_EQ(address14.family(), AF_INET);
     ASSERT_EQ(address14.port(), 80);
 
-    Address address15("www.example.com");
-    ASSERT_EQ(address15.host(), "93.184.216.34");
+    Address address15("localhost");
+    ASSERT_EQ(address15.host(), "127.0.0.1");
     ASSERT_EQ(address15.family(), AF_INET);
     ASSERT_EQ(address15.port(), 80);
 
