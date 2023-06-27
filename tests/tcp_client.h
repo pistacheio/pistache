@@ -34,12 +34,9 @@ namespace Pistache
     public:
         bool connect(const Pistache::Address& address)
         {
-            struct addrinfo hints;
-            std::memset(&hints, 0, sizeof(hints));
-            hints.ai_family   = address.family();
-            hints.ai_socktype = SOCK_STREAM;
-            hints.ai_flags    = 0;
-            hints.ai_protocol = 0;
+            struct addrinfo hints = {};
+            hints.ai_family       = address.family();
+            hints.ai_socktype     = SOCK_STREAM;
 
             auto host = address.host();
             auto port = address.port().toString();

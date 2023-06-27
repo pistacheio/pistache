@@ -253,12 +253,10 @@ namespace Pistache::Tcp
     {
         addr_ = address;
 
-        struct addrinfo hints;
-        memset(&hints, 0, sizeof(struct addrinfo));
-        hints.ai_family   = address.family();
-        hints.ai_socktype = SOCK_STREAM;
-        hints.ai_flags    = AI_PASSIVE;
-        hints.ai_protocol = 0;
+        struct addrinfo hints = {};
+        hints.ai_family       = address.family();
+        hints.ai_socktype     = SOCK_STREAM;
+        hints.ai_flags        = AI_PASSIVE;
 
         const auto& host = addr_.host();
         const auto& port = addr_.port().toString();

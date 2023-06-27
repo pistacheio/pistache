@@ -534,12 +534,9 @@ namespace Pistache::Http::Experimental
 
     void Connection::connect(const Address& addr)
     {
-        struct addrinfo hints;
-        memset(&hints, 0, sizeof(struct addrinfo));
-        hints.ai_family   = addr.family();
-        hints.ai_socktype = SOCK_STREAM; /* Stream socket */
-        hints.ai_flags    = 0;
-        hints.ai_protocol = 0;
+        struct addrinfo hints = {};
+        hints.ai_family       = addr.family();
+        hints.ai_socktype     = SOCK_STREAM; /* Stream socket */
 
         const auto& host = addr.host();
         const auto& port = addr.port().toString();

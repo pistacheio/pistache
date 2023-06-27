@@ -107,8 +107,7 @@ namespace Pistache::Http::Mime
         else if (val_ == 100)
             return "q=1";
 
-        char buff[sizeof("q=0.99")];
-        memset(buff, 0, sizeof buff);
+        char buff[sizeof("q=0.99")] = {};
         if (val_ % 10 == 0)
             snprintf(buff, sizeof buff, "q=%.1f", val_ / 100.0);
         else
