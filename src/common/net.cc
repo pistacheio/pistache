@@ -438,10 +438,6 @@ namespace Pistache
             {
                 host = "0.0.0.0";
             }
-            else if (host == "localhost")
-            {
-                host = "127.0.0.1";
-            }
 
             const auto& addresses = HostToIPv4(host, portPart);
             if (!addresses.empty())
