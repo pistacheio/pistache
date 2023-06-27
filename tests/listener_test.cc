@@ -65,12 +65,11 @@ public:
 SocketWrapper bind_free_port()
 {
     int sockfd; // listen on sock_fd, new connection on new_fd
-    addrinfo hints, *servinfo, *p;
+    struct addrinfo hints = {}, *servinfo, *p;
 
     int yes = 1;
     int rv;
 
-    memset(&hints, 0, sizeof hints);
     hints.ai_family   = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags    = AI_PASSIVE; // use my IP

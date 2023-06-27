@@ -37,12 +37,9 @@ namespace Pistache
         {
             std::vector<std::string> result;
 
-            struct addrinfo hints;
-            memset(&hints, 0, sizeof(struct addrinfo));
-            hints.ai_family   = AF_INET;
-            hints.ai_socktype = SOCK_STREAM; /* Stream socket */
-            hints.ai_flags    = 0;
-            hints.ai_protocol = 0;
+            struct addrinfo hints = {};
+            hints.ai_family       = AF_INET;
+            hints.ai_socktype     = SOCK_STREAM; /* Stream socket */
 
             AddrInfo addressInfo;
 
