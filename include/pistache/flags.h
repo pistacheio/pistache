@@ -13,6 +13,7 @@
 #pragma once
 
 #include <climits>
+#include <cstdint>
 #include <iostream>
 #include <type_traits>
 
