@@ -82,7 +82,7 @@ TEST(view_test, string_test)
     ASSERT_EQ(v1, "Hello");
 
     auto v2 = make_view(s1, 3);
-    ASSERT_TRUE(std::strcmp(v2.data(), "Hel"));
+    ASSERT_STRNE(v2.data(), "Hel");
     ASSERT_EQ(v2, "Hel");
 
     std::string s3(s1);

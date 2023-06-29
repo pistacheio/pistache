@@ -166,7 +166,7 @@ TEST(http_client_test, one_client_with_multiple_requests)
     server.shutdown();
     client.shutdown();
 
-    ASSERT_TRUE(response_counter == RESPONSE_SIZE);
+    ASSERT_EQ(response_counter, RESPONSE_SIZE);
 }
 
 TEST(http_client_test, multiple_clients_with_one_request)
@@ -232,7 +232,7 @@ TEST(http_client_test, multiple_clients_with_one_request)
     client2.shutdown();
     client3.shutdown();
 
-    ASSERT_TRUE(response_counter == CLIENT_SIZE);
+    ASSERT_EQ(response_counter, CLIENT_SIZE);
 }
 
 TEST(http_client_test, timeout_reject)
@@ -314,7 +314,7 @@ TEST(
     server.shutdown();
     client.shutdown();
 
-    ASSERT_TRUE(response_counter == RESPONSE_SIZE);
+    ASSERT_EQ(response_counter, RESPONSE_SIZE);
 }
 
 TEST(
@@ -363,7 +363,7 @@ TEST(
     server.shutdown();
     client.shutdown();
 
-    ASSERT_TRUE(response_counter == RESPONSE_SIZE);
+    ASSERT_EQ(response_counter, RESPONSE_SIZE);
 }
 
 TEST(http_client_test, test_client_timeout)
