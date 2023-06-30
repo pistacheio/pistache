@@ -12,6 +12,7 @@ Build-Depends-Arch: libcurl4-openssl-dev,
                     libgmock-dev (>= 1.8.0) <!nocheck> | googletest (>= 1.8.0) <!nocheck>,
                     libgtest-dev (>= 1.8.0) <!nocheck> | googletest (>= 1.8.0) <!nocheck>,
                     libssl-dev,
+                    netbase <!nocheck>,
                     pkg-config,
                     rapidjson-dev
 Vcs-Git: https://github.com/pistacheio/pistache.git
