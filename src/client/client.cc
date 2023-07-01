@@ -580,7 +580,19 @@ namespace Pistache::Http::Experimental
     {
         std::ostringstream oss;
         oss << "Connection(fd = " << fd_ << ", src_port = ";
-        oss << ntohs(saddr.sin_port) << ")";
+        if (saddr.ss_family == AF_INET)
+        {
+            oss << ntohs(reinterpret_cast<const struct sockaddr_in*>(&saddr)->sin_port);
+        }
+        else if (saddr.ss_family == AF_INET6)
+        {
+            oss << ntohs(reinterpret_cast<const struct sockaddr_in6*>(&saddr)->sin6_port);
+        }
+        else
+        {
+            unreachable();
+        }
+        oss << ")";
         return oss.str();
     }
 

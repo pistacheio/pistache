@@ -116,7 +116,7 @@ namespace Pistache::Http::Experimental
 
         Fd fd_;
 
-        struct sockaddr_in saddr;
+        struct sockaddr_storage saddr;
         std::unique_ptr<RequestEntry> requestEntry;
         std::atomic<uint32_t> state_;
         std::atomic<ConnectionState> connectionState_;

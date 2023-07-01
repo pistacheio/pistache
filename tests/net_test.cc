@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include <pistache/net.h>
@@ -14,8 +15,11 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 
 using namespace Pistache;
+using testing::Eq;
+using testing::ThrowsMessage;
 
 TEST(net_test, port_creation)
 {
@@ -186,4 +190,23 @@ TEST(net_test, address_parser)
 
     ASSERT_THROW(AddressParser("127.0.0.1:");, std::invalid_argument);
     ASSERT_THROW(AddressParser("[::]:");, std::invalid_argument);
+}
+
+TEST(net_test, ip_creation)
+{
+    struct sockaddr_in inet_socket = {};
+    inet_socket.sin_family = AF_INET;
+    IP ip_inet(reinterpret_cast<struct sockaddr*>(&inet_socket));
+    EXPECT_THAT(ip_inet.getFamily(), Eq(AF_INET));
+
+    struct sockaddr_in6 inet6_socket = {};
+    inet6_socket.sin6_family = AF_INET6;
+    IP ip_inet6(reinterpret_cast<struct sockaddr*>(&inet6_socket));
+    EXPECT_THAT(ip_inet6.getFamily(), Eq(AF_INET6));
+
+    struct sockaddr_un unix_socket = {};
+    unix_socket.sun_family = AF_UNIX;
+    EXPECT_THAT(
+        [&] { IP(reinterpret_cast<struct sockaddr*>(&unix_socket)); },
+        ThrowsMessage<std::invalid_argument>("Invalid socket family"));
 }

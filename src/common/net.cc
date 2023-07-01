@@ -1,6 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 2015 Mathieu Stefani
- *
+ * SPDX-FileCopyrightText: 2023 Andrea Pappacoda
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -151,63 +151,69 @@ namespace Pistache
 
     IP::IP()
     {
-        family                            = AF_INET;
-        addr                              = { 0 };
-        addr.sin_family                   = AF_INET;
-        uint8_t buff[INET_ADDRSTRLEN + 1] = { 0, 0, 0, 0 };
-        memcpy(&addr.sin_addr.s_addr, buff, INET_ADDRSTRLEN);
+        addr_.ss_family = AF_INET6;
     }
 
     IP::IP(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
     {
-        family                            = AF_INET;
-        addr                              = { 0 };
-        addr.sin_family                   = AF_INET;
-        uint8_t buff[INET_ADDRSTRLEN + 1] = { a, b, c, d };
-        memcpy(&addr.sin_addr.s_addr, buff, INET_ADDRSTRLEN);
+        addr_.ss_family      = AF_INET;
+        const uint8_t buff[] = { a, b, c, d };
+        in_addr_t* in_addr   = &reinterpret_cast<struct sockaddr_in*>(&addr_)->sin_addr.s_addr;
+
+        static_assert(sizeof(buff) == sizeof(*in_addr));
+        memcpy(in_addr, buff, sizeof(*in_addr));
     }
 
     IP::IP(uint16_t a, uint16_t b, uint16_t c, uint16_t d, uint16_t e, uint16_t f,
            uint16_t g, uint16_t h)
     {
-        family            = AF_INET6;
-        addr6             = { 0 };
-        addr6.sin6_family = AF_INET6;
-        uint16_t buff[9] { a, b, c, d, e, f, g, h, '\0' };
-        uint16_t remap[9] = { 0, 0, 0, 0, 0, 0, 0, 0, '\0' };
+        addr_.ss_family        = AF_INET6;
+        const uint16_t buff[8] = { a, b, c, d, e, f, g, h };
+        uint16_t remap[8]      = { 0, 0, 0, 0, 0, 0, 0, 0 };
         if (htonl(1) != 1)
         {
             for (int i = 0; i < 8; i++)
             {
-                uint16_t x = buff[i];
-                uint16_t y = htons(x);
-                remap[i]   = y;
+                const uint16_t swapped = htons(buff[i]);
+                remap[i]               = swapped;
             }
         }
         else
         {
-            memcpy(&remap, &buff, sizeof(remap));
+            memcpy(remap, buff, sizeof(remap));
         }
-        memcpy(&addr6.sin6_addr.s6_addr16, &remap, 8 * sizeof(uint16_t));
+        auto& in6_addr = reinterpret_cast<struct sockaddr_in6*>(&addr_)->sin6_addr.s6_addr;
+
+        static_assert(sizeof(in6_addr) == sizeof(remap));
+        memcpy(in6_addr, remap, sizeof(in6_addr));
     }
 
-    IP::IP(struct sockaddr* _addr)
+    IP::IP(const struct sockaddr* addr)
     {
-        if (_addr->sa_family == AF_INET)
+        if (addr->sa_family == AF_INET)
         {
-            struct sockaddr_in* in_addr = reinterpret_cast<struct sockaddr_in*>(_addr);
-            family                      = AF_INET;
-            port                        = in_addr->sin_port;
-            memcpy(&(addr.sin_addr.s_addr), &(in_addr->sin_addr.s_addr),
-                   sizeof(in_addr_t));
+            const struct sockaddr_in* in_addr = reinterpret_cast<const struct sockaddr_in*>(addr);
+            struct sockaddr_in* ss_in_addr    = reinterpret_cast<struct sockaddr_in*>(&addr_);
+
+            /* Should this simply be `*ss_in_addr = *in_addr`? */
+            ss_in_addr->sin_family      = in_addr->sin_family;
+            ss_in_addr->sin_addr.s_addr = in_addr->sin_addr.s_addr;
+            ss_in_addr->sin_port        = in_addr->sin_port;
         }
-        else if (_addr->sa_family == AF_INET6)
+        else if (addr->sa_family == AF_INET6)
         {
-            struct sockaddr_in6* in_addr = reinterpret_cast<struct sockaddr_in6*>(_addr);
-            family                       = AF_INET6;
-            port                         = in_addr->sin6_port;
-            memcpy(&(addr6.sin6_addr.s6_addr16), &(in_addr->sin6_addr.s6_addr16),
-                   8 * sizeof(uint16_t));
+            const struct sockaddr_in6* in_addr = reinterpret_cast<const struct sockaddr_in6*>(addr);
+            struct sockaddr_in6* ss_in_addr    = reinterpret_cast<struct sockaddr_in6*>(&addr_);
+
+            /* Should this simply be `*ss_in_addr = *in_addr`? */
+            ss_in_addr->sin6_family   = in_addr->sin6_family;
+            ss_in_addr->sin6_port     = in_addr->sin6_port;
+            ss_in_addr->sin6_flowinfo = in_addr->sin6_flowinfo; /* Should be 0 per RFC 3493 */
+            memcpy(ss_in_addr->sin6_addr.s6_addr, in_addr->sin6_addr.s6_addr, sizeof(ss_in_addr->sin6_addr.s6_addr));
+        }
+        else
+        {
+            throw std::invalid_argument("Invalid socket family");
         }
     }
 
@@ -239,36 +245,52 @@ namespace Pistache
         }
     }
 
-    int IP::getFamily() const { return family; }
+    int IP::getFamily() const { return addr_.ss_family; }
 
-    int IP::getPort() const { return port; }
+    uint16_t IP::getPort() const
+    {
+        if (addr_.ss_family == AF_INET)
+        {
+            return ntohs(reinterpret_cast<const struct sockaddr_in*>(&addr_)->sin_port);
+        }
+        else if (addr_.ss_family == AF_INET6)
+        {
+            return ntohs(reinterpret_cast<const struct sockaddr_in6*>(&addr_)->sin6_port);
+        }
+        else
+        {
+            unreachable();
+        }
+    }
 
     std::string IP::toString() const
     {
-        char buff[INET6_ADDRSTRLEN + 1];
-        if (family == AF_INET)
+        char buff[INET6_ADDRSTRLEN];
+        const auto* addr_sa = reinterpret_cast<const struct sockaddr*>(&addr_);
+        int err             = getnameinfo(addr_sa, sizeof(addr_), buff, sizeof(buff), NULL, 0, NI_NUMERICHOST);
+        if (err) /* [[unlikely]] */
         {
-            in_addr_t addr_;
-            toNetwork(&addr_);
-            inet_ntop(AF_INET, &addr_, buff, INET_ADDRSTRLEN);
-        }
-        else if (family == AF_INET6)
-        {
-            struct in6_addr addr_ = in6addr_any;
-            toNetwork(&addr_);
-            inet_ntop(AF_INET6, &addr_, buff, INET6_ADDRSTRLEN);
+            throw std::runtime_error(gai_strerror(err));
         }
         return std::string(buff);
     }
 
-    void IP::toNetwork(in_addr_t* _addr) const
+    void IP::toNetwork(in_addr_t* out) const
     {
-        memcpy(_addr, &addr.sin_addr.s_addr, sizeof(uint32_t));
+        if (addr_.ss_family != AF_INET)
+        {
+            throw std::invalid_argument("Invalid address family");
+        }
+        *out = reinterpret_cast<const struct sockaddr_in*>(&addr_)->sin_addr.s_addr;
     }
 
     void IP::toNetwork(struct in6_addr* out) const
     {
-        memcpy(&out->s6_addr16, &(addr6.sin6_addr.s6_addr16), 8 * sizeof(uint16_t));
+        if (addr_.ss_family != AF_INET)
+        {
+            throw std::invalid_argument("Invalid address family");
+        }
+        *out = reinterpret_cast<const struct sockaddr_in6*>(&addr_)->sin6_addr;
     }
 
     bool IP::supported()
@@ -377,11 +399,6 @@ namespace Pistache
             return Address(ip, port);
         }
         throw Error("Not an IP socket");
-    }
-
-    Address Address::fromUnix(struct sockaddr_in* addr)
-    {
-        return Address::fromUnix(reinterpret_cast<struct sockaddr*>(addr));
     }
 
     std::string Address::host() const { return ip_.toString(); }
