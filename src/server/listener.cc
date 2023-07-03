@@ -325,16 +325,29 @@ namespace Pistache::Tcp
             return Port();
         }
 
-        struct sockaddr_in sock_addr = { 0 };
-        socklen_t addrlen            = sizeof(sock_addr);
-        auto* sock_addr_alias        = reinterpret_cast<struct sockaddr*>(&sock_addr);
+        struct sockaddr_storage sock_addr = {};
+        socklen_t addrlen                 = sizeof(sock_addr);
+        auto* sock_addr_alias             = reinterpret_cast<struct sockaddr*>(&sock_addr);
 
         if (-1 == getsockname(listen_fd, sock_addr_alias, &addrlen))
         {
             return Port();
         }
 
-        return Port(ntohs(sock_addr.sin_port));
+        if (sock_addr.ss_family == AF_INET)
+        {
+            auto* sock_addr_in = reinterpret_cast<struct sockaddr_in*>(&sock_addr);
+            return Port(ntohs(sock_addr_in->sin_port));
+        }
+        else if (sock_addr.ss_family == AF_INET6)
+        {
+            auto* sock_addr_in6 = reinterpret_cast<struct sockaddr_in6*>(&sock_addr);
+            return Port(ntohs(sock_addr_in6->sin6_port));
+        }
+        else
+        {
+            return Port();
+        }
     }
 
     void Listener::run()

@@ -5,7 +5,7 @@
 project(
 	'pistache',
 	'cpp',
-	version: '0.1.1', # In Meson 0.57 this can be replaced with files('version.txt')
+	version: '0.2.0', # In Meson 0.57 this can be replaced with files('version.txt')
 	license: 'Apache-2.0',
 	default_options: [
 		'cpp_std=c++17',

@@ -537,24 +537,21 @@ namespace Pistache::Http::Header
         NAME("Host");
 
         Host()
-            : host_()
+            : uriHost_()
             , port_(0)
         { }
 
         explicit Host(const std::string& data);
-        explicit Host(const std::string& host, Port port)
-            : host_(host)
-            , port_(port)
-        { }
+        explicit Host(const std::string& host, Port port);
 
         void parse(const std::string& data) override;
         void write(std::ostream& os) const override;
 
-        std::string host() const { return host_; }
+        std::string host() const { return uriHost_; }
         Port port() const { return port_; }
 
     private:
-        std::string host_;
+        std::string uriHost_;
         Port port_;
     };
 

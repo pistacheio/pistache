@@ -100,26 +100,20 @@ namespace Pistache
     class IP
     {
     private:
-        int port;
-        int family;
-        union
-        {
-            struct sockaddr_in addr;
-            struct sockaddr_in6 addr6;
-        };
+        struct sockaddr_storage addr_ = {};
 
     public:
         IP();
         IP(uint8_t a, uint8_t b, uint8_t c, uint8_t d);
         IP(uint16_t a, uint16_t b, uint16_t c, uint16_t d, uint16_t e, uint16_t f,
            uint16_t g, uint16_t h);
-        explicit IP(struct sockaddr*);
+        explicit IP(const struct sockaddr*);
         static IP any();
         static IP loopback();
         static IP any(bool ipv6);
         static IP loopback(bool ipv6);
         int getFamily() const;
-        int getPort() const;
+        uint16_t getPort() const;
         std::string toString() const;
         void toNetwork(in_addr_t*) const;
         void toNetwork(struct in6_addr*) const;
@@ -136,13 +130,15 @@ namespace Pistache
         const std::string& rawHost() const;
         const std::string& rawPort() const;
         bool hasColon() const;
+        bool hasNumericPort() const;
         int family() const;
 
     private:
         std::string host_;
         std::string port_;
-        bool hasColon_ = false;
-        int family_    = 0;
+        bool hasColon_       = false;
+        bool hasNumericPort_ = false;
+        int family_          = 0;
     };
 
     class Address
@@ -161,7 +157,6 @@ namespace Pistache
         Address& operator=(Address&& other) = default;
 
         static Address fromUnix(struct sockaddr* addr);
-        static Address fromUnix(struct sockaddr_in* addr);
 
         std::string host() const;
         Port port() const;

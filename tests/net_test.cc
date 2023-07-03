@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include <pistache/net.h>
@@ -14,8 +15,11 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 
 using namespace Pistache;
+using testing::Eq;
+using testing::ThrowsMessage;
 
 TEST(net_test, port_creation)
 {
@@ -56,8 +60,18 @@ TEST(net_test, address_creation)
     ASSERT_EQ(address4.port(), 8080);
 
     Address address5("*:8080");
-    ASSERT_EQ(address5.host(), "0.0.0.0");
-    ASSERT_EQ(address5.family(), AF_INET);
+    if (address5.family() == AF_INET)
+    {
+        ASSERT_EQ(address5.host(), "0.0.0.0");
+    }
+    else if (address5.family() == AF_INET6)
+    {
+        ASSERT_EQ(address5.host(), "::");
+    }
+    else
+    {
+        ASSERT_TRUE(false);
+    }
     ASSERT_EQ(address5.port(), 8080);
 
     Address address6("[::1]:8080");
@@ -107,8 +121,18 @@ TEST(net_test, address_creation)
     ASSERT_EQ(address14.port(), 80);
 
     Address address15("localhost");
-    ASSERT_EQ(address15.host(), "127.0.0.1");
-    ASSERT_EQ(address15.family(), AF_INET);
+    if (address15.family() == AF_INET)
+    {
+        ASSERT_EQ(address15.host(), "127.0.0.1");
+    }
+    else if (address15.family() == AF_INET6)
+    {
+        ASSERT_EQ(address15.host(), "::1");
+    }
+    else
+    {
+        ASSERT_TRUE(false);
+    }
     ASSERT_EQ(address15.port(), 80);
 
     Address address16(IP(127, 0, 0, 1), Port(8080));
@@ -150,6 +174,17 @@ TEST(net_test, address_creation)
     ASSERT_EQ(address23.host(), "::");
     ASSERT_EQ(address23.family(), AF_INET6);
     ASSERT_EQ(address23.port(), 80);
+
+    Address address24("2001:0DB8:AABB:CCDD:EEFF:0011:2233:4455");
+    ASSERT_EQ(address24.host(), "2001:db8:aabb:ccdd:eeff:11:2233:4455");
+    ASSERT_EQ(address24.family(), AF_INET6);
+    ASSERT_EQ(address24.port(), 80);
+
+    Address address25("*:http");
+    ASSERT_EQ(address25.port(), 80);
+
+    Address address26("*:https");
+    ASSERT_EQ(address26.port(), 443);
 }
 
 TEST(net_test, invalid_address)
@@ -180,10 +215,29 @@ TEST(net_test, address_parser)
     ASSERT_EQ(ap2.hasColon(), false);
 
     AddressParser ap3("[2001:0DB8:AABB:CCDD:EEFF:0011:2233:4455]:8080");
-    ASSERT_EQ(ap3.rawHost(), "[2001:0DB8:AABB:CCDD:EEFF:0011:2233:4455]");
+    ASSERT_EQ(ap3.rawHost(), "2001:0DB8:AABB:CCDD:EEFF:0011:2233:4455");
     ASSERT_EQ(ap3.rawPort(), "8080");
     ASSERT_EQ(ap3.family(), AF_INET6);
 
     ASSERT_THROW(AddressParser("127.0.0.1:");, std::invalid_argument);
     ASSERT_THROW(AddressParser("[::]:");, std::invalid_argument);
+}
+
+TEST(net_test, ip_creation)
+{
+    struct sockaddr_in inet_socket = {};
+    inet_socket.sin_family = AF_INET;
+    IP ip_inet(reinterpret_cast<struct sockaddr*>(&inet_socket));
+    EXPECT_THAT(ip_inet.getFamily(), Eq(AF_INET));
+
+    struct sockaddr_in6 inet6_socket = {};
+    inet6_socket.sin6_family = AF_INET6;
+    IP ip_inet6(reinterpret_cast<struct sockaddr*>(&inet6_socket));
+    EXPECT_THAT(ip_inet6.getFamily(), Eq(AF_INET6));
+
+    struct sockaddr_un unix_socket = {};
+    unix_socket.sun_family = AF_UNIX;
+    EXPECT_THAT(
+        [&] { IP(reinterpret_cast<struct sockaddr*>(&unix_socket)); },
+        ThrowsMessage<std::invalid_argument>("Invalid socket family"));
 }
