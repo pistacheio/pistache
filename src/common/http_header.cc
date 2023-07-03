@@ -22,6 +22,8 @@
 #include <iterator>
 #include <limits>
 #include <stdexcept>
+#include <string>
+#include <sys/socket.h>
 
 namespace Pistache::Http::Header
 {
@@ -493,17 +495,31 @@ namespace Pistache::Http::Header
         }
     }
 
+    Host::Host(const std::string& host, Port port)
+        : Host(host + ':' + std::to_string(port))
+    { }
+
     Host::Host(const std::string& data)
-        : host_()
-        , port_(0)
     {
         parse(data);
     }
 
     void Host::parse(const std::string& data)
     {
-        AddressParser parser(data);
-        host_                   = parser.rawHost();
+        const AddressParser parser(data);
+
+        /* AddressParser returns an IPv6 host address, but RFC 9112 requires
+         * that the value of the "Host" header is an URI host, as defined in
+         * RFC 3986 section 3.2.2 */
+        if (parser.family() == AF_INET6)
+        {
+            uriHost_ = '[' + parser.rawHost() + ']';
+        }
+        else
+        {
+            uriHost_ = parser.rawHost();
+        }
+
         const std::string& port = parser.rawPort();
         if (port.empty())
         {
@@ -517,7 +533,7 @@ namespace Pistache::Http::Header
 
     void Host::write(std::ostream& os) const
     {
-        os << host_;
+        os << uriHost_;
         /* @Clarity @Robustness: maybe a found a literal different than zero
      to represent a null port ?
   */

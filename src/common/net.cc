@@ -326,6 +326,18 @@ namespace Pistache
 
     AddressParser::AddressParser(const std::string& data)
     {
+        /* If the passed value is a simple IPv6 address as defined by RFC 2373
+         * (i.e without port nor '[' and ']'), no custom parsing is required. */
+        struct in6_addr tmp;
+        if (inet_pton(AF_INET6, data.c_str(), &tmp) == 1)
+        {
+            char normalized_addr[INET6_ADDRSTRLEN];
+            inet_ntop(AF_INET6, &tmp, normalized_addr, sizeof(normalized_addr));
+            host_ = normalized_addr;
+            family_ = AF_INET6;
+            return;
+        }
+
         std::size_t end_pos   = data.find(']');
         std::size_t start_pos = data.find('[');
         if (start_pos != std::string::npos && end_pos != std::string::npos && start_pos < end_pos)
@@ -335,7 +347,10 @@ namespace Pistache
             {
                 hasColon_ = true;
             }
-            host_   = data.substr(start_pos, end_pos + 1);
+            // Strip '[' and ']' in IPv6 addresses, as it is not part of the
+            // address itself according to RFC 4291 and RFC 5952, but just a way
+            // to represent address + port in an unambiguous way.
+            host_   = data.substr(start_pos + 1, end_pos - 1);
             family_ = AF_INET6;
             ++end_pos;
         }
@@ -438,11 +453,7 @@ namespace Pistache
 
         if (family == AF_INET6)
         {
-            const std::string& raw_host = parser.rawHost();
-            assert(raw_host.size() > 2);
-            const std::string& host = addr.substr(1, raw_host.size() - 2);
-
-            ip_ = GetIPv6(host);
+            ip_ = GetIPv6(parser.rawHost());
         }
         else if (family == AF_INET)
         {
@@ -471,7 +482,18 @@ namespace Pistache
 
     std::ostream& operator<<(std::ostream& os, const Address& address)
     {
-        os << address.host() << ":" << address.port();
+        /* As recommended by section 6 of RFC 5952,
+         * Notes on Combining IPv6 Addresses with Port Numbers */
+        if (address.family() == AF_INET6)
+        {
+            os << '[';
+        }
+        os << address.host();
+        if (address.family() == AF_INET6)
+        {
+            os << ']';
+        }
+        os << ":" << address.port();
         return os;
     }
 
