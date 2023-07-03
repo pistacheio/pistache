@@ -4,10 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/* net.cc
-   Mathieu Stefani, 12 August 2015
-
-*/
+/*
+ * net.cc
+ * Mathieu Stefani, 12 August 2015
+ */
 
 #include <pistache/common.h>
 #include <pistache/config.h>
@@ -19,6 +19,7 @@
 #include <vector>
 
 #include <cassert>
+#include <cstdlib>
 #include <cstring>
 
 #include <arpa/inet.h>
@@ -29,101 +30,6 @@
 
 namespace Pistache
 {
-
-    namespace
-    {
-        std::vector<std::string> HostToIPv4(const std::string& host,
-                                            const std::string& port)
-        {
-            std::vector<std::string> result;
-
-            struct addrinfo hints = {};
-            hints.ai_family       = AF_INET;
-            hints.ai_socktype     = SOCK_STREAM; /* Stream socket */
-
-            AddrInfo addressInfo;
-
-            try
-            {
-                addressInfo.invoke(host.c_str(), port.c_str(), &hints);
-            }
-            catch (const std::runtime_error&)
-            {
-                throw std::invalid_argument("Failed to get IPv4 addresses");
-            }
-
-            const addrinfo* addrs = addressInfo.get_info_ptr();
-            if (addrs == nullptr)
-            {
-                throw std::invalid_argument("Failed to get IPv4 addresses");
-            }
-
-            for (const addrinfo* addr = addrs; addr; addr = addr->ai_next)
-            {
-                struct sockaddr_in* ipv4     = reinterpret_cast<struct sockaddr_in*>(addr->ai_addr);
-                char buffer[INET_ADDRSTRLEN] = {
-                    0,
-                };
-
-                inet_ntop(addr->ai_family, &(ipv4->sin_addr), buffer, sizeof(buffer));
-                result.emplace_back(buffer);
-            }
-
-            return result;
-        }
-
-        IP GetIPv4(const std::string& host)
-        {
-            in_addr addr;
-            int res = inet_pton(AF_INET, host.c_str(), &addr);
-            if (res == 0)
-            {
-                throw std::invalid_argument("Invalid IPv4 network address");
-            }
-            else if (res < 0)
-            {
-                throw std::invalid_argument(strerror(errno));
-            }
-            else
-            {
-                struct sockaddr_in s_addr = { 0 };
-                s_addr.sin_family         = AF_INET;
-
-                static_assert(sizeof(s_addr.sin_addr.s_addr) >= sizeof(uint32_t),
-                              "Incompatible s_addr.sin_addr.s_addr size");
-                memcpy(&(s_addr.sin_addr.s_addr), &addr.s_addr, sizeof(uint32_t));
-
-                return IP(reinterpret_cast<struct sockaddr*>(&s_addr));
-            }
-        }
-
-        IP GetIPv6(const std::string& host)
-        {
-            in6_addr addr6;
-            int res = inet_pton(AF_INET6, host.c_str(), &(addr6.s6_addr16));
-            if (res == 0)
-            {
-                throw std::invalid_argument("Invalid IPv6 network address");
-            }
-            else if (res < 0)
-            {
-                throw std::invalid_argument(strerror(errno));
-            }
-            else
-            {
-                struct sockaddr_in6 s_addr = { 0 };
-                s_addr.sin6_family         = AF_INET6;
-
-                static_assert(sizeof(s_addr.sin6_addr.s6_addr16) >= 8 * sizeof(uint16_t),
-                              "Incompatible s_addr.sin6_addr.s6_addr16 size");
-                memcpy(&(s_addr.sin6_addr.s6_addr16), &addr6.s6_addr16,
-                       8 * sizeof(uint16_t));
-
-                return IP(reinterpret_cast<struct sockaddr*>(&s_addr));
-            }
-        }
-    } // namespace
-
     Port::Port(uint16_t port)
         : port(port)
     { }
@@ -371,6 +277,11 @@ namespace Pistache
             port_ = data.substr(end_pos + 1);
             if (port_.empty())
                 throw std::invalid_argument("Invalid port");
+
+            // Check if port_ is a valid number
+            char* tmp;
+            std::strtol(port_.c_str(), &tmp, 10);
+            hasNumericPort_ = *tmp == '\0';
         }
     }
 
@@ -379,6 +290,8 @@ namespace Pistache
     const std::string& AddressParser::rawPort() const { return port_; }
 
     bool AddressParser::hasColon() const { return hasColon_; }
+
+    bool AddressParser::hasNumericPort() const { return hasNumericPort_; }
 
     int AddressParser::family() const { return family_; }
 
@@ -424,59 +337,45 @@ namespace Pistache
 
     void Address::init(const std::string& addr)
     {
-        AddressParser parser(addr);
-        const int family = parser.family();
+        const AddressParser parser(addr);
+        const std::string& host = parser.rawHost();
+        const std::string& port = parser.rawPort();
 
-        // TODO: Need refactoring
-        const std::string& portPart = parser.rawPort();
-        if (portPart.empty())
+        const bool wildcard = host == "*";
+
+        struct addrinfo hints = {};
+        hints.ai_family       = AF_UNSPEC;
+        hints.ai_socktype     = SOCK_STREAM;
+        hints.ai_protocol     = IPPROTO_TCP;
+
+        if (wildcard)
         {
-            if (parser.hasColon())
-            {
-                // "www.example.com:" or "127.0.0.1:" cases
-                throw std::invalid_argument("Invalid port");
-            }
-            else
-            {
-                // "www.example.com" or "127.0.0.1" cases
-                port_ = Const::HTTP_STANDARD_PORT;
-            }
-        }
-        else
-        {
-            char* end = nullptr;
-            long port = strtol(portPart.c_str(), &end, 10);
-            if (*end != 0 || port < Port::min() || port > Port::max())
-                throw std::invalid_argument("Invalid port");
-            port_ = Port(static_cast<uint16_t>(port));
+            hints.ai_flags = AI_PASSIVE;
         }
 
-        if (family == AF_INET6)
-        {
-            ip_ = GetIPv6(parser.rawHost());
-        }
-        else if (family == AF_INET)
-        {
-            std::string host = parser.rawHost();
+        // The host is set to nullptr if empty because getaddrinfo() requires
+        // it, and also when it is set to "*" because, when combined with the
+        // AI_PASSIVE flag, it yields the proper wildcard address. The port, if
+        // empty, is set to 80 (http) by default.
+        const char* const addrinfo_host = host.empty() || wildcard ? nullptr : host.c_str();
+        const char* const addrinfo_port = port.empty() ? "80" : port.c_str();
 
-            if (host == "*")
-            {
-                host = "0.0.0.0";
-            }
-
-            const auto& addresses = HostToIPv4(host, portPart);
-            if (!addresses.empty())
-            {
-                ip_ = GetIPv4(addresses[0]);
-            }
-            else
-            {
-                assert(false && "No IP addresses found for host");
-            }
-        }
-        else
+        AddrInfo addrinfo;
+        const int err = addrinfo.invoke(addrinfo_host, addrinfo_port, &hints);
+        if (err)
         {
-            assert(false);
+            throw std::invalid_argument(gai_strerror(err));
+        }
+
+        const struct addrinfo* result = addrinfo.get_info_ptr();
+
+        ip_   = IP(result->ai_addr);
+        port_ = Port(ip_.getPort());
+
+        // Check that the port has not overflowed while calling getaddrinfo()
+        if (parser.hasNumericPort() && port_ != std::strtol(addrinfo_port, nullptr, 10))
+        {
+            throw std::invalid_argument("Invalid numeric port");
         }
     }
 

@@ -60,8 +60,18 @@ TEST(net_test, address_creation)
     ASSERT_EQ(address4.port(), 8080);
 
     Address address5("*:8080");
-    ASSERT_EQ(address5.host(), "0.0.0.0");
-    ASSERT_EQ(address5.family(), AF_INET);
+    if (address5.family() == AF_INET)
+    {
+        ASSERT_EQ(address5.host(), "0.0.0.0");
+    }
+    else if (address5.family() == AF_INET6)
+    {
+        ASSERT_EQ(address5.host(), "::");
+    }
+    else
+    {
+        ASSERT_TRUE(false);
+    }
     ASSERT_EQ(address5.port(), 8080);
 
     Address address6("[::1]:8080");
@@ -111,8 +121,18 @@ TEST(net_test, address_creation)
     ASSERT_EQ(address14.port(), 80);
 
     Address address15("localhost");
-    ASSERT_EQ(address15.host(), "127.0.0.1");
-    ASSERT_EQ(address15.family(), AF_INET);
+    if (address15.family() == AF_INET)
+    {
+        ASSERT_EQ(address15.host(), "127.0.0.1");
+    }
+    else if (address15.family() == AF_INET6)
+    {
+        ASSERT_EQ(address15.host(), "::1");
+    }
+    else
+    {
+        ASSERT_TRUE(false);
+    }
     ASSERT_EQ(address15.port(), 80);
 
     Address address16(IP(127, 0, 0, 1), Port(8080));
@@ -159,6 +179,12 @@ TEST(net_test, address_creation)
     ASSERT_EQ(address24.host(), "2001:db8:aabb:ccdd:eeff:11:2233:4455");
     ASSERT_EQ(address24.family(), AF_INET6);
     ASSERT_EQ(address24.port(), 80);
+
+    Address address25("*:http");
+    ASSERT_EQ(address25.port(), 80);
+
+    Address address26("*:https");
+    ASSERT_EQ(address26.port(), 443);
 }
 
 TEST(net_test, invalid_address)

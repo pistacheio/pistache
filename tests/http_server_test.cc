@@ -465,7 +465,18 @@ TEST(http_server_test, server_request_copies_address)
     client.shutdown();
     server.shutdown();
 
-    ASSERT_EQ("127.0.0.1", resultData);
+    if (address.family() == AF_INET)
+    {
+        ASSERT_EQ("127.0.0.1", resultData);
+    }
+    else if (address.family() == AF_INET6)
+    {
+        ASSERT_EQ("::1", resultData);
+    }
+    else
+    {
+        ASSERT_TRUE(false);
+    }
 }
 
 struct ResponseSizeHandler : public Http::Handler
@@ -534,7 +545,18 @@ TEST(http_server_test, response_size_captured)
     server.shutdown();
 
     // Sanity check (stolen from AddressEchoHandler test).
-    ASSERT_EQ("127.0.0.1", resultData);
+    if (address.family() == AF_INET)
+    {
+        ASSERT_EQ("127.0.0.1", resultData);
+    }
+    else if (address.family() == AF_INET6)
+    {
+        ASSERT_EQ("::1", resultData);
+    }
+    else
+    {
+        ASSERT_TRUE(false);
+    }
 
     LOGGER("test", "Response size is " << rsize);
     ASSERT_GT(rsize, 1u);

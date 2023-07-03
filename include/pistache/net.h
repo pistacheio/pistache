@@ -130,13 +130,15 @@ namespace Pistache
         const std::string& rawHost() const;
         const std::string& rawPort() const;
         bool hasColon() const;
+        bool hasNumericPort() const;
         int family() const;
 
     private:
         std::string host_;
         std::string port_;
-        bool hasColon_ = false;
-        int family_    = 0;
+        bool hasColon_       = false;
+        bool hasNumericPort_ = false;
+        int family_          = 0;
     };
 
     class Address
