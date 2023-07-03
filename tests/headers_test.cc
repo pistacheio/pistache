@@ -678,14 +678,14 @@ TEST(headers_test, server_test)
     oss.str("");
 }
 
-CUSTOM_HEADER(TestHeader)
+PISTACHE_CUSTOM_HEADER(TestHeader, "Test-Header")
 
 TEST(headers_test, macro_for_custom_headers)
 {
     TestHeader testHeader;
     std::ostringstream os;
 
-    ASSERT_STREQ(TestHeader::Name, "TestHeader");
+    ASSERT_STREQ(TestHeader::Name, "Test-Header");
 
     testHeader.parse("Header Content Test");
     testHeader.write(os);
@@ -696,7 +696,7 @@ TEST(headers_test, macro_for_custom_headers)
 
 TEST(headers_test, add_new_header_test)
 {
-    const std::string headerName = "TestHeader";
+    const std::string headerName = "Test-Header";
 
     ASSERT_FALSE(
         Pistache::Http::Header::Registry::instance().isRegistered(headerName));
