@@ -296,6 +296,7 @@ libpistache = library(
 	dependencies: deps_libpistache,
 	link_args: libpistache_links_args,
 	install: get_option('PISTACHE_INSTALL'),
+	soversion: version_major + '.' + version_minor,
 	version: version_str,
 	pic: get_option('b_staticpic')
 )
