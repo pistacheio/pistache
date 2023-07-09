@@ -44,4 +44,6 @@ install_headers(
 	'view.h',
 	subdir: 'pistache')
 
-install_subdir('serializer', install_dir: get_option('includedir')/'pistache')
+if get_option('PISTACHE_USE_RAPIDJSON')
+    install_subdir('serializer', install_dir: get_option('includedir')/'pistache')
+endif

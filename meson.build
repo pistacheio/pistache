@@ -48,9 +48,12 @@ endif
 
 deps_libpistache = [
 	dependency('threads'),
-	dependency('RapidJSON', fallback: ['rapidjson', 'rapidjson_dep']),
 	date_dep
 ]
+
+if get_option('PISTACHE_USE_RAPIDJSON')
+	deps_libpistache += dependency('RapidJSON', fallback: ['rapidjson', 'rapidjson_dep'])
+endif
 
 # Check if -latomic is needed - https://github.com/llvm/llvm-project/blob/main/llvm/cmake/modules/CheckAtomic.cmake
 compiler_id = compiler.get_id()
@@ -134,6 +137,10 @@ incl_pistache = include_directories('include')
 
 subdir('include'/'pistache')
 subdir('src')
+if get_option('PISTACHE_BUILD_TESTS') and not get_option('PISTACHE_USE_RAPIDJSON')
+    error('Pistache tests require rapidjson support')
+endif
+
 if get_option('PISTACHE_BUILD_TESTS')
 	subdir('tests')
 endif
