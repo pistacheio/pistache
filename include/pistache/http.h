@@ -127,26 +127,25 @@ namespace Pistache
             {
             public:
                 Query();
-                explicit Query(
-                    std::initializer_list<std::pair<const std::string, std::string>> params);
+                explicit Query(std::initializer_list<std::pair<const std::string, std::vector<std::string>>> params);
 
                 void add(std::string name, std::string value);
-                std::optional<std::string> get(const std::string& name) const;
+                std::optional<std::vector<std::string>> get(const std::string& name) const;
                 bool has(const std::string& name) const;
-                // Return empty string or "?key1=value1&key2=value2" if query exist
+                // Return empty string or "?key1=value1&key2=value2" if query exists
                 std::string as_str() const;
 
                 void clear() { params.clear(); }
 
                 // \brief Return iterator to the beginning of the parameters map
-                std::unordered_map<std::string, std::string>::const_iterator
+                std::unordered_map<std::string, std::vector<std::string>>::const_iterator
                 parameters_begin() const
                 {
                     return params.begin();
                 }
 
                 // \brief Return iterator to the end of the parameters map
-                std::unordered_map<std::string, std::string>::const_iterator
+                std::unordered_map<std::string, std::vector<std::string>>::const_iterator
                 parameters_end() const
                 {
                     return params.end();
@@ -158,18 +157,22 @@ namespace Pistache
                     std::vector<std::string> keys;
                     std::transform(
                         params.begin(), params.end(), std::back_inserter(keys),
-                        [](const std::unordered_map<std::string, std::string>::value_type& pair) { return pair.first; });
+                        [](const std::unordered_map<std::string, std::vector<std::string>>::value_type& pair) { return pair.first; });
                     return keys;
                 }
 
             private:
-                // first is key second is value
-                std::unordered_map<std::string, std::string> params;
+                // first is key, second is vector of values
+                std::unordered_map<std::string, std::vector<std::string>> params;
             };
+
         } // namespace Uri
 
         // Remove when RequestBuilder will be out of namespace Experimental
-        namespace Experimental {class RequestBuilder; }
+        namespace Experimental
+        {
+            class RequestBuilder;
+        }
 
         // 5. Request
         class Request : public Message

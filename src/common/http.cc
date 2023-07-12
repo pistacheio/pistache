@@ -344,7 +344,7 @@ namespace Pistache::Http
                 if (Header::LowercaseEqualStatic(name, "cookie"))
                 {
                     message->cookies_.removeAllCookies(); // removing existing cookies before
-                                                          // re-adding them.
+                        // re-adding them.
                     message->cookies_.addFromRaw(cursor.offset(start), cursor.diff(start));
                 }
                 else if (Header::LowercaseEqualStatic(name, "set-cookie"))
@@ -579,23 +579,22 @@ namespace Pistache::Http
             : params()
         { }
 
-        Query::Query(
-            std::initializer_list<std::pair<const std::string, std::string>> params)
+        Query::Query(std::initializer_list<std::pair<const std::string, std::vector<std::string>>> params)
             : params(params)
         { }
 
         void Query::add(std::string name, std::string value)
         {
-            params.insert(std::make_pair(std::move(name), std::move(value)));
+            params[std::move(name)].push_back(std::move(value));
         }
 
-        std::optional<std::string> Query::get(const std::string& name) const
+        std::optional<std::vector<std::string>> Query::get(const std::string& name) const
         {
             auto it = params.find(name);
             if (it == std::end(params))
                 return std::nullopt;
 
-            return std::optional<std::string>(it->second);
+            return std::optional<std::vector<std::string>>(it->second);
         }
 
         std::string Query::as_str() const
@@ -603,7 +602,10 @@ namespace Pistache::Http
             std::string query_url;
             for (const auto& e : params)
             {
-                query_url += "&" + e.first + "=" + e.second;
+                for (const auto& value : e.second)
+                {
+                    query_url += "&" + e.first + "=" + value;
+                }
             }
             if (!query_url.empty())
             {
