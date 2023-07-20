@@ -28,6 +28,7 @@
 
 #include <chrono>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <cerrno>
@@ -249,53 +250,33 @@ namespace Pistache::Tcp
 
     void Listener::bind() { bind(addr_); }
 
-    void Listener::bind(const Address& address)
+    // Abstracts out binding-related processing common to both IP-based sockets
+    // and unix domain-based sockets.  Called from bind()  below.
+    //
+    // Attempts to bind the address described by addr and set up a
+    // corresponding socket as a listener, returning true upon success and
+    // false on failure.  Sets listen_fd on success.
+    bool Listener::bindListener(const struct addrinfo* addr)
     {
-        addr_ = address;
+        auto socktype = addr->ai_socktype;
+        if (options_.hasFlag(Options::CloseOnExec))
+            socktype |= SOCK_CLOEXEC;
 
-        struct addrinfo hints = {};
-        hints.ai_family       = address.family();
-        hints.ai_socktype     = SOCK_STREAM;
-        hints.ai_flags        = AI_PASSIVE;
-
-        const auto& host = addr_.host();
-        const auto& port = addr_.port().toString();
-        AddrInfo addr_info;
-
-        TRY(addr_info.invoke(host.c_str(), port.c_str(), &hints));
-
-        int fd = -1;
-
-        const addrinfo* addr = nullptr;
-        for (addr = addr_info.get_info_ptr(); addr; addr = addr->ai_next)
+        int fd = ::socket(addr->ai_family, socktype, addr->ai_protocol);
+        if (fd < 0)
         {
-            auto socktype = addr->ai_socktype;
-            if (options_.hasFlag(Options::CloseOnExec))
-                socktype |= SOCK_CLOEXEC;
-
-            fd = ::socket(addr->ai_family, socktype, addr->ai_protocol);
-            if (fd < 0)
-                continue;
-
-            setSocketOptions(fd, options_);
-
-            if (::bind(fd, addr->ai_addr, addr->ai_addrlen) < 0)
-            {
-                close(fd);
-                continue;
-            }
-
-            TRY(::listen(fd, backlog_));
-            break;
+            return false;
         }
 
-        // At this point, it is still possible that we couldn't bind any socket. If it
-        // is the case, the previous loop would have exited naturally and addr will be
-        // null.
-        if (addr == nullptr)
+        setSocketOptions(fd, options_);
+
+        if (::bind(fd, addr->ai_addr, addr->ai_addrlen) < 0)
         {
-            throw std::runtime_error(strerror(errno));
+            close(fd);
+            return false;
         }
+
+        TRY(::listen(fd, backlog_));
 
         make_non_blocking(fd);
         poller.addFd(fd, Flags<Polling::NotifyOn>(Polling::NotifyOn::Read),
@@ -306,6 +287,61 @@ namespace Pistache::Tcp
 
         reactor_.init(Aio::AsyncContext(workers_, workersName_));
         transportKey = reactor_.addHandler(transport);
+
+        return true;
+    }
+
+    void Listener::bind(const Address& address)
+    {
+        addr_ = address;
+
+        auto found            = false;
+        const auto family     = address.family();
+        struct addrinfo hints = {};
+        hints.ai_family       = family;
+        hints.ai_socktype     = SOCK_STREAM;
+        hints.ai_flags        = AI_PASSIVE;
+
+        if (family == AF_UNIX)
+        {
+            const struct sockaddr& sa = address.getSockAddr();
+            // unix domain sockets are confined to the local host, so there's
+            // no question of finding the best address.  It's simply the one
+            // hiding inside the address object.
+            //
+            // Impedance match the unix domain address into a suitable argument
+            // to bindListener().
+            hints.ai_protocol = 0;
+            hints.ai_addr     = const_cast<struct sockaddr*>(&sa);
+            hints.ai_addrlen  = address.addrLen();
+            found             = bindListener(&hints);
+        }
+        else
+        {
+            const auto& host = addr_.host();
+            const auto& port = addr_.port().toString();
+            AddrInfo addr_info;
+
+            TRY(addr_info.invoke(host.c_str(), port.c_str(), &hints));
+
+            const addrinfo* addr = nullptr;
+            for (addr = addr_info.get_info_ptr(); addr; addr = addr->ai_next)
+            {
+                found = bindListener(addr);
+                if (found)
+                {
+                    break;
+                }
+            }
+        }
+
+        //
+        // At this point, it is still possible that we couldn't bind any socket.
+        //
+        if (!found)
+        {
+            throw std::runtime_error(strerror(errno));
+        }
     }
 
     bool Listener::isBound() const { return listen_fd != -1; }

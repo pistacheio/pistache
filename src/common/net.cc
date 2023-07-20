@@ -117,6 +117,14 @@ namespace Pistache
             ss_in_addr->sin6_flowinfo = in_addr->sin6_flowinfo; /* Should be 0 per RFC 3493 */
             memcpy(ss_in_addr->sin6_addr.s6_addr, in_addr->sin6_addr.s6_addr, sizeof(ss_in_addr->sin6_addr.s6_addr));
         }
+        else if (addr->sa_family == AF_UNIX)
+        {
+            const struct sockaddr_un* un_addr = reinterpret_cast<const struct sockaddr_un*>(addr);
+            struct sockaddr_un* ss_un_addr    = reinterpret_cast<struct sockaddr_un*>(&addr_);
+
+            ss_un_addr->sun_family = un_addr->sun_family;
+            memcpy(ss_un_addr->sun_path, un_addr->sun_path, sizeof(ss_un_addr->sun_path));
+        }
         else
         {
             throw std::invalid_argument("Invalid socket family");
@@ -163,6 +171,12 @@ namespace Pistache
         {
             return ntohs(reinterpret_cast<const struct sockaddr_in6*>(&addr_)->sin6_port);
         }
+        else if (addr_.ss_family == AF_UNIX)
+        {
+            // Ports are a meaningless concept for unix domain sockets.  Return
+            // an arbitrary value.
+            return 0;
+        }
         else
         {
             unreachable();
@@ -171,9 +185,28 @@ namespace Pistache
 
     std::string IP::toString() const
     {
+        if (addr_.ss_family == AF_UNIX)
+        {
+            auto& unAddr = reinterpret_cast<const struct sockaddr_un&>(addr_);
+            if (unAddr.sun_path[0] == '\0')
+            {
+                // The socket is abstract (not present in the file system name
+                // space).  Its name starts with the byte following the initial
+                // NUL.  As the name may contain embedded NUL bytes and its
+                // length is not available here, simply note that it's an
+                // abstract address.
+                return std::string("[Abstract]");
+            }
+            else
+            {
+                return std::string(unAddr.sun_path);
+            }
+        }
+
         char buff[INET6_ADDRSTRLEN];
         const auto* addr_sa = reinterpret_cast<const struct sockaddr*>(&addr_);
-        int err             = getnameinfo(addr_sa, sizeof(addr_), buff, sizeof(buff), NULL, 0, NI_NUMERICHOST);
+        int err             = getnameinfo(
+            addr_sa, sizeof(addr_), buff, sizeof(buff), NULL, 0, NI_NUMERICHOST);
         if (err) /* [[unlikely]] */
         {
             throw std::runtime_error(gai_strerror(err));
@@ -185,7 +218,7 @@ namespace Pistache
     {
         if (addr_.ss_family != AF_INET)
         {
-            throw std::invalid_argument("Invalid address family");
+            throw std::invalid_argument("Inapplicable or invalid address family");
         }
         *out = reinterpret_cast<const struct sockaddr_in*>(&addr_)->sin_addr.s_addr;
     }
@@ -194,7 +227,7 @@ namespace Pistache
     {
         if (addr_.ss_family != AF_INET)
         {
-            throw std::invalid_argument("Invalid address family");
+            throw std::invalid_argument("Inapplicable or invalid address family");
         }
         *out = reinterpret_cast<const struct sockaddr_in6*>(&addr_)->sin6_addr;
     }
@@ -239,7 +272,7 @@ namespace Pistache
         {
             char normalized_addr[INET6_ADDRSTRLEN];
             inet_ntop(AF_INET6, &tmp, normalized_addr, sizeof(normalized_addr));
-            host_ = normalized_addr;
+            host_   = normalized_addr;
             family_ = AF_INET6;
             return;
         }
@@ -298,6 +331,7 @@ namespace Pistache
     Address::Address()
         : ip_ {}
         , port_ { 0 }
+        , addrLen_(sizeof(struct sockaddr_in6))
     { }
 
     Address::Address(std::string host, Port port)
@@ -315,18 +349,20 @@ namespace Pistache
     Address::Address(IP ip, Port port)
         : ip_(ip)
         , port_(port)
-    { }
+    {
+        addrLen_ = ip.getFamily() == AF_INET ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
+    }
 
     Address Address::fromUnix(struct sockaddr* addr)
     {
-        if ((addr->sa_family == AF_INET) or (addr->sa_family == AF_INET6))
+        const auto family = addr->sa_family;
+        if (family == AF_INET || family == AF_INET6 || family == AF_UNIX)
         {
             IP ip     = IP(addr);
-            Port port = Port(static_cast<uint16_t>(ip.getPort()));
-            assert(addr);
+            Port port = Port(ip.getPort());
             return Address(ip, port);
         }
-        throw Error("Not an IP socket");
+        throw Error("Not an IP or unix domain socket");
     }
 
     std::string Address::host() const { return ip_.toString(); }
@@ -337,6 +373,43 @@ namespace Pistache
 
     void Address::init(const std::string& addr)
     {
+        // Handle unix domain addresses separately.
+        if (isUnixDomain(addr))
+        {
+            struct sockaddr_un unAddr = {};
+            unAddr.sun_family         = AF_UNIX;
+
+            // See unix(7) manual page; distinguish among unnamed, abstract,
+            // and pathname socket addresses.
+            const auto size = std::min(addr.size(), sizeof unAddr.sun_path);
+            if (size == 0)
+            {
+                addrLen_ = sizeof unAddr.sun_family;
+            }
+            else if (addr[0] == '\0')
+            {
+                addrLen_ = static_cast<socklen_t>(
+                    sizeof unAddr.sun_family + size);
+                std::memcpy(unAddr.sun_path, addr.data(), size);
+            }
+            else
+            {
+                addrLen_ = static_cast<socklen_t>(
+                    offsetof(struct sockaddr_un, sun_path) + size);
+                std::strncpy(unAddr.sun_path, addr.c_str(), size);
+                if (size == sizeof unAddr.sun_path)
+                {
+                    unAddr.sun_path[size - 1] = '\0';
+                }
+            }
+
+            ip_   = IP(reinterpret_cast<struct sockaddr*>(&unAddr));
+            port_ = Port(ip_.getPort());
+            return;
+        }
+
+        addrLen_ = family() == AF_INET ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
+
         const AddressParser parser(addr);
         const std::string& host = parser.rawHost();
         const std::string& port = parser.rawPort();
@@ -377,6 +450,19 @@ namespace Pistache
         {
             throw std::invalid_argument("Invalid numeric port");
         }
+    }
+
+    // Applies heuristics to deterimine whether or not addr names a unix
+    // domain address.  If it is zero-length, begins with a NUL byte, or
+    // contains a '/' character (none of which are possible for legitimate
+    // IP-based addresses), it's deemed to be a unix domain address.
+    //
+    // This heuristic rejects pathname unix domain addresses that contain no
+    // '/' characters; such addresses tend not to occur in practice.  See the
+    // unix(7) manual page for more infomation.
+    bool Address::isUnixDomain(const std::string& addr)
+    {
+        return addr.size() == 0 || addr[0] == '\0' || addr.find('/') != std::string::npos;
     }
 
     std::ostream& operator<<(std::ostream& os, const Address& address)
