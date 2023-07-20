@@ -88,7 +88,7 @@ namespace Pistache::Http
             if (entry.getTag() == Polling::Tag(timerFd))
             {
                 uint64_t wakeups;
-                ::read(timerFd, &wakeups, sizeof wakeups);
+                [[maybe_unused]] auto rv = ::read(timerFd, &wakeups, sizeof wakeups);
                 checkIdlePeers();
                 break;
             }
@@ -160,7 +160,7 @@ namespace Pistache::Http
     void TransportImpl::closePeer(std::shared_ptr<Tcp::Peer>& peer)
     {
         // true: there is no http request on the keepalive peer -> only call removePeer
-        // false: there is at least one http request on the peer(keepalive or not) -> send 408 message firsst, then call removePeer
+        // false: there is at least one http request on the peer(keepalive or not) -> send 408 message first, then call removePeer
         if (peer->isIdle())
         {
             removePeer(peer);

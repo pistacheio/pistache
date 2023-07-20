@@ -68,22 +68,34 @@ namespace Pistache::Tcp
     {
         if (hostname_.empty())
         {
-            char host[NI_MAXHOST];
-            struct sockaddr_in sa;
-            sa.sin_family = AF_INET;
-            if (inet_pton(AF_INET, addr.host().c_str(), &sa.sin_addr) == 0)
+            if (addr.family() == AF_UNIX)
             {
-                hostname_ = addr.host();
+                //
+                // Communication through unix domain sockets is constrained to
+                // the local host.
+                //
+                hostname_.assign("localhost");
             }
             else
             {
-                if (!getnameinfo(reinterpret_cast<struct sockaddr*>(&sa), sizeof(sa), host, sizeof(host),
-                                 nullptr, 0 // Service info
-                                 ,
-                                 NI_NAMEREQD // Raise an error if name resolution failed
-                                 ))
+                char host[NI_MAXHOST];
+                struct sockaddr_in sa;
+                sa.sin_family = AF_INET;
+                if (inet_pton(AF_INET, addr.host().c_str(), &sa.sin_addr) == 0)
                 {
-                    hostname_.assign(static_cast<char*>(host));
+                    hostname_ = addr.host();
+                }
+                else
+                {
+                    if (!getnameinfo(
+                            reinterpret_cast<struct sockaddr*>(&sa),
+                            sizeof(sa), host, sizeof(host),
+                            nullptr, 0, // Service info
+                            NI_NAMEREQD // Raise an error if name resolution failed
+                            ))
+                    {
+                        hostname_.assign(static_cast<char*>(host));
+                    }
                 }
             }
         }

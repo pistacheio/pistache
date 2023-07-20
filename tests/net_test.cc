@@ -226,18 +226,18 @@ TEST(net_test, address_parser)
 TEST(net_test, ip_creation)
 {
     struct sockaddr_in inet_socket = {};
-    inet_socket.sin_family = AF_INET;
+    inet_socket.sin_family         = AF_INET;
     IP ip_inet(reinterpret_cast<struct sockaddr*>(&inet_socket));
     EXPECT_THAT(ip_inet.getFamily(), Eq(AF_INET));
 
     struct sockaddr_in6 inet6_socket = {};
-    inet6_socket.sin6_family = AF_INET6;
+    inet6_socket.sin6_family         = AF_INET6;
     IP ip_inet6(reinterpret_cast<struct sockaddr*>(&inet6_socket));
     EXPECT_THAT(ip_inet6.getFamily(), Eq(AF_INET6));
 
+    // unix domain listening sockets are now supported, via Address::fromUnix.
     struct sockaddr_un unix_socket = {};
-    unix_socket.sun_family = AF_UNIX;
-    EXPECT_THAT(
-        [&] { IP(reinterpret_cast<struct sockaddr*>(&unix_socket)); },
-        ThrowsMessage<std::invalid_argument>("Invalid socket family"));
+    unix_socket.sun_family         = AF_UNIX;
+    IP ip_unix(reinterpret_cast<struct sockaddr*>(&unix_socket));
+    EXPECT_THAT(ip_unix.getFamily(), Eq(AF_UNIX));
 }
