@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 
-# SPDX-FileCopyrightText: 2019-2022 Kip Warner
+# SPDX-FileCopyrightText: 2019-2023 Kip Warner
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -35,7 +35,8 @@ override_dh_auto_configure:
 		-DPISTACHE_BUILD_EXAMPLES=true \
 		-DPISTACHE_BUILD_TESTS=$(test) \
 		-DPISTACHE_BUILD_DOCS=false \
-		-DPISTACHE_USE_SSL=true
+		-DPISTACHE_USE_SSL=true \
+		-DPISTACHE_USE_CONTENT_ENCODING_GZIP=true
 
 override_dh_auto_test:
 	dh_auto_test -- \
