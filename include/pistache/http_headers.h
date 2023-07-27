@@ -139,7 +139,7 @@ namespace Pistache::Http::Header
     {
 
     public:
-        Registry(const Registry&) = delete;
+        Registry(const Registry&)            = delete;
         Registry& operator=(const Registry&) = delete;
         static Registry& instance();
 

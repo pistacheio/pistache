@@ -48,6 +48,8 @@ namespace Pistache::Http::Header
         {
         case Encoding::Gzip:
             return "gzip";
+        case Encoding::Br:
+            return "br";
         case Encoding::Compress:
             return "compress";
         case Encoding::Deflate:
@@ -613,6 +615,10 @@ namespace Pistache::Http::Header
         if (!strncasecmp(str, "gzip", len))
         {
             encoding_ = Encoding::Gzip;
+        }
+        else if (!strncasecmp(str, "br", len))
+        {
+            encoding_ = Encoding::Br;
         }
         else if (!strncasecmp(str, "deflate", len))
         {
