@@ -19,7 +19,6 @@
 
 namespace Pistache::Http::Header
 {
-
     RegisterHeader(Accept);
     RegisterHeader(AccessControlAllowOrigin);
     RegisterHeader(AccessControlAllowHeaders);
@@ -28,6 +27,7 @@ namespace Pistache::Http::Header
     RegisterHeader(Allow);
     RegisterHeader(CacheControl);
     RegisterHeader(Connection);
+    RegisterHeader(AcceptEncoding);
     RegisterHeader(ContentEncoding);
     RegisterHeader(TransferEncoding);
     RegisterHeader(ContentLength);

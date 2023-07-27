@@ -35,6 +35,10 @@
 #include <pistache/tcp.h>
 #include <pistache/transport.h>
 
+#ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
+#include <zlib.h>
+#endif
+
 namespace Pistache
 {
     namespace Tcp
@@ -93,10 +97,10 @@ namespace Pistache
             Message() = default;
             explicit Message(Version version);
 
-            Message(const Message& other) = default;
+            Message(const Message& other)            = default;
             Message& operator=(const Message& other) = default;
 
-            Message(Message&& other) = default;
+            Message(Message&& other)            = default;
             Message& operator=(Message&& other) = default;
 
             Version version() const;
@@ -169,7 +173,10 @@ namespace Pistache
         } // namespace Uri
 
         // Remove when RequestBuilder will be out of namespace Experimental
-        namespace Experimental {class RequestBuilder; }
+        namespace Experimental
+        {
+            class RequestBuilder;
+        }
 
         // 5. Request
         class Request : public Message
@@ -181,10 +188,10 @@ namespace Pistache
 
             Request() = default;
 
-            Request(const Request& other) = default;
+            Request(const Request& other)            = default;
             Request& operator=(const Request& other) = default;
 
-            Request(Request&& other) = default;
+            Request(Request&& other)            = default;
             Request& operator=(Request&& other) = default;
 
             Method method() const;
@@ -375,10 +382,10 @@ namespace Pistache
             Response() = default;
             explicit Response(Version version);
 
-            Response(const Response& other) = default;
+            Response(const Response& other)            = default;
             Response& operator=(const Response& other) = default;
             Response(Response&& other)                 = default;
-            Response& operator=(Response&& other) = default;
+            Response& operator=(Response&& other)      = default;
         };
 
         class ResponseWriter final
@@ -411,10 +418,10 @@ namespace Pistache
             void setMime(const Mime::MediaType& mime);
 
             /* @Feature: add helper functions for common http return code:
-   * - halt() -> 404
-   * - movedPermantly -> 301
-   * - moved() -> 302
-   */
+             * - halt() -> 404
+             * - movedPermantly -> 301
+             * - moved() -> 302
+             */
             Async::Promise<ssize_t>
             sendMethodNotAllowed(const std::vector<Http::Method>& supportedMethods);
 
@@ -472,6 +479,20 @@ namespace Pistache
                 return nullptr;
             }
 
+            // Compress using the requested content encoding, if supported,
+            //  before sending bits to client. Content-Encoding header will be
+            //  automatically set to the requested encoding, if supported...
+            void setCompression(const Pistache::Http::Header::Encoding _contentEncoding);
+
+#ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
+            // Set the compression level for deflate algorithm. Defaults to
+            //  Z_DEFAULT_COMPRESSION...
+            void setCompressionDeflateLevel(const int _contentEncodingDeflateLevel)
+            {
+                contentEncodingDeflateLevel_ = _contentEncodingDeflateLevel;
+            }
+#endif
+
         private:
             ResponseWriter(const ResponseWriter& other);
 
@@ -487,6 +508,12 @@ namespace Pistache
             Tcp::Transport* transport_ = nullptr;
             Timeout timeout_;
             ssize_t sent_bytes_ = 0;
+
+            Http::Header::Encoding contentEncoding_ = Http::Header::Encoding::Identity;
+
+#ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
+            int contentEncodingDeflateLevel_ = Z_DEFAULT_COMPRESSION;
+#endif
         };
 
         Async::Promise<ssize_t>
@@ -614,10 +641,10 @@ namespace Pistache
 
                 explicit ParserBase(size_t maxDataSize);
 
-                ParserBase(const ParserBase&) = delete;
+                ParserBase(const ParserBase&)            = delete;
                 ParserBase& operator=(const ParserBase&) = delete;
                 ParserBase(ParserBase&&)                 = default;
-                ParserBase& operator=(ParserBase&&) = default;
+                ParserBase& operator=(ParserBase&&)      = default;
 
                 virtual ~ParserBase() = default;
 

@@ -64,6 +64,7 @@ namespace Pistache::Http::Header
     // 3.5 Content Codings
     // 3.6 Transfer Codings
     enum class Encoding { Gzip,
+                          Br,
                           Compress,
                           Deflate,
                           Identity,
@@ -356,6 +357,20 @@ namespace Pistache::Http::Header
 
     private:
         Encoding encoding_;
+    };
+
+    class AcceptEncoding : public EncodingHeader
+    {
+    public:
+        NAME("Accept-Encoding")
+
+        AcceptEncoding()
+            : EncodingHeader(Encoding::Identity)
+        { }
+
+        explicit AcceptEncoding(Encoding encoding)
+            : EncodingHeader(encoding)
+        { }
     };
 
     class ContentEncoding : public EncodingHeader
@@ -662,10 +677,10 @@ namespace Pistache::Http::Header
             , value_(std::move(value))
         { }
 
-        Raw(const Raw& other) = default;
+        Raw(const Raw& other)            = default;
         Raw& operator=(const Raw& other) = default;
 
-        Raw(Raw&& other) = default;
+        Raw(Raw&& other)            = default;
         Raw& operator=(Raw&& other) = default;
 
         std::string name() const { return name_; }
