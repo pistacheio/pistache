@@ -23,4 +23,4 @@ jobs:
           echo "module.exports = { extends: ['@commitlint/config-conventional'] }" > commitlint.config.js
 
       - name: Commitlint
-        run: commitlint --from HEAD~${{ github.event.pull_request.commits }} --to HEAD
+        run: commitlint --from HEAD~$(( ${{ github.event.pull_request.commits }} - 1 )) --to HEAD
