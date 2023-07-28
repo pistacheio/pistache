@@ -22,5 +22,12 @@ jobs:
           yarn global add @commitlint/cli @commitlint/config-conventional
           echo "module.exports = { extends: ['@commitlint/config-conventional'] }" > commitlint.config.js
 
+      - name: Debug
+        run: |
+          git --no-pager show HEAD
+          git --no-pager show HEAD~1
+          git --no-pager show HEAD~${{ github.event.pull_request.commits }}
+          git --no-pager show HEAD~$(( ${{ github.event.pull_request.commits }} - 1 ))
+
       - name: Commitlint
         run: commitlint --from HEAD~$(( ${{ github.event.pull_request.commits }} - 1 )) --to HEAD
