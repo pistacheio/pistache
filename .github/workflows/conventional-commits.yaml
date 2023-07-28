@@ -28,6 +28,8 @@ jobs:
           git --no-pager show HEAD~1
           git --no-pager show HEAD~${{ github.event.pull_request.commits }}
           git --no-pager show HEAD~$(( ${{ github.event.pull_request.commits }} - 1 ))
+          git --no-pager branch
+          git --no-pager log
 
       - name: Commitlint
         run: commitlint --from HEAD~$(( ${{ github.event.pull_request.commits }} - 1 )) --to HEAD
