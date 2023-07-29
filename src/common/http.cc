@@ -22,6 +22,7 @@
 #include <iostream>
 #include <memory>
 #include <stdexcept>
+#include <string>
 #include <unordered_map>
 
 #include <fcntl.h>
@@ -852,7 +853,52 @@ namespace Pistache::Http
             }
         }
 
-        return putOnWire(data, size);
+        // Compress data, if necessary, before sending over wire to user...
+        switch (contentEncoding_)
+        {
+
+#ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
+        // User requested deflate compression...
+        case Http::Header::Encoding::Deflate: {
+
+            // Compute upper bound on size of expected compressed data. This
+            //  will be updated by compress2()...
+            std::size_t compressedSize = ::compressBound(size);
+
+            // Allocate a smart buffer to contain compressed data...
+            std::unique_ptr compressedData = std::make_unique<std::byte[]>(compressedSize);
+
+            // Compress user data at requested level...
+            const auto compressionStatus = ::compress2(
+                reinterpret_cast<unsigned char*>(compressedData.get()),
+                &compressedSize,
+                reinterpret_cast<const unsigned char*>(data),
+                size,
+                contentEncodingDeflateLevel_);
+
+            // Failed...
+            if (compressionStatus != Z_OK)
+                throw std::runtime_error(
+                    std::string("compress2() failed, returning: ") + std::to_string(compressionStatus));
+
+            // Notify client to expect deflate compressed response...
+            headers().add<Http::Header::ContentEncoding>(
+                Http::Header::Encoding::Deflate);
+
+            // Send compressed data back to client...
+            return putOnWire(
+                reinterpret_cast<const char*>(compressedData.get()),
+                compressedSize);
+        }
+#endif
+        // No compression requested. Send uncompressed data to client...
+        case Http::Header::Encoding::Identity:
+            return putOnWire(data, size);
+
+        // Unknown...
+        default:
+            throw std::runtime_error("User requested unknown content encoding.");
+        }
     }
 
     ResponseStream ResponseWriter::stream(Code code, size_t streamSize)
@@ -955,6 +1001,27 @@ namespace Pistache::Http
         catch (const std::runtime_error& e)
         {
             return Async::Promise<ssize_t>::rejected(e);
+        }
+    }
+
+    // Compress using the requested content encoding, if supported, before
+    //  sending bits to client. User responsible for setting Content-Encoding
+    //  header...
+    void ResponseWriter::setCompression(const Pistache::Http::Header::Encoding _contentEncoding)
+    {
+        switch (_contentEncoding)
+        {
+
+#ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
+        // Application requested deflate compression...
+        case Http::Header::Encoding::Deflate:
+            contentEncoding_ = Http::Header::Encoding::Deflate;
+            break;
+#endif
+
+        // Any other type is not supported...
+        default:
+            throw std::runtime_error("Unsupported content encoding compression requested.");
         }
     }
 

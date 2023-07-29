@@ -35,6 +35,10 @@ if get_option('PISTACHE_USE_SSL')
 	add_project_arguments('-DPISTACHE_USE_SSL', language: 'cpp')
 endif
 
+if get_option('PISTACHE_USE_CONTENT_ENCODING_DEFLATE')
+	add_project_arguments('-DPISTACHE_USE_CONTENT_ENCODING_DEFLATE', language: 'cpp')
+endif
+
 libpistache = library(
 	'pistache',
 	sources: pistache_common_src + pistache_server_src + pistache_client_src,

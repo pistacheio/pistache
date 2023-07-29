@@ -55,6 +55,15 @@ if get_option('PISTACHE_USE_RAPIDJSON')
 	deps_libpistache += dependency('RapidJSON', fallback: ['rapidjson', 'rapidjson_dep'])
 endif
 
+# Support deflate compressed Content-Encoding responses...
+if get_option('PISTACHE_USE_CONTENT_ENCODING_DEFLATE')
+
+    # Need zlib...
+    zlib = dependency('zlib')
+    deps_libpistache += zlib
+
+endif
+
 # Check if -latomic is needed - https://github.com/llvm/llvm-project/blob/main/llvm/cmake/modules/CheckAtomic.cmake
 compiler_id = compiler.get_id()
 
