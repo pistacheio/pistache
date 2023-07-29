@@ -80,7 +80,8 @@ jobs:
         export CXX CXX_LD
         meson setup build \
           -DPISTACHE_BUILD_TESTS=true -DPISTACHE_USE_SSL=${{ matrix.tls }} -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true \
-          --buildtype=debug -Db_coverage=true -Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false
+          --buildtype=debug -Db_coverage=true -Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false \
+          || (cat build/meson-logs/meson-log.txt ; false)
       env:
         CC: ${{ matrix.compiler }}
 
