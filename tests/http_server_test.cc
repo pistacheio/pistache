@@ -11,6 +11,7 @@
 #include <pistache/http.h>
 #include <pistache/peer.h>
 
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
@@ -34,6 +35,7 @@
 
 using namespace Pistache;
 using namespace std::chrono;
+using testing::ThrowsMessage;
 
 namespace
 {
@@ -1060,3 +1062,32 @@ TEST(http_server_test, server_with_content_encoding_deflate)
     ASSERT_EQ(originalUncompressedData, newlyDecompressedData);
 }
 #endif
+
+TEST(http_server_test, invalid_content_encoding)
+{
+    class InvalidContentEncodingHandler : public Http::Handler
+    {
+    public:
+        HTTP_PROTOTYPE(InvalidContentEncodingHandler)
+
+        void onRequest(const Http::Request& /*request*/, Http::ResponseWriter writer) override
+        {
+            EXPECT_THAT(
+                [&]() { writer.setCompression(Http::Header::Encoding::Unknown); },
+                ThrowsMessage<std::invalid_argument>("Unsupported content encoding compression requested")
+            );
+        }
+    };
+    const Address address("localhost", Port(0));
+    Http::Endpoint server(address);
+    server.serveThreaded();
+
+    Http::Experimental::Client client;
+    client.init();
+
+    auto requestBuilder = client.get(address.host() + ":" + address.port().toString());
+    requestBuilder.send();
+
+    client.shutdown();
+    server.shutdown();
+}

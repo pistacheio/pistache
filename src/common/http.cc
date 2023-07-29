@@ -1007,9 +1007,9 @@ namespace Pistache::Http
     // Compress using the requested content encoding, if supported, before
     //  sending bits to client. User responsible for setting Content-Encoding
     //  header...
-    void ResponseWriter::setCompression(const Pistache::Http::Header::Encoding _contentEncoding)
+    void ResponseWriter::setCompression(const Pistache::Http::Header::Encoding contentEncoding)
     {
-        switch (_contentEncoding)
+        switch (contentEncoding)
         {
 
 #ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
@@ -1021,7 +1021,7 @@ namespace Pistache::Http
 
         // Any other type is not supported...
         default:
-            throw std::runtime_error("Unsupported content encoding compression requested.");
+            throw std::invalid_argument("Unsupported content encoding compression requested");
         }
     }
 

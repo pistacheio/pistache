@@ -482,14 +482,14 @@ namespace Pistache
             // Compress using the requested content encoding, if supported,
             //  before sending bits to client. Content-Encoding header will be
             //  automatically set to the requested encoding, if supported...
-            void setCompression(const Pistache::Http::Header::Encoding _contentEncoding);
+            void setCompression(const Pistache::Http::Header::Encoding contentEncoding);
 
 #ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
             // Set the compression level for deflate algorithm. Defaults to
             //  Z_DEFAULT_COMPRESSION...
-            void setCompressionDeflateLevel(const int _contentEncodingDeflateLevel)
+            void setCompressionDeflateLevel(const int contentEncodingDeflateLevel)
             {
-                contentEncodingDeflateLevel_ = _contentEncodingDeflateLevel;
+                contentEncodingDeflateLevel_ = contentEncodingDeflateLevel;
             }
 #endif
 
