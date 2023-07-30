@@ -63,7 +63,7 @@ jobs:
       if: contains(matrix.os, 'redhat')
       run: |
         if [ ${{ matrix.compiler }} = gcc ]; then compiler=gcc-c++; else compiler=llvm-toolset; fi
-        microdnf -y install $compiler pkgconf cmake openssl-devel libcurl-devel git python3-pip unzip
+        microdnf -y install $compiler pkgconf cmake openssl-devel zlib-devel libcurl-devel git python3-pip unzip
         curl -LO https://github.com/ninja-build/ninja/releases/latest/download/ninja-linux.zip
         unzip ninja-linux.zip
         mv ninja /usr/local/bin
@@ -78,7 +78,10 @@ jobs:
       run: |
         if [ ${{ matrix.compiler }} = gcc ]; then CXX=g++; else CXX=clang++ CXX_LD=lld; fi
         export CXX CXX_LD
-        meson setup build -DPISTACHE_BUILD_TESTS=true -DPISTACHE_USE_SSL=${{ matrix.tls }} --buildtype=debug -Db_coverage=true -Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false
+        meson setup build \
+          -DPISTACHE_BUILD_TESTS=true -DPISTACHE_USE_SSL=${{ matrix.tls }} -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true \
+          --buildtype=debug -Db_coverage=true -Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false \
+          || (cat build/meson-logs/meson-log.txt ; false)
       env:
         CC: ${{ matrix.compiler }}
 
