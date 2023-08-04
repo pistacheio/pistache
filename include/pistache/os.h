@@ -132,6 +132,7 @@ namespace Pistache
     {
     public:
         NotifyFd();
+        ~NotifyFd();
 
         Polling::Tag bind(Polling::Epoll& poller);
 

@@ -27,6 +27,7 @@ namespace Pistache::Http
         using Base = Tcp::Transport;
 
         explicit TransportImpl(const std::shared_ptr<Tcp::Handler>& handler);
+        ~TransportImpl() override;
 
         void registerPoller(Polling::Epoll& poller) override;
         void onReady(const Aio::FdSet& fds) override;
@@ -53,7 +54,17 @@ namespace Pistache::Http
     TransportImpl::TransportImpl(const std::shared_ptr<Tcp::Handler>& handler)
         : Tcp::Transport(handler)
         , handler_(handler)
+        , timerFd(-1)
     { }
+
+    TransportImpl::~TransportImpl()
+    {
+        if (timerFd >= 0)
+        {
+            close(timerFd);
+            timerFd = -1;
+        }
+    }
 
     void TransportImpl::registerPoller(Polling::Epoll& poller)
     {
