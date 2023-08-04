@@ -30,6 +30,14 @@
 #include <string>
 #include <thread>
 
+#if __has_include(<filesystem>)
+#include <filesystem>
+namespace filesystem = std::filesystem;
+#else
+#include <experimental/filesystem>
+namespace filesystem = std::experimental::filesystem;
+#endif
+
 #include "tcp_client.h"
 
 using namespace Pistache;
@@ -1043,3 +1051,40 @@ TEST(http_server_test, server_with_content_encoding_deflate)
     ASSERT_EQ(originalUncompressedData, newlyDecompressedData);
 }
 #endif
+
+TEST(http_server_test, http_server_is_not_leaked)
+{
+    const auto number_of_fds = [] {
+        using filesystem::directory_iterator;
+        const filesystem::path fds_dir { "/proc/self/fd" };
+
+        if (!filesystem::exists(fds_dir))
+        {
+            return directory_iterator::difference_type(0);
+        }
+
+        return std::distance(directory_iterator(fds_dir), directory_iterator {});
+    };
+
+    const auto fds_before = number_of_fds();
+    const Pistache::Address address("localhost", Pistache::Port(0));
+
+    auto server      = std::make_unique<Http::Endpoint>(address);
+    auto flags       = Tcp::Options::ReuseAddr;
+    auto server_opts = Http::Endpoint::options().flags(flags).threads(4);
+    server->init(server_opts);
+    server->setHandler(Http::make_handler<PingHandler>());
+    server->serveThreaded();
+    server->shutdown();
+    server.reset();
+
+    if (fds_before > 0)
+    {
+        const auto fds_after = number_of_fds();
+        ASSERT_EQ(fds_before, fds_after);
+    }
+    else
+    {
+        std::cout << "NOTE: Please use Valgrind with '--track-fds=yes' option for this test" << std::endl;
+    }
+}
