@@ -4,8 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
+#include <pistache/client.h>
 #include <pistache/endpoint.h>
 #include <pistache/http.h>
 #include <pistache/peer.h>
@@ -18,6 +20,8 @@
 
 using namespace std;
 using namespace Pistache;
+using testing::AnyOf;
+using testing::Eq;
 
 static constexpr auto KEEPALIVE_TIMEOUT = std::chrono::seconds(2);
 
@@ -84,7 +88,7 @@ TEST(rest_server_test, basic_test)
 {
     int thr = 1;
 
-    Address addr(Ipv4::any(), Port(0));
+    Address addr(Ipv4::loopback(), Port(0));
 
     StatsEndpoint stats(addr);
 
@@ -96,24 +100,25 @@ TEST(rest_server_test, basic_test)
     cout << "Using " << thr << " threads" << endl;
     cout << "Port = " << port << endl;
 
-    httplib::Client client("localhost", port);
-    auto res = client.Get("/read/function1");
-    ASSERT_EQ(res->status, 200);
-    ASSERT_EQ(res->body, "1");
+    Http::Experimental::Client client;
+    client.init();
 
-    res = client.Get("/read/hostname");
-    ASSERT_EQ(res->status, 200);
+    std::string serverAddr = "localhost:" + port.toString();
 
-    // TODO: Clean this up to use proper gtest macros.
-    // NOTE: res->body is "ip6-localhost" on some architectures.
-    if (res->body == "ip6-localhost")
-    {
-        ASSERT_EQ(res->body, "ip6-localhost"); // count the passing test.
-    }
-    else
-    {
-        ASSERT_EQ(res->body, "localhost");
-    }
+    client.get(serverAddr + "/read/function1").send().then([](Http::Response res) {
+        EXPECT_EQ(res.code(), Http::Code::Ok);
+        EXPECT_EQ(res.body(), "1");
+    },
+                                                           Async::Throw);
+
+    client.get(serverAddr + "/read/hostname").send().then([](Http::Response res) {
+        EXPECT_THAT(res.code(), Eq(Http::Code::Ok));
+        // NOTE: res->body is "ip6-localhost" on some architectures.
+        EXPECT_THAT(res.body(), AnyOf(Eq("localhost"), Eq("ip6-localhost")));
+    },
+                                                          Async::Throw);
+
+    client.shutdown();
     stats.shutdown();
 }
 
