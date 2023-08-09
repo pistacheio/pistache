@@ -114,6 +114,8 @@ namespace Pistache::Tcp
 
         TransportFactory defaultTransportFactory() const;
 
+        bool bindListener(const struct addrinfo* addr);
+
         void handleNewConnection();
         int acceptConnection(struct sockaddr_storage& peer_addr) const;
         void dispatchPeer(const std::shared_ptr<Peer>& peer);
