@@ -878,42 +878,25 @@ struct ContentEncodingHandler : public Http::Handler
     {
         LOGGER("server", "ContentEncodingHandler::onResponse()");
 
-        // Expect an Accept-Encoding header...
-        if (!request.headers().has<Http::Header::AcceptEncoding>())
-        {
-            LOGGER("server", "Missing Accept-Encoding header");
-            writer.send(Http::Code::Bad_Request);
-            return;
-        }
-
         // Get the client body...
         const auto client_body = request.body();
 
         // Compress differently, depending on requested encoding...
-        switch (request.headers().get<Http::Header::AcceptEncoding>().get()->encoding())
-        {
+        const auto encoding = request.getBestAcceptEncoding();
+
+        // Enable the best compression...
+        writer.setCompression(encoding);
+
 #ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
-        case Http::Header::Encoding::Deflate: {
-            // Enable deflate compression...
-            writer.setCompression(Http::Header::Encoding::Deflate);
-
-            // Set maximum compression...
+        // Set maximum compression if using deflate/zlib
+        if (encoding == Http::Header::Encoding::Deflate)
+        {
             writer.setCompressionDeflateLevel(Z_BEST_COMPRESSION);
-
-            // Send compressed response of original client body...
-            writer.send(Http::Code::Ok, client_body);
-
-            // Done...
-            break;
         }
 #endif
 
-        // Unsupported encoding requested...
-        default: {
-            writer.send(Http::Code::Bad_Request);
-            break;
-        }
-        }
+        // Send compressed response of original client body...
+        writer.send(Http::Code::Ok, client_body);
     }
 };
 

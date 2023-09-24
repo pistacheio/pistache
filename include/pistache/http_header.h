@@ -16,6 +16,7 @@
 #include <ostream>
 #include <string>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include <pistache/http_defs.h>
@@ -71,7 +72,14 @@ namespace Pistache::Http::Header
                           Chunked,
                           Unknown };
 
+    /* Returns a textual representation of a given encoding */
     const char* encodingString(Encoding encoding);
+
+    /* Returns the encoding corresponding to the given string */
+    Encoding encodingFromString(std::string_view str);
+
+    /* Returns true if the given encoding is supported by Pistache */
+    bool encodingSupported(Encoding encoding);
 
     class Header
     {
@@ -359,18 +367,28 @@ namespace Pistache::Http::Header
         Encoding encoding_;
     };
 
-    class AcceptEncoding : public EncodingHeader
+    class AcceptEncoding : public Header
     {
     public:
         NAME("Accept-Encoding")
 
-        AcceptEncoding()
-            : EncodingHeader(Encoding::Identity)
-        { }
+        AcceptEncoding() = default;
+        explicit AcceptEncoding(Encoding encoding);
 
-        explicit AcceptEncoding(Encoding encoding)
-            : EncodingHeader(encoding)
-        { }
+        void parseRaw(const char* str, size_t len) override;
+        void write(std::ostream& os) const override;
+
+        const std::vector<std::pair<Encoding, float>>& encodings() const;
+
+    private:
+        /* Contains the encodings listed in the header, sorted by preference */
+        std::vector<std::pair<Encoding, float>> encodings_;
+
+        /*
+         * Inserts a new element into the encodings_ vector, keeping it sorted
+         * by qvalue
+         */
+        void insertEncoding(const std::pair<Encoding, float>& elem);
     };
 
     class ContentEncoding : public EncodingHeader
