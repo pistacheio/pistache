@@ -7,11 +7,16 @@
 #include <date/date.h>
 #include <pistache/http.h>
 
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include <algorithm>
 #include <chrono>
 #include <iostream>
+
+using testing::ElementsAre;
+using testing::SizeIs;
+using testing::UnorderedElementsAre;
 
 TEST(headers_test, accept)
 {
@@ -73,6 +78,67 @@ TEST(headers_test, accept)
     ASSERT_THROW(a5.parse("text/*;q=0.4, text/html;q=0.3, "), std::runtime_error);
     /* Shameless dummy comment to work around syntax highlighting bug in nano...
      */
+}
+
+TEST(headers_test, accept_encoding)
+{
+    using Pistache::Http::Header::AcceptEncoding;
+    using Pistache::Http::Header::Encoding;
+
+    AcceptEncoding a1;
+    a1.parse("compress, gzip");
+    EXPECT_THAT(
+        a1.encodings(),
+        UnorderedElementsAre(
+            std::make_pair(Encoding::Compress, 1.0F),
+            std::make_pair(Encoding::Gzip, 1.0F)));
+
+    AcceptEncoding a2;
+    a2.parse("");
+    EXPECT_THAT(
+        a2.encodings(),
+        ElementsAre());
+
+    AcceptEncoding a3;
+    a3.parse("compress;q=0.5, gzip ; q=1.0");
+    EXPECT_THAT(
+        a3.encodings(),
+        ElementsAre(
+            std::make_pair(Encoding::Gzip, 1.0F),
+            std::make_pair(Encoding::Compress, 0.5F)));
+
+    AcceptEncoding a4;
+    a4.parse("gzip;q=1.0, identity; q=0.5, *;q=0");
+    EXPECT_THAT(
+        a4.encodings(),
+        ElementsAre(
+            std::make_pair(Encoding::Gzip, 1.0F),
+            std::make_pair(Encoding::Identity, 0.5F),
+            std::make_pair(Encoding::Unknown, 0.0F)));
+
+    AcceptEncoding a5;
+    a5.parse("deflate;");
+    EXPECT_THAT(
+        a5.encodings(),
+        SizeIs(0));
+
+    AcceptEncoding a6;
+    a6.parse("deflate;q=");
+    EXPECT_THAT(
+        a6.encodings(),
+        SizeIs(0));
+
+    AcceptEncoding a7;
+    a7.parse(",");
+    EXPECT_THAT(
+        a7.encodings(),
+        SizeIs(0));
+
+    AcceptEncoding a8;
+    a8.parse("deflate;a=1");
+    EXPECT_THAT(
+        a8.encodings(),
+        SizeIs(0));
 }
 
 TEST(headers_test, allow)
