@@ -111,7 +111,7 @@ class Transport : public Aio::Handler {
             return size_;
         }
         size_t offset() const {
-            return offset_;
+            return static_cast<size_t>(offset_);
         }
 
         Fd fd() const {
@@ -128,7 +128,7 @@ class Transport : public Aio::Handler {
 
         BufferHolder detach(size_t offset = 0) {
             if (!isRaw())
-                return BufferHolder(_fd, size_, offset);
+                return BufferHolder(_fd, size_, static_cast<off_t>(offset));
 
             auto detached = _raw.copy(offset);
             return BufferHolder(detached);
