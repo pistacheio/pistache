@@ -4,6 +4,10 @@ SPDX-FileCopyrightText: 2016 Mathieu Stefani
 SPDX-License-Identifier: Apache-2.0
 -->
 
+# About this fork
+
+This is a fork of pistache that compilers with c++20 and stricter warning flags
+
 # Pistache
 
 [![N|Solid](pistache.io/static/img/logo.png)](https://www.github.com/pistacheio/pistache)
@@ -14,6 +18,7 @@ SPDX-License-Identifier: Apache-2.0
 [![REUSE status](https://api.reuse.software/badge/github.com/pistacheio/pistache)](https://api.reuse.software/info/github.com/pistacheio/pistache)
 
 Pistache is a modern and elegant HTTP and REST framework for C++. It is entirely written in pure-C++17[*](#linux-only) and provides a clear and pleasant API.
+
 
 ## Documentation
 
