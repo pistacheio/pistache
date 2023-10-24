@@ -650,6 +650,28 @@ namespace Pistache::Http
 
     std::chrono::milliseconds Request::timeout() const { return timeout_; }
 
+    Header::Encoding Request::getBestAcceptEncoding() const
+    {
+        const auto& maybe_header = headers().tryGet<Header::AcceptEncoding>();
+        if (maybe_header == nullptr)
+        {
+            return Header::Encoding::Identity;
+        }
+
+        const auto& header = *maybe_header;
+
+        for (const auto& encoding : header.encodings())
+        {
+            // If the qvalue is 0, the encoding is not supported by the client
+            if (encodingSupported(encoding.first) && encoding.second != 0)
+            {
+                return encoding.first;
+            }
+        }
+
+        return Header::Encoding::Identity;
+    }
+
     Response::Response(Version version)
         : Message(version)
     { }

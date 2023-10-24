@@ -17,12 +17,14 @@
 #include <pistache/http_header.h>
 #include <pistache/stream.h>
 
+#include <algorithm>
 #include <cstring>
 #include <iostream>
 #include <iterator>
 #include <limits>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <sys/socket.h>
 
 namespace Pistache::Http::Header
@@ -62,6 +64,58 @@ namespace Pistache::Http::Header
             return "unknown";
         }
         return "unknown";
+    }
+
+    Encoding encodingFromString(const std::string_view str)
+    {
+        if (str.empty())
+        {
+            return Encoding::Unknown;
+        }
+
+        if (!strncasecmp(str.data(), "gzip", str.length()))
+        {
+            return Encoding::Gzip;
+        }
+        else if (!strncasecmp(str.data(), "br", str.length()))
+        {
+            return Encoding::Br;
+        }
+        else if (!strncasecmp(str.data(), "deflate", str.length()))
+        {
+            return Encoding::Deflate;
+        }
+        else if (!strncasecmp(str.data(), "compress", str.length()))
+        {
+            return Encoding::Compress;
+        }
+        else if (!strncasecmp(str.data(), "identity", str.length()))
+        {
+            return Encoding::Identity;
+        }
+        else if (!strncasecmp(str.data(), "chunked", str.length()))
+        {
+            return Encoding::Chunked;
+        }
+        else
+        {
+            return Encoding::Unknown;
+        }
+    }
+
+    bool encodingSupported(const Encoding encoding)
+    {
+        switch (encoding)
+        {
+#ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
+        case Encoding::Deflate:
+            /* @fallthrough@ */
+#endif
+        case Encoding::Identity:
+            return true;
+        default:
+            return false;
+        }
     }
 
     void Allow::write(std::ostream& os) const
@@ -612,34 +666,115 @@ namespace Pistache::Http::Header
 
     void EncodingHeader::parseRaw(const char* str, size_t len)
     {
-        if (!strncasecmp(str, "gzip", len))
+        encoding_ = encodingFromString(std::string_view(str, len));
+    }
+
+    AcceptEncoding::AcceptEncoding(Encoding encoding)
+    {
+        insertEncoding(std::make_pair(encoding, 1.0F));
+    }
+
+    /*
+     * Tokens are short textual identifiers that do not include whitespace or delimiters.
+     *
+     * tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*"
+     *       / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~"
+     *       / DIGIT / ALPHA
+     */
+    static bool is_http_token(const unsigned char c)
+    {
+        return c == '!' || c == '#' || c == '$' || c == '%' || c == '&' || c == '\''
+            || c == '*' || c == '+' || c == '-' || c == '.' || c == '^' || c == '_'
+            || c == '`' || c == '|' || c == '~' || std::isalnum(c);
+    }
+
+    static bool is_http_space(const unsigned char c)
+    {
+        return std::isblank(c);
+    }
+
+    void AcceptEncoding::parseRaw(const char* const str, const size_t len)
+    {
+        const char* const str_end = str + len;
+        const char* start         = str;
+
+        while (start != str_end)
         {
-            encoding_ = Encoding::Gzip;
+            // Per RFC 9110, if no "q" parameter is present, the default weight is 1
+            float qvalue = 1;
+
+            const char* const end = std::find(start, str_end, ',');
+
+            const char* const token_end = std::find_if_not(start, end, is_http_token);
+
+            // If no semicolon is found, it means that no q-value is present
+            const char* const semicolon = std::find(token_end, end, ';');
+            if (semicolon != end)
+            {
+                // Skip optional white space
+                const char* ows_end = std::find_if_not(semicolon + std::strlen(";"), end, is_http_space);
+
+                if (ows_end[0] != 'q' || ows_end[1] != '=')
+                {
+                    // "q=" is expected after the optional white space. If there
+                    // isn't, this is a malformed header
+                    encodings_.clear();
+                    return;
+                }
+
+                const char* const value_str = ows_end + std::strlen("q=");
+
+                std::size_t qvalue_len;
+                const bool valid = strToQvalue(value_str, &qvalue, &qvalue_len);
+                if (!valid)
+                {
+                    encodings_.clear();
+                    return;
+                }
+            }
+
+            const std::string_view encodingStr(start, token_end - start);
+            if (!encodingStr.empty())
+            {
+                insertEncoding(std::make_pair(
+                    encodingFromString(std::string_view(start, token_end - start)),
+                    qvalue));
+            }
+
+            // Go to the next token for the next iteration
+            start = std::find_if(end, str_end, is_http_token);
         }
-        else if (!strncasecmp(str, "br", len))
+    }
+
+    void AcceptEncoding::write(std::ostream& os) const
+    {
+        if (encodings_.empty())
         {
-            encoding_ = Encoding::Br;
+            return;
         }
-        else if (!strncasecmp(str, "deflate", len))
+
+        for (size_t i = 0; i < encodings_.size() - 1; i++)
         {
-            encoding_ = Encoding::Deflate;
+            os << encodingString(encodings_[i].first) << ";q=" << encodings_[i].second << ", ";
         }
-        else if (!strncasecmp(str, "compress", len))
-        {
-            encoding_ = Encoding::Compress;
-        }
-        else if (!strncasecmp(str, "identity", len))
-        {
-            encoding_ = Encoding::Identity;
-        }
-        else if (!strncasecmp(str, "chunked", len))
-        {
-            encoding_ = Encoding::Chunked;
-        }
-        else
-        {
-            encoding_ = Encoding::Unknown;
-        }
+        os << encodingString(encodings_[encodings_.size() - 1].first) << ";q=" << encodings_[encodings_.size() - 1].second;
+    }
+
+    const std::vector<std::pair<Encoding, float>>& AcceptEncoding::encodings() const
+    {
+        return encodings_;
+    }
+
+    void AcceptEncoding::insertEncoding(const std::pair<Encoding, float>& elem)
+    {
+        encodings_.insert(
+            std::upper_bound(
+                encodings_.cbegin(), encodings_.cend(),
+                elem,
+                [](decltype(elem) a, decltype(elem) b) {
+                    return a.second > b.second;
+                }),
+            elem);
     }
 
     void EncodingHeader::write(std::ostream& os) const

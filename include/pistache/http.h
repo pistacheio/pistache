@@ -217,6 +217,16 @@ namespace Pistache
 
             std::chrono::milliseconds timeout() const;
 
+            /*
+             * Returns the "best" encoding to use to encode (typically compress)
+             * a response to the current request. The "best" encoding is the one
+             * which is supported by both the server and client, and which has
+             * the highest preference expressed by the client (i.e., the highest
+             * quality value, as defined in
+             * <https://www.rfc-editor.org/rfc/rfc9110.html#name-accept-encoding>)
+             */
+            Header::Encoding getBestAcceptEncoding() const;
+
         private:
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
             void associatePeer(const std::shared_ptr<Tcp::Peer>& peer)

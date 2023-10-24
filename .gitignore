@@ -39,6 +39,9 @@
 .vscode
 .idea
 
+# Vim swap files
+.*.swp
+
 # Clangd cache
 /.cache/clangd
 
