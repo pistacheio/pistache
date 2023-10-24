@@ -15,88 +15,6 @@
 #include <pistache/http.h>
 #include <pistache/mime.h>
 
-/*
- * This function parses a non-NULL terminated C string and interprets it as
- * a float. The str must represent a number following the HTTP definition
- * of Quality Values:
- *
- *     qvalue = ( "0" [ "." 0*3DIGIT ] )
- *            / ( "1" [ "." 0*3("0") ] )
- *
- * https://datatracker.ietf.org/doc/html/rfc7231#section-5.3.1
- */
-static bool str_to_qvalue(const char* str, float* qvalue, std::size_t* qvalue_len)
-{
-    constexpr char offset = '0';
-
-    *qvalue_len = 0;
-
-    // It is useless to read more than 6 chars, as the maximum allowed
-    // number of digits after the dot is 3, so n.nnn is 5.
-    // The 6th character is read to check if the user specified a qvalue
-    // with too many digits.
-    for (; *qvalue_len < 6; (*qvalue_len)++)
-    {
-        // the decimal dot is only allowed at index 1;
-        // 0.15  ok
-        // 1.10  ok
-        // 1.0.1 no
-        // .40   no
-        if (str[*qvalue_len] == '.' && *qvalue_len != 1)
-        {
-            return false;
-        }
-
-        // The only valid characters are digits and the decimal dot,
-        // anything else signals the end of the string
-        if (str[*qvalue_len] != '.' && !std::isdigit(str[*qvalue_len]))
-        {
-            break;
-        }
-    }
-
-    // Guards against numbers like:
-    // empty
-    // 1.
-    // 0.1234
-    if (*qvalue_len < 1 || *qvalue_len == 2 || *qvalue_len > 5)
-    {
-        return false;
-    }
-
-    // The first char can only be 0 or 1
-    if (str[0] != '0' && str[0] != '1')
-    {
-        return false;
-    }
-
-    int qint = 0;
-
-    switch (*qvalue_len)
-    {
-    case 5:
-        qint += (str[4] - offset);
-        [[fallthrough]];
-    case 4:
-        qint += (str[3] - offset) * 10;
-        [[fallthrough]];
-    case 3:
-        qint += (str[2] - offset) * 100;
-        [[fallthrough]];
-    case 1:
-        qint += (str[0] - offset) * 1000;
-    }
-
-    *qvalue = static_cast<short>(qint) / 1000.0F;
-
-    if (*qvalue > 1)
-    {
-        return false;
-    }
-
-    return true;
-}
-
 namespace Pistache::Http::Mime
 {
 
@@ -108,12 +26,11 @@ namespace Pistache::Http::Mime
             return "q=1";
 
         char buff[sizeof("q=0.99")] = {};
-        if (val_ % 10 == 0)
-            snprintf(buff, sizeof buff, "q=%.1f", val_ / 100.0);
-        else
-            snprintf(buff, sizeof buff, "q=%.2f", val_ / 100.0);
+        const char* const format    = val_ % 10 == 0 ? "q=%.1f" : "q=%.2f";
 
-        return std::string(buff);
+        const int len = snprintf(buff, sizeof(buff), format, val_ / 100.0);
+
+        return std::string(buff, len);
     }
 
     MediaType MediaType::fromString(const std::string& str)
@@ -323,7 +240,7 @@ namespace Pistache::Http::Mime
                     float val;
                     std::size_t qvalue_len;
 
-                    if (!str_to_qvalue(cursor.offset(), &val, &qvalue_len))
+                    if (!Header::strToQvalue(cursor.offset(), &val, &qvalue_len))
                     {
                         raise("Invalid quality factor");
                     }
