@@ -7,6 +7,8 @@ gtest_main_dep = dependency('gtest', main: true, fallback: ['gtest', 'gtest_main
 gmock_dep = dependency('gmock', version: '>=1.11.0', fallback: ['gtest', 'gmock_dep'])
 cpp_httplib_dep = dependency('cpp-httplib', fallback: ['cpp-httplib', 'cpp_httplib_dep'])
 
+subdir('helpers')
+
 pistache_test_files = [
 	'async_test',
 	'cookie_test',
@@ -33,6 +35,7 @@ pistache_test_files = [
 	'threadname_test',
 	'typeid_test',
 	'view_test',
+	'helpers_test',
 ]
 
 network_tests = ['net_test']
@@ -62,6 +65,7 @@ foreach test_name : pistache_test_files
 			test_name+'.cc',
 			dependencies: [
 				pistache_dep,
+				tests_helpers_dep,
 				deps_libpistache,
 				gtest_main_dep,
 				gmock_dep,
