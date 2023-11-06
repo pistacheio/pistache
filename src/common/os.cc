@@ -263,6 +263,15 @@ namespace Pistache
         : event_fd(-1)
     { }
 
+    NotifyFd::~NotifyFd()
+    {
+        if (event_fd >= 0)
+        {
+            close(event_fd);
+            event_fd = -1;
+        }
+    }
+
     Polling::Tag NotifyFd::bind(Polling::Epoll& poller)
     {
         event_fd = TRY_RET(eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC));

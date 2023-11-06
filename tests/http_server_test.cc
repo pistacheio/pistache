@@ -30,6 +30,7 @@
 #include <string>
 #include <thread>
 
+#include "helpers/fd_utils.h"
 #include "tcp_client.h"
 
 using namespace Pistache;
@@ -1043,3 +1044,21 @@ TEST(http_server_test, server_with_content_encoding_deflate)
     ASSERT_EQ(originalUncompressedData, newlyDecompressedData);
 }
 #endif
+
+TEST(http_server_test, http_server_is_not_leaked)
+{
+    const auto fds_before = get_open_fds_count();
+    const Pistache::Address address("localhost", Pistache::Port(0));
+
+    auto server      = std::make_unique<Http::Endpoint>(address);
+    auto flags       = Tcp::Options::ReuseAddr;
+    auto server_opts = Http::Endpoint::options().flags(flags).threads(4);
+    server->init(server_opts);
+    server->setHandler(Http::make_handler<PingHandler>());
+    server->serveThreaded();
+    server->shutdown();
+    server.reset();
+
+    const auto fds_after = get_open_fds_count();
+    ASSERT_EQ(fds_before, fds_after);
+}

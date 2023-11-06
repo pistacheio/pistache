@@ -4,6 +4,8 @@
 
 find_package(CURL REQUIRED)
 
+add_subdirectory(helpers)
+
 function(pistache_test test_name)
     set(TEST_EXECUTABLE run_${test_name})
     set(TEST_SOURCE ${test_name}.cc)
@@ -16,9 +18,9 @@ function(pistache_test test_name)
     )
     # CMake 3.20 and upstream GTest define GTest::gtest, older versions define GTest::GTest
     if (TARGET GTest::gtest)
-        target_link_libraries(${TEST_EXECUTABLE} GTest::gtest GTest::gtest_main pistache_static ${CURL_LIBRARIES})
+        target_link_libraries(${TEST_EXECUTABLE} GTest::gtest GTest::gmock_main pistache_static tests_helpers ${CURL_LIBRARIES})
     else ()
-        target_link_libraries(${TEST_EXECUTABLE} GTest::GTest GTest::Main pistache_static ${CURL_LIBRARIES})
+        target_link_libraries(${TEST_EXECUTABLE} GTest::GTest GMock::Main pistache_static tests_helpers ${CURL_LIBRARIES})
     endif ()
     add_test(${test_name} ${TEST_EXECUTABLE})
 endfunction()
@@ -51,6 +53,7 @@ pistache_test(threadname_test)
 pistache_test(log_api_test)
 pistache_test(string_logger_test)
 pistache_test(endpoint_initialization_test)
+pistache_test(helpers_test)
 
 if (PISTACHE_USE_SSL)
 
