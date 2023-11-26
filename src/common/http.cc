@@ -1034,6 +1034,11 @@ namespace Pistache::Http
         switch (_contentEncoding)
         {
 
+        // Application requested identity encoding which means no compression...
+        case Http::Header::Encoding::Identity:
+            contentEncoding_ = Http::Header::Encoding::Identity;
+            break;
+
 #ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
         // Application requested deflate compression...
         case Http::Header::Encoding::Deflate:
