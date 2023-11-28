@@ -13,7 +13,8 @@ Build-Depends-Arch: libcurl4-openssl-dev,
                     libssl-dev,
                     netbase <!nocheck>,
                     pkg-config,
-                    rapidjson-dev
+                    rapidjson-dev,
+                    zlib1g-dev
 Vcs-Git: https://github.com/pistacheio/pistache.git
 Vcs-Browser: https://github.com/pistacheio/pistache
 Homepage: https://pistacheio.github.io/pistache/
