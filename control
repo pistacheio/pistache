@@ -39,6 +39,7 @@ Architecture: any
 Depends: libpistache0 (= ${binary:Version}),
          libssl-dev,
          rapidjson-dev,
+         zlib1g-dev | libz-dev
          ${misc:Depends}
 Description: elegant C++ REST framework - development files
  Pistache is a modern and elegant HTTP and REST framework for C++.
