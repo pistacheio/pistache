@@ -35,10 +35,6 @@
 #include <pistache/tcp.h>
 #include <pistache/transport.h>
 
-#ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
-#include <zlib.h>
-#endif
-
 namespace Pistache
 {
     namespace Tcp
@@ -522,7 +518,8 @@ namespace Pistache
             Http::Header::Encoding contentEncoding_ = Http::Header::Encoding::Identity;
 
 #ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
-            int contentEncodingDeflateLevel_ = Z_DEFAULT_COMPRESSION;
+            // Equivalent to Z_DEFAULT_COMPRESSION
+            int contentEncodingDeflateLevel_ = 6;
 #endif
         };
 

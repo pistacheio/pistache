@@ -30,6 +30,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
+#include <zlib.h>
+#endif
+
 namespace Pistache::Http
 {
 
