@@ -885,7 +885,7 @@ namespace Pistache::Http
 
             // Compute upper bound on size of expected compressed data. This
             //  will be updated by compress2()...
-            std::size_t compressedSize = ::compressBound(size);
+            uLongf compressedSize = ::compressBound(size);
 
             // Allocate a smart buffer to contain compressed data...
             std::unique_ptr compressedData = std::make_unique<std::byte[]>(compressedSize);
