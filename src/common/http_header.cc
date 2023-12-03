@@ -107,6 +107,10 @@ namespace Pistache::Http::Header
     {
         switch (encoding)
         {
+#ifdef PISTACHE_USE_CONTENT_ENCODING_BROTLI
+        case Encoding::Br:
+            /* @fallthrough@ */
+#endif
 #ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
         case Encoding::Deflate:
             /* @fallthrough@ */

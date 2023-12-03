@@ -8,4 +8,5 @@ option('PISTACHE_BUILD_DOCS', type: 'boolean', value: false, description: 'build
 option('PISTACHE_INSTALL', type: 'boolean', value: true, description: 'add pistache as install target (recommended)')
 option('PISTACHE_USE_SSL', type: 'boolean', value: false, description: 'add support for SSL server')
 option('PISTACHE_USE_RAPIDJSON', type: 'boolean', value: true, description: 'add support for rapidjson')
+option('PISTACHE_USE_CONTENT_ENCODING_BROTLI', type: 'boolean', value: false, description: 'add support for Brotli compressed content encoding')
 option('PISTACHE_USE_CONTENT_ENCODING_DEFLATE', type: 'boolean', value: false, description: 'add support for deflate compressed content encoding')

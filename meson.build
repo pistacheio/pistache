@@ -55,6 +55,19 @@ if get_option('PISTACHE_USE_RAPIDJSON')
 	deps_libpistache += dependency('RapidJSON', fallback: ['rapidjson', 'rapidjson_dep'])
 endif
 
+# Support Brotli compressed Content-Encoding responses...
+if get_option('PISTACHE_USE_CONTENT_ENCODING_BROTLI')
+
+    # Need Brotli encoder for library...
+    brotli = dependency('libbrotlienc')
+    deps_libpistache += brotli
+
+    # ...decoder for unit testing...
+    brotli = dependency('libbrotlidec')
+    deps_libpistache += brotli
+
+endif
+
 # Support deflate compressed Content-Encoding responses...
 if get_option('PISTACHE_USE_CONTENT_ENCODING_DEFLATE')
 
