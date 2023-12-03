@@ -36,6 +36,7 @@ override_dh_auto_configure:
 		-DPISTACHE_BUILD_TESTS=$(test) \
 		-DPISTACHE_BUILD_DOCS=false \
 		-DPISTACHE_USE_SSL=true \
+		-DPISTACHE_USE_CONTENT_ENCODING_BROTLI=true \
 		-DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true
 
 override_dh_auto_test:

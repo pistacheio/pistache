@@ -8,7 +8,8 @@ Priority: optional
 Maintainer: Kip Warner <kip@thevertigo.com>
 Standards-Version: 4.6.0
 Build-Depends: debhelper-compat (= 13), meson (>= 0.50.0)
-Build-Depends-Arch: libcurl4-openssl-dev,
+Build-Depends-Arch: libbrotli-dev,
+                    libcurl4-openssl-dev,
                     libgmock-dev (>= 1.11.0) <!nocheck> | googletest (>= 1.11.0) <!nocheck>,
                     libssl-dev,
                     netbase <!nocheck>,
