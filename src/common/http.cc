@@ -883,27 +883,20 @@ namespace Pistache::Http
         // User requested Brotli compression...
         case Http::Header::Encoding::Br: {
 
-            // Location for size of compressed buffer...
-            size_t compressedSize = 0;
-
-            // Compute upper bound on the uncompressed buffer size after its
-            //  compression...
-            const size_t compressedUpperBoundSize =
-                ::BrotliEncoderMaxCompressedSize(size);
+            // Location for size of compressed buffer, initially set to upper
+            //  bound on the data after its been compressed...
+            size_t compressedSize = ::BrotliEncoderMaxCompressedSize(size);
 
             // Failed...
-            if (compressedUpperBoundSize == 0)
+            if (compressedSize == 0)
                 throw std::runtime_error("BrotliEncoderMaxCompressedSize() failed");
 
             // Allocate a smart buffer to contain compressed data...
-            std::unique_ptr compressedData = std::make_unique<std::byte[]>(compressedUpperBoundSize);
+            std::unique_ptr compressedData = std::make_unique<std::byte[]>(compressedSize);
 
-            // The encoder expects compressedSize to initially be the size of
-            //  the output buffer. After it completes writing it will update its
-            //  value to reflect actual size used...
-            compressedSize = compressedUpperBoundSize;
-
-            // Compress data...
+            // Compress data. The encoder expects compressedSize to initially be
+            //  the size of the output buffer. After it completes writing it
+            //  will update its value to reflect actual size used...
             const auto compressionStatus = ::BrotliEncoderCompress(
                 contentEncodingBrotliLevel_,
                 BROTLI_DEFAULT_WINDOW,
