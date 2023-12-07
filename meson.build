@@ -62,10 +62,6 @@ if get_option('PISTACHE_USE_CONTENT_ENCODING_BROTLI')
     brotli = dependency('libbrotlienc')
     deps_libpistache += brotli
 
-    # ...decoder for unit testing...
-    brotli = dependency('libbrotlidec')
-    deps_libpistache += brotli
-
 endif
 
 # Support deflate compressed Content-Encoding responses...

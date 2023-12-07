@@ -50,6 +50,15 @@ if get_option('PISTACHE_USE_SSL')
 	subdir('certs')
 endif
 
+# If built with Brotli compression support...
+if get_option('PISTACHE_USE_CONTENT_ENCODING_BROTLI')
+
+    # ...enable decoder for unit testing...
+    brotli = dependency('libbrotlidec')
+    deps_libpistache += brotli
+
+endif
+
 foreach test_name : pistache_test_files
 	suite = {}
 	if test_name in network_tests
