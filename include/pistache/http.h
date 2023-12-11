@@ -35,6 +35,10 @@
 #include <pistache/tcp.h>
 #include <pistache/transport.h>
 
+#ifdef PISTACHE_USE_CONTENT_ENCODING_BROTLI
+#include <brotli/encode.h>
+#endif
+
 #ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
 #include <zlib.h>
 #endif
@@ -494,6 +498,15 @@ namespace Pistache
             //  automatically set to the requested encoding, if supported...
             void setCompression(const Pistache::Http::Header::Encoding _contentEncoding);
 
+#ifdef PISTACHE_USE_CONTENT_ENCODING_BROTLI
+            // Set the compression level for Brotli algorithm. Defaults to
+            //  BROTLI_DEFAULT_QUALITY...
+            void setCompressionBrotliLevel(const int _contentEncodingBrotliLevel)
+            {
+                contentEncodingBrotliLevel_ = _contentEncodingBrotliLevel;
+            }
+#endif
+
 #ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
             // Set the compression level for deflate algorithm. Defaults to
             //  Z_DEFAULT_COMPRESSION...
@@ -520,6 +533,10 @@ namespace Pistache
             ssize_t sent_bytes_ = 0;
 
             Http::Header::Encoding contentEncoding_ = Http::Header::Encoding::Identity;
+
+#ifdef PISTACHE_USE_CONTENT_ENCODING_BROTLI
+            int contentEncodingBrotliLevel_ = BROTLI_DEFAULT_QUALITY;
+#endif
 
 #ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
             int contentEncodingDeflateLevel_ = Z_DEFAULT_COMPRESSION;

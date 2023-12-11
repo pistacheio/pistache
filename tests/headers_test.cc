@@ -117,27 +117,49 @@ TEST(headers_test, accept_encoding)
             std::make_pair(Encoding::Unknown, 0.0F)));
 
     AcceptEncoding a5;
-    a5.parse("deflate;");
+    a5.parse("gzip;q=1.0, identity; q=0.5, br;q=0.7, *;q=0");
     EXPECT_THAT(
         a5.encodings(),
-        SizeIs(0));
+        ElementsAre(
+            std::make_pair(Encoding::Gzip, 1.0F),
+            std::make_pair(Encoding::Br, 0.7F),
+            std::make_pair(Encoding::Identity, 0.5F),
+            std::make_pair(Encoding::Unknown, 0.0F)));
 
     AcceptEncoding a6;
-    a6.parse("deflate;q=");
+    a6.parse("br;");
     EXPECT_THAT(
         a6.encodings(),
         SizeIs(0));
 
     AcceptEncoding a7;
-    a7.parse(",");
+    a7.parse("br;q=");
     EXPECT_THAT(
         a7.encodings(),
         SizeIs(0));
 
     AcceptEncoding a8;
-    a8.parse("deflate;a=1");
+    a8.parse("deflate;");
     EXPECT_THAT(
         a8.encodings(),
+        SizeIs(0));
+
+    AcceptEncoding a9;
+    a9.parse("deflate;q=");
+    EXPECT_THAT(
+        a9.encodings(),
+        SizeIs(0));
+
+    AcceptEncoding a10;
+    a10.parse(",");
+    EXPECT_THAT(
+        a10.encodings(),
+        SizeIs(0));
+
+    AcceptEncoding a11;
+    a11.parse("deflate;a=1");
+    EXPECT_THAT(
+        a11.encodings(),
         SizeIs(0));
 }
 
@@ -598,6 +620,13 @@ TEST(headers_test, content_encoding)
 {
     Pistache::Http::Header::ContentEncoding ce;
     std::ostringstream oss;
+
+    ce.parse("br");
+    ce.write(oss);
+    ASSERT_EQ("br", oss.str());
+    ASSERT_EQ(ce.encoding(), Pistache::Http::Header::Encoding::Br);
+    oss.str("");
+
     ce.parse("gzip");
     ce.write(oss);
     ASSERT_EQ("gzip", oss.str());

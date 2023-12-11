@@ -196,13 +196,14 @@ Now, compile the sources:
 
 ```sh
 $ cd pistache
-$ meson setup build \
-    --buildtype=release \
-    -DPISTACHE_USE_SSL=true \
-    -DPISTACHE_BUILD_EXAMPLES=true \
-    -DPISTACHE_BUILD_TESTS=true \
-    -DPISTACHE_BUILD_DOCS=false \
-    -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true \
+$ meson setup build                                 \
+    --buildtype=release                             \
+    -DPISTACHE_USE_SSL=true                         \
+    -DPISTACHE_BUILD_EXAMPLES=true                  \
+    -DPISTACHE_BUILD_TESTS=true                     \
+    -DPISTACHE_BUILD_DOCS=false                     \
+    -DPISTACHE_USE_CONTENT_ENCODING_BROTLI=true     \
+    -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true    \
     --prefix="$PWD/prefix"
 $ meson compile -C build
 $ meson install -C build
@@ -224,6 +225,7 @@ Some other Meson options:
 | PISTACHE_BUILD_TESTS                  | False   | Build all of the unit tests                    |
 | PISTACHE_BUILD_EXAMPLES               | False   | Build all of the example apps                  |
 | PISTACHE_BUILD_DOCS                   | False   | Build Doxygen docs                             |
+| PISTACHE_USE_CONTENT_ENCODING_BROTLI  | False   | Build with Brotli content encoding support     |
 | PISTACHE_USE_CONTENT_ENCODING_DEFLATE | False   | Build with deflate content encoding support    |
 
 ## Example
