@@ -387,7 +387,7 @@ namespace Pistache::Tcp
 
 #ifdef PISTACHE_USE_BSD_SENDFILE
     bytesWritten = xsendfile(fd, file, offset, len);
-#elif
+#else
     bytesWritten = ::sendfile(fd, file, &offset, len);
 #endif /* PISTACHE_USE_BSD_SENDFILE */
             
