@@ -43,3 +43,9 @@
 ssize_t SSL_sendfile(SSL* out, int in, off_t* offset, size_t count);
 
 #endif /* PISTACHE_USE_SSL */
+
+#ifdef PISTACHE_USE_BSD_SENDFILE
+
+ssize_t xsendfile(int out, int in, off_t offset, off_t off_bytes);
+
+#endif /* PISTACHE_USE_BSD_SENDFILE */

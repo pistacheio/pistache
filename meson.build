@@ -18,7 +18,7 @@ project(
 )
 
 if host_machine.system() != 'linux'
-	error('Pistache currenly only supports Linux. See https://github.com/pistacheio/pistache/issues/6#issuecomment-242398225 for more information')
+	message('Warning: Experimental OS detected!. Pistache currenly only supports Linux.')
 endif
 
 compiler = meson.get_compiler('cpp')
@@ -50,6 +50,13 @@ deps_libpistache = [
 	dependency('threads'),
 	date_dep
 ]
+
+if host_machine.system() in ['freebsd', 'netbsd', 'openbsd', 'dragonfly']
+    deps_libpistache += dependency('epoll-shim',required: true)
+    add_project_arguments('-DPISTACHE_USE_BSD_SENDFILE', language : 'cpp')
+    add_project_arguments('-DPISTACHE_USE_BSD_SOCKTOPT', language : 'cpp')
+    add_project_arguments('-DPISTACHE_USE_BSD_WAIT', language : 'cpp')    
+endif
 
 if get_option('PISTACHE_USE_RAPIDJSON')
 	deps_libpistache += dependency('RapidJSON', fallback: ['rapidjson', 'rapidjson_dep'])

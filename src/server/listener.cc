@@ -174,12 +174,21 @@ namespace Pistache::Tcp
         if (options.hasFlag(Options::FastOpen))
         {
             int hint = 5;
-            TRY(::setsockopt(fd, SOL_TCP, TCP_FASTOPEN, &hint, sizeof(hint)));
+            #ifdef PISTACHE_USE_BSD_SOCKTOPT
+                // FreeBSD uses IPPROTO_TCP constant instead of SOL_TCP
+                TRY(::setsockopt(fd, IPPROTO_TCP, TCP_FASTOPEN, &hint, sizeof(hint)));
+            #elif
+                TRY(::setsockopt(fd, SOL_TCP, TCP_FASTOPEN, &hint, sizeof(hint)));
+            #endif /* PISTACHE_USE_BSD_SOCKTOPT */
         }
         if (options.hasFlag(Options::NoDelay))
         {
             int one = 1;
-            TRY(::setsockopt(fd, SOL_TCP, TCP_NODELAY, &one, sizeof(one)));
+            #ifdef PISTACHE_USE_BSD_SOCKTOPT
+              TRY(::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one)));
+            #elif
+                TRY(::setsockopt(fd, SOL_TCP, TCP_NODELAY, &one, sizeof(one)));
+            #endif /* PISTACHE_USE_BSD_SOCKTOPT */
         }
     }
 

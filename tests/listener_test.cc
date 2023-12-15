@@ -14,7 +14,10 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-
+#ifdef PISTACHE_USE_BSD_WAIT
+// wait() defined in dedicated header on FreeBSD 
+#include <sys/wait.h>
+#endif /* PISTACHE_USE_BSD_WAIT */        
 #include <array>
 #include <sstream>
 

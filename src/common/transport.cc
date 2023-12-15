@@ -11,9 +11,10 @@
 
 */
 
+#ifndef PISTACHE_USE_BSD_SENDFILE
 #include <sys/sendfile.h>
+#endif /* PISTACHE_USE_BSD_SENDFILE */
 #include <sys/timerfd.h>
-
 #include <pistache/os.h>
 #include <pistache/peer.h>
 #include <pistache/tcp.h>
@@ -383,7 +384,13 @@ namespace Pistache::Tcp
         else
         {
 #endif /* PISTACHE_USE_SSL */
-            bytesWritten = ::sendfile(fd, file, &offset, len);
+
+#ifdef PISTACHE_USE_BSD_SENDFILE
+    bytesWritten = xsendfile(fd, file, offset, len);
+#elif
+    bytesWritten = ::sendfile(fd, file, &offset, len);
+#endif /* PISTACHE_USE_BSD_SENDFILE */
+            
 #ifdef PISTACHE_USE_SSL
         }
 #endif /* PISTACHE_USE_SSL */

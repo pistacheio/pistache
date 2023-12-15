@@ -1181,7 +1181,12 @@ namespace Pistache::Http
         auto sockFd     = peer->fd();
 
         auto buffer = buf->buffer();
-        return transport->asyncWrite(sockFd, buffer, MSG_MORE)
+        #ifdef PISTACHE_USE_BSD_SOCKTOPT            
+        // FreeBSD does not have MSG_MORE
+        return transport->asyncWrite(sockFd, buffer)
+        #elif
+        return transport->asyncWrite(sockFd, buffer, MSG_MORE)        
+        #endif
             .then(
                 [=](ssize_t) {
                     return transport->asyncWrite(sockFd, FileBuffer(fileName));
