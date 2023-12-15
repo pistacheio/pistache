@@ -1184,7 +1184,7 @@ namespace Pistache::Http
         #ifdef PISTACHE_USE_BSD_SOCKTOPT            
         // FreeBSD does not have MSG_MORE
         return transport->asyncWrite(sockFd, buffer)
-        #elif
+        #else
         return transport->asyncWrite(sockFd, buffer, MSG_MORE)        
         #endif
             .then(
