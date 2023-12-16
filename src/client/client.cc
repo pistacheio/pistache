@@ -17,7 +17,10 @@
 #include <pistache/stream.h>
 
 #include <netdb.h>
+#ifndef PISTACHE_USE_BSD_SENDFILE
+// for FreeBSD we use our own function, so no need to include here
 #include <sys/sendfile.h>
+#endif /* PISTACHE_USE_BSD_SENDFILE */
 #include <sys/socket.h>
 #include <sys/types.h>
 

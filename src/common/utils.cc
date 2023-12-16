@@ -43,3 +43,26 @@ ssize_t SSL_sendfile(SSL* out, int in, off_t* offset, size_t count)
 }
 
 #endif /* PISTACHE_USE_SSL */
+
+#ifdef PISTACHE_USE_BSD_SENDFILE
+// Custom function to match arguments with Linux's sendfile.
+ssize_t xsendfile(int out, int in, off_t offset, off_t off_bytes)
+{    
+    size_t bytes = off_bytes;
+   	if (bytes > SSIZE_MAX) 
+	{
+		bytes = SSIZE_MAX;
+	} 
+    off_t nbytes = 0;
+    // no need to include <sys/sendfile> as on Linux
+    if (-1 == sendfile(in, out, offset, bytes, NULL, &nbytes, 0)) {
+      if (errno == EAGAIN && nbytes > 0) 
+      {
+	   	return nbytes;
+	  }
+      return -1;
+    }
+    return nbytes;
+}
+
+#endif /* PISTACHE_USE_BSD_SENDFILE */

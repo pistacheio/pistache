@@ -13,7 +13,16 @@ pistache_example_files = [
 ]
 
 threads_dep = dependency('threads')
+# somehow these two deps had been lost
+brotli_dep = dependency('', required: false)
+rapidjson_dep = dependency('RapidJSON')
+
+
+# If built with Brotli compression support enable decoder for unit testing...
+if get_option('PISTACHE_USE_CONTENT_ENCODING_BROTLI')
+    brotli_dep = dependency('libbrotlidec')
+endif
 
 foreach example_name : pistache_example_files
-	executable('run'+example_name, example_name+'.cc', dependencies: [pistache_dep, threads_dep])
+	executable('run'+example_name, example_name+'.cc', dependencies: [pistache_dep, threads_dep,brotli_dep,rapidjson_dep])
 endforeach
