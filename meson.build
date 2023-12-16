@@ -51,7 +51,7 @@ deps_libpistache = [
 	date_dep
 ]
 
-if host_machine.system() in ['freebsd', 'netbsd', 'openbsd', 'dragonfly']
+if host_machine.system() == 'freebsd'
     deps_libpistache += dependency('epoll-shim',required: true)
     add_project_arguments('-DPISTACHE_USE_BSD_SENDFILE', language : 'cpp')
     add_project_arguments('-DPISTACHE_USE_BSD_SOCKTOPT', language : 'cpp')
