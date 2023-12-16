@@ -181,6 +181,7 @@ namespace Pistache::Tcp
                 TRY(::setsockopt(fd, SOL_TCP, TCP_FASTOPEN, &hint, sizeof(hint)));
             #endif /* PISTACHE_USE_BSD_SOCKTOPT */
         }
+        
         if (options.hasFlag(Options::NoDelay))
         {
             int one = 1;
@@ -190,6 +191,7 @@ namespace Pistache::Tcp
                 TRY(::setsockopt(fd, SOL_TCP, TCP_NODELAY, &one, sizeof(one)));
             #endif /* PISTACHE_USE_BSD_SOCKTOPT */
         }
+        
     }
 
     Listener::Listener()
