@@ -31,16 +31,21 @@ pistache_client_src = [
 	'client'/'client.cc'
 ]
 
+compile_args = []
+
 if get_option('PISTACHE_USE_SSL')
 	add_project_arguments('-DPISTACHE_USE_SSL', language: 'cpp')
+	compile_args += '-DPISTACHE_USE_SSL'
 endif
 
 if get_option('PISTACHE_USE_CONTENT_ENCODING_BROTLI')
 	add_project_arguments('-DPISTACHE_USE_CONTENT_ENCODING_BROTLI', language: 'cpp')
+	compile_args += '-DPISTACHE_USE_CONTENT_ENCODING_BROTLI'
 endif
 
 if get_option('PISTACHE_USE_CONTENT_ENCODING_DEFLATE')
 	add_project_arguments('-DPISTACHE_USE_CONTENT_ENCODING_DEFLATE', language: 'cpp')
+	compile_args += '-DPISTACHE_USE_CONTENT_ENCODING_DEFLATE'
 endif
 
 libpistache = library(
@@ -65,5 +70,6 @@ import('pkgconfig').generate(
 	description: 'An elegant C++ REST framework',
 	url: 'https://pistacheio.github.io/pistache/',
 	version: '@0@-git@1@'.format(version_str, version_git_date),
-	filebase: 'libpistache'
+	filebase: 'libpistache',
+	extra_cflags: compile_args
 )
