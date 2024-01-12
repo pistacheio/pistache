@@ -38,6 +38,7 @@ Package: libpistache-dev
 Section: libdevel
 Architecture: any
 Depends: libpistache0 (= ${binary:Version}),
+         libbrotli-dev,
          libssl-dev,
          rapidjson-dev,
          zlib1g-dev | libz-dev
