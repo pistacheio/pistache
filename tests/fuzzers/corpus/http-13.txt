@@ -1,0 +1,10 @@
+RPUT /upload.php?q=query_string&limit=10&offset=0 HTTP/1.1
+Host: example.com
+Accept: */*
+Accept-Encoding: gzip, deflate, br
+Accept-Encoding: gzip, deflate, br;q=0.9, identity;q=0.5
+Content-Length: 18
+Content-Type: text/plain
+Cookie: session_id=abc123; user_id=123456
+
+This is the content

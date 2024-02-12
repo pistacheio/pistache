@@ -1,0 +1,2 @@
+Susers/*/dataA
+users/me/dataF

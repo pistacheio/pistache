@@ -1,0 +1,1 @@
+Hgzip, deflate, br
