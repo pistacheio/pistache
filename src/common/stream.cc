@@ -180,7 +180,7 @@ namespace Pistache
 
     int StreamCursor::next() const
     {
-        if (buf->in_avail() < 1)
+        if (buf->in_avail() <= 1)
             return Eof;
 
         return buf->snext();
