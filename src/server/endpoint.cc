@@ -261,7 +261,7 @@ namespace Pistache::Http
 
     void Endpoint::init(const Endpoint::Options& options)
     {
-        listener.init(options.threads_, options.flags_, options.threadsName_);
+        listener.init(options.threads_, options.flags_, options.threadsName_, options.backlog_);
         listener.setTransportFactory([this, options] {
             if (!handler_)
                 throw std::runtime_error("Must call setHandler()");
