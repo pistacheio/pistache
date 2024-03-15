@@ -26,6 +26,7 @@
 #include <unordered_map>
 
 #include <fcntl.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -758,6 +759,20 @@ namespace Pistache::Http
         }
 
         return peer_.lock();
+    }
+
+    bool ResponseStream::isOpen()
+    {
+        int error     = 0;
+        socklen_t len = sizeof(error);
+        int ret       = getsockopt(peer()->fd(), SOL_SOCKET, SO_ERROR, &error, &len);
+
+        return ret == 0 && error == 0;
+    }
+
+    bool ResponseStream::isClosed()
+    {
+        return !isOpen();
     }
 
     void ResponseStream::flush()

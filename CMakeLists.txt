@@ -19,7 +19,7 @@ option(BUILD_SHARED_LIBS "build shared library" ON)
 option(PISTACHE_BUILD_TESTS "build tests alongside the project" OFF)
 option(PISTACHE_ENABLE_FLAKY_TESTS "if tests are built, also run ones that are known to be flaky" ON)
 option(PISTACHE_ENABLE_NETWORK_TESTS "if tests are built, run ones needing network access" ON)
-option(PISTACHE_USE_SSL "add support for SSL server" OFF)
+option(PISTACHE_USE_SSL "add support for SSL server" ON)
 option(PISTACHE_PIC "Enable pistache PIC" ON)
 option(PISTACHE_BUILD_FUZZ "Build fuzzer for oss-fuzz" OFF)
 
