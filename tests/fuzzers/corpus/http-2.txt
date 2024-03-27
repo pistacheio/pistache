@@ -1,0 +1,6 @@
+RPOST / HTTP/1.1
+Host: www.example.re
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 18
+
+Job=100&Priority=2
