@@ -234,10 +234,7 @@ namespace Pistache
                                                 default_port);
         }
 
-        inline Address httpAddr(const std::string_view& view)
-        {
-            return(httpAddr(view, 0));
-        }
+        Address httpAddr(const std::string_view& view);
     } // namespace helpers
 
     class Error : public std::runtime_error
