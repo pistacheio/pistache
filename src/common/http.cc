@@ -11,6 +11,7 @@
 */
 
 #include <pistache/config.h>
+#include <pistache/eventmeth.h>
 #include <pistache/http.h>
 #include <pistache/net.h>
 #include <pistache/peer.h>
@@ -1126,6 +1127,7 @@ namespace Pistache::Http
         }
 
         int res = ::fstat(fd, &sb);
+
         close(fd); // Done with fd, close before error can be thrown
         if (res == -1)
         {
@@ -1181,7 +1183,16 @@ namespace Pistache::Http
         auto sockFd     = peer->fd();
 
         auto buffer = buf->buffer();
-        return transport->asyncWrite(sockFd, buffer, MSG_MORE)
+        return transport->asyncWrite(sockFd, buffer,
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+                                     0, // MSG_MORE unsupported in macos sendmsg
+                                        // Instead, we set TCP_NOPUSH via
+                                        // setsockopt (see "man tcp").
+                                     true // use msg_more_style
+#else
+                                     MSG_MORE
+#endif
+                                     )
             .then(
                 [=](ssize_t) {
                     return transport->asyncWrite(sockFd, FileBuffer(fileName));
@@ -1221,12 +1232,16 @@ namespace Pistache::Http
     void Handler::onInput(const char* buffer, size_t len,
                           const std::shared_ptr<Tcp::Peer>& peer)
     {
+        PS_TIMEDBG_START_ARGS("input len %u", len);
+
         auto parser   = getParser(peer);
         auto& request = parser->request;
         try
         {
             if (!parser->feed(buffer, len))
             {
+                PS_LOG_DEBUG("parser returned false");
+
                 parser->reset();
                 throw HttpError(Code::Request_Entity_Too_Large,
                                 "Request exceeded maximum buffer size");
@@ -1236,6 +1251,8 @@ namespace Pistache::Http
 
             if (state == Private::State::Done)
             {
+                PS_LOG_DEBUG("Creating response");
+
                 ResponseWriter response(request.version(), transport(), this, peer);
 
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
@@ -1248,20 +1265,31 @@ namespace Pistache::Http
 
                 if (connection)
                 {
+                    PS_LOG_DEBUG("Response connection control");
+
                     response.headers().add<Header::Connection>(connection->control());
                 }
                 else
                 {
+                    PS_LOG_DEBUG("Response connection close");
+
                     response.headers().add<Header::Connection>(ConnectionControl::Close);
                 }
 
+                PS_LOG_DEBUG("Calling peer->setIdle");
                 peer->setIdle(false); // change peer state to not idle
+
+                PS_LOG_DEBUG("Calling onRequest");
                 onRequest(request, std::move(response));
+
+                PS_LOG_DEBUG("Calling parser->reset");
                 parser->reset();
             }
         }
         catch (const HttpError& err)
         {
+            PS_LOG_DEBUG("HTTP Error");
+
             ResponseWriter response(request.version(), transport(), this, peer);
             response.send(static_cast<Code>(err.code()), err.reason());
             parser->reset();
@@ -1269,6 +1297,8 @@ namespace Pistache::Http
 
         catch (const std::exception& e)
         {
+            PS_LOG_DEBUG("HTTP exception");
+
             ResponseWriter response(request.version(), transport(), this, peer);
             response.send(Code::Internal_Server_Error, e.what());
             parser->reset();
@@ -1304,7 +1334,7 @@ namespace Pistache::Http
         , version(version)
         , transport(transport_)
         , armed(false)
-        , timerFd(-1)
+        , timerFd(FD_EMPTY)
         , peer(peer_)
     { }
 

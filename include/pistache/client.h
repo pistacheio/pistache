@@ -180,6 +180,9 @@ namespace Pistache::Http::Experimental
         RequestBuilder& body(std::string&& val);
         RequestBuilder& timeout(std::chrono::milliseconds val);
 
+        // Duncan added
+        std::size_t bodySize() { return (request_.body().size()); }
+
         Async::Promise<Response> send();
 
     private:
@@ -236,6 +239,9 @@ namespace Pistache::Http::Experimental
         void shutdown();
 
     private:
+        using Lock  = std::mutex;
+        using Guard = std::lock_guard<Lock>;
+
         std::shared_ptr<Aio::Reactor> reactor_;
 
         ConnectionPool pool;
@@ -243,14 +249,21 @@ namespace Pistache::Http::Experimental
 
         std::atomic<uint64_t> ioIndex;
 
-        using Lock  = std::mutex;
-        using Guard = std::lock_guard<Lock>;
-
+        // Note: queuesLock is declared before requestsQueues.This means that
+        // when Client destructor is called, since members are destroyed in
+        // reverse order of their declaration, requestsQueues will be destroyed
+        // before queuesLock. Since we use queuesLock and
+        // stopProcessRequestQueues to determine if we're allowed to access the
+        // queues, we want to make sure they still exist at the moment we have
+        // to make that determination.
+        // I'm not sure if this ordering is necessary, but it may provide some
+        // protection if destructor tries (indirectly) to access requestsQueues
         Lock queuesLock;
+        bool stopProcessRequestQueues;
+
         std::unordered_map<std::string,
                            MPMCQueue<std::shared_ptr<Connection::RequestData>, 2048>>
             requestsQueues;
-        bool stopProcessPequestsQueues;
 
     private:
         RequestBuilder prepareRequest(const std::string& resource,

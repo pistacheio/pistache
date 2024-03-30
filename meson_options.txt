@@ -10,3 +10,5 @@ option('PISTACHE_USE_SSL', type: 'boolean', value: false, description: 'add supp
 option('PISTACHE_USE_RAPIDJSON', type: 'boolean', value: true, description: 'add support for rapidjson')
 option('PISTACHE_USE_CONTENT_ENCODING_BROTLI', type: 'boolean', value: false, description: 'add support for Brotli compressed content encoding')
 option('PISTACHE_USE_CONTENT_ENCODING_DEFLATE', type: 'boolean', value: false, description: 'add support for deflate compressed content encoding')
+option('PISTACHE_DEBUG', type: 'boolean', value: false, description: 'with debugging code')
+option('PISTACHE_FORCE_LIBEVENT', type: 'boolean', value: false, description: 'force use of libevent')

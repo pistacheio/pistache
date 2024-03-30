@@ -114,6 +114,9 @@ namespace Pistache::Aio
 
         Key addHandler(const std::shared_ptr<Handler>& handler);
 
+        void detachFromReactor(const std::shared_ptr<Handler>& handler);
+        void detachAndRemoveAllHandlers();
+
         std::vector<std::shared_ptr<Handler>> handlers(const Key& key);
 
         void registerFd(const Key& key, Fd fd, Polling::NotifyOn interest,
@@ -124,7 +127,8 @@ namespace Pistache::Aio
 
         void registerFd(const Key& key, Fd fd, Polling::NotifyOn interest,
                         Polling::Mode mode = Polling::Mode::Level);
-        void registerFdOneShot(const Key& key, Fd fd, Polling::NotifyOn interest,
+        void registerFdOneShot(const Key& key, Fd fd,
+                               Polling::NotifyOn interest,
                                Polling::Mode mode = Polling::Mode::Level);
 
         void modifyFd(const Key& key, Fd fd, Polling::NotifyOn interest,
@@ -205,8 +209,9 @@ namespace Pistache::Aio
             std::thread::id tid;
         };
 
-        virtual void onReady(const FdSet& fds)              = 0;
-        virtual void registerPoller(Polling::Epoll& poller) = 0;
+        virtual void onReady(const FdSet& fds)                = 0;
+        virtual void registerPoller(Polling::Epoll& poller)   = 0;
+        virtual void unregisterPoller(Polling::Epoll& poller) = 0;
 
         Reactor* reactor() const { return reactor_; }
 
@@ -217,6 +222,51 @@ namespace Pistache::Aio
         ~Handler() override = default;
 
     private:
+        // @Mar/2024. reactor_ being a raw cptr "Reactor*" caused an issue as
+        // follows.
+        //
+        // The class Client (see client.h) holds a std::shared_ptr to
+        // Reactor. In certain cases, the Reactor destructor was being invoked
+        // automatically out of Client destructor. However, the class Transport
+        // was also holding a raw cptr Reactor *, inherited from
+        // Aio::Handler. In Transport::removePeer, the code invokes
+        // reactor()->removeFd(); this invocation was happening AFTER the
+        // Reactor destructor had already been called.
+        //
+        // In macOS, that was causing an exception because Reactor::impl_ was
+        // null when removeFd() was called. In Linux, removeFd() appeared to
+        // work because the memory of the Reactor instance had (by good
+        // fortune) not yet been overwritten.
+        //
+        // However, even in Linux the problem could be demonstrated by
+        // providing a destructor for Reactor as follows:
+        //   Remove this line from reactor.cc:
+        //     Reactor::~Reactor() = default;
+        //   Replace with this line:
+        //     Reactor::~Reactor() {impl_ = NULL;}//impl_ is member of Reactor_
+        // With this change, the test program run_http_server_test was creating
+        // the same exception in macOS and Linux
+        //
+        // Nonetheless, we can't make reactor_ a shared_ptr without a great
+        // many other code changes. If we did, then Handler would hold a
+        // std::shared_ptr<Reactor>; and Reactor would hold a
+        // std::vector<std::shared_ptr<Handler>>. Since then each of
+        // Reactor and Handler would be holding a shared_ptr to the other,
+        // neither could ever go out of scope and exit.
+        //
+        // Instead, in the Reactor destructor we invoke a new method,
+        // detachAndRemoveAllHandlers. This deregisters the Reactor from each
+        // Handler, and wipes away Reactor's "handlers" vector. Subsequently,
+        // Transport::removePeer will no longer try to remove an Fd from the
+        // Reactor, because Transport will no longer have a registered Reactor.
+        //
+        // Finally, we've added std::mutex reg_unreg_mutex_ to class Epoll
+        // (each poller is an instance of Epoll). This mutex is claimed when
+        // invoking unregisterPoller; it is also claimed for each ieration of
+        // the polling loops defined in Listener::run and Reactor::runOnce, so
+        // that Handlers cannot be removed, registration-related file handles
+        // closed, etc., in the middle of gathering and processing polled
+        // events.
         Reactor* reactor_;
         Context context_;
         Reactor::Key key_;

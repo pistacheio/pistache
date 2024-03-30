@@ -198,6 +198,11 @@ To download the latest available release, clone the repository over GitHub.
 $ git clone https://github.com/pistacheio/pistache.git
 ```
 
+To build for macOS, you can follow the instructions in:
+    Building on macOS.txt
+
+Continuing the Linux instructions:
+
 Now, compile the sources:
 
 ```sh

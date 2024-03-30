@@ -22,7 +22,12 @@
 #include <type_traits>
 #include <vector>
 
+#include <pistache/eventmeth.h>
+
+#ifndef _USE_LIBEVENT_LIKE_APPLE
+// Note: sys/timerfd.h is linux-only (and certainly POSIX only)
 #include <sys/timerfd.h>
+#endif
 
 #include <pistache/async.h>
 #include <pistache/cookie.h>
@@ -269,18 +274,22 @@ namespace Pistache
                 , peer(std::move(other.peer))
             {
                 // cppcheck-suppress useInitializationList
-                other.timerFd = -1;
+                other.timerFd = FD_EMPTY;
+                // For libevent, don't need to free, passed to this->timerFd
             }
 
             Timeout& operator=(Timeout&& other)
             {
-                handler       = other.handler;
-                transport     = other.transport;
-                version       = other.version;
-                armed         = other.armed;
-                timerFd       = other.timerFd;
-                other.timerFd = -1;
-                peer          = std::move(other.peer);
+                handler   = other.handler;
+                transport = other.transport;
+                version   = other.version;
+                armed     = other.armed;
+                timerFd   = other.timerFd;
+
+                other.timerFd = FD_EMPTY;
+                // For libevent, don't need to free, passed to this->timerFd
+
+                peer = std::move(other.peer);
                 return *this;
             }
 
@@ -290,7 +299,21 @@ namespace Pistache
             void arm(Duration duration)
             {
                 Async::Promise<uint64_t> p([=](Async::Deferred<uint64_t> deferred) {
+#ifdef _USE_LIBEVENT
+                    std::shared_ptr<EventMethEpollEquiv>
+                        event_meth_epoll_equiv(
+                            transport->getEventMethEpollEquiv());
+                    if (!event_meth_epoll_equiv)
+                        throw std::runtime_error(
+                            "event_meth_epoll_equiv null");
+
+                    timerFd = TRY_NULL_RET(event_meth_epoll_equiv->em_timer_new(
+                        CLOCK_MONOTONIC,
+                        F_SETFDL_NOTHING, O_NONBLOCK,
+                        event_meth_epoll_equiv.get()));
+#else
                     timerFd = TRY_RET(timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK));
+#endif
                     transport->armTimer(timerFd, duration, std::move(deferred));
                 });
 
@@ -298,7 +321,8 @@ namespace Pistache
                     [=](uint64_t numWakeup) {
                         this->armed = false;
                         this->onTimeout(numWakeup);
-                        close(timerFd);
+                        CLOSE_FD(timerFd);
+                        timerFd = FD_EMPTY;
                     },
                     [=](std::exception_ptr exc) { std::rethrow_exception(exc); });
 

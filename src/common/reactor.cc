@@ -20,6 +20,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <pistache/PS_TimeLog.h>
+
 using namespace std::string_literals;
 
 namespace Pistache::Aio
@@ -34,9 +36,15 @@ namespace Pistache::Aio
 
         virtual ~Impl() = default;
 
-        virtual Reactor::Key addHandler(const std::shared_ptr<Handler>& handler,
-                                        bool setKey)
+        virtual Reactor::Key addHandler(
+            const std::shared_ptr<Handler>& handler, bool setKey)
             = 0;
+
+        virtual void detachFromReactor(
+            const std::shared_ptr<Handler>& handler)
+            = 0;
+
+        virtual void detachAndRemoveAllHandlers() = 0;
 
         virtual std::vector<std::shared_ptr<Handler>>
         handlers(const Reactor::Key& key) const = 0;
@@ -67,8 +75,8 @@ namespace Pistache::Aio
     };
 
     /* Synchronous implementation of the reactor that polls in the context
- * of the same thread
- */
+     * of the same thread
+     */
     class SyncImpl : public Reactor::Impl
     {
     public:
@@ -96,6 +104,31 @@ namespace Pistache::Aio
             return key;
         }
 
+        void detachFromReactor(const std::shared_ptr<Handler>& handler)
+            override
+        {
+            PS_TIMEDBG_START_THIS;
+
+            // See comment in class Epoll regarding reg_unreg_mutex_
+            std::lock_guard<std::mutex> l_guard(poller.reg_unreg_mutex_);
+
+            PS_LOG_DEBUG_ARGS("Reactor (this) %p detach passed lock", this);
+
+            handler->unregisterPoller(poller);
+
+            handler->reactor_ = NULL;
+        }
+
+        void detachAndRemoveAllHandlers() override
+        {
+            handlers_.forEachHandler([this](
+                                         const std::shared_ptr<Handler> handler) {
+                detachFromReactor(handler);
+            });
+
+            handlers_.removeAll();
+        }
+
         std::shared_ptr<Handler> handler(const Reactor::Key& key) const
         {
             return handlers_.at(key.data());
@@ -110,12 +143,39 @@ namespace Pistache::Aio
             return res;
         }
 
+#ifdef DEBUG
+        static void logNotifyOn(Fd fd, Polling::NotifyOn interest)
+        {
+            std::string str("Fd ");
+
+            std::stringstream ss;
+            ss << fd;
+            str += ss.str();
+
+            if (((unsigned int)interest) & ((unsigned int)Polling::NotifyOn::Read))
+                str += " read";
+            if (((unsigned int)interest) & ((unsigned int)Polling::NotifyOn::Write))
+                str += " write";
+            if (((unsigned int)interest) & ((unsigned int)Polling::NotifyOn::Hangup))
+                str += " hangup";
+            if (((unsigned int)interest) & ((unsigned int)Polling::NotifyOn::Shutdown))
+                str += " shutdown";
+
+            PS_LOG_DEBUG_ARGS("%s", str.c_str());
+        }
+
+#define PS_LOG_DBG_NOTIFY_ON logNotifyOn(fd, interest)
+#else
+#define PS_LOG_DBG_NOTIFY_ON
+#endif
+
         void registerFd(const Reactor::Key& key, Fd fd, Polling::NotifyOn interest,
                         Polling::Tag tag,
                         Polling::Mode mode = Polling::Mode::Level) override
         {
 
             auto pollTag = encodeTag(key, tag);
+            PS_LOG_DBG_NOTIFY_ON;
             poller.addFd(fd, Flags<Polling::NotifyOn>(interest), pollTag, mode);
         }
 
@@ -123,8 +183,10 @@ namespace Pistache::Aio
                                Polling::NotifyOn interest, Polling::Tag tag,
                                Polling::Mode mode = Polling::Mode::Level) override
         {
+            PS_TIMEDBG_START_ARGS("Fd %" PIST_QUOTE(PS_FD_PRNTFCD), fd);
 
             auto pollTag = encodeTag(key, tag);
+            PS_LOG_DBG_NOTIFY_ON;
             poller.addFdOneShot(fd, Flags<Polling::NotifyOn>(interest), pollTag, mode);
         }
 
@@ -139,6 +201,9 @@ namespace Pistache::Aio
 
         void removeFd(const Reactor::Key& /*key*/, Fd fd) override
         {
+            PS_TIMEDBG_START_ARGS("Reactor %p, Fd %" PIST_QUOTE(PS_FD_PRNTFCD),
+                                  this, fd);
+
             poller.removeFd(fd);
         }
 
@@ -149,20 +214,27 @@ namespace Pistache::Aio
 
             for (;;)
             {
-                std::vector<Polling::Event> events;
-                int ready_fds = poller.poll(events);
+                { // encapsulate l_guard(poller.reg_unreg_mutex_)
+                  // See comment in class Epoll regarding reg_unreg_mutex_
 
-                switch (ready_fds)
-                {
-                case -1:
-                    break;
-                case 0:
-                    break;
-                default:
-                    if (shutdown_)
-                        return;
+                    std::lock_guard<std::mutex> l_guard(
+                        poller.reg_unreg_mutex_);
 
-                    handleFds(std::move(events));
+                    std::vector<Polling::Event> events;
+                    int ready_fds = poller.poll(events);
+
+                    switch (ready_fds)
+                    {
+                    case -1:
+                        break;
+                    case 0:
+                        break;
+                    default:
+                        if (shutdown_)
+                            return;
+
+                        handleFds(std::move(events));
+                    }
                 }
             }
         }
@@ -179,6 +251,8 @@ namespace Pistache::Aio
 
         void shutdown() override
         {
+            PS_TIMEDBG_START_THIS;
+
             shutdown_.store(true);
             shutdownFd.notify();
         }
@@ -188,11 +262,12 @@ namespace Pistache::Aio
     private:
         static Polling::Tag encodeTag(const Reactor::Key& key, Polling::Tag tag)
         {
-            uint64_t value = tag.value();
+            auto value = tag.value();
             return HandlerList::encodeTag(key, value);
         }
 
-        static std::pair<size_t, uint64_t> decodeTag(const Polling::Tag& tag)
+        static std::pair<size_t, Polling::TagValue>
+        decodeTag(const Polling::Tag& tag)
         {
             return HandlerList::decodeTag(tag);
         }
@@ -211,7 +286,7 @@ namespace Pistache::Aio
                 for (auto& event : events)
                 {
                     size_t index;
-                    uint64_t value;
+                    Polling::TagValue value;
 
                     std::tie(index, value) = decodeTag(event.tag);
                     auto handler_          = handlers_.at(index);
@@ -244,10 +319,10 @@ namespace Pistache::Aio
                 std::fill(std::begin(handlers), std::end(handlers), nullptr);
             }
 
-            HandlerList(const HandlerList& other) = delete;
+            HandlerList(const HandlerList& other)            = delete;
             HandlerList& operator=(const HandlerList& other) = delete;
 
-            HandlerList(HandlerList&& other) = default;
+            HandlerList(HandlerList&& other)            = default;
             HandlerList& operator=(HandlerList&& other) = default;
 
             HandlerList clone() const
@@ -274,6 +349,12 @@ namespace Pistache::Aio
                 return key;
             }
 
+            void removeAll()
+            {
+                index_ = 0;
+                handlers.fill(NULL);
+            }
+
             std::shared_ptr<Handler> operator[](size_t index) const
             {
                 return handlers.at(index);
@@ -291,24 +372,34 @@ namespace Pistache::Aio
 
             size_t size() const { return index_; }
 
-            static Polling::Tag encodeTag(const Reactor::Key& key, uint64_t value)
+            // Note that in the _USE_LIBEVENT case the the tag has type "struct
+            // event *" but in fact may be that pointer with high bits set to
+            // the value of "index". So in the _USE_LIBEVENT case we must be
+            // careful to mask out those high bits to retrieve the actual
+            // pointer, just as, in the non-_USE_LIBEVENT case, we have to mask
+            // those high bits to retrieve the actual file descriptor.
+            static Polling::Tag encodeTag(const Reactor::Key& key,
+                                          Polling::TagValueConst value)
             {
                 auto index = key.data();
-                // The reason why we are using the most significant bits to encode
-                // the index of the handler is that in the fast path, we won't need
-                // to shift the value to retrieve the fd if there is only one handler as
-                // all the bits will already be set to 0.
-                auto encodedValue = (index << HandlerShift) | value;
-                return Polling::Tag(encodedValue);
+                // The reason why we are using the most significant bits to
+                // encode the index of the handler is that in the fast path, we
+                // won't need to shift the value to retrieve the fd if there is
+                // only one handler as all the bits will already be set to 0.
+                auto encodedValue                = (index << HandlerShift) | ((uint64_t)value);
+                Polling::TagValue encodedValueTV = ((Polling::TagValue)encodedValue);
+                return Polling::Tag(encodedValueTV);
             }
 
-            static std::pair<size_t, uint64_t> decodeTag(const Polling::Tag& tag)
+            static std::pair<size_t, Polling::TagValue>
+            decodeTag(const Polling::Tag& tag)
             {
-                auto value   = tag.value();
-                size_t index = value >> HandlerShift;
-                uint64_t fd  = value & DataMask;
+                auto value                      = tag.valueU64();
+                size_t index                    = value >> HandlerShift;
+                uint64_t maskedValue            = value & DataMask;
+                Polling::TagValue maskedValueTV = ((Polling::TagValue)maskedValue);
 
-                return std::make_pair(index, fd);
+                return std::make_pair(index, maskedValueTV);
             }
 
             template <typename Func>
@@ -332,37 +423,38 @@ namespace Pistache::Aio
     };
 
     /* Asynchronous implementation of the reactor that spawns a number N of threads
- * and creates a polling fd per thread
- *
- * Implementation detail:
- *
- *  Here is how it works: the implementation simply starts a synchronous variant
- *  of the implementation in its own std::thread. When adding an handler, it
- * will add a clone() of the handler to every worker (thread), and assign its
- * own key to the handler. Here is where things start to get interesting. Here
- * is how the key encoding works for every handler:
- *
- *  [     handler idx      ] [       worker idx         ]
- *  ------------------------ ----------------------------
- *       ^ 32 bits                   ^ 32 bits
- *  -----------------------------------------------------
- *                       ^ 64 bits
- *
- * Since we have up to 64 bits of data for every key, we encode the index of the
- * handler that has been assigned by the SyncImpl in the upper 32 bits, and
- * encode the index of the worker thread in the lowest 32 bits.
- *
- * When registering a fd for a given key, the AsyncImpl then knows which worker
- * to use by looking at the lowest 32 bits of the Key's data. The SyncImpl will
- * then use the highest 32 bits to retrieve the index of the handler.
- */
+     * and creates a polling fd per thread
+     *
+     * Implementation detail:
+     *
+     *  Here is how it works: the implementation simply starts a synchronous variant
+     *  of the implementation in its own std::thread. When adding an handler, it
+     * will add a clone() of the handler to every worker (thread), and assign its
+     * own key to the handler. Here is where things start to get interesting. Here
+     * is how the key encoding works for every handler:
+     *
+     *  [     handler idx      ] [       worker idx         ]
+     *  ------------------------ ----------------------------
+     *       ^ 32 bits                   ^ 32 bits
+     *  -----------------------------------------------------
+     *                       ^ 64 bits
+     *
+     * Since we have up to 64 bits of data for every key, we encode the index of the
+     * handler that has been assigned by the SyncImpl in the upper 32 bits, and
+     * encode the index of the worker thread in the lowest 32 bits.
+     *
+     * When registering a fd for a given key, the AsyncImpl then knows which worker
+     * to use by looking at the lowest 32 bits of the Key's data. The SyncImpl will
+     * then use the highest 32 bits to retrieve the index of the handler.
+     */
 
     class AsyncImpl : public Reactor::Impl
     {
     public:
         static constexpr uint32_t KeyMarker = 0xBADB0B;
 
-        AsyncImpl(Reactor* reactor, size_t threads, const std::string& threadsName)
+        AsyncImpl(Reactor* reactor,
+                  size_t threads, const std::string& threadsName)
             : Reactor::Impl(reactor)
         {
 
@@ -394,6 +486,27 @@ namespace Pistache::Aio
             auto data = keys.at(0).data() << 32 | KeyMarker;
 
             return Reactor::Key(data);
+        }
+
+        void detachFromReactor(const std::shared_ptr<Handler>& handler)
+            override
+        {
+            for (size_t i = 0; i < workers_.size(); ++i)
+            {
+                auto& wrk = workers_.at(i);
+
+                wrk->sync->detachFromReactor(handler);
+            }
+        }
+
+        void detachAndRemoveAllHandlers() override
+        {
+            for (size_t i = 0; i < workers_.size(); ++i)
+            {
+                auto& wrk = workers_.at(i);
+
+                wrk->sync->detachAndRemoveAllHandlers();
+            }
         }
 
         std::vector<std::shared_ptr<Handler>>
@@ -439,6 +552,8 @@ namespace Pistache::Aio
 
         void removeFd(const Reactor::Key& key, Fd fd) override
         {
+            PS_TIMEDBG_START_ARGS("Reactor %p, Fd %" PIST_QUOTE(PS_FD_PRNTFCD),
+                                  this, fd);
             dispatchCall(key, &SyncImpl::removeFd, fd);
         }
 
@@ -509,8 +624,20 @@ namespace Pistache::Aio
                 thread = std::thread([=]() {
                     if (!threadsName_.empty())
                     {
-                        pthread_setname_np(pthread_self(),
-                                           threadsName_.substr(0, 15).c_str());
+                        pthread_setname_np(
+#ifndef __APPLE__
+                            // Apple's macOS version of pthread_setname_np
+                            // takes only "const char * name" as parm
+                            // (Nov/2023), and assumes that the thread is the
+                            // calling thread. Note that pthread_self returns
+                            // calling thread in Linux, so this amounts to
+                            // the same thing in the end
+                            // It appears older FreeBSD (2003 ?) also behaves
+                            // as per macOS, while newer FreeBSD (2021 ?)
+                            // behaves as per Linux
+                            pthread_self(),
+#endif
+                            threadsName_.substr(0, 15).c_str());
                     }
                     sync->run();
                 });
@@ -536,10 +663,17 @@ namespace Pistache::Aio
 
     Reactor::Reactor() = default;
 
-    Reactor::~Reactor() = default;
+    // Reactor::~Reactor() = default;
+    Reactor::~Reactor()
+    {
+        PS_TIMEDBG_START_THIS;
+
+        detachAndRemoveAllHandlers();
+    }
 
     std::shared_ptr<Reactor> Reactor::create()
     {
+        PS_TIMEDBG_START;
         return std::make_shared<Reactor>();
     }
 
@@ -551,17 +685,37 @@ namespace Pistache::Aio
 
     void Reactor::init(const ExecutionContext& context)
     {
-        impl_.reset(context.makeImpl(this));
+        PS_TIMEDBG_START_THIS;
+
+        Reactor::Impl* new_impl = context.makeImpl(this);
+        impl_.reset(new_impl);
     }
 
     Reactor::Key Reactor::addHandler(const std::shared_ptr<Handler>& handler)
     {
+        PS_TIMEDBG_START_THIS;
         return impl()->addHandler(handler, true);
+    }
+
+    void Reactor::detachFromReactor(const std::shared_ptr<Handler>& handler)
+    {
+        PS_TIMEDBG_START_THIS;
+        return impl()->detachFromReactor(handler);
+    }
+
+    void Reactor::detachAndRemoveAllHandlers()
+    {
+        PS_TIMEDBG_START_THIS;
+
+        if (impl_) // may be null if Reactor::~Reactor called before we've had
+                   // a chance to call Reactor::init()
+            impl()->detachAndRemoveAllHandlers();
     }
 
     std::vector<std::shared_ptr<Handler>>
     Reactor::handlers(const Reactor::Key& key)
     {
+        PS_TIMEDBG_START_THIS;
         return impl()->handlers(key);
     }
 
@@ -569,6 +723,7 @@ namespace Pistache::Aio
                              Polling::NotifyOn interest, Polling::Tag tag,
                              Polling::Mode mode)
     {
+        PS_TIMEDBG_START_THIS;
         impl()->registerFd(key, fd, interest, tag, mode);
     }
 
@@ -576,12 +731,14 @@ namespace Pistache::Aio
                                     Polling::NotifyOn interest, Polling::Tag tag,
                                     Polling::Mode mode)
     {
+        PS_TIMEDBG_START_THIS;
         impl()->registerFdOneShot(key, fd, interest, tag, mode);
     }
 
     void Reactor::registerFd(const Reactor::Key& key, Fd fd,
                              Polling::NotifyOn interest, Polling::Mode mode)
     {
+        PS_TIMEDBG_START_THIS;
         impl()->registerFd(key, fd, interest, Polling::Tag(fd), mode);
     }
 
@@ -589,24 +746,31 @@ namespace Pistache::Aio
                                     Polling::NotifyOn interest,
                                     Polling::Mode mode)
     {
-        impl()->registerFdOneShot(key, fd, interest, Polling::Tag(fd), mode);
+        PS_TIMEDBG_START_THIS;
+        impl()->registerFdOneShot(key, fd, interest,
+                                  Polling::Tag(fd), mode);
     }
 
     void Reactor::modifyFd(const Reactor::Key& key, Fd fd,
                            Polling::NotifyOn interest, Polling::Tag tag,
                            Polling::Mode mode)
     {
+        PS_TIMEDBG_START_THIS;
         impl()->modifyFd(key, fd, interest, tag, mode);
     }
 
     void Reactor::modifyFd(const Reactor::Key& key, Fd fd,
                            Polling::NotifyOn interest, Polling::Mode mode)
     {
+        PS_TIMEDBG_START_THIS;
         impl()->modifyFd(key, fd, interest, Polling::Tag(fd), mode);
     }
 
     void Reactor::removeFd(const Reactor::Key& key, Fd fd)
     {
+        PS_TIMEDBG_START_ARGS("Reactor %p, Fd %" PIST_QUOTE(PS_FD_PRNTFCD),
+                              this, fd);
+
         impl()->removeFd(key, fd);
     }
 
@@ -614,6 +778,8 @@ namespace Pistache::Aio
 
     void Reactor::shutdown()
     {
+        PS_TIMEDBG_START_THIS;
+
         if (impl_)
             impl()->shutdown();
     }
@@ -631,11 +797,13 @@ namespace Pistache::Aio
 
     Reactor::Impl* SyncContext::makeImpl(Reactor* reactor) const
     {
+        PS_TIMEDBG_START_THIS;
         return new SyncImpl(reactor);
     }
 
     Reactor::Impl* AsyncContext::makeImpl(Reactor* reactor) const
     {
+        PS_TIMEDBG_START_THIS;
         return new AsyncImpl(reactor, threads_, threadsName_);
     }
 
