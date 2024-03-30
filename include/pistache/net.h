@@ -153,7 +153,8 @@ namespace Pistache
     public:
         Address();
         Address(std::string host, Port port);
-
+        Address(std::string host); // retained for backwards compatibility
+        
         /*
          * Constructors for creating addresses from strings.  They're
          * typically used to create IP-based addresses, but can also be used

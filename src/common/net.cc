@@ -348,6 +348,11 @@ namespace Pistache
         init(std::move(addr), 0 /* no default port, set explicitly */);
     }
 
+    Address::Address(std::string addr)
+    {
+        init(std::move(addr), 0 /* default port*/);
+    }
+
     Address::Address(const char* addr)
     {
         init(std::string(addr), 0 /* default port*/);
