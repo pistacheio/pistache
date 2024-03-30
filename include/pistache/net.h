@@ -215,6 +215,7 @@ namespace Pistache
         // For init, default_port of zero makes the default port 80, though the
         // default can be overridden by addr
         void init(const std::string& addr, Port default_port);
+        void init(const std::string& addr);
 
         static bool isUnixDomain(const std::string& addr);
         IP ip_;
