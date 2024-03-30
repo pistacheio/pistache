@@ -34,10 +34,10 @@ jobs:
         apt -y install autopkgtest dpkg-dev --no-install-recommends
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Checkout Debian data
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         repository: pistacheio/pistache
         ref: debian

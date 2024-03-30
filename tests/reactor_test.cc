@@ -47,7 +47,15 @@ public:
         }
     }
 
-    void registerPoller(Polling::Epoll& poller) override { queue_.bind(poller); }
+    void registerPoller(Polling::Epoll& poller) override
+    {
+        queue_.bind(poller);
+    }
+
+    void unregisterPoller(Polling::Epoll& poller) override
+    {
+        queue_.unbind(poller);
+    }
 
     void push(int value) { queue_.push(value); }
 
@@ -101,6 +109,7 @@ TEST(reactor_test, reactor_exceed_max_threads)
 {
     constexpr size_t MAX_SUPPORTED_THREADS = 255;
     std::shared_ptr<Aio::Reactor> reactor  = Aio::Reactor::create();
-    ASSERT_THROW(reactor->init(Aio::AsyncContext(5 * MAX_SUPPORTED_THREADS + 1)),
-                 std::runtime_error);
+    ASSERT_THROW(
+        reactor->init(Aio::AsyncContext(5 * MAX_SUPPORTED_THREADS + 1)),
+        std::runtime_error);
 }

@@ -13,6 +13,7 @@
 
 #include <iostream>
 
+#include <pistache/PistSysLog.h>
 #include <pistache/string_logger.h>
 
 namespace Pistache::Log
@@ -23,6 +24,9 @@ namespace Pistache::Log
         if (out_ && isEnabledFor(level))
         {
             (*out_) << message << std::endl;
+
+            // Save in syslog / os_log as well
+            PSLogNoLocFn((int)level, "%s", message.c_str());
         }
     }
 

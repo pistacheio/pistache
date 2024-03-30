@@ -21,9 +21,29 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+
+#include <pistache/eventmeth.h>
+
+#ifndef _USE_LIBEVENT_LIKE_APPLE
+#include <unistd.h>
+#endif
+#include <fcntl.h>
+
+#ifndef _USE_LIBEVENT
 #include <sys/epoll.h>
+#endif
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#include <netdb.h> // for getprotobyname
+#endif
+
 #include <sys/socket.h>
+
+#ifndef _USE_LIBEVENT_LIKE_APPLE
+// Note: sys/timerfd.h is linux-only (and certainly POSIX only)
 #include <sys/timerfd.h>
+#endif
+
 #include <sys/types.h>
 
 #include <chrono>
@@ -90,21 +110,29 @@ namespace Pistache::Tcp
                                           bool use_compression,
                                           int (*cb)(char*, int, int, void*))
         {
+            PS_TIMEDBG_START;
+
             const SSL_METHOD* method = SSLv23_server_method();
 
             ssl::SSLCtxPtr ctx { SSL_CTX_new(method) };
             if (ctx == nullptr)
             {
+                PS_LOG_DEBUG("Cannot setup SSL context");
                 throw std::runtime_error("Cannot setup SSL context");
             }
 
             if (!use_compression)
             {
+                PS_LOG_DEBUG("Disable SSL compression");
+
                 /* Disable compression to prevent BREACH and CRIME vulnerabilities. */
                 if (!SSL_CTX_set_options(GetSSLContext(ctx), SSL_OP_NO_COMPRESSION))
                 {
                     std::string err = "SSL error - cannot disable compression: "
                         + ssl_print_errors_to_string();
+
+                    PS_LOG_DEBUG_ARGS("%s", err.c_str());
+
                     throw std::runtime_error(err);
                 }
             }
@@ -124,6 +152,8 @@ namespace Pistache::Tcp
             {
                 std::string err = "SSL error - cannot load SSL certificate: "
                     + ssl_print_errors_to_string();
+                PS_LOG_DEBUG_ARGS("%s", err.c_str());
+
                 throw std::runtime_error(err);
             }
 
@@ -131,6 +161,8 @@ namespace Pistache::Tcp
             {
                 std::string err = "SSL error - cannot load SSL private key: "
                     + ssl_print_errors_to_string();
+                PS_LOG_DEBUG_ARGS("%s", err.c_str());
+
                 throw std::runtime_error(err);
             }
 
@@ -138,6 +170,7 @@ namespace Pistache::Tcp
             {
                 std::string err = "SSL error - Private key does not match certificate public key: "
                     + ssl_print_errors_to_string();
+                PS_LOG_DEBUG_ARGS("%s", err.c_str());
                 throw std::runtime_error(err);
             }
 
@@ -149,18 +182,34 @@ namespace Pistache::Tcp
     }
 #endif /* PISTACHE_USE_SSL */
 
-    void setSocketOptions(Fd fd, Flags<Options> options)
+    void setSocketOptions(int actualFd, Flags<Options> options)
     {
+        PS_TIMEDBG_START;
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+        if (options.hasFlag(Options::CloseOnExec))
+        {
+            int f_setfd_flags = fcntl(actualFd, F_GETFD, (int)0);
+            if (!(f_setfd_flags & FD_CLOEXEC))
+            {
+                f_setfd_flags |= FD_CLOEXEC;
+                int fcntl_res = fcntl(actualFd, F_SETFD, f_setfd_flags);
+                if (fcntl_res == -1)
+                    throw std::runtime_error("fcntl set failed");
+            }
+        }
+#endif
+
         if (options.hasFlag(Options::ReuseAddr))
         {
             int one = 1;
-            TRY(::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one)));
+            TRY(::setsockopt(actualFd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one)));
         }
 
         if (options.hasFlag(Options::ReusePort))
         {
             int one = 1;
-            TRY(::setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(one)));
+            TRY(::setsockopt(actualFd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(one)));
         }
 
         if (options.hasFlag(Options::Linger))
@@ -168,18 +217,33 @@ namespace Pistache::Tcp
             struct linger opt;
             opt.l_onoff  = 1;
             opt.l_linger = 1;
-            TRY(::setsockopt(fd, SOL_SOCKET, SO_LINGER, &opt, sizeof(opt)));
+            TRY(::setsockopt(actualFd, SOL_SOCKET, SO_LINGER, &opt, sizeof(opt)));
         }
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+        // SOL_TCP not defined in macOS Nov 2023
+        const struct protoent* pe = getprotobyname("tcp");
+        int tcp_prot_num          = pe ? pe->p_proto : 6;
+#ifdef DEBUG
+#ifdef __linux__
+        assert(tcp_prot_num == SOL_TCP);
+#endif
+#endif
+#else
+        int tcp_prot_num = SOL_TCP;
+#endif
 
         if (options.hasFlag(Options::FastOpen))
         {
             int hint = 5;
-            TRY(::setsockopt(fd, SOL_TCP, TCP_FASTOPEN, &hint, sizeof(hint)));
+            TRY(::setsockopt(actualFd, tcp_prot_num,
+                             TCP_FASTOPEN, &hint, sizeof(hint)));
         }
         if (options.hasFlag(Options::NoDelay))
         {
             int one = 1;
-            TRY(::setsockopt(fd, SOL_TCP, TCP_NODELAY, &one, sizeof(one)));
+            TRY(::setsockopt(actualFd, tcp_prot_num,
+                             TCP_NODELAY, &one, sizeof(one)));
         }
     }
 
@@ -199,10 +263,10 @@ namespace Pistache::Tcp
         if (acceptThread.joinable())
             acceptThread.join();
 
-        if (listen_fd >= 0)
+        if (listen_fd != FD_EMPTY)
         {
-            close(listen_fd);
-            listen_fd = -1;
+            CLOSE_FD(listen_fd);
+            listen_fd = FD_EMPTY;
         }
     }
 
@@ -258,41 +322,95 @@ namespace Pistache::Tcp
     // false on failure.  Sets listen_fd on success.
     bool Listener::bindListener(const struct addrinfo* addr)
     {
+        PS_TIMEDBG_START_THIS;
+
         auto socktype = addr->ai_socktype;
+// SOCK_CLOEXEC not defined in macOS Nov 2023
+// In the _USE_LIBEVENT_LIKE_APPLE case, we set FD_CLOEXEC using fcntl
+// in the setSocketOptions function that is invoked below
+#ifndef _USE_LIBEVENT_LIKE_APPLE
         if (options_.hasFlag(Options::CloseOnExec))
             socktype |= SOCK_CLOEXEC;
+#endif
 
-        int fd = ::socket(addr->ai_family, socktype, addr->ai_protocol);
-        if (fd < 0)
+        int actual_fd = ::socket(addr->ai_family, socktype, addr->ai_protocol);
+        PS_LOG_DEBUG_ARGS("::socket actual_fd %d", actual_fd);
+
+        if (actual_fd < 0)
         {
+            PS_LOG_DEBUG("::socket failed");
             return false;
         }
 
-        setSocketOptions(fd, options_);
+        LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(actual_fd);
 
-        if (::bind(fd, addr->ai_addr, addr->ai_addrlen) < 0)
+        setSocketOptions(actual_fd, options_);
+
+        LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(actual_fd);
+
+        if (::bind(actual_fd, addr->ai_addr, addr->ai_addrlen) < 0)
         {
-            close(fd);
+            PS_LOG_DEBUG_ARGS("::bind failed, actual_fd %d", actual_fd);
+            close(actual_fd);
             return false;
         }
 
-        TRY(::listen(fd, backlog_));
+        LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(actual_fd);
 
-        make_non_blocking(fd);
-        poller.addFd(fd, Flags<Polling::NotifyOn>(Polling::NotifyOn::Read),
-                     Polling::Tag(fd));
-        listen_fd = fd;
+        TRY(::listen(actual_fd, backlog_));
+
+        LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(actual_fd);
+
+#ifdef DEBUG
+        bool mnb_res =
+#endif
+            make_non_blocking(actual_fd);
+#ifdef DEBUG
+        if (!mnb_res)
+            PS_LOG_DEBUG_ARGS("make_non_blocking failed for fd %d",
+                              actual_fd);
+#endif
+
+        LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(actual_fd);
+
+#ifdef _USE_LIBEVENT
+        // Use EVM_READ, as per call to addFd below
+        Fd event_fd = TRY_NULL_RET(
+            Polling::Epoll::em_event_new(actual_fd, // pre-allocated file desc
+                                         EVM_READ | EVM_PERSIST,
+                                         F_SETFDL_NOTHING, // f_setfd_flags - don't change
+                                         F_SETFDL_NOTHING // f_setfl_flags - don't change
+                                         ));
+#else
+        Fd event_fd = actual_fd;
+#endif
+
+        LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(actual_fd);
+
+        PS_LOG_DEBUG_ARGS("Add read fd %" PIST_QUOTE(PS_FD_PRNTFCD), event_fd);
+        poller.addFd(event_fd,
+                     Flags<Polling::NotifyOn>(Polling::NotifyOn::Read),
+                     Polling::Tag(event_fd));
+        listen_fd = event_fd;
+
+        LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(actual_fd);
 
         auto transport = transportFactory_();
 
-        reactor_.init(Aio::AsyncContext(workers_, workersName_));
-        transportKey = reactor_.addHandler(transport);
+        reactor_ = std::make_shared<Aio::Reactor>();
+        reactor_->init(Aio::AsyncContext(workers_, workersName_));
+
+        transportKey = reactor_->addHandler(transport);
+
+        LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(actual_fd);
 
         return true;
     }
 
     void Listener::bind(const Address& address)
     {
+        PS_TIMEDBG_START_THIS;
+
         addr_ = address;
 
         auto found            = false;
@@ -344,7 +462,7 @@ namespace Pistache::Tcp
         }
     }
 
-    bool Listener::isBound() const { return listen_fd != -1; }
+    bool Listener::isBound() const { return listen_fd != FD_EMPTY; }
 
     // Return actual TCP port Listener is on, or 0 on error / no port.
     // Notes:
@@ -356,7 +474,7 @@ namespace Pistache::Tcp
     //    threaded program this method is of little value.
     Port Listener::getPort() const
     {
-        if (listen_fd == -1)
+        if (listen_fd == FD_EMPTY)
         {
             return Port();
         }
@@ -365,7 +483,7 @@ namespace Pistache::Tcp
         socklen_t addrlen                 = sizeof(sock_addr);
         auto* sock_addr_alias             = reinterpret_cast<struct sockaddr*>(&sock_addr);
 
-        if (-1 == getsockname(listen_fd, sock_addr_alias, &addrlen))
+        if (-1 == getsockname(GET_ACTUAL_FD(listen_fd), sock_addr_alias, &addrlen))
         {
             return Port();
         }
@@ -390,39 +508,47 @@ namespace Pistache::Tcp
     {
         if (!shutdownFd.isBound())
             shutdownFd.bind(poller);
-        reactor_.run();
+        reactor_->run();
 
         for (;;)
         {
-            std::vector<Polling::Event> events;
-            int ready_fds = poller.poll(events);
+            { // encapsulate l_guard(poller.reg_unreg_mutex_)
+              // See comment in class Epoll regarding reg_unreg_mutex_
 
-            if (ready_fds == -1)
-            {
-                throw Error::system("Polling");
-            }
-            for (const auto& event : events)
-            {
-                if (event.tag == shutdownFd.tag())
-                    return;
+                std::lock_guard<std::mutex> l_guard(poller.reg_unreg_mutex_);
 
-                if (event.flags.hasFlag(Polling::NotifyOn::Read))
+                std::vector<Polling::Event> events;
+                int ready_fds = poller.poll(events);
+
+                if (ready_fds == -1)
                 {
-                    auto fd = event.tag.value();
-                    if (static_cast<ssize_t>(fd) == listen_fd)
+                    throw Error::system("Polling");
+                }
+                for (const auto& event : events)
+                {
+                    if (event.tag == shutdownFd.tag())
+                        return;
+
+                    if (event.flags.hasFlag(Polling::NotifyOn::Read))
                     {
-                        try
+                        Fd fd = (Fd)event.tag.value();
+                        if (fd == listen_fd)
                         {
-                            handleNewConnection();
-                        }
-                        catch (SocketError& ex)
-                        {
-                            PISTACHE_LOG_STRING_WARN(logger_, "Socket error: " << ex.what());
-                        }
-                        catch (ServerError& ex)
-                        {
-                            PISTACHE_LOG_STRING_FATAL(logger_, "Server error: " << ex.what());
-                            throw;
+                            try
+                            {
+                                handleNewConnection();
+                            }
+                            catch (SocketError& ex)
+                            {
+                                PISTACHE_LOG_STRING_WARN(
+                                    logger_, "Socket error: " << ex.what());
+                            }
+                            catch (ServerError& ex)
+                            {
+                                PISTACHE_LOG_STRING_FATAL(
+                                    logger_, "Server error: " << ex.what());
+                                throw;
+                            }
                         }
                     }
                 }
@@ -439,14 +565,22 @@ namespace Pistache::Tcp
     void Listener::shutdown()
     {
         if (shutdownFd.isBound())
+        {
+            PS_TIMEDBG_START_CURLY;
+
             shutdownFd.notify();
-        reactor_.shutdown();
+        }
+
+        if (reactor_)
+            reactor_->shutdown();
     }
 
     Async::Promise<Listener::Load>
     Listener::requestLoad(const Listener::Load& old)
     {
-        auto handlers = reactor_.handlers(transportKey);
+        PS_TIMEDBG_START_THIS;
+
+        auto handlers = reactor_->handlers(transportKey);
 
         std::vector<Async::Promise<rusage>> loads;
         for (const auto& handler : handlers)
@@ -458,6 +592,7 @@ namespace Pistache::Tcp
         return Async::whenAll(std::begin(loads), std::end(loads))
             .then(
                 [=](const std::vector<rusage>& usages) {
+                    PS_TIMEDBG_START;
                     Load res;
                     res.raw = usages;
 
@@ -506,107 +641,242 @@ namespace Pistache::Tcp
 
     void Listener::handleNewConnection()
     {
+        PS_TIMEDBG_START_THIS;
+
         struct sockaddr_storage peer_addr;
-        int client_fd = acceptConnection(peer_addr);
+        int actual_cli_fd = acceptConnection(peer_addr);
 
         void* ssl = nullptr;
 
 #ifdef PISTACHE_USE_SSL
         if (this->useSSL_)
         {
+            PS_LOG_DEBUG("SSL connection");
 
             SSL* ssl_data = SSL_new(GetSSLContext(ssl_ctx_));
             if (ssl_data == nullptr)
             {
-                close(client_fd);
+                PS_LOG_DEBUG("SSL_new failed");
+
+                close(actual_cli_fd);
                 std::string err = "SSL error - cannot create SSL connection: "
                     + ssl_print_errors_to_string();
                 throw ServerError(err.c_str());
             }
 
-            // If user requested SSL handshake timeout, enable it on the socket.
-            //  This is sometimes necessary if a client connects, sends nothing,
-            //  or possibly refuses to accept any bytes, and never completes a
-            //  handshake. This would have left SSL_accept hanging indefinitely
-            //  and is effectively a DoS...
+            // If user requested SSL handshake timeout, enable it on the
+            //  socket.  This is sometimes necessary if a client connects,
+            //  sends nothing, or possibly refuses to accept any bytes, and
+            //  never completes a handshake. This would have left SSL_accept
+            //  hanging indefinitely and is effectively a DoS...
             if (sslHandshakeTimeout_ > 0ms)
             {
+                PS_LOG_DEBUG("SSL timeout to be set");
+
                 struct timeval timeout;
 
                 timeout.tv_sec = std::chrono::duration_cast<std::chrono::seconds>(sslHandshakeTimeout_).count();
 
                 const auto residual_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(sslHandshakeTimeout_) - std::chrono::duration_cast<std::chrono::seconds>(sslHandshakeTimeout_);
-                timeout.tv_usec                  = residual_microseconds.count();
+                timeout.tv_usec                  = (suseconds_t)(residual_microseconds.count());
 
-                TRY(::setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)));
-                TRY(::setsockopt(client_fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)));
+                TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)));
+                TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)));
             }
 
-            SSL_set_fd(ssl_data, client_fd);
+            SSL_set_fd(ssl_data, actual_cli_fd);
             SSL_set_accept_state(ssl_data);
 
-            if (SSL_accept(ssl_data) <= 0)
+            int ssl_accept_res = SSL_accept(ssl_data);
+
+            if (ssl_accept_res <= 0)
             {
+                PS_LOG_DEBUG_ARGS("SSL_accept failed, ssl_accept_res %d, "
+                                  "actual_cli_fd %d",
+                                  ssl_accept_res, actual_cli_fd);
+
+#ifdef DEBUG
+                const char* ssl_ver = OPENSSL_VERSION_TEXT;
+                PS_LOG_DEBUG_ARGS("openssl: %s", ssl_ver);
+#endif
+
+#ifdef DEBUG
+                int ssl_err_code = SSL_get_error(ssl_data, ssl_accept_res);
+                PS_LOG_DEBUG_ARGS("ssl_err_code %d", ssl_err_code);
+#endif
+
                 std::string err = "SSL connection error: "
                     + ssl_print_errors_to_string();
+
+                PS_LOG_DEBUG_ARGS("%s", err.c_str());
+
                 PISTACHE_LOG_STRING_INFO(logger_, err);
                 SSL_free(ssl_data);
-                close(client_fd);
+                close(actual_cli_fd);
                 return;
             }
+
+            PS_LOG_DEBUG("SSL_accept succcess");
 
             // Remove socket timeouts if they were enabled now that we have
             //  handshaked...
             if (sslHandshakeTimeout_ > 0ms)
             {
+                PS_LOG_DEBUG("SSL timeout to be removed");
+
                 struct timeval timeout;
                 timeout.tv_sec  = 0;
                 timeout.tv_usec = 0;
 
-                TRY(::setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)));
-                TRY(::setsockopt(client_fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)));
+                TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)));
+                TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)));
             }
 
             ssl = static_cast<void*>(ssl_data);
         }
 #endif /* PISTACHE_USE_SSL */
 
-        make_non_blocking(client_fd);
+#ifdef DEBUG
+        bool mnb_res =
+#endif
+            make_non_blocking(actual_cli_fd);
+#ifdef DEBUG
+        if (!mnb_res)
+            PS_LOG_DEBUG_ARGS("make_non_blocking failed for fd %d",
+                              actual_cli_fd);
+#endif
+
+#ifdef _USE_LIBEVENT
+        // Since we're accepting a remote connection here, presumably it makes
+        // sense to have it be able to read *or* write?
+        Fd client_fd = TRY_NULL_RET(
+            Polling::Epoll::em_event_new(actual_cli_fd, // pre-allocated file dsc
+                                         EVM_READ | EVM_WRITE | EVM_PERSIST,
+                                         F_SETFDL_NOTHING, // f_setfd_flags - don't change
+                                         F_SETFDL_NOTHING // f_setfl_flags - don't change
+                                         ));
+#else
+        Fd client_fd = actual_cli_fd;
+#endif
 
         std::shared_ptr<Peer> peer;
         auto* peer_alias = reinterpret_cast<struct sockaddr*>(&peer_addr);
         if (this->useSSL_)
         {
+            PS_LOG_DEBUG("Calling Peer::CreateSSL");
+
             peer = Peer::CreateSSL(client_fd, Address::fromUnix(peer_alias), ssl);
         }
         else
         {
+            PS_LOG_DEBUG("Calling Peer::Create(");
+
             peer = Peer::Create(client_fd, Address::fromUnix(peer_alias));
         }
 
+        PS_LOG_DEBUG("Calling dispatchPeer");
         dispatchPeer(peer);
     }
 
     int Listener::acceptConnection(struct sockaddr_storage& peer_addr) const
     {
+        PS_TIMEDBG_START_THIS;
+
         socklen_t peer_addr_len = sizeof(peer_addr);
+
+        int listen_fd_actual = GET_ACTUAL_FD(listen_fd);
+
+        PS_LOG_DEBUG_ARGS("listen_fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", "
+                                                                  "listen_fd_actual %d",
+                          listen_fd, listen_fd_actual);
+
+        LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(listen_fd_actual);
+
         // Do not share open FD with forked processes
-        int client_fd = ::accept4(
-            listen_fd, reinterpret_cast<struct sockaddr*>(&peer_addr), &peer_addr_len, SOCK_CLOEXEC);
-        if (client_fd < 0)
+        int client_actual_fd =
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+            ::accept(listen_fd_actual,
+                     reinterpret_cast<struct sockaddr*>(&peer_addr),
+                     &peer_addr_len);
+// Note: macOS doesn't support accept4 nor SOCK_CLOEXEC as of Nov-2023
+// accept4 is an extended form of "accept" with additional flags
+
+// Linux man page for "accept"
+//   On Linux, the new socket returned by accept() does not inherit
+//   file status flags such as O_NONBLOCK and O_ASYNC from the
+//   listening socket. This behavior differs from the canonical BSD
+//   sockets implementation. Portable programs should not rely on
+//   inheritance or noninheritance of file status flags and always
+//   explicitly set all required flags on the socket returned from
+//   accept().
+//
+// macOS man page for "accept"
+//   ...creates a new socket with the same properties of
+//   socket['socket' = the listen fd]...
+//
+// So the Linux "accept" has the additional side-effect of clearing all
+// GETFD and GETFL flags; and "accept4" then sets CLOEXEC. We emulate
+// the same behaviour below.
+#else
+            ::accept4(listen_fd_actual,
+                      reinterpret_cast<struct sockaddr*>(&peer_addr),
+                      &peer_addr_len, SOCK_CLOEXEC);
+#endif
+        PS_LOG_DEBUG_ARGS("::accept(4) ::socket actual_fd %d",
+                          client_actual_fd);
+
+        LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(listen_fd_actual);
+
+        if (client_actual_fd < 0)
         {
             if (errno == EBADF || errno == ENOTSOCK)
                 throw ServerError(strerror(errno));
             else
                 throw SocketError(strerror(errno));
         }
-        return client_fd;
+
+        LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(client_actual_fd);
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+        // We set CLOEXEC and unset all other flags to exactly match what
+        // happens in Linux with accept4 (see comment to "::accept" above)
+
+        int fcntl_res = fcntl(client_actual_fd, F_SETFD, FD_CLOEXEC);
+        if (fcntl_res == -1)
+        {
+            PS_LOG_DEBUG_ARGS("fcntl F_SETFD fail for fd %d, errno %d %s",
+                              client_actual_fd, errno, strerror(errno));
+
+            ::close(client_actual_fd);
+            PS_LOG_DEBUG_ARGS("::close actual_fd %d", client_actual_fd);
+
+            return (fcntl_res);
+        }
+
+        fcntl_res = fcntl(client_actual_fd, F_SETFL, 0 /*clear everything*/);
+        if (fcntl_res == -1)
+        {
+            PS_LOG_DEBUG_ARGS("fcntl F_SETFL fail for fd %d, errno %d %s",
+                              client_actual_fd, errno, strerror(errno));
+
+            ::close(client_actual_fd);
+            PS_LOG_DEBUG_ARGS("::close actual_fd %d", client_actual_fd);
+
+            return (fcntl_res);
+        }
+#endif // ifdef _USE_LIBEVENT_LIKE_APPLE
+
+        LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(client_actual_fd);
+
+        return client_actual_fd;
     }
 
     void Listener::dispatchPeer(const std::shared_ptr<Peer>& peer)
     {
-        auto handlers  = reactor_.handlers(transportKey);
-        auto idx       = peer->fd() % handlers.size();
+        PS_TIMEDBG_START_THIS;
+
+        auto handlers  = reactor_->handlers(transportKey);
+        auto idx       = (GET_ACTUAL_FD(peer->fd())) % handlers.size();
         auto transport = std::static_pointer_cast<Transport>(handlers[idx]);
 
         transport->handleNewPeer(peer);
@@ -628,11 +898,15 @@ namespace Pistache::Tcp
                                 const std::string& ca_path,
                                 int (*cb)(int, void*) = NULL)
     {
+        PS_TIMEDBG_START_THIS;
+
         const char* __ca_file = NULL;
         const char* __ca_path = NULL;
 
         if (ssl_ctx_ == nullptr)
         {
+            PS_LOG_DEBUG("SSL Context is not initialized");
+
             std::string err = "SSL Context is not initialized";
             PISTACHE_LOG_STRING_FATAL(logger_, err);
             throw std::runtime_error(err);
@@ -649,6 +923,8 @@ namespace Pistache::Tcp
         {
             std::string err = "SSL error - Cannot verify SSL locations: "
                 + ssl_print_errors_to_string();
+            PS_LOG_DEBUG_ARGS("%s", err.c_str());
+
             PISTACHE_LOG_STRING_FATAL(logger_, err);
             throw std::runtime_error(err);
         }
@@ -679,6 +955,8 @@ namespace Pistache::Tcp
         }
         catch (std::exception& e)
         {
+            PS_LOG_DEBUG("ssl_create_context throw");
+
             PISTACHE_LOG_STRING_FATAL(logger_, e.what());
             throw;
         }
@@ -691,7 +969,7 @@ namespace Pistache::Tcp
     std::vector<std::shared_ptr<Tcp::Peer>> Listener::getAllPeer()
     {
         std::vector<std::shared_ptr<Tcp::Peer>> vecPeers;
-        auto handlers = reactor_.handlers(transportKey);
+        auto handlers = reactor_->handlers(transportKey);
 
         for (const auto& handler : handlers)
         {

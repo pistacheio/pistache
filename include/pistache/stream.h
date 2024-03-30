@@ -152,12 +152,12 @@ namespace Pistache
     {
         explicit FileBuffer(const std::string& fileName);
 
-        Fd fd() const;
+        int fd() const;
         size_t size() const;
 
     private:
         std::string fileName_;
-        Fd fd_;
+        int fd_; // regular old file descriptor ("int") even in libevent case
         size_t size_;
     };
 

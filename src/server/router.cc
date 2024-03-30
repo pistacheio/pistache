@@ -364,11 +364,13 @@ namespace Pistache::Rest
         void RouterHandler::onRequest(const Http::Request& req,
                                       Http::ResponseWriter response)
         {
+            PS_TIMEDBG_START_THIS;
             router->route(req, std::move(response));
         }
 
         void RouterHandler::onDisconnection(const std::shared_ptr<Tcp::Peer>& peer)
         {
+            PS_TIMEDBG_START_THIS;
             router->disconnectPeer(peer);
         }
 
@@ -414,31 +416,37 @@ namespace Pistache::Rest
 
     void Router::get(const std::string& resource, Route::Handler handler)
     {
+        PS_TIMEDBG_START_THIS;
         addRoute(Http::Method::Get, resource, std::move(handler));
     }
 
     void Router::post(const std::string& resource, Route::Handler handler)
     {
+        PS_TIMEDBG_START_THIS;
         addRoute(Http::Method::Post, resource, std::move(handler));
     }
 
     void Router::put(const std::string& resource, Route::Handler handler)
     {
+        PS_TIMEDBG_START_THIS;
         addRoute(Http::Method::Put, resource, std::move(handler));
     }
 
     void Router::patch(const std::string& resource, Route::Handler handler)
     {
+        PS_TIMEDBG_START_THIS;
         addRoute(Http::Method::Patch, resource, std::move(handler));
     }
 
     void Router::del(const std::string& resource, Route::Handler handler)
     {
+        PS_TIMEDBG_START_THIS;
         addRoute(Http::Method::Delete, resource, std::move(handler));
     }
 
     void Router::options(const std::string& resource, Route::Handler handler)
     {
+        PS_TIMEDBG_START_THIS;
         addRoute(Http::Method::Options, resource, std::move(handler));
     }
 
@@ -480,7 +488,7 @@ namespace Pistache::Rest
     void Router::invokeNotFoundHandler(const Http::Request& req,
                                        Http::ResponseWriter resp) const
     {
-        notFoundHandler(Rest::Request(std::move(req), std::vector<TypedParam>(),
+        notFoundHandler(Rest::Request(req, std::vector<TypedParam>(),
                                       std::vector<TypedParam>()),
                         std::move(resp));
     }
@@ -488,6 +496,8 @@ namespace Pistache::Rest
     Route::Status Router::route(const Http::Request& request,
                                 Http::ResponseWriter response)
     {
+        PS_TIMEDBG_START_THIS;
+
         const auto& resource = request.resource();
         if (resource.empty())
             throw std::runtime_error("Invalid zero-length URL.");
@@ -570,6 +580,8 @@ namespace Pistache::Rest
     void Router::addRoute(Http::Method method, const std::string& resource,
                           Route::Handler handler)
     {
+        PS_TIMEDBG_START_THIS;
+
         if (resource.empty())
             throw std::runtime_error("Invalid zero-length URL.");
         auto& r              = routes[method];
@@ -583,6 +595,8 @@ namespace Pistache::Rest
 
     void Router::disconnectPeer(const std::shared_ptr<Tcp::Peer>& peer)
     {
+        PS_TIMEDBG_START_THIS;
+
         for (const auto& handler : disconnectHandlers)
         {
             handler(peer);

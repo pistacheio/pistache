@@ -127,7 +127,7 @@ namespace
 // from
 // https://stackoverflow.com/questions/6624667/can-i-use-libcurls-curlopt-writefunction-with-a-c11-lambda-expression#14720398
 auto curl_callback = +[](void* ptr, size_t size, size_t nmemb,
-                        void* userdata) -> size_t {
+                         void* userdata) -> size_t {
     auto* chunks = static_cast<Chunks*>(userdata);
     chunks->emplace_back(static_cast<char*>(ptr), size * nmemb);
     return size * nmemb;
@@ -212,6 +212,8 @@ public:
 
     void onRequest(const Http::Request&, Http::ResponseWriter response) override
     {
+        PS_TIMEDBG_START_THIS;
+
         std::unique_lock<std::mutex> lk(ctx_.m);
         auto stream = response.stream(Http::Code::Ok);
 
@@ -266,12 +268,15 @@ TEST_F(StreamingTests, ChunkedStream)
     EXPECT_EQ(chunks[2], "!");
 }
 
-class ClientDisconnectHandler : public Http::Handler {
+class ClientDisconnectHandler : public Http::Handler
+{
 public:
     HTTP_PROTOTYPE(ClientDisconnectHandler)
 
     void onRequest(const Http::Request&, Http::ResponseWriter response) override
     {
+        PS_TIMEDBG_START_THIS;
+
         auto stream = response.stream(Http::Code::Ok);
 
         stream << "Hello ";
@@ -303,7 +308,7 @@ TEST(StreamingTest, ClientDisconnect)
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
-        CURLM* curlm = curl_multi_init();
+        CURLM* curlm      = curl_multi_init();
         int still_running = 1;
         curl_multi_add_handle(curlm, curl);
 

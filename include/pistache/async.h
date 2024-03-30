@@ -217,16 +217,16 @@ namespace Pistache::Async
             std::exception_ptr exc;
 
             /*
-   * We need this lock because a Promise might be resolved or rejected from a
-   * thread A while a continuation to the same Promise (Core) might be attached
-   * at the same from a thread B. If that's the case, then we need to serialize
-   * operations so that we avoid a race-condition.
-   *
-   * Since we have a lock, we have a blocking progress guarantee but I don't
-   * expect this to be a major bottleneck as I don't expect major contention on
-   * the lock If it ends up being a bottlenick, try @improving it by
-   * experimenting with a lock-free scheme
-   */
+             * We need this lock because a Promise might be resolved or rejected from a
+             * thread A while a continuation to the same Promise (Core) might be attached
+             * at the same from a thread B. If that's the case, then we need to serialize
+             * operations so that we avoid a race-condition.
+             *
+             * Since we have a lock, we have a blocking progress guarantee but I don't
+             * expect this to be a major bottleneck as I don't expect major contention on
+             * the lock If it ends up being a bottlenick, try @improving it by
+             * experimenting with a lock-free scheme
+             */
             std::mutex mtx;
             std::vector<std::shared_ptr<Request>> requests;
             TypeId id;
@@ -329,7 +329,7 @@ namespace Pistache::Async
             {
                 if (resolveCount_ >= 1)
                     return; // TODO is this the right thing?
-                        // throw Error("Resolve must not be called more than once");
+                            // throw Error("Resolve must not be called more than once");
 
                 ++resolveCount_;
                 doResolve(coreCast(core));
@@ -339,7 +339,7 @@ namespace Pistache::Async
             {
                 if (rejectCount_ >= 1)
                     return; // TODO is this the right thing?
-                        // throw Error("Reject must not be called more than once");
+                            // throw Error("Reject must not be called more than once");
 
                 ++rejectCount_;
                 try
@@ -823,10 +823,10 @@ namespace Pistache::Async
             : core_(core)
         { }
 
-        Resolver(const Resolver& other) = delete;
+        Resolver(const Resolver& other)            = delete;
         Resolver& operator=(const Resolver& other) = delete;
 
-        Resolver(Resolver&& other) = default;
+        Resolver(Resolver&& other)            = default;
         Resolver& operator=(Resolver&& other) = default;
 
         template <typename Arg>
@@ -841,9 +841,9 @@ namespace Pistache::Async
                 throw Error("Attempt to resolve a fulfilled promise");
 
             /* In a ideal world, this should be checked at compile-time rather
-     * than runtime. However, since types are erased, this looks like
-     * a difficult task
-     */
+             * than runtime. However, since types are erased, this looks like
+             * a difficult task
+             */
             if (core_->isVoid())
             {
                 throw Error("Attempt to resolve a void promise with arguments");
@@ -896,10 +896,10 @@ namespace Pistache::Async
             : core_(core)
         { }
 
-        Rejection(const Rejection& other) = delete;
+        Rejection(const Rejection& other)            = delete;
         Rejection& operator=(const Rejection& other) = delete;
 
-        Rejection(Rejection&& other) = default;
+        Rejection(Rejection&& other)            = default;
         Rejection& operator=(Rejection&& other) = default;
 
         template <typename Exc>
@@ -939,10 +939,10 @@ namespace Pistache::Async
             , rejection(nullptr)
         { }
 
-        Deferred(const Deferred& other) = delete;
+        Deferred(const Deferred& other)            = delete;
         Deferred& operator=(const Deferred& other) = delete;
 
-        Deferred(Deferred&& other) = default;
+        Deferred(Deferred&& other)            = default;
         Deferred& operator=(Deferred&& other) = default;
 
         Deferred(Resolver _resolver, Rejection _reject)
@@ -990,10 +990,10 @@ namespace Pistache::Async
             , rejection(nullptr)
         { }
 
-        Deferred(const Deferred& other) = delete;
+        Deferred(const Deferred& other)            = delete;
         Deferred& operator=(const Deferred& other) = delete;
 
-        Deferred(Deferred&& other) = default;
+        Deferred(Deferred&& other)            = default;
         Deferred& operator=(Deferred&& other) = default;
 
         Deferred(Resolver _resolver, Rejection _reject)
@@ -1019,13 +1019,13 @@ namespace Pistache::Async
     {
 
         /*
- * Note that we could use std::result_of to SFINAE-out and dispatch to the right
- * call However, gcc 4.7 does not correctly support std::result_of for SFINAE
- * purposes, so we use a decltype SFINAE-expression instead.
- *
- * See http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3462.html and
- * https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56283 for reference
- */
+         * Note that we could use std::result_of to SFINAE-out and dispatch to the right
+         * call However, gcc 4.7 does not correctly support std::result_of for SFINAE
+         * purposes, so we use a decltype SFINAE-expression instead.
+         *
+         * See http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3462.html and
+         * https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56283 for reference
+         */
         template <typename T, typename Func>
         auto callAsync(Func func, Resolver& resolver, Rejection& rejection)
             -> decltype(std::declval<Func>()(resolver, rejection), void())
@@ -1059,10 +1059,10 @@ namespace Pistache::Async
             details::callAsync<T>(func, resolver_, rejection_);
         }
 
-        Promise(const Promise<T>& other) = delete;
+        Promise(const Promise<T>& other)            = delete;
         Promise& operator=(const Promise<T>& other) = delete;
 
-        Promise(Promise<T>&& other) = default;
+        Promise(Promise<T>&& other)            = default;
         Promise& operator=(Promise<T>&& other) = default;
 
         ~Promise() override = default;
@@ -1215,10 +1215,10 @@ namespace Pistache::Async
     public:
         friend struct Impl::Any;
 
-        Any(const Any& other) = default;
+        Any(const Any& other)            = default;
         Any& operator=(const Any& other) = default;
 
-        Any(Any&& other) = default;
+        Any(Any&& other)            = default;
         Any& operator=(Any&& other) = default;
 
         template <typename T>
@@ -1245,10 +1245,10 @@ namespace Pistache::Async
     {
 
         /* Instead of duplicating the code between whenAll and whenAny functions, the
- * main implementation is in the When class below and we configure the class
- * with a policy instead,  depending if we are executing an "all" or "any"
- * operation, how cool is that ?
- */
+         * main implementation is in the When class below and we configure the class
+         * with a policy instead,  depending if we are executing an "all" or "any"
+         * operation, how cool is that ?
+         */
         struct All
         {
 
@@ -1448,17 +1448,17 @@ namespace Pistache::Async
                     typename std::remove_reference<Args>::type>::Type...>
                     Results;
                 /* We need to keep the results alive until the last promise
-     * finishes its execution
-     */
+                 * finishes its execution
+                 */
 
                 /* See the trick here ? Basically, we only have access to the real type of
-     * the results in this function. The policy classes do not have access to
-     * the full type (std::tuple), but, instead, take a generic template data
-     * type as a parameter. They only need to know that results is a tuple, they
-     * do not need to know the real type of the results.
-     *
-     * This is some sort of compile-time template type-erasing, hue
-     */
+                 * the results in this function. The policy classes do not have access to
+                 * the full type (std::tuple), but, instead, take a generic template data
+                 * type as a parameter. They only need to know that results is a tuple, they
+                 * do not need to know the real type of the results.
+                 *
+                 * This is some sort of compile-time template type-erasing, hue
+                 */
                 struct Data : public ContinuationPolicy::Data
                 {
                     Data(size_t total, Resolver resolver, Rejection rejection)
@@ -1548,9 +1548,9 @@ namespace Pistache::Async
             };
 
             /* Ok so apparently I can not fully specialize a template structure
-   * here, so you know what, compiler ? Take that Dummy type and leave
-   * me alone
-   */
+             * here, so you know what, compiler ? Take that Dummy type and leave
+             * me alone
+             */
             template <typename ValueType, typename Dummy = void>
             struct DataT : public Data
             {
@@ -1564,8 +1564,8 @@ namespace Pistache::Async
             };
 
             /* For a vector of void promises, we do not have any results, that's
-   * why we need a distinct specialization for the void case
-   */
+             * why we need a distinct specialization for the void case
+             */
             template <typename Dummy>
             struct DataT<void, Dummy> : public Data
             {

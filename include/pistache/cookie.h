@@ -59,15 +59,15 @@ namespace Pistache::Http
     public:
         using HashMapCookies = std::unordered_map<std::string, Cookie>; // "value" -> Cookie
         using Storage        = std::unordered_map<
-            std::string, HashMapCookies>; // "name" -> Hashmap("value" -> Cookie)
+                   std::string, HashMapCookies>; // "name" -> Hashmap("value" -> Cookie)
 
         struct iterator
         {
             using iterator_category = std::bidirectional_iterator_tag;
-            using value_type = Cookie;
-            using difference_type = std::ptrdiff_t;
-            using pointer = value_type*;
-            using reference = value_type&;
+            using value_type        = Cookie;
+            using difference_type   = std::ptrdiff_t;
+            using pointer           = value_type*;
+            using reference         = value_type&;
 
             explicit iterator(const Storage::const_iterator& _iterator)
                 : iter_storage(_iterator)

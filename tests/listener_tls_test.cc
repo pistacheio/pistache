@@ -23,6 +23,8 @@ public:
     void onRequest(const Pistache::Http::Request& /*request*/,
                    Pistache::Http::ResponseWriter response) override
     {
+        PS_TIMEDBG_START_THIS;
+
         response.send(Pistache::Http::Code::Ok, "Hello world\n");
     }
 };

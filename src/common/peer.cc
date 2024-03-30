@@ -39,7 +39,10 @@ namespace Pistache::Tcp
         , addr(addr)
         , ssl_(ssl)
         , id_(getUniqueId())
-    { }
+    {
+        PS_LOG_DEBUG_ARGS("fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", Address ptr %p, ssl %p",
+                          fd, &addr, ssl);
+    }
 
     Peer::~Peer()
     {
@@ -105,12 +108,10 @@ namespace Pistache::Tcp
     void* Peer::ssl() const { return ssl_; }
     size_t Peer::getID() const { return id_; }
 
-    int Peer::fd() const
+    Fd Peer::fd() const
     {
-        if (fd_ == -1)
-        {
+        if (fd_ == FD_EMPTY)
             throw std::runtime_error("The peer has no associated fd");
-        }
 
         return fd_;
     }

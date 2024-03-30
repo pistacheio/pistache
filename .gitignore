@@ -4,6 +4,12 @@
 
 # Build files
 /*build*/
+/tests/build*/
+
+# Soft links to favorite build convenience files
+/build.sh
+/builddebug.sh
+/copyall.sh
 
 # Compiled Object files
 *.slo
@@ -45,9 +51,15 @@
 # Clangd cache
 /.cache/clangd
 
+# Ad hoc scripts to run tests repeatedly
+repeat_*.sh
+
 # Meson Wrap DB cache
 /subprojects/*
 !/subprojects/*.wrap
 
 !/subprojects/cpp-httplib
 !/subprojects/hinnant-date
+*.*~
+
+/How To Run All Tests (README).txt

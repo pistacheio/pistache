@@ -141,11 +141,16 @@ TEST(request_size, manual_construction)
         void onRequest(const Http::Request& /*request*/,
                        Http::ResponseWriter response) override
         {
+            PS_TIMEDBG_START_THIS;
+
             response.send(Http::Code::Ok, "All good");
         }
 
     private:
-        [[maybe_unused]] tag placeholder;
+#ifndef __linux__
+        [[maybe_unused]]
+#endif
+        tag placeholder;
     };
 
     // General test parameters.

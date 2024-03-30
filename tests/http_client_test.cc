@@ -22,6 +22,8 @@ struct HelloHandler : public Http::Handler
     void onRequest(const Http::Request& /*request*/,
                    Http::ResponseWriter writer) override
     {
+        PS_TIMEDBG_START_THIS;
+
         writer.send(Http::Code::Ok, "Hello, World!");
     }
 };
@@ -33,6 +35,8 @@ struct DelayHandler : public Http::Handler
     void onRequest(const Http::Request& /*request*/,
                    Http::ResponseWriter writer) override
     {
+        PS_TIMEDBG_START_THIS;
+
         std::this_thread::sleep_for(std::chrono::seconds(4));
         writer.send(Http::Code::Ok, "Hello, World!");
     }
@@ -45,6 +49,8 @@ struct FastEvenPagesHandler : public Http::Handler
     void onRequest(const Http::Request& request,
                    Http::ResponseWriter writer) override
     {
+        PS_TIMEDBG_START_THIS;
+
         std::string page = request.resource();
         page.erase(0, 1);
         int num = std::stoi(page);
@@ -67,6 +73,8 @@ struct QueryBounceHandler : public Http::Handler
     void onRequest(const Http::Request& request,
                    Http::ResponseWriter writer) override
     {
+        PS_TIMEDBG_START_THIS;
+
         writer.send(Http::Code::Ok, request.query().as_str());
     }
 };
@@ -83,12 +91,16 @@ struct LargeContentHandler : public Http::Handler
     void onRequest(const Http::Request& /*request*/,
                    Http::ResponseWriter writer) override
     {
+        PS_TIMEDBG_START_THIS;
+
         writer.send(Http::Code::Ok, largeContent);
     }
 };
 
 TEST(http_client_test, one_client_with_one_request)
 {
+    PS_TIMEDBG_START;
+
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
@@ -126,6 +138,8 @@ TEST(http_client_test, one_client_with_one_request)
 
 TEST(http_client_test, one_client_with_multiple_requests)
 {
+    PS_TIMEDBG_START;
+
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
@@ -171,6 +185,8 @@ TEST(http_client_test, one_client_with_multiple_requests)
 
 TEST(http_client_test, multiple_clients_with_one_request)
 {
+    PS_TIMEDBG_START;
+
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
@@ -237,6 +253,8 @@ TEST(http_client_test, multiple_clients_with_one_request)
 
 TEST(http_client_test, timeout_reject)
 {
+    PS_TIMEDBG_START;
+
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
@@ -272,6 +290,8 @@ TEST(
     http_client_test,
     one_client_with_multiple_requests_and_one_connection_per_host_and_two_threads)
 {
+    PS_TIMEDBG_START;
+
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
@@ -299,8 +319,13 @@ TEST(
                             .send();
         response.then(
             [&](Http::Response rsp) {
+                PS_LOG_DEBUG("Http::Response");
+
                 if (rsp.code() == Http::Code::Ok)
                     ++response_counter;
+                else
+                    PS_LOG_DEBUG_ARGS("Http::Response error code %d",
+                                      rsp.code());
             },
             Async::IgnoreException);
         responses.push_back(std::move(response));
@@ -321,6 +346,8 @@ TEST(
     http_client_test,
     one_client_with_multiple_requests_and_two_connections_per_host_and_one_thread)
 {
+    PS_TIMEDBG_START;
+
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
@@ -368,6 +395,8 @@ TEST(
 
 TEST(http_client_test, test_client_timeout)
 {
+    PS_TIMEDBG_START;
+
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
@@ -429,6 +458,8 @@ TEST(http_client_test, test_client_timeout)
 
 TEST(http_client_test, client_sends_query)
 {
+    PS_TIMEDBG_START;
+
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
@@ -501,6 +532,8 @@ TEST(http_client_test, client_sends_query)
 
 TEST(http_client_test, client_get_large_content)
 {
+    PS_TIMEDBG_START;
+
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
@@ -542,6 +575,8 @@ TEST(http_client_test, client_get_large_content)
 
 TEST(http_client_test, client_do_not_get_large_content)
 {
+    PS_TIMEDBG_START;
+
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);

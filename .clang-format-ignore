@@ -3,3 +3,11 @@
 # SPDX-License-Identifier: CC0-1.0
 
 subprojects/**
+src/common/eventmeth.cc
+include/pistache/eventmeth.h
+src/common/PS_TimeLog.cc
+include/pistache/PS_TimeLog.h
+src/common/PistCheck.cc
+include/pistache/PistCheck.h
+src/common/PistSysLog.cc
+include/pistache/PistSysLog.h
