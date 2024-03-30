@@ -83,10 +83,6 @@
 
 class PSLogging
 {
-private:
-    static std::mutex mPSLoggingSingletonMutex;
-    static std::shared_ptr<PSLogging> mPSLoggingSingleton;
-
 public:
     PSLogging();
     ~PSLogging();
@@ -99,20 +95,21 @@ public:
     void log(int _priority, const char * _str);
 };
 
-/*****************************************************************************/
+// For use of class PSLogging only; treat as private to PSLogging
+static std::mutex lPSLoggingSingletonMutex;
+static std::shared_ptr<PSLogging> lPSLoggingSingleton;
 
-std::mutex PSLogging::mPSLoggingSingletonMutex;
-std::shared_ptr<PSLogging> PSLogging::mPSLoggingSingleton;
+/*****************************************************************************/
 
 std::shared_ptr<PSLogging> PSLogging::getPSLogging()
 {
-    if (!mPSLoggingSingleton)
+    if (!lPSLoggingSingleton)
     {
-        std::lock_guard<std::mutex> lock(mPSLoggingSingletonMutex);
-        if (!mPSLoggingSingleton)
-            mPSLoggingSingleton = std::make_shared<PSLogging>();
+        std::lock_guard<std::mutex> lock(lPSLoggingSingletonMutex);
+        if (!lPSLoggingSingleton)
+            lPSLoggingSingleton = std::make_shared<PSLogging>();
     }
-    return(mPSLoggingSingleton);
+    return(lPSLoggingSingleton);
 }
 
 // ---------------------------------------------------------------------------
