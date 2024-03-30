@@ -392,6 +392,11 @@ namespace Pistache
 
     int Address::family() const { return ip_.getFamily(); }
 
+    void Address::init(const std::string& addr)
+    {
+        init(addr, 0 /*default port*/);
+    }
+    
     void Address::init(const std::string& addr, Port default_port)
     {
         // Handle unix domain addresses separately.
