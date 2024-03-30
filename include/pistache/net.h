@@ -228,10 +228,15 @@ namespace Pistache
     namespace helpers
     {
         inline Address httpAddr(const std::string_view& view,
-                                Port default_port = 0)
+                                Port default_port)
         {
             return Address::makeWithDefaultPort(std::string(view),
                                                 default_port);
+        }
+
+        inline Address httpAddr(const std::string_view& view)
+        {
+            return(httpAddr(view, 0));
         }
     } // namespace helpers
 
