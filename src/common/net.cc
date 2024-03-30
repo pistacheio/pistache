@@ -30,6 +30,14 @@
 
 namespace Pistache
 {
+    namespace helpers
+    {
+        Address httpAddr(const std::string_view& view)
+        {
+            return(httpAddr(view, 0/*default port*/));
+        }
+    } // namespace helpers
+    
     Port::Port(uint16_t port)
         : port(port)
     { }
