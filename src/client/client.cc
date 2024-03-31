@@ -1060,6 +1060,14 @@ namespace Pistache::Http::Experimental
         }
     }
 
+    namespace RequestBuilderAddOns
+    {
+        std::size_t bodySize(RequestBuilder & rb)
+        {
+            return (rb.request_.body().size());
+        }
+    }
+
     RequestBuilder& RequestBuilder::method(Method method)
     {
         request_.method_ = method;

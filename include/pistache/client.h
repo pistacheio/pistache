@@ -157,11 +157,19 @@ namespace Pistache::Http::Experimental
     };
 
     class Client;
+    class RequestBuilder;
+
+    namespace RequestBuilderAddOns
+    {
+        std::size_t bodySize(RequestBuilder & rb);
+    }
 
     class RequestBuilder
     {
     public:
         friend class Client;
+
+        friend std::size_t RequestBuilderAddOns::bodySize(RequestBuilder & rb);
 
         RequestBuilder& method(Method method);
         RequestBuilder& resource(const std::string& val);
@@ -180,8 +188,7 @@ namespace Pistache::Http::Experimental
         RequestBuilder& body(std::string&& val);
         RequestBuilder& timeout(std::chrono::milliseconds val);
 
-        // Duncan added
-        std::size_t bodySize() { return (request_.body().size()); }
+        
 
         Async::Promise<Response> send();
 
