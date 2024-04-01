@@ -6,9 +6,12 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-# Run the test suite for Meson non-debug (release) build
+# Run the test suite for Meson debug build
 
-source ./messetdirvars.sh
+# Execute this script from the parent directory by invoking:
+#   bldscripts/mestestdebug.sh
+
+source bldscripts/mesdebugsetdirvars.sh
 
 if [ -e "./${MESON_BUILD_DIR}" ]
 then

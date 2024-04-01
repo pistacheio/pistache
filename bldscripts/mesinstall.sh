@@ -7,7 +7,10 @@
 #
 # Install non-debug (release) pistache build
 
-source ./messetdirvars.sh
+# Execute this script from the parent directory by invoking:
+#   bldscripts/mesinstall.sh
+
+source bldscripts/messetdirvars.sh
 
 # Installs to /usr/local
 

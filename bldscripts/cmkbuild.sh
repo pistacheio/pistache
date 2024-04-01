@@ -6,13 +6,13 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-# Complains can't find GTest, doesn't seem to matter
-# Can also build without rapidjson apparently (despite complaint)
+# Execute this script from the parent directory by invoking:
+#   bldscripts/cmkbuild.sh
 
-# To install (must be run from build.debug directory):
+# To install (must be run from build directory):
 #   sudo make install
 
-source ./cmkdebugsetdirvars.sh
+source bldscripts/cmksetdirvars.sh
 
 if [ -e "./${CMAKE_BUILD_DIR}" ]
 then
@@ -24,13 +24,13 @@ fi
 
 if [ "$(uname)" == "Darwin" ]; then
     # on macOS, rapidjson has been installed via brew
-   cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug ..
+   cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ..
 else
     if [ -e "../rapidjson/build" ]
     then
-        cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug -DRapidJSON_DIR=../rapidjson/build/ ..
+        cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DRapidJSON_DIR=../rapidjson/build/ ..
     else
-        cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug ..
+        cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ..
     fi
 fi
 

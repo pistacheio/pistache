@@ -7,7 +7,10 @@
 #
 # Install debug pistache build
 
-source ./mesdebugsetdirvars.sh
+# Execute this script from the parent directory by invoking:
+#   bldscripts/mesinstalldebug.sh
+
+source bldscripts/mesdebugsetdirvars.sh
 
 # Installs to /usr/local
 
