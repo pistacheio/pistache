@@ -92,7 +92,7 @@ namespace Pistache
 #ifdef _USE_LIBEVENT
 
             FdEventFd emefd = TRY_NULL_RET(Epoll::em_eventfd_new(0, 0, O_NONBLOCK));
-            event_fd        = EventMethEpollEquiv::getAsEmEvent(emefd);
+            event_fd        = EventMethFns::getAsEmEvent(emefd);
 
 #else
             event_fd = TRY_RET(eventfd(0, EFD_NONBLOCK));
@@ -308,7 +308,7 @@ namespace Pistache
 #ifdef _USE_LIBEVENT
             FdEventFd emefd = TRY_NULL_RET(Epoll::em_eventfd_new(0, 0, O_NONBLOCK));
 
-            event_fd = EventMethEpollEquiv::getAsEmEvent(emefd);
+            event_fd = EventMethFns::getAsEmEvent(emefd);
 
 #else
             event_fd = TRY_RET(eventfd(0, EFD_NONBLOCK));

@@ -53,7 +53,7 @@ namespace Pistache::Tcp
     void Transport::init(const std::shared_ptr<Tcp::Handler>& handler)
     {
         // Note: In the _USE_LIBEVENT case, EventMeth::init() called out of
-        // EventMethEpollEquiv::create
+        // EventMethFns::create
 
         handler_ = handler;
         handler_->associateTransport(this);
@@ -728,7 +728,7 @@ namespace Pistache::Tcp
         PS_LOG_DEBUG_ARGS("entry.fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", "
                                                                  "fd->type %d",
                           entry_fd,
-                          EventMethEpollEquiv::getEmEventType(entry_fd));
+                          EventMethFns::getEmEventType(entry_fd));
 #else
         PS_LOG_DEBUG_ARGS("entry.fd %" PIST_QUOTE(PS_FD_PRNTFCD),
                           entry_fd);
@@ -750,7 +750,7 @@ namespace Pistache::Tcp
         int res = -1;
 #ifdef _USE_LIBEVENT
         assert(entry.fd != FD_EMPTY);
-        res = EventMethEpollEquiv::setEmEventTime(entry.fd, &(entry.value));
+        res = EventMethFns::setEmEventTime(entry.fd, &(entry.value));
 #else
         itimerspec spec;
         spec.it_interval.tv_sec  = 0;

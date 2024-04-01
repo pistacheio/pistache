@@ -99,7 +99,7 @@ namespace Pistache::Http
 
         std::chrono::milliseconds interval_ms = std::chrono::
             duration_cast<std::chrono::milliseconds>(TimerIntervalNs);
-        TRY(EventMethEpollEquiv::setEmEventTime(timerFd, &interval_ms));
+        TRY(EventMethFns::setEmEventTime(timerFd, &interval_ms));
 
 #else
         itimerspec spec;

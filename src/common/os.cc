@@ -167,7 +167,7 @@ namespace Pistache
         Epoll::Epoll()
             : epoll_fd([&]()
 #ifdef _USE_LIBEVENT
-                       { return TRY_NULL_RET(EventMethEpollEquiv::create(
+                       { return TRY_NULL_RET(EventMethFns::create(
                              Const::MaxEvents)); }
 #else
                        { return TRY_RET(epoll_create(Const::MaxEvents)); }
@@ -196,7 +196,7 @@ namespace Pistache
 
             if (mode == Mode::Edge)
                 events |= EVM_ET;
-            EventMethEpollEquiv::setEmEventUserData(fd, tag.value_);
+            EventMethFns::setEmEventUserData(fd, tag.value_);
 
             TRY(epoll_fd->ctl(EvCtlAdd,
                               fd, events, NULL /* time */));
@@ -230,7 +230,7 @@ namespace Pistache
             // equivalent of the inverse of EPOLLONESHOT. So for libevent any
             // event is assumed to be "oneshot" unless EVM_PERSIST is set.
 
-            EventMethEpollEquiv::setEmEventUserData(fd, tag.value_);
+            EventMethFns::setEmEventUserData(fd, tag.value_);
             TRY(epoll_fd->ctl(EvCtlAdd,
                               fd, events, NULL /* time */));
 #else
@@ -283,7 +283,7 @@ namespace Pistache
 
             if (mode == Mode::Edge)
                 events |= EVM_ET;
-            EventMethEpollEquiv::setEmEventUserData(fd, tag.value_);
+            EventMethFns::setEmEventUserData(fd, tag.value_);
             TRY(epoll_fd->ctl(EvCtlMod,
                               fd, events, NULL /* time */));
 
@@ -399,14 +399,14 @@ namespace Pistache
                     throw std::runtime_error("fd is NULL");
 #endif
 
-                const Tag tag(EventMethEpollEquiv::getEmEventUserData(fd));
+                const Tag tag(EventMethFns::getEmEventUserData(fd));
                 Event event(tag);
                 event.flags = epoll_fd->toNotifyOn(fd); // uses fd's ready_flags
                 PS_LOG_DBG_FD_AND_NOTIFY;
                 events.push_back(event);
 
                 // fd's ready_flags have been transferred to event.flags
-                EventMethEpollEquiv::resetEmEventReadyFlags(fd);
+                EventMethFns::resetEmEventReadyFlags(fd);
             }
             return ((int)events.size());
 
@@ -455,7 +455,7 @@ namespace Pistache
                                int f_setfl_flags // e.g. O_NONBLOCK
         )
         {
-            return (EventMethEpollEquiv::em_event_new(actual_fd, flags,
+            return (EventMethFns::em_event_new(actual_fd, flags,
                                                       f_setfd_flags, f_setfl_flags));
         }
 
@@ -474,9 +474,9 @@ namespace Pistache
             if (!epoll_fd)
                 throw std::runtime_error("epoll_fd null");
 
-            return (epoll_fd->em_timer_new(clock_id,
-                                           f_setfd_flags, f_setfl_flags,
-                                           epoll_fd.get()));
+            return (EventMethFns::em_timer_new(clock_id,
+                                               f_setfd_flags, f_setfl_flags,
+                                               epoll_fd.get()));
         }
 
         // For "eventfd-style" descriptors
@@ -486,7 +486,7 @@ namespace Pistache
                                         int f_setfd_flags, // e.g. FD_CLOEXEC
                                         int f_setfl_flags) // e.g. O_NONBLOCK
         {
-            return (EventMethEpollEquiv::em_eventfd_new(initval,
+            return (EventMethFns::em_eventfd_new(initval,
                                                         f_setfd_flags, f_setfl_flags));
         }
 
@@ -551,7 +551,7 @@ namespace Pistache
         FdEventFd emefd = TRY_NULL_RET(Polling::Epoll::em_eventfd_new(
             0, FD_CLOEXEC, O_NONBLOCK));
 
-        event_fd = EventMethEpollEquiv::getAsEmEvent(emefd);
+        event_fd = EventMethFns::getAsEmEvent(emefd);
 #else
         event_fd = TRY_RET(eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC));
 #endif

@@ -1292,11 +1292,11 @@ TEST(http_server_test, http_server_is_not_leaked)
 
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 #ifdef DEBUG
-    const int em_event_count_before               = EventMethEpollEquiv::getEmEventCount();
-    const int libevent_event_count_before         = EventMethEpollEquiv::getLibeventEventCount();
-    const int event_meth_epoll_equiv_count_before = EventMethEpollEquiv::getEventMethEpollEquivCount();
-    const int event_meth_base_count_before        = EventMethEpollEquiv::getEventMethBaseCount();
-    const int wait_then_get_count_before          = EventMethEpollEquiv::getWaitThenGetAndEmptyReadyEvsCount();
+    const int em_event_count_before               = EventMethFns::getEmEventCount();
+    const int libevent_event_count_before         = EventMethFns::getLibeventEventCount();
+    const int event_meth_epoll_equiv_count_before = EventMethFns::getEventMethEpollEquivCount();
+    const int event_meth_base_count_before        = EventMethFns::getEventMethBaseCount();
+    const int wait_then_get_count_before          = EventMethFns::getWaitThenGetAndEmptyReadyEvsCount();
 #endif
 #endif
 
@@ -1312,11 +1312,11 @@ TEST(http_server_test, http_server_is_not_leaked)
 
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 #ifdef DEBUG
-    const int em_event_count_during               = EventMethEpollEquiv::getEmEventCount();
-    const int libevent_event_count_during         = EventMethEpollEquiv::getLibeventEventCount();
-    const int event_meth_epoll_equiv_count_during = EventMethEpollEquiv::getEventMethEpollEquivCount();
-    const int event_meth_base_count_during        = EventMethEpollEquiv::getEventMethBaseCount();
-    const int wait_then_get_count_during          = EventMethEpollEquiv::getWaitThenGetAndEmptyReadyEvsCount();
+    const int em_event_count_during               = EventMethFns::getEmEventCount();
+    const int libevent_event_count_during         = EventMethFns::getLibeventEventCount();
+    const int event_meth_epoll_equiv_count_during = EventMethFns::getEventMethEpollEquivCount();
+    const int event_meth_base_count_during        = EventMethFns::getEventMethBaseCount();
+    const int wait_then_get_count_during          = EventMethFns::getWaitThenGetAndEmptyReadyEvsCount();
 #endif
 #endif
 
@@ -1328,11 +1328,11 @@ TEST(http_server_test, http_server_is_not_leaked)
 
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 #ifdef DEBUG
-    const int em_event_count_after               = EventMethEpollEquiv::getEmEventCount();
-    const int libevent_event_count_after         = EventMethEpollEquiv::getLibeventEventCount();
-    const int event_meth_epoll_equiv_count_after = EventMethEpollEquiv::getEventMethEpollEquivCount();
-    const int event_meth_base_count_after        = EventMethEpollEquiv::getEventMethBaseCount();
-    const int wait_then_get_count_after          = EventMethEpollEquiv::getWaitThenGetAndEmptyReadyEvsCount();
+    const int em_event_count_after               = EventMethFns::getEmEventCount();
+    const int libevent_event_count_after         = EventMethFns::getLibeventEventCount();
+    const int event_meth_epoll_equiv_count_after = EventMethFns::getEventMethEpollEquivCount();
+    const int event_meth_base_count_after        = EventMethFns::getEventMethBaseCount();
+    const int wait_then_get_count_after          = EventMethFns::getWaitThenGetAndEmptyReadyEvsCount();
 
     PS_LOG_DEBUG_ARGS(
         "em_event_count_before %d, em_event_count_during %d, "
