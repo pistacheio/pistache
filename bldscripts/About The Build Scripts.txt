@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2024 Duncan Greatwood
+#
+# SPDX-License-Identifier: Apache-2.0
+
 About The Build Scripts
 =======================
 
