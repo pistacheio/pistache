@@ -8,7 +8,7 @@
 # Sets CMAKE_BUILD_DIR and CMAKE_PREFIX_DIR
 #
 # Use by:
-#   source ./cmksetdirvars.sh
+#   source bldscripts/cmksetdirvars.sh
 
 
 MY_ARCH_NM=x86

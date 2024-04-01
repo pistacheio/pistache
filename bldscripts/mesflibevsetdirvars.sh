@@ -8,8 +8,12 @@
 # Sets MESON_BUILD_DIR and MESON_PREFIX_DIR
 #
 # Use by:
-#   source bldscripts/mesdebugsetdirvars.sh
+#   source bldscripts/mesflibevsetdirvars.sh
 
+if [ "$(uname)" == "Darwin" ]; then
+    echo "Error: Don't force libevent on macOS, libevent is on by default"
+    exit 1
+fi
 
 MY_ARCH_NM=x86
 if [ "$(uname -m)" == "arm64" ]; then
@@ -20,12 +24,7 @@ else
     fi
 fi
     
+MESON_BUILD_DIR=build${MY_ARCH_NM}.mes.flibev
+MESON_PREFIX_DIR=/usr/local
 
-if [ "$(uname)" == "Darwin" ]; then
-    MESON_BUILD_DIR=build${MY_ARCH_NM}.mes.mac.debug
-    MESON_PREFIX_DIR=/usr/local
-else
-    MESON_BUILD_DIR=build${MY_ARCH_NM}.mes.debug
-    MESON_PREFIX_DIR=/usr/local
-fi
 

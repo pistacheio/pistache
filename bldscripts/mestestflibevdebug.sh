@@ -6,12 +6,12 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-# Run the test suite for Meson force-libevent build
+# Run the test suite for Meson force-libevent debug build
 
 # Execute this script from the parent directory by invoking:
-#   bldscripts/mestestflibev.sh
+#   bldscripts/mestestflibevdebug.sh
 
-source bldscripts/mesflibevsetdirvars.sh
+source bldscripts/mesdebugflibevsetdirvars.sh
 
 if [ -e "./${MESON_BUILD_DIR}" ]
 then
