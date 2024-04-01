@@ -53,7 +53,7 @@ namespace Pistache
         if (fd_ == FD_EMPTY)
         {
 #ifdef _USE_LIBEVENT
-            fd_ = TRY_NULL_RET(EventMethEpollEquiv::em_timer_new(
+            fd_ = TRY_NULL_RET(EventMethFns::em_timer_new(
                 CLOCK_MONOTONIC,
                 F_SETFDL_NOTHING, O_NONBLOCK,
                 NULL /* EventMethEpollEquiv ptr */));
@@ -78,7 +78,7 @@ namespace Pistache
         }
 
 #ifdef _USE_LIBEVENT
-        TRY(EventMethEpollEquiv::setEmEventTime(fd_, NULL));
+        TRY(EventMethFns::setEmEventTime(fd_, NULL));
 #else
         itimerspec spec;
         spec.it_interval.tv_sec  = 0;
@@ -114,7 +114,7 @@ namespace Pistache
         }
 
 #ifdef _USE_LIBEVENT
-        TRY(EventMethEpollEquiv::setEmEventTime(fd_, &value));
+        TRY(EventMethFns::setEmEventTime(fd_, &value));
 #else
 
         itimerspec spec;

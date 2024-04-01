@@ -16,8 +16,13 @@
  *
  */
 
+struct event; // libevent's event struct
+
 namespace Pistache
 {
+    class EventMethBase;
+    class EmEventCtr;
+    
     class EventMethEpollEquivImpl
     {
     public:
@@ -659,9 +664,8 @@ namespace Pistache
 
 namespace Pistache
 {
-
     // size is a hint as to how many FDs to be monitored
-    std::shared_ptr<EventMethEpollEquiv> EventMethEpollEquiv::create(int size)
+    std::shared_ptr<EventMethEpollEquiv> EventMethFns::create(int size)
     { // size is a hint as to how many FDs to be monitored
         PS_TIMEDBG_START;
 
@@ -669,30 +673,9 @@ namespace Pistache
         return(std::shared_ptr<EventMethEpollEquiv>(emee_cptr));
     }
 
-    EventMethEpollEquiv::EventMethEpollEquiv(int size)
-    {
-        impl_ = std::make_unique<EventMethEpollEquivImpl>(size);
-        if (!impl_)
-        {
-            PS_LOG_WARNING("impl_ NULL");
-            throw std::runtime_error("impl_ NULL");
-        }
-    }
     
-
-    // Add to interest list
-    // Returns 0 for success, on error -1 with errno set
-    int EventMethEpollEquiv::ctl(EventCtlAction op, // add, mod, or del
-                                 Fd em_event,
-                                 short     events, // bitmask of EVM_... events
-                                 std::chrono::milliseconds * timeval_cptr)
-    {
-        return(impl_->ctl(op, em_event, events, timeval_cptr));
-    }
-    
-
     #define F_SETFDL_NOTHING ((int)((unsigned) 0x8A82))
-    Fd EventMethEpollEquiv::em_event_new(
+    Fd EventMethFns::em_event_new(
                         em_socket_t actual_fd,//file desc, signal, or -1
                         short flags, // EVM_... flags
                         // For setfd and setfl arg:
@@ -714,7 +697,7 @@ namespace Pistache
 
     // If emee is NULL here, it will need to be supplied when settime is
     // called
-    Fd EventMethEpollEquiv::em_timer_new(clockid_t clock_id,
+    Fd EventMethFns::em_timer_new(clockid_t clock_id,
                                // For setfd and setfl arg:
                                //   F_SETFDL_NOTHING - change nothing
                                //   Zero or pos number that is not
@@ -729,14 +712,14 @@ namespace Pistache
     {
         return(EventMethEpollEquivImpl::em_timer_new(clock_id,
                                                   f_setfd_flags, f_setfl_flags,
-                                             emee ? emee->impl_.get() : NULL));
+                                             getEMEEImpl(emee)));
     }
     
 
     // For "eventfd-style" descriptors
     // Note that FdEventFd does not have an "actual fd" that the caller can
     // access; the caller must use FdEventFd's member functions instead
-    FdEventFd EventMethEpollEquiv::em_eventfd_new(unsigned int initval,
+    FdEventFd EventMethFns::em_eventfd_new(unsigned int initval,
                                  int f_setfd_flags, // e.g. FD_CLOEXEC
                                  int f_setfl_flags) // e.g. O_NONBLOCK
     {
@@ -744,116 +727,80 @@ namespace Pistache
                                                 f_setfd_flags, f_setfl_flags));
     }
 
-    // Waits (if needed) until events are ready, then sets the _out set to
-    // be equal to ready events, and empties the list of ready events
-    // "timeout" is in milliseconds, or -1 means wait indefinitely
-    // Returns number of ready events being returned; or 0 if timed-out
-    // without an event becoming ready; or -1, with errno set, on error
-    int EventMethEpollEquiv::waitThenGetAndEmptyReadyEvs(int timeout,
-                                           std::set<Fd> & ready_evm_events_out)
-    {
-        return(impl_->waitThenGetAndEmptyReadyEvs(timeout,
-                                                  ready_evm_events_out));
-    }
-    
 
-    // EvEvents are some combination of EVM_TIMEOUT, EVM_READ, EVM_WRITE,
-    // EVM_SIGNAL, EVM_PERSIST, EVM_ET, EVM_FINALIZE, EVM_CLOSED
-
-    int EventMethEpollEquiv::toEvEvents(
-                                      const Flags<Polling::NotifyOn>& interest)
-    {
-        return(impl_->toEvEvents(interest));
-    }
-    
-
-    Flags<Polling::NotifyOn> EventMethEpollEquiv::toNotifyOn(Fd fd) 
-    { // uses fd->ready_flags
-        return(impl_->toNotifyOn(fd));
-    }
 
     // Returns 0 for success, on error -1 with errno set
     // Will add/remove from interest_ if appropriate
-    int EventMethEpollEquiv::ctl(EventCtlAction op, // add, mod, or del
+    int EventMethFns::ctl(EventCtlAction op, // add, mod, or del
                        EventMethEpollEquiv * epoll_equiv,
                        Fd event, // libevent event
                        short events, // bitmask per epoll_ctl (EVM_... events)
                        std::chrono::milliseconds * timeval_cptr)
     {
-        return(EventMethEpollEquivImpl::ctl(op,
-                                 epoll_equiv ? epoll_equiv->impl_.get() : NULL,
-                                 event, events, timeval_cptr));
+        return(EventMethEpollEquivImpl::ctl(op, getEMEEImpl(epoll_equiv),
+                                            event, events, timeval_cptr));
     }
     
 
     // rets 0 on success, -1 error
-    int EventMethEpollEquiv::closeEvent(EmEvent * em_event)
+    int EventMethFns::closeEvent(EmEvent * em_event)
     {
         return(EventMethEpollEquivImpl::closeEvent(em_event));
     }
     // See also CLOSE_FD macro
 
-    EventMethEpollEquiv::~EventMethEpollEquiv()
-    {
-        PS_TIMEDBG_START_THIS;
-
-        impl_ = NULL;
-    }
-    
-
-    int EventMethEpollEquiv::getActualFd(const EmEvent * em_event)
+    int EventMethFns::getActualFd(const EmEvent * em_event)
     {
         return(EventMethEpollEquivImpl::getActualFd(em_event));
     }
-    
 
     // efd should be a pointer to EmEventFd - does dynamic cast
-    ssize_t EventMethEpollEquiv::writeEfd(EmEvent * efd, const uint64_t val)
+    ssize_t EventMethFns::writeEfd(EmEvent * efd, const uint64_t val)
     {
         return(EventMethEpollEquivImpl::writeEfd(efd, val));
     }
     
-    ssize_t EventMethEpollEquiv::readEfd(EmEvent * efd, uint64_t * val_out_ptr)
+    ssize_t EventMethFns::readEfd(EmEvent * efd, uint64_t * val_out_ptr)
     {
         return(EventMethEpollEquivImpl::readEfd(efd, val_out_ptr));
     }
     
 
-    ssize_t EventMethEpollEquiv::read(EmEvent * fd, void * buf, size_t count)
+    ssize_t EventMethFns::read(EmEvent * fd, void * buf, size_t count)
     {
         return(EventMethEpollEquivImpl::read(fd, buf, count));
     }
     
-    ssize_t EventMethEpollEquiv::write(EmEvent * fd,
+    ssize_t EventMethFns::write(EmEvent * fd,
                                        const void * buf, size_t count)
     {
         return(EventMethEpollEquivImpl::write(fd, buf, count));
     }
     
 
-    EmEvent * EventMethEpollEquiv::getAsEmEvent(EmEventFd * efd)
+    EmEvent * EventMethFns::getAsEmEvent(EmEventFd * efd)
     {
         return(EventMethEpollEquivImpl::getAsEmEvent(efd));
     }
     
 
-    uint64_t EventMethEpollEquiv::getEmEventUserDataUi64(const EmEvent * fd)
+    uint64_t EventMethFns::getEmEventUserDataUi64(const EmEvent * fd)
     {
         return(EventMethEpollEquivImpl::getEmEventUserDataUi64(fd));
     }
     
-    Fd EventMethEpollEquiv::getEmEventUserData(const EmEvent * fd)
+    Fd EventMethFns::getEmEventUserData(const EmEvent * fd)
     {
         return(EventMethEpollEquivImpl::getEmEventUserData(fd));
     }
     
-    void EventMethEpollEquiv::setEmEventUserData(EmEvent * fd,
+    void EventMethFns::setEmEventUserData(EmEvent * fd,
                                                  uint64_t user_data)
     {
         EventMethEpollEquivImpl::setEmEventUserData(fd, user_data);
     }
     
-    void EventMethEpollEquiv::setEmEventUserData(EmEvent * fd, Fd user_data)
+    void EventMethFns::setEmEventUserData(EmEvent * fd, Fd user_data)
     {
         EventMethEpollEquivImpl::setEmEventUserData(fd, user_data);
     }
@@ -872,59 +819,126 @@ namespace Pistache
     // 
     // Note: settime is in EmEvent rather than solely in EmEventTmrFd since
     // any kind of event may have a timeout set, not only timer events
-    int EventMethEpollEquiv::setEmEventTime(EmEvent * fd,
+    int EventMethFns::setEmEventTime(EmEvent * fd,
                             const std::chrono::milliseconds * new_timeval_cptr,
                             EventMethEpollEquiv * emee/*may be NULL*/)
     {
         return(EventMethEpollEquivImpl::setEmEventTime(fd, new_timeval_cptr,
-                                             emee ? emee->impl_.get() : NULL));
+                                             getEMEEImpl(emee)));
     }
     
 
-    EmEventType EventMethEpollEquiv::getEmEventType(EmEvent * fd)
+    EmEventType EventMethFns::getEmEventType(EmEvent * fd)
     {
         return(EventMethEpollEquivImpl::getEmEventType(fd));
     }
 
-    void EventMethEpollEquiv::resetEmEventReadyFlags(EmEvent * fd)
+    void EventMethFns::resetEmEventReadyFlags(EmEvent * fd)
     {
         EventMethEpollEquivImpl::resetEmEventReadyFlags(fd);
     }
 
+    EventMethEpollEquivImpl * EventMethFns::getEMEEImpl(
+                                     EventMethEpollEquiv * emee/*may be NULL*/)
+    {
+        return(emee ? emee->impl_.get() : NULL);
+    }
+    
     #ifdef DEBUG
-    std::string EventMethEpollEquiv::getActFdAndFdlFlagsAsStr(int actual_fd)
+    std::string EventMethFns::getActFdAndFdlFlagsAsStr(int actual_fd)
     {
         return(EventMethEpollEquivImpl::getActFdAndFdlFlagsAsStr(actual_fd));
     }
     #endif
 
     #ifdef DEBUG
-    int EventMethEpollEquiv::getEmEventCount()
+    int EventMethFns::getEmEventCount()
     {
         return(EventMethEpollEquivImpl::getEmEventCount());
     }
     
-    int EventMethEpollEquiv::getLibeventEventCount()
+    int EventMethFns::getLibeventEventCount()
     {
         return(EventMethEpollEquivImpl::getLibeventEventCount());
     }
     
-    int EventMethEpollEquiv::getEventMethEpollEquivCount()
+    int EventMethFns::getEventMethEpollEquivCount()
     {
         return(EventMethEpollEquivImpl::getEventMethEpollEquivCount());
     }
     
-    int EventMethEpollEquiv::getEventMethBaseCount()
+    int EventMethFns::getEventMethBaseCount()
     {
         return(EventMethEpollEquivImpl::getEventMethBaseCount());
     }
     
-    int EventMethEpollEquiv::getWaitThenGetAndEmptyReadyEvsCount()
+    int EventMethFns::getWaitThenGetAndEmptyReadyEvsCount()
     {
         return(EventMethEpollEquivImpl::getWaitThenGetAndEmptyReadyEvsCount());
     }
     #endif
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+//
+// EventMethEpollEquiv methods - mostly just pass calls to
+// EventMethEpollEquivImpl
+//
+
+    EventMethEpollEquiv::EventMethEpollEquiv(int size)
+    {
+        impl_ = std::make_unique<EventMethEpollEquivImpl>(size);
+        if (!impl_)
+        {
+            PS_LOG_WARNING("impl_ NULL");
+            throw std::runtime_error("impl_ NULL");
+        }
+    }
+
+    // Add to interest list
+    // Returns 0 for success, on error -1 with errno set
+    int EventMethEpollEquiv::ctl(EventCtlAction op, // add, mod, or del
+                                 Fd em_event,
+                                 short     events, // bitmask of EVM_... events
+                                 std::chrono::milliseconds * timeval_cptr)
+    {
+        return(impl_->ctl(op, em_event, events, timeval_cptr));
+    }
+
+    // Waits (if needed) until events are ready, then sets the _out set to
+    // be equal to ready events, and empties the list of ready events
+    // "timeout" is in milliseconds, or -1 means wait indefinitely
+    // Returns number of ready events being returned; or 0 if timed-out
+    // without an event becoming ready; or -1, with errno set, on error
+    int EventMethEpollEquiv::waitThenGetAndEmptyReadyEvs(int timeout,
+                                           std::set<Fd> & ready_evm_events_out)
+    {
+        return(impl_->waitThenGetAndEmptyReadyEvs(timeout,
+                                                  ready_evm_events_out));
+    }
+
+    // EvEvents are some combination of EVM_TIMEOUT, EVM_READ, EVM_WRITE,
+    // EVM_SIGNAL, EVM_PERSIST, EVM_ET, EVM_FINALIZE, EVM_CLOSED
+
+    int EventMethEpollEquiv::toEvEvents(
+                                      const Flags<Polling::NotifyOn>& interest)
+    {
+        return(impl_->toEvEvents(interest));
+    }
+    
+
+    Flags<Polling::NotifyOn> EventMethEpollEquiv::toNotifyOn(Fd fd) 
+    { // uses fd->ready_flags
+        return(impl_->toNotifyOn(fd));
+    }
+
+    EventMethEpollEquiv::~EventMethEpollEquiv()
+    {
+        PS_TIMEDBG_START_THIS;
+
+        impl_ = NULL;
+    }
+
+    
 } // namespace Pistache
 
 /* ------------------------------------------------------------------------- */

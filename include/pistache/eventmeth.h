@@ -20,7 +20,7 @@
 // _USE_LIBEVENT_LIKE_APPLE not only forces libevent, but even in Linux causes
 // the code to be as similar as possible to the way it is for __APPLE__
 // (e.g. whereever possible, even on Linux it uses solely OS calls that are
-// available on Apple)
+// also available on macOS)
 //
 // Can comment out if not wanted
 #define _USE_LIBEVENT_LIKE_APPLE 1
@@ -44,10 +44,6 @@
   #define _USE_LIBEVENT 1
 #endif
 
-#ifndef _USE_LIBEVENT
-  // Note: sys/eventfd.h is linux-only / POSIX only
-  #include <sys/eventfd.h>
-#endif
 // Note: libevent's event.h should NOT be included in this file, it is included
 // only in the eventmeth CPP file. eventmeth.h users should not be using
 // libevent directly, since eventmeth is our wrapper for libevent
@@ -65,16 +61,16 @@
 
 
 #ifdef _USE_LIBEVENT
-#define GET_ACTUAL_FD(__ev__) EventMethEpollEquiv::getActualFd(__ev__)
+#define GET_ACTUAL_FD(__ev__) EventMethFns::getActualFd(__ev__)
 #else
 #define GET_ACTUAL_FD(__fd__) __fd__
 #endif
 
 #ifdef _USE_LIBEVENT
 #define WRITE_FD(__fd__, __buf__, __count__)    \
-    Pistache::EventMethEpollEquiv::write(__fd__, __buf__, __count__)
+    Pistache::EventMethFns::write(__fd__, __buf__, __count__)
 #define READ_FD(__fd__, __buf__, __count__)     \
-    Pistache::EventMethEpollEquiv::read(__fd__, __buf__, __count__)
+    Pistache::EventMethFns::read(__fd__, __buf__, __count__)
 #else
 #define WRITE_FD(__fd__, __buf__, __count__)    \
     ::write(__fd__, __buf__, __count__)
@@ -88,11 +84,11 @@
 #ifdef _USE_LIBEVENT
 // Returns -1 if __fd__ not EmEventFd
 #define WRITE_EFD(__fd__, __val__)              \
-    ((Pistache::EventMethEpollEquiv::writeEfd(__fd__, __val__) ==       \
+    ((Pistache::EventMethFns::writeEfd(__fd__, __val__) ==       \
                                                     sizeof(uint64_t)) ? 0 : -1)
 
 #define READ_EFD(__fd__, __val_ptr__)           \
-    ((Pistache::EventMethEpollEquiv::readEfd(__fd__, __val_ptr__) ==    \
+    ((Pistache::EventMethFns::readEfd(__fd__, __val_ptr__) ==    \
                                                     sizeof(uint64_t)) ? 0 : -1)
 
 #elif defined(__linux__) && defined(__GNUC__)
@@ -129,7 +125,7 @@
     {                                                   \
         if (__ev__ != FD_EMPTY)                         \
         {                                               \
-            EventMethEpollEquiv::closeEvent(__ev__);    \
+            EventMethFns::closeEvent(__ev__);    \
             __ev__ = FD_EMPTY;                          \
         }                                               \
     }
@@ -154,7 +150,7 @@
 #if defined DEBUG && defined _USE_LIBEVENT
   #define LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(__ACTUAL_FD__)                   \
            PS_LOG_DEBUG_ARGS("%s",                                        \
-            EventMethEpollEquiv::getActFdAndFdlFlagsAsStr(__ACTUAL_FD__). \
+            EventMethFns::getActFdAndFdlFlagsAsStr(__ACTUAL_FD__). \
                                                                  c_str())
 #else
   #define LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(__ACTUAL_FD__)
@@ -165,7 +161,6 @@ namespace Pistache
 {
     #ifdef _USE_LIBEVENT
       class EmEvent;
-      class EmEventCtr;
       class EmEventFd;
       class EmEventTmrFd;
     
@@ -207,8 +202,6 @@ namespace Pistache
 
 /* ------------------------------------------------------------------------- */
 
-struct event; // treat as private to libevent
-
 namespace Pistache
 {
     namespace Polling { enum class NotifyOn; } // NotifyOn used by toEvEvents
@@ -223,13 +216,6 @@ namespace Pistache
     #define EVM_FINALIZE     0x40
     #define EVM_CLOSED       0x80
 
-    class EventMethBase;
-
-    class EmEventTmrFd;
-    class EmEventFd;
-    class EmEventCtr;
-    class EmEvent;
-    
     enum EventCtlAction
     {
         EvCtlAdd = 1,
@@ -245,23 +231,21 @@ namespace Pistache
         EmEvTimer     = 3
     };
 
+    class EventMethEpollEquiv;
     class EventMethEpollEquivImpl;
 
-    class EventMethEpollEquiv
-    { // See man epoll, epoll_create, epoll_ctl, epl_wait
-    public:
+    // EventMethFns contains non-member functions that act on EmEvent,
+    // EmEventFd and EmEventTmrFd, which, when outside the scope of
+    // eventmet.cc, are opaque types. The EventMethFns also reference
+    // EventMethEpollEquiv in somce cases.
+    namespace EventMethFns
+    {
         // size is a hint as to how many FDs to be monitored
-        static std::shared_ptr<EventMethEpollEquiv> create(int size);
+        std::shared_ptr<EventMethEpollEquiv> create(int size);
 
-        // Add to interest list
-        // Returns 0 for success, on error -1 with errno set
-        int ctl(EventCtlAction op, // add, mod, or del
-                Fd em_event,
-                short     events, // bitmask of EVM_... events
-                std::chrono::milliseconds * timeval_cptr);
 
         #define F_SETFDL_NOTHING ((int)((unsigned) 0x8A82))
-        static Fd em_event_new(em_socket_t actual_fd,//file desc, signal, or -1
+        Fd em_event_new(em_socket_t actual_fd,//file desc, signal, or -1
                         short flags, // EVM_... flags
                         // For setfd and setfl arg:
                         //   F_SETFDL_NOTHING - change nothing
@@ -277,7 +261,7 @@ namespace Pistache
 
         // If emee is NULL here, it will need to be supplied when settime is
         // called
-        static Fd em_timer_new(clockid_t clock_id,
+        Fd em_timer_new(clockid_t clock_id,
                                // For setfd and setfl arg:
                                //   F_SETFDL_NOTHING - change nothing
                                //   Zero or pos number that is not
@@ -293,62 +277,42 @@ namespace Pistache
         // For "eventfd-style" descriptors
         // Note that FdEventFd does not have an "actual fd" that the caller can
         // access; the caller must use FdEventFd's member functions instead
-        static FdEventFd em_eventfd_new(unsigned int initval,
+        FdEventFd em_eventfd_new(unsigned int initval,
                                  int f_setfd_flags, // e.g. FD_CLOEXEC
                                  int f_setfl_flags);  // e.g. O_NONBLOCK
 
-        // Waits (if needed) until events are ready, then sets the _out set to
-        // be equal to ready events, and empties the list of ready events
-        // "timeout" is in milliseconds, or -1 means wait indefinitely
-        // Returns number of ready events being returned; or 0 if timed-out
-        // without an event becoming ready; or -1, with errno set, on error
-        int waitThenGetAndEmptyReadyEvs(int timeout,
-                                        std::set<Fd> & ready_evm_events_out);
-
-        // EvEvents are some combination of EVM_TIMEOUT, EVM_READ, EVM_WRITE,
-        // EVM_SIGNAL, EVM_PERSIST, EVM_ET, EVM_FINALIZE, EVM_CLOSED
-
-        // !!!! ? Could be static?
-        int toEvEvents(const Flags<Polling::NotifyOn>& interest);
-
-        // !!!! ? Could be static?
-        Flags<Polling::NotifyOn> toNotifyOn(Fd fd); // uses fd->ready_flags
-
         // Returns 0 for success, on error -1 with errno set
         // Will add/remove from interest_ if appropriate
-        static int ctl(EventCtlAction op, // add, mod, or del
+        int ctl(EventCtlAction op, // add, mod, or del
                        EventMethEpollEquiv * epoll_equiv,
                        Fd event, // libevent event
                        short events, // bitmask per epoll_ctl (EVM_... events)
                        std::chrono::milliseconds * timeval_cptr);
 
         // rets 0 on success, -1 error
-        static int closeEvent(EmEvent * em_event);
+        int closeEvent(EmEvent * em_event);
         // See also CLOSE_FD macro
-
-        ~EventMethEpollEquiv();
 
         // Returns emee if emee is in emee_cptr_set_, or NULL
         // otherwise. emee_cptr_set_mutex_ is locked inside the function.
-        static EventMethEpollEquiv * getEventMethEpollEquivFromEmeeSet(
+        EventMethEpollEquiv * getEventMethEpollEquivFromEmeeSet(
                                                    EventMethEpollEquiv * emee);
         
-    public:
-        static int getActualFd(const EmEvent * em_event);
+        int getActualFd(const EmEvent * em_event);
 
         // efd should be a pointer to EmEventFd - does dynamic cast
-        static ssize_t writeEfd(EmEvent * efd, const uint64_t val);
-        static ssize_t readEfd(EmEvent * efd, uint64_t * val_out_ptr);
+        ssize_t writeEfd(EmEvent * efd, const uint64_t val);
+        ssize_t readEfd(EmEvent * efd, uint64_t * val_out_ptr);
 
-        static ssize_t read(EmEvent * fd, void * buf, size_t count);
-        static ssize_t write(EmEvent * fd, const void * buf, size_t count);
+        ssize_t read(EmEvent * fd, void * buf, size_t count);
+        ssize_t write(EmEvent * fd, const void * buf, size_t count);
 
-        static EmEvent * getAsEmEvent(EmEventFd * efd);
+        EmEvent * getAsEmEvent(EmEventFd * efd);
 
-        static uint64_t getEmEventUserDataUi64(const EmEvent * fd);
-        static Fd getEmEventUserData(const EmEvent * fd);
-        static void setEmEventUserData(EmEvent * fd, uint64_t user_data);
-        static void setEmEventUserData(EmEvent * fd, Fd user_data);
+        uint64_t getEmEventUserDataUi64(const EmEvent * fd);
+        Fd getEmEventUserData(const EmEvent * fd);
+        void setEmEventUserData(EmEvent * fd, uint64_t user_data);
+        void setEmEventUserData(EmEvent * fd, Fd user_data);
 
         // For EmEventTmrFd, settime is analagous to timerfd_settime in linux
         // 
@@ -363,32 +327,70 @@ namespace Pistache
         // 
         // Note: settime is in EmEvent rather than solely in EmEventTmrFd since
         // any kind of event may have a timeout set, not only timer events
-        static int setEmEventTime(EmEvent * fd,
+        int setEmEventTime(EmEvent * fd,
                             const std::chrono::milliseconds * new_timeval_cptr,
                             EventMethEpollEquiv * emee = NULL/*may be NULL*/);
 
-        static EmEventType getEmEventType(EmEvent * fd);
+        EmEventType getEmEventType(EmEvent * fd);
 
-        static void resetEmEventReadyFlags(EmEvent * fd);
+        void resetEmEventReadyFlags(EmEvent * fd);
+
+        EventMethEpollEquivImpl * getEMEEImpl(
+                                    EventMethEpollEquiv * emee/*may be NULL*/);
 
     #ifdef DEBUG
-    public:
-        static std::string getActFdAndFdlFlagsAsStr(int actual_fd);
+        std::string getActFdAndFdlFlagsAsStr(int actual_fd);
         // See also macro LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(__ACTUAL_FD__)
     #endif
 
     #ifdef DEBUG
-    public:
-        static int getEmEventCount();
-        static int getLibeventEventCount();
-        static int getEventMethEpollEquivCount();
-        static int getEventMethBaseCount();
-        static int getWaitThenGetAndEmptyReadyEvsCount();
+        int getEmEventCount();
+        int getLibeventEventCount();
+        int getEventMethEpollEquivCount();
+        int getEventMethBaseCount();
+        int getWaitThenGetAndEmptyReadyEvsCount();
     #endif
+    } // namespace EventMethFns
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+    class EventMethEpollEquiv
+    { // See man epoll, epoll_create, epoll_ctl, epl_wait
+        
+    public:
+        
+        // Add to interest list
+        // Returns 0 for success, on error -1 with errno set
+        int ctl(EventCtlAction op, // add, mod, or del
+                Fd em_event,
+                short     events, // bitmask of EVM_... events
+                std::chrono::milliseconds * timeval_cptr);
+
+        // Waits (if needed) until events are ready, then sets the _out set to
+        // be equal to ready events, and empties the list of ready events
+        // "timeout" is in milliseconds, or -1 means wait indefinitely
+        // Returns number of ready events being returned; or 0 if timed-out
+        // without an event becoming ready; or -1, with errno set, on error
+        int waitThenGetAndEmptyReadyEvs(int timeout,
+                                        std::set<Fd> & ready_evm_events_out);
+
+        // EvEvents are some combination of EVM_TIMEOUT, EVM_READ, EVM_WRITE,
+        // EVM_SIGNAL, EVM_PERSIST, EVM_ET, EVM_FINALIZE, EVM_CLOSED
+
+        int toEvEvents(const Flags<Polling::NotifyOn>& interest);
+        Flags<Polling::NotifyOn> toNotifyOn(Fd fd); // uses fd->ready_flags
+
+        ~EventMethEpollEquiv();
 
     private:
+        // Allow create to call the cnostructor
+        friend std::shared_ptr<EventMethEpollEquiv> EventMethFns::create(int);
+        
         EventMethEpollEquiv(int size);
 
+        friend EventMethEpollEquivImpl * EventMethFns::getEMEEImpl(
+                                                        EventMethEpollEquiv *);
+        
         std::unique_ptr<EventMethEpollEquivImpl> impl_;
     };
 

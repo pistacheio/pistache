@@ -695,7 +695,7 @@ namespace Pistache::Http::Experimental
             // We're openning a connection to a remote resource - I guess it
             // makes sense to allow either read or write?
             fd_ = TRY_NULL_RET(
-                EventMethEpollEquiv::em_event_new(
+                EventMethFns::em_event_new(
                     sfd, // pre-allocated file desc
                     EVM_READ | EVM_WRITE | EVM_PERSIST,
                     F_SETFDL_NOTHING, // setfd

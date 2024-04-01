@@ -307,7 +307,7 @@ namespace Pistache
                         throw std::runtime_error(
                             "event_meth_epoll_equiv null");
 
-                    timerFd = TRY_NULL_RET(event_meth_epoll_equiv->em_timer_new(
+                    timerFd = TRY_NULL_RET(EventMethFns::em_timer_new(
                         CLOCK_MONOTONIC,
                         F_SETFDL_NOTHING, O_NONBLOCK,
                         event_meth_epoll_equiv.get()));
