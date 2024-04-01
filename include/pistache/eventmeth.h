@@ -59,6 +59,9 @@
 #define em_socket_t int
 #endif
 
+#ifndef _USE_LIBEVENT
+#include <sys/eventfd.h>
+#endif
 
 #ifdef _USE_LIBEVENT
 #define GET_ACTUAL_FD(__ev__) EventMethFns::getActualFd(__ev__)
