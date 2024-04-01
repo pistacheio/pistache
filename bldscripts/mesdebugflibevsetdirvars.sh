@@ -8,7 +8,7 @@
 # Sets MESON_BUILD_DIR and MESON_PREFIX_DIR
 #
 # Use by:
-#   source ./mesdebugfrclibevsetdirvars.sh
+#   source bldscripts/mesdebugflibevsetdirvars.sh
 
 if [ "$(uname)" == "Darwin" ]; then
     echo "Error: Don't force libevent on macOS, libevent is on by default"
@@ -24,7 +24,7 @@ else
     fi
 fi
     
-MESON_BUILD_DIR=build${MY_ARCH_NM}.mes.flibev
+MESON_BUILD_DIR=build${MY_ARCH_NM}.mes.flibev.debug
 MESON_PREFIX_DIR=/usr/local
 
 

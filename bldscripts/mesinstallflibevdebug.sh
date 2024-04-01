@@ -5,12 +5,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# Install pistache build
+# Install debug pistache build
 
 # Execute this script from the parent directory by invoking:
-#   bldscripts/mesinstallflibev.sh
+#   bldscripts/mesinstallflibevdebug.sh
 
-source bldscripts/mesflibevsetdirvars.sh
+source bldscripts/mesdebugflibevsetdirvars.sh
 
 # Installs to /usr/local
 

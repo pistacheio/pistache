@@ -8,7 +8,7 @@
 # Sets MESON_BUILD_DIR and MESON_PREFIX_DIR
 #
 # Use by:
-#   source ./messetdirvars.sh
+#   source bldscripts/messetdirvars.sh
 
 
 MY_ARCH_NM=x86
