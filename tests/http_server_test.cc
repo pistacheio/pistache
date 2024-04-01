@@ -238,8 +238,8 @@ int clientLogicFunc(size_t response_size, const std::string& server_page,
 
     // multiple_client_with_requests_to_multithreaded_server could fail
     // intermittently if these counters are not atomic
-    std::atomic_int resolver_counter = 0;
-    std::atomic_int reject_counter   = 0;
+    int resolver_counter = 0;
+    int reject_counter   = 0;
     for (size_t i = 0; i < response_size; ++i)
     {
         PS_TIMEDBG_START;
