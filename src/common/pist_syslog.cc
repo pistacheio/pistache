@@ -75,7 +75,7 @@
 #include <sys/types.h> // for getpid()
 #include <unistd.h>
 
-#include "pistache/PistSysLog.h"
+#include "pistache/pist_syslog.h"
 #include <memory> // for std::shared_ptr
 
 

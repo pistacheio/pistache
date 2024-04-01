@@ -13,7 +13,7 @@
 
 #include <iostream>
 
-#include <pistache/PistSysLog.h>
+#include <pistache/pist_syslog.h>
 #include <pistache/string_logger.h>
 
 namespace Pistache::Log

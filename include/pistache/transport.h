@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include <pistache/PS_TimeLog.h>
+#include <pistache/pist_timelog.h>
 #include <pistache/async.h>
 #include <pistache/mailbox.h>
 #include <pistache/reactor.h>

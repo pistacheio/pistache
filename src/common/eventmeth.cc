@@ -638,8 +638,8 @@ namespace Pistache
 
 #include <chrono>
 
-#include <pistache/PistCheck.h>
-#include <pistache/PS_TimeLog.h>
+#include <pistache/pist_check.h>
+#include <pistache/pist_timelog.h>
 #include <pistache/os.h>
 
 #include <unistd.h> // for close

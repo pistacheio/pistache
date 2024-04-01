@@ -5,9 +5,9 @@
 subprojects/**
 src/common/eventmeth.cc
 include/pistache/eventmeth.h
-src/common/PS_TimeLog.cc
-include/pistache/PS_TimeLog.h
-src/common/PistCheck.cc
-include/pistache/PistCheck.h
-src/common/PistSysLog.cc
-include/pistache/PistSysLog.h
+src/common/pist_timelog.cc
+include/pistache/pist_timelog.h
+src/common/pist_check.cc
+include/pistache/pist_check.h
+src/common/pist_syslog.cc
+include/pistache/pist_syslog.h

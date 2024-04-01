@@ -22,8 +22,8 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-#include <pistache/PistCheck.h>
-#include <pistache/PistSysLog.h>
+#include <pistache/pist_check.h>
+#include <pistache/pist_syslog.h>
 
 #define TRY(...)                                               \
     do                                                         \
