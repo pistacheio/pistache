@@ -18,6 +18,225 @@
 
 namespace Pistache
 {
+    class EventMethEpollEquivImpl
+    {
+    public:
+        int getEventBaseFeatures();
+
+        // Add to interest list
+        // Returns 0 for success, on error -1 with errno set
+        int ctl(EventCtlAction op, // add, mod, or del
+                Fd em_event,
+                short     events, // bitmask of EVM_... events
+                std::chrono::milliseconds * timeval_cptr);
+
+        #define F_SETFDL_NOTHING ((int)((unsigned) 0x8A82))
+        static Fd em_event_new(em_socket_t actual_fd,//file desc, signal, or -1
+                        short flags, // EVM_... flags
+                        // For setfd and setfl arg:
+                        //   F_SETFDL_NOTHING - change nothing
+                        //   Zero or pos number that is not F_SETFDL_NOTHING -
+                        //   set flags to value of arg, and clear any other
+                        //   flags
+                        //   Neg number that is not F_SETFDL_NOTHING - set
+                        //   flags that are set in (0 - arg), but don't clear
+                        //   any flags
+                        int f_setfd_flags, // e.g. FD_CLOEXEC
+                        int f_setfl_flags  // e.g. O_NONBLOCK
+            );
+
+        // If emee is NULL here, it will need to be supplied when settime is
+        // called
+        static Fd em_timer_new(clockid_t clock_id,
+                               // For setfd and setfl arg:
+                               //   F_SETFDL_NOTHING - change nothing
+                               //   Zero or pos number that is not
+                               //   F_SETFDL_NOTHING - set flags to value of
+                               //   arg, and clear any other flags
+                               //   Neg number that is not F_SETFDL_NOTHING
+                               //   - set flags that are set in (0 - arg),
+                               //   but don't clear any flags
+                               int f_setfd_flags,   // e.g. FD_CLOEXEC
+                               int f_setfl_flags,  // e.g. O_NONBLOCK
+                               EventMethEpollEquivImpl * emee/*may be NULL*/);
+
+        // For "eventfd-style" descriptors
+        // Note that FdEventFd does not have an "actual fd" that the caller can
+        // access; the caller must use FdEventFd's member functions instead
+        static FdEventFd em_eventfd_new(unsigned int initval,
+                                 int f_setfd_flags, // e.g. FD_CLOEXEC
+                                 int f_setfl_flags);  // e.g. O_NONBLOCK
+
+        // Waits (if needed) until events are ready, then sets the _out set to
+        // be equal to ready events, and empties the list of ready events
+        // "timeout" is in milliseconds, or -1 means wait indefinitely
+        // Returns number of ready events being returned; or 0 if timed-out
+        // without an event becoming ready; or -1, with errno set, on error
+        int waitThenGetAndEmptyReadyEvs(int timeout,
+                                        std::set<Fd> & ready_evm_events_out);
+
+        // EvEvents are some combination of EVM_TIMEOUT, EVM_READ, EVM_WRITE,
+        // EVM_SIGNAL, EVM_PERSIST, EVM_ET, EVM_FINALIZE, EVM_CLOSED
+        
+        int toEvEvents(const Flags<Polling::NotifyOn>& interest);
+
+        Flags<Polling::NotifyOn> toNotifyOn(Fd fd); // uses fd->ready_flags
+
+
+        // Returns 0 for success, on error -1 with errno set
+        // Will add/remove from interest_ if appropriate
+        static int ctl(EventCtlAction op, // add, mod, or del
+                       EventMethEpollEquivImpl * epoll_equiv,
+                       Fd event, // libevent event
+                       short events, // bitmask per epoll_ctl (EVM_... events)
+                       std::chrono::milliseconds * timeval_cptr);
+
+        // rets 0 on success, -1 error
+        static int closeEvent(EmEvent * em_event);
+        // See also CLOSE_FD macro
+
+        EventMethEpollEquivImpl(int size);
+        ~EventMethEpollEquivImpl();
+
+        // Returns emee if emee is in emee_cptr_set_, or NULL
+        // otherwise. emee_cptr_set_mutex_ is locked inside the function.
+        static EventMethEpollEquivImpl * getEventMethEpollEquivImplFromEmeeSet(
+                                               EventMethEpollEquivImpl * emee);
+        
+        static int getTcpProtNum(); // As per getprotobyname("tcp")
+
+        void handleEventCallback(EmEvent * em_event,
+                                 short ev_flags); // One or more EVM_* flags
+
+    public:
+        static int getActualFd(const EmEvent * em_event);
+
+        // efd should be a pointer to EmEventFd - does dynamic cast
+        static ssize_t writeEfd(EmEvent * efd, const uint64_t val);
+        static ssize_t readEfd(EmEvent * efd, uint64_t * val_out_ptr);
+
+        static ssize_t read(EmEvent * fd, void * buf, size_t count);
+        static ssize_t write(EmEvent * fd, const void * buf, size_t count);
+
+        static EmEvent * getAsEmEvent(EmEventFd * efd);
+
+        static uint64_t getEmEventUserDataUi64(const EmEvent * fd);
+        static Fd getEmEventUserData(const EmEvent * fd);
+        static void setEmEventUserData(EmEvent * fd, uint64_t user_data);
+        static void setEmEventUserData(EmEvent * fd, Fd user_data);
+
+        // For EmEventTmrFd, settime is analagous to timerfd_settime in linux
+        // 
+        // The linux flags TFD_TIMER_ABSTIME and TFD_TIMER_CANCEL_ON_SET are
+        // not supported
+        //
+        // Since pistache doesn't use the "struct itimerspec * old_value"
+        // feature of timerfd_settime, we haven't implemented that feature.
+        // 
+        // If the EventMethEpollEquiv was not specified already (e.g. at
+        // make_new), the it must be specified here
+        // 
+        // Note: settime is in EmEvent rather than solely in EmEventTmrFd since
+        // any kind of event may have a timeout set, not only timer events
+        static int setEmEventTime(EmEvent * fd,
+                         const std::chrono::milliseconds * new_timeval_cptr,
+                         EventMethEpollEquivImpl * emee = NULL/*may be NULL*/);
+
+        static EmEventType getEmEventType(EmEvent * fd);
+
+        static void resetEmEventReadyFlags(EmEvent * fd);
+
+    public:
+        // findEmEventInAnInterestSet scans the interest_ set of all the
+        // EventMethEpollEquiv looking for an EMEvent pointer that matches
+        // arg. If one if found, that matching EmEvent pointer is returned and
+        // *epoll_equiv_cptr_out is set to point to the EventMethEpollEquiv
+        // whose interest_ was found to contain the match; otherwise, NULL is
+        // returned
+        static EmEvent * findEmEventInAnInterestSet(void * arg,
+                             EventMethEpollEquivImpl * * epoll_equiv_cptr_out);
+
+        // Returns number of removals (0, 1 or 2)
+        std::size_t removeFromInterestAndReady(EmEvent * em_event);
+
+        // Note there is a different EventMethBase for each EventMethEpollEquiv
+        EventMethBase * getEventMethBase() {return(event_meth_base_.get());}
+
+    #ifdef DEBUG
+    public:
+        static std::string getActFdAndFdlFlagsAsStr(int actual_fd);
+        // See also macro LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(__ACTUAL_FD__)
+    #endif
+
+    #ifdef DEBUG
+    public:
+        static int getEmEventCount();
+        static int getLibeventEventCount();
+        static int getEventMethEpollEquivCount();
+        static int getEventMethBaseCount();
+        static int getWaitThenGetAndEmptyReadyEvsCount();
+    #endif
+
+    private:
+        // If found in ready_, returns 1
+        // If not found in ready_ but found in interest_, returns 0
+        // If found in neither, returns -1
+        int removeSpecialTimerFromInterestAndReady(
+            EmEvent * loop_timer_eme,
+            std::size_t * remaining_ready_size_out_ptr);
+
+        int waitThenGetAndEmptyReadyEvsHelper(int timeout,
+                                          std::set<Fd> & ready_evm_events_out);
+        
+        // returns FD_EMPTY if not found, returns fd if found
+        Fd findFdInInterest(Fd fd);
+        void addEventToReady(Fd fd, short ev_flags);// One or more EVM_* flags
+
+        #ifdef DEBUG
+        void logPendingOrNot();
+        #endif
+
+        // Add to interest list
+        // Returns 0 for success, on error -1 with errno set
+        // If forceEmEventCtlOnly is true, it will not call the ctl() function
+        // of classes (like EmEventFd) derived from EmEvent but only the ctl
+        // function of EmEvent itself. For internal use only.
+        int ctlEx(EventCtlAction op, // add, mod, or del
+                  Fd em_event,
+                  short     events, // bitmask of EVM_... events
+                  std::chrono::milliseconds * timeval_cptr,
+                  bool forceEmEventCtlOnly);
+        // friend renewEv() so it can call EventMethEpollEquiv::ctlEx
+        // Likewise for EmEventTmrFd::settime
+        friend class EmEventCtr; // for use of renewEv
+        friend class EmEventTmrFd; // for use of settime
+
+        // Note there is a different EventMethBase for each EventMethEpollEquiv
+        std::unique_ptr<EventMethBase> event_meth_base_;
+        
+        // interest list - events that process has asked to be monitored
+        std::set<Fd> interest_;
+        // ready - members of interest list ready for IO
+        std::set<Fd> ready_;
+
+        // If both interest_mutex_ and ready_mutex_ are to be locked, lock
+        // interest FIRST
+        std::mutex interest_mutex_;
+        std::mutex ready_mutex_;
+
+        // Don't access tcp_prot_num directly, use getTcpProtNum()
+        static int tcp_prot_num;
+        static std::mutex tcp_prot_num_mutex;
+
+
+    private:
+        static std::set<EventMethEpollEquivImpl *> emee_cptr_set_;
+        static std::mutex emee_cptr_set_mutex_;
+        // Note: If emee_cptr_set_mutex_ is to be locked together with
+        // interest_mutex_, emee_cptr_set_mutex_ must be locked first
+    };
+    
+        
     class EmEvent
     {
     public:
@@ -56,7 +275,7 @@ namespace Pistache
         // Note: settime is in EmEvent rather than solely in EmEventTmrFd since
         // any kind of event may have a timeout set, not only timer events
         virtual int settime(const std::chrono::milliseconds* new_timeval_cptr,
-                            EventMethEpollEquiv * emee = NULL/*may be NULL*/);
+                         EventMethEpollEquivImpl * emee = NULL/*may be NULL*/);
 
         int disarm();
         int close(); // disarms and closes
@@ -70,7 +289,7 @@ namespace Pistache
 
         virtual int ctl(
             EventCtlAction op, //add,mod,del
-            EventMethEpollEquiv * emee,
+            EventMethEpollEquivImpl * emee,
             short events,     // bitmask of EVM... events
             std::chrono::milliseconds * timeval_cptr);
 
@@ -100,7 +319,8 @@ namespace Pistache
 
         virtual EmEventType getEmEventType() const { return(EmEvReg); }
 
-        EventMethEpollEquiv * getEventMethEpollEquiv();// checks emee_cptr_set_
+        // checks emee_cptr_set_
+        EventMethEpollEquivImpl * getEventMethEpollEquivImpl();
 
         void detachEventMethEpollEquiv();
 
@@ -155,7 +375,7 @@ namespace Pistache
                       // Are set on create, or, sometimes on mod/rearm
 
         bool add_was_artificial_; // This flag is set when the EmEvent has been
-                                  // added to event_meth_epoll_equiv_ but by
+                                  // added to event_meth_epoll_equiv_impl_ but by
                                   // internal eventmeth code not by other
                                   // Pistache code calling
                                   // ctl(EvCtlAdd...). This can happen with
@@ -163,7 +383,7 @@ namespace Pistache
                                   // code calls ctl(EvCtlAdd...) subsequently,
                                   // then add_was_artificial_ is reset.
 
-        EventMethEpollEquiv * event_meth_epoll_equiv_;
+        EventMethEpollEquivImpl * event_meth_epoll_equiv_impl_;
         
     private:
         short ready_flags_; // set when event becomes ready
@@ -227,7 +447,7 @@ namespace Pistache
         uint64_t resetCounterVal();
 
         int ctl(EventCtlAction op, //add,mod,del
-                EventMethEpollEquiv * emee,
+                EventMethEpollEquivImpl * emee,
                 short events,     // bitmask of EVM... events
                 std::chrono::milliseconds * timeval_cptr) override;
 
@@ -371,7 +591,7 @@ namespace Pistache
                               //   but don't clear any flags
                               int f_setfd_flags,   // e.g. FD_CLOEXEC
                               int f_setfl_flags,  // e.g. O_NONBLOCK
-                              EventMethEpollEquiv * emee/*may be NULL*/);
+                              EventMethEpollEquivImpl * emee/*may be NULL*/);
         
 
         // settime is analagous to timerfd_settime in linux
@@ -388,7 +608,7 @@ namespace Pistache
         // Note: settime is in EmEvent rather than solely in EmEventTmrFd since
         // any kind of event may have a timeout set, not only timer events
         int settime(const std::chrono::milliseconds* new_timeval_cptr,
-                    EventMethEpollEquiv * emee = NULL/*may be NULL*/) override;
+                EventMethEpollEquivImpl * emee = NULL/*may be NULL*/) override;
 
 
         EmEventType getEmEventType() const override { return(EmEvTimer); }
@@ -402,11 +622,10 @@ namespace Pistache
 
     private:
         EmEventTmrFd(clockid_t clock_id,
-                     EventMethEpollEquiv * emee/*may be NULL*/);
+                     EventMethEpollEquivImpl * emee/*may be NULL*/);
     };
 
 } // namespace Pistache
-
 
 /* ------------------------------------------------------------------------- */
 
@@ -431,6 +650,282 @@ namespace Pistache
 #include <signal.h> // for signal constants e.g. SIGABRT or SIGURG
 
 #include <event2/event.h>
+
+/* ------------------------------------------------------------------------- */
+//
+// EventMethEpollEquiv methods - mostly just pass calls to
+// EventMethEpollEquivImpl
+//
+
+namespace Pistache
+{
+
+    // size is a hint as to how many FDs to be monitored
+    std::shared_ptr<EventMethEpollEquiv> EventMethEpollEquiv::create(int size)
+    { // size is a hint as to how many FDs to be monitored
+        PS_TIMEDBG_START;
+
+        EventMethEpollEquiv * emee_cptr = new EventMethEpollEquiv(size);
+        return(std::shared_ptr<EventMethEpollEquiv>(emee_cptr));
+    }
+
+    EventMethEpollEquiv::EventMethEpollEquiv(int size)
+    {
+        impl_ = std::make_unique<EventMethEpollEquivImpl>(size);
+        if (!impl_)
+        {
+            PS_LOG_WARNING("impl_ NULL");
+            throw std::runtime_error("impl_ NULL");
+        }
+    }
+    
+
+    // Add to interest list
+    // Returns 0 for success, on error -1 with errno set
+    int EventMethEpollEquiv::ctl(EventCtlAction op, // add, mod, or del
+                                 Fd em_event,
+                                 short     events, // bitmask of EVM_... events
+                                 std::chrono::milliseconds * timeval_cptr)
+    {
+        return(impl_->ctl(op, em_event, events, timeval_cptr));
+    }
+    
+
+    #define F_SETFDL_NOTHING ((int)((unsigned) 0x8A82))
+    Fd EventMethEpollEquiv::em_event_new(
+                        em_socket_t actual_fd,//file desc, signal, or -1
+                        short flags, // EVM_... flags
+                        // For setfd and setfl arg:
+                        //   F_SETFDL_NOTHING - change nothing
+                        //   Zero or pos number that is not F_SETFDL_NOTHING -
+                        //   set flags to value of arg, and clear any other
+                        //   flags
+                        //   Neg number that is not F_SETFDL_NOTHING - set
+                        //   flags that are set in (0 - arg), but don't clear
+                        //   any flags
+                        int f_setfd_flags, // e.g. FD_CLOEXEC
+                        int f_setfl_flags  // e.g. O_NONBLOCK
+            )
+    {
+        return(EventMethEpollEquivImpl::em_event_new(actual_fd, flags,
+                                                f_setfd_flags, f_setfl_flags));
+    }
+    
+
+    // If emee is NULL here, it will need to be supplied when settime is
+    // called
+    Fd EventMethEpollEquiv::em_timer_new(clockid_t clock_id,
+                               // For setfd and setfl arg:
+                               //   F_SETFDL_NOTHING - change nothing
+                               //   Zero or pos number that is not
+                               //   F_SETFDL_NOTHING - set flags to value of
+                               //   arg, and clear any other flags
+                               //   Neg number that is not F_SETFDL_NOTHING
+                               //   - set flags that are set in (0 - arg),
+                               //   but don't clear any flags
+                               int f_setfd_flags,   // e.g. FD_CLOEXEC
+                               int f_setfl_flags,  // e.g. O_NONBLOCK
+                               EventMethEpollEquiv * emee/*may be NULL*/)
+    {
+        return(EventMethEpollEquivImpl::em_timer_new(clock_id,
+                                                  f_setfd_flags, f_setfl_flags,
+                                             emee ? emee->impl_.get() : NULL));
+    }
+    
+
+    // For "eventfd-style" descriptors
+    // Note that FdEventFd does not have an "actual fd" that the caller can
+    // access; the caller must use FdEventFd's member functions instead
+    FdEventFd EventMethEpollEquiv::em_eventfd_new(unsigned int initval,
+                                 int f_setfd_flags, // e.g. FD_CLOEXEC
+                                 int f_setfl_flags) // e.g. O_NONBLOCK
+    {
+        return(EventMethEpollEquivImpl::em_eventfd_new(initval,
+                                                f_setfd_flags, f_setfl_flags));
+    }
+
+    // Waits (if needed) until events are ready, then sets the _out set to
+    // be equal to ready events, and empties the list of ready events
+    // "timeout" is in milliseconds, or -1 means wait indefinitely
+    // Returns number of ready events being returned; or 0 if timed-out
+    // without an event becoming ready; or -1, with errno set, on error
+    int EventMethEpollEquiv::waitThenGetAndEmptyReadyEvs(int timeout,
+                                           std::set<Fd> & ready_evm_events_out)
+    {
+        return(impl_->waitThenGetAndEmptyReadyEvs(timeout,
+                                                  ready_evm_events_out));
+    }
+    
+
+    // EvEvents are some combination of EVM_TIMEOUT, EVM_READ, EVM_WRITE,
+    // EVM_SIGNAL, EVM_PERSIST, EVM_ET, EVM_FINALIZE, EVM_CLOSED
+
+    int EventMethEpollEquiv::toEvEvents(
+                                      const Flags<Polling::NotifyOn>& interest)
+    {
+        return(impl_->toEvEvents(interest));
+    }
+    
+
+    Flags<Polling::NotifyOn> EventMethEpollEquiv::toNotifyOn(Fd fd) 
+    { // uses fd->ready_flags
+        return(impl_->toNotifyOn(fd));
+    }
+
+    // Returns 0 for success, on error -1 with errno set
+    // Will add/remove from interest_ if appropriate
+    int EventMethEpollEquiv::ctl(EventCtlAction op, // add, mod, or del
+                       EventMethEpollEquiv * epoll_equiv,
+                       Fd event, // libevent event
+                       short events, // bitmask per epoll_ctl (EVM_... events)
+                       std::chrono::milliseconds * timeval_cptr)
+    {
+        return(EventMethEpollEquivImpl::ctl(op,
+                                 epoll_equiv ? epoll_equiv->impl_.get() : NULL,
+                                 event, events, timeval_cptr));
+    }
+    
+
+    // rets 0 on success, -1 error
+    int EventMethEpollEquiv::closeEvent(EmEvent * em_event)
+    {
+        return(EventMethEpollEquivImpl::closeEvent(em_event));
+    }
+    // See also CLOSE_FD macro
+
+    EventMethEpollEquiv::~EventMethEpollEquiv()
+    {
+        PS_TIMEDBG_START_THIS;
+
+        impl_ = NULL;
+    }
+    
+
+    int EventMethEpollEquiv::getActualFd(const EmEvent * em_event)
+    {
+        return(EventMethEpollEquivImpl::getActualFd(em_event));
+    }
+    
+
+    // efd should be a pointer to EmEventFd - does dynamic cast
+    ssize_t EventMethEpollEquiv::writeEfd(EmEvent * efd, const uint64_t val)
+    {
+        return(EventMethEpollEquivImpl::writeEfd(efd, val));
+    }
+    
+    ssize_t EventMethEpollEquiv::readEfd(EmEvent * efd, uint64_t * val_out_ptr)
+    {
+        return(EventMethEpollEquivImpl::readEfd(efd, val_out_ptr));
+    }
+    
+
+    ssize_t EventMethEpollEquiv::read(EmEvent * fd, void * buf, size_t count)
+    {
+        return(EventMethEpollEquivImpl::read(fd, buf, count));
+    }
+    
+    ssize_t EventMethEpollEquiv::write(EmEvent * fd,
+                                       const void * buf, size_t count)
+    {
+        return(EventMethEpollEquivImpl::write(fd, buf, count));
+    }
+    
+
+    EmEvent * EventMethEpollEquiv::getAsEmEvent(EmEventFd * efd)
+    {
+        return(EventMethEpollEquivImpl::getAsEmEvent(efd));
+    }
+    
+
+    uint64_t EventMethEpollEquiv::getEmEventUserDataUi64(const EmEvent * fd)
+    {
+        return(EventMethEpollEquivImpl::getEmEventUserDataUi64(fd));
+    }
+    
+    Fd EventMethEpollEquiv::getEmEventUserData(const EmEvent * fd)
+    {
+        return(EventMethEpollEquivImpl::getEmEventUserData(fd));
+    }
+    
+    void EventMethEpollEquiv::setEmEventUserData(EmEvent * fd,
+                                                 uint64_t user_data)
+    {
+        EventMethEpollEquivImpl::setEmEventUserData(fd, user_data);
+    }
+    
+    void EventMethEpollEquiv::setEmEventUserData(EmEvent * fd, Fd user_data)
+    {
+        EventMethEpollEquivImpl::setEmEventUserData(fd, user_data);
+    }
+    
+
+    // For EmEventTmrFd, settime is analagous to timerfd_settime in linux
+    // 
+    // The linux flags TFD_TIMER_ABSTIME and TFD_TIMER_CANCEL_ON_SET are
+    // not supported
+    //
+    // Since pistache doesn't use the "struct itimerspec * old_value"
+    // feature of timerfd_settime, we haven't implemented that feature.
+    // 
+    // If the EventMethEpollEquiv was not specified already (e.g. at
+    // make_new), the it must be specified here
+    // 
+    // Note: settime is in EmEvent rather than solely in EmEventTmrFd since
+    // any kind of event may have a timeout set, not only timer events
+    int EventMethEpollEquiv::setEmEventTime(EmEvent * fd,
+                            const std::chrono::milliseconds * new_timeval_cptr,
+                            EventMethEpollEquiv * emee/*may be NULL*/)
+    {
+        return(EventMethEpollEquivImpl::setEmEventTime(fd, new_timeval_cptr,
+                                             emee ? emee->impl_.get() : NULL));
+    }
+    
+
+    EmEventType EventMethEpollEquiv::getEmEventType(EmEvent * fd)
+    {
+        return(EventMethEpollEquivImpl::getEmEventType(fd));
+    }
+
+    void EventMethEpollEquiv::resetEmEventReadyFlags(EmEvent * fd)
+    {
+        EventMethEpollEquivImpl::resetEmEventReadyFlags(fd);
+    }
+
+    #ifdef DEBUG
+    std::string EventMethEpollEquiv::getActFdAndFdlFlagsAsStr(int actual_fd)
+    {
+        return(EventMethEpollEquivImpl::getActFdAndFdlFlagsAsStr(actual_fd));
+    }
+    #endif
+
+    #ifdef DEBUG
+    int EventMethEpollEquiv::getEmEventCount()
+    {
+        return(EventMethEpollEquivImpl::getEmEventCount());
+    }
+    
+    int EventMethEpollEquiv::getLibeventEventCount()
+    {
+        return(EventMethEpollEquivImpl::getLibeventEventCount());
+    }
+    
+    int EventMethEpollEquiv::getEventMethEpollEquivCount()
+    {
+        return(EventMethEpollEquivImpl::getEventMethEpollEquivCount());
+    }
+    
+    int EventMethEpollEquiv::getEventMethBaseCount()
+    {
+        return(EventMethEpollEquivImpl::getEventMethBaseCount());
+    }
+    
+    int EventMethEpollEquiv::getWaitThenGetAndEmptyReadyEvsCount()
+    {
+        return(EventMethEpollEquivImpl::getWaitThenGetAndEmptyReadyEvsCount());
+    }
+    #endif
+
+} // namespace Pistache
 
 /* ------------------------------------------------------------------------- */
 
@@ -597,9 +1092,9 @@ extern "C" void eventCallbackFn([[maybe_unused]] em_socket_t actual_fd,
         return;
     }
     
-    Pistache::EventMethEpollEquiv * epoll_equiv = NULL;
+    Pistache::EventMethEpollEquivImpl * epoll_equiv = NULL;
     Pistache::EmEvent * em_event =
-        Pistache::EventMethEpollEquiv::findEmEventInAnInterestSet(
+        Pistache::EventMethEpollEquivImpl::findEmEventInAnInterestSet(
                                                             arg, &epoll_equiv);
     if (!em_event)
     {
@@ -609,8 +1104,8 @@ extern "C" void eventCallbackFn([[maybe_unused]] em_socket_t actual_fd,
         return;
     }
     
-    Pistache::EventMethEpollEquiv * em_events_epoll_equiv =
-                                            em_event->getEventMethEpollEquiv();
+    Pistache::EventMethEpollEquivImpl * em_events_epoll_equiv =
+                                        em_event->getEventMethEpollEquivImpl();
     if (em_events_epoll_equiv != epoll_equiv)
     {
         PS_LOG_WARNING_ARGS("epoll_equiv pointers %p and %p do not match",
@@ -1030,9 +1525,9 @@ namespace Pistache
     }
 
     int EmEventCtr::ctl(EventCtlAction op, // add,mod,del
-                       EventMethEpollEquiv * emee,
-                       short events,     // bitmask of EVM... events
-                       std::chrono::milliseconds * timeval_cptr) // override
+                        EventMethEpollEquivImpl * emee,
+                        short events,     // bitmask of EVM... events
+                        std::chrono::milliseconds * timeval_cptr) // override
     {
         PS_TIMEDBG_START_ARGS("EmEventCtr %p", this);
         
@@ -1089,7 +1584,7 @@ namespace Pistache
         PS_TIMEDBG_START_ARGS("EmEventFd %p", this);
         
         short old_flags = flags_;
-        EventMethEpollEquiv * emee = getEventMethEpollEquiv();
+        EventMethEpollEquivImpl * emee = getEventMethEpollEquivImpl();
 
         bool ev_in_emee = false;
         if (ev_)
@@ -1197,7 +1692,7 @@ namespace Pistache
         return(res);
     }
 
-    std::string EventMethEpollEquiv::getActFdAndFdlFlagsAsStr(int actual_fd)
+    std::string EventMethEpollEquivImpl::getActFdAndFdlFlagsAsStr(int actual_fd)
     { // static method
         std::string res("actual-fd ");
         res += std::to_string(actual_fd);
@@ -1311,7 +1806,7 @@ namespace Pistache
     }
 
 EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
-                           EventMethEpollEquiv * emee/*may be NULL*/) :
+                           EventMethEpollEquivImpl * emee/*may be NULL*/) :
     EmEventCtr(0 /*initval*/)
     {
         switch(clock_id)
@@ -1361,7 +1856,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
             break;
         }
 
-        event_meth_epoll_equiv_ = emee;
+        event_meth_epoll_equiv_impl_ = emee;
     }
 
     // macOS claims to support a number of clocks - see "man clock_gettime" for
@@ -1387,7 +1882,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
                               //   but don't clear any flags
                               int f_setfd_flags,   // e.g. FD_CLOEXEC
                               int f_setfl_flags,  // e.g. O_NONBLOCK
-                              EventMethEpollEquiv * emee/*may be NULL*/)
+                              EventMethEpollEquivImpl * emee/*may be NULL*/)
     {
         PS_TIMEDBG_START_ARGS("clock_id %u, fd_flags %s, fl_flags %s, ",
                               clock_id,
@@ -1441,7 +1936,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     // kind of event may have a timeout set, not only timer events
     int EmEventTmrFd::settime(
         const std::chrono::milliseconds * new_timeval_cptr,
-        EventMethEpollEquiv * emee/*may be NULL*/)
+        EventMethEpollEquivImpl * emee/*may be NULL*/)
     {
         uint64_t old_counter_val = resetCounterVal();
         if (old_counter_val)
@@ -1454,24 +1949,25 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
 
         if (emee)
         {
-            if (emee != event_meth_epoll_equiv_)
+            if (emee != event_meth_epoll_equiv_impl_)
             {
-                if (event_meth_epoll_equiv_)
+                if (event_meth_epoll_equiv_impl_)
                 {
                     PS_LOG_WARNING_ARGS("EmEventTmrFd %p EMEE can't be "
                                         "changed, old %p, new %p",
-                                        this, event_meth_epoll_equiv_, emee);
+                                        this, event_meth_epoll_equiv_impl_,
+                                        emee);
                     throw std::invalid_argument(
                         "EmEventTmrFd EMEE cannot be changed");
                     // Note: This could be implemented if needed - allow
                     // EmEvent to belong to multiple EMEE
                 }
-                event_meth_epoll_equiv_ = emee;
+                event_meth_epoll_equiv_impl_ = emee;
             }
         }
-        else if (event_meth_epoll_equiv_)
+        else if (event_meth_epoll_equiv_impl_)
         {
-            emee = event_meth_epoll_equiv_;
+            emee = event_meth_epoll_equiv_impl_;
         }
 
         if ((new_timeval_cptr) && (new_timeval_cptr->count()))
@@ -1680,7 +2176,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
 
     EmEvent::EmEvent() : ev_(NULL), flags_(0),
                          add_was_artificial_(false),
-                         event_meth_epoll_equiv_(NULL), // parent
+                         event_meth_epoll_equiv_impl_(NULL), // parent
                          ready_flags_(0),
                          user_data_(0),
                          requested_f_setfd_flags_(F_SETFDL_NOTHING),
@@ -1729,9 +2225,9 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     // Note: settime is in EmEvent rather than solely in EmEventTmrFd since any
     // kind of event may have a timeout set, not only EmEventTmrFd timer events
     int EmEvent::settime(const std::chrono::milliseconds * new_timeval_cptr,
-                         EventMethEpollEquiv * emee/*may be NULL*/)
+                         EventMethEpollEquivImpl * emee/*may be NULL*/)
     {
-        if ((ev_) && (event_meth_epoll_equiv_))
+        if ((ev_) && (event_meth_epoll_equiv_impl_))
         {
             PS_LOG_WARNING("trying to settime after ev_ created and EMEE "
                          "assigned");
@@ -1743,22 +2239,23 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
 
         if (emee)
         {
-            if (emee != event_meth_epoll_equiv_)
+            if (emee != event_meth_epoll_equiv_impl_)
             {
-                if (event_meth_epoll_equiv_)
+                if (event_meth_epoll_equiv_impl_)
                 {
                     PS_LOG_WARNING_ARGS("EmEventTmrFd %p EMEE can't be "
                                         "changed, old %p, new %p",
-                                      this, event_meth_epoll_equiv_, emee);
+                                        this, event_meth_epoll_equiv_impl_,
+                                        emee);
                     throw std::invalid_argument(
                         "EmEventTmrFd EMEE cannot be changed");
                 }
-                event_meth_epoll_equiv_ = emee;
+                event_meth_epoll_equiv_impl_ = emee;
             }
         }
-        else if (event_meth_epoll_equiv_)
+        else if (event_meth_epoll_equiv_impl_)
         {
-            emee = event_meth_epoll_equiv_;
+            emee = event_meth_epoll_equiv_impl_;
         }
         
         setPriorTv(new_timeval_cptr);
@@ -1775,9 +2272,9 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         // timeout occurs, but which is not needed to get a timeout.
         flgs &= ~EVM_TIMEOUT;
 
-        if ((event_meth_epoll_equiv_) && (flgs & (EVM_CLOSED | EVM_ET)))
+        if ((event_meth_epoll_equiv_impl_) && (flgs & (EVM_CLOSED | EVM_ET)))
         {
-            int base_features= event_meth_epoll_equiv_->getEventBaseFeatures();
+            int base_features= event_meth_epoll_equiv_impl_->getEventBaseFeatures();
             
             if ((flgs & EVM_ET) &&  (!(base_features & EV_FEATURE_ET)))
             {
@@ -1864,23 +2361,24 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         return(0);
     }
 
-    EventMethEpollEquiv * EmEvent::getEventMethEpollEquiv()
+    EventMethEpollEquivImpl * EmEvent::getEventMethEpollEquivImpl()
     {
-        EventMethEpollEquiv * tmp_event_meth_epoll_equiv =
-                                                       event_meth_epoll_equiv_;
+        EventMethEpollEquivImpl * tmp_event_meth_epoll_equiv =
+                                                  event_meth_epoll_equiv_impl_;
         if (!tmp_event_meth_epoll_equiv)
             return(NULL);
 
-        EventMethEpollEquiv * found_emee = EventMethEpollEquiv::
-                 getEventMethEpollEquivFromEmeeSet(tmp_event_meth_epoll_equiv);
+        EventMethEpollEquivImpl * found_emee = EventMethEpollEquivImpl::
+             getEventMethEpollEquivImplFromEmeeSet(tmp_event_meth_epoll_equiv);
         
         if (!found_emee)
         {
             PS_LOG_DEBUG_ARGS("EmEvent %p has "
-                "EventMethEpollEquiv %p unexpectedly not in emee_cptr_set, "
-                "nulling out event_meth_epoll_equiv_",
+                              "EventMethEpollEquivImpl %p "
+                              "unexpectedly not in emee_cptr_set, "
+                              "nulling out event_meth_epoll_equiv_impl_",
                 this, tmp_event_meth_epoll_equiv);
-            event_meth_epoll_equiv_ = NULL;
+            event_meth_epoll_equiv_impl_ = NULL;
             return(NULL);
         }
 
@@ -1896,7 +2394,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         return(tmp_event_meth_epoll_equiv);
     }
 
-    // As well as setting event_meth_epoll_equiv_ to NULL, we must release ev_
+    // As well as setting event_meth_epoll_equiv_impl_ to NULL, we must release ev_
     // (the libevent event) which effectively holds a reference to the libevent
     // event_base class, which is in EventMethBase, which in turn is in
     // EventMethEpollEquiv. So if EventMethEpollEquiv goes out of scope, then
@@ -1913,7 +2411,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
             DEC_DEBUG_CTR(libevent_event);
         }
 
-        event_meth_epoll_equiv_ = NULL;
+        event_meth_epoll_equiv_impl_ = NULL;
     }
     
         
@@ -2120,7 +2618,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
 
     int EmEvent::ctl(
                 EventCtlAction op, // add, mod, or del
-                EventMethEpollEquiv * emee,
+                EventMethEpollEquivImpl * emee,
                 short     events, // bitmask of EVM_... events
                 std::chrono::milliseconds * timeval_cptr)
     {
@@ -2144,10 +2642,10 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
 
         if (emee)
         {
-            EventMethEpollEquiv * prior_emee = event_meth_epoll_equiv_;
+            EventMethEpollEquivImpl * prior_emee= event_meth_epoll_equiv_impl_;
             if (prior_emee != emee)
             {
-                PS_LOG_DEBUG_ARGS("Set event_meth_epoll_equiv_, "
+                PS_LOG_DEBUG_ARGS("Set event_meth_epoll_equiv_impl_, "
                                   "old val %p%s, new %p",
                                   prior_emee, prior_emee ? " (NOT NULL)" : "",
                                   emee);
@@ -2155,9 +2653,9 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
                 {
                     // Check to se if the EmEvent is already in a different
                     // interest_ list
-                    Pistache::EventMethEpollEquiv * owning_emee = NULL;
+                    Pistache::EventMethEpollEquivImpl * owning_emee = NULL;
                     EmEvent * dummy_em_event =
-                        EventMethEpollEquiv::findEmEventInAnInterestSet(
+                        EventMethEpollEquivImpl::findEmEventInAnInterestSet(
                                                            this, &owning_emee);
                     if ((dummy_em_event) && (owning_emee) &&
                         (owning_emee != emee))
@@ -2170,17 +2668,17 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
                     }
                 }
                 
-                event_meth_epoll_equiv_ = emee;
+                event_meth_epoll_equiv_impl_ = emee;
             }
         }
         else
         {
-            Pistache::EventMethEpollEquiv * owning_emee = NULL;
+            Pistache::EventMethEpollEquivImpl * owning_emee = NULL;
             #ifdef DEBUG
             [[maybe_unused]]
             #endif
             EmEvent * dummy_em_event =
-                EventMethEpollEquiv::findEmEventInAnInterestSet(this,
+                EventMethEpollEquivImpl::findEmEventInAnInterestSet(this,
                                                                 &owning_emee);
             PS_LOG_INFO_ARGS("EmEvent %p ctl call has null emee, "
                               "owning_emee %p", this, owning_emee);
@@ -2195,7 +2693,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
                 throw std::invalid_argument("emee null and owning_emee null");
             }
 
-            event_meth_epoll_equiv_ = emee;
+            event_meth_epoll_equiv_impl_ = emee;
         }
         
         int actual_fd = getActualFdPrv();
@@ -2249,7 +2747,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
 
                 ev_ = TRY_NULL_RET(
                     event_new(
-                        event_meth_epoll_equiv_->getEventMethBase()->
+                        event_meth_epoll_equiv_impl_->getEventMethBase()->
                                                                 getEventBase(),
                         actual_fd,
                         flags_,
@@ -2277,15 +2775,15 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
                 // to dump the old libevent event and replace it with a new one
                 // that has different event mask.
 
-                if (!event_meth_epoll_equiv_)
+                if (!event_meth_epoll_equiv_impl_)
                 {
-                    PS_LOG_INFO("event_meth_epoll_equiv_ null");
-                    throw std::runtime_error("event_meth_epoll_equiv_ null");
+                    PS_LOG_INFO("event_meth_epoll_equiv_impl_ null");
+                    throw std::runtime_error("event_meth_epoll_equiv_impl_ null");
                 }
 
                 event_del(ev_);
                 struct event * replacement_ev = event_new(
-                    event_meth_epoll_equiv_->getEventMethBase()->
+                    event_meth_epoll_equiv_impl_->getEventMethBase()->
                                                                 getEventBase(),
                     actual_fd, // keep same actual fd, if any
                     events,
@@ -2328,8 +2826,8 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
 
         resetReadyFlags();
 
-        // Note: Modification of EventMethEpollEquiv::interest_ and ready_ are
-        // handled in EventMethEpollEquiv::ctl after this EmEvent::ctl has
+        // Note: Modification of EventMethEpollEquivImpl::interest_ and ready_ are
+        // handled in EventMethEpollEquivImpl::ctl after this EmEvent::ctl has
         // returned
         switch(op)
         {
@@ -2379,16 +2877,16 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         
 /* ------------------------------------------------------------------------- */
 
-    int EventMethEpollEquiv::tcp_prot_num = -1;
-    std::mutex EventMethEpollEquiv::tcp_prot_num_mutex;
+    int EventMethEpollEquivImpl::tcp_prot_num = -1;
+    std::mutex EventMethEpollEquivImpl::tcp_prot_num_mutex;
 
-    int EventMethEpollEquiv::getActualFd(const EmEvent * em_event)
+    int EventMethEpollEquivImpl::getActualFd(const EmEvent * em_event)
     { // static
         // Returns -1 if no actual Fd
         return(EmEvent::getActualFd(em_event));
     }
 
-    ssize_t EventMethEpollEquiv::writeEfd(EmEvent * efd, const uint64_t val)
+    ssize_t EventMethEpollEquivImpl::writeEfd(EmEvent * efd, const uint64_t val)
     { // static
         EmEventFd * this_efd = EmEventFd::getFromEmEventCPtrNoLogIfNull(efd);
         if (!this_efd)
@@ -2397,7 +2895,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         return(this_efd->write(val));
     }
 
-    ssize_t EventMethEpollEquiv::readEfd(EmEvent * efd,
+    ssize_t EventMethEpollEquivImpl::readEfd(EmEvent * efd,
                                          uint64_t * val_out_ptr)
     { // static
         EmEventFd * this_efd = EmEventFd::getFromEmEventCPtrNoLogIfNull(efd);
@@ -2407,7 +2905,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         return(this_efd->read(val_out_ptr));
     }
 
-    ssize_t EventMethEpollEquiv::read(EmEvent * fd, void * buf, size_t count)
+    ssize_t EventMethEpollEquivImpl::read(EmEvent * fd, void * buf, size_t count)
     { // static
         if (!fd)
         {
@@ -2419,7 +2917,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         return(fd->read(buf, count));
     }
     
-    ssize_t EventMethEpollEquiv::write(EmEvent * fd,
+    ssize_t EventMethEpollEquivImpl::write(EmEvent * fd,
                                        const void * buf, size_t count)
     { // static
         if (!fd)
@@ -2432,7 +2930,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         return(fd->write(buf, count));
     }
 
-    EmEvent * EventMethEpollEquiv::getAsEmEvent(EmEventFd * efd)
+    EmEvent * EventMethEpollEquivImpl::getAsEmEvent(EmEventFd * efd)
     { // static
         if (!efd)
             return(NULL);
@@ -2440,7 +2938,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         return(efd->getAsFd());
     }
     
-    uint64_t EventMethEpollEquiv::getEmEventUserDataUi64(const EmEvent * fd)
+    uint64_t EventMethEpollEquivImpl::getEmEventUserDataUi64(const EmEvent * fd)
     { // static
         if (!fd)
         {
@@ -2451,7 +2949,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         return(fd->getUserDataUi64());
     }
     
-    Fd EventMethEpollEquiv::getEmEventUserData(const EmEvent * fd)
+    Fd EventMethEpollEquivImpl::getEmEventUserData(const EmEvent * fd)
     { // static
         if (!fd)
         {
@@ -2462,7 +2960,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         return(fd->getUserData());
     }
     
-    void EventMethEpollEquiv::setEmEventUserData(EmEvent * fd,
+    void EventMethEpollEquivImpl::setEmEventUserData(EmEvent * fd,
                                                  uint64_t user_data)
     { // static
         if (!fd)
@@ -2475,7 +2973,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     }
 
     // sets fd's user-data to fd
-    void EventMethEpollEquiv::setEmEventUserData(EmEvent * fd, Fd user_data)
+    void EventMethEpollEquivImpl::setEmEventUserData(EmEvent * fd, Fd user_data)
     { // static
         if (!fd)
         {
@@ -2486,7 +2984,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         fd->setUserData((uint64_t)user_data);
     }
 
-    void EventMethEpollEquiv::resetEmEventReadyFlags(EmEvent * fd)
+    void EventMethEpollEquivImpl::resetEmEventReadyFlags(EmEvent * fd)
     { // static
         if (!fd)
         {
@@ -2510,9 +3008,9 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     // 
     // Note: settime is in EmEvent rather than solely in EmEventTmrFd since
     // any kind of event may have a timeout set, not only timer events
-    int EventMethEpollEquiv::setEmEventTime(EmEvent * fd,
+    int EventMethEpollEquivImpl::setEmEventTime(EmEvent * fd,
                             const std::chrono::milliseconds * new_timeval_cptr,
-                            EventMethEpollEquiv * emee/*may be NULL*/)
+                            EventMethEpollEquivImpl * emee/*may be NULL*/)
     { // static
         if (!fd)
         {
@@ -2524,7 +3022,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         return(fd->settime(new_timeval_cptr, emee));
     }
 
-    EmEventType EventMethEpollEquiv::getEmEventType(EmEvent * fd)
+    EmEventType EventMethEpollEquivImpl::getEmEventType(EmEvent * fd)
     { // static
         if (!fd)
             return(EmEvNone);
@@ -2532,7 +3030,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         return(fd->getEmEventType());
     }
 
-    int EventMethEpollEquiv::getTcpProtNum()
+    int EventMethEpollEquivImpl::getTcpProtNum()
     {
         PS_TIMEDBG_START;
         
@@ -2551,8 +3049,8 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
 
     
     
-    std::set<EventMethEpollEquiv *> EventMethEpollEquiv::emee_cptr_set_;
-    std::mutex EventMethEpollEquiv::emee_cptr_set_mutex_;
+    std::set<EventMethEpollEquivImpl*> EventMethEpollEquivImpl::emee_cptr_set_;
+    std::mutex EventMethEpollEquivImpl::emee_cptr_set_mutex_;
 
     // findEmEventInAnInterestSet scans the interest_ set of all the
     // EventMethEpollEquiv looking for an EMEvent pointer that matches arg. If
@@ -2560,8 +3058,8 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     // *epoll_equiv_cptr_out is set to point to the EventMethEpollEquiv whose
     // interest_ was found to contain the match; otherwise, NULL is returned
     // Note: is static function.
-    EmEvent * EventMethEpollEquiv::findEmEventInAnInterestSet(
-                      void * arg, EventMethEpollEquiv * * epoll_equiv_cptr_out)
+    EmEvent * EventMethEpollEquivImpl::findEmEventInAnInterestSet(
+                  void * arg, EventMethEpollEquivImpl * * epoll_equiv_cptr_out)
     {
         PS_TIMEDBG_START;
         
@@ -2582,11 +3080,11 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
 
         GUARD_AND_DBG_LOG(emee_cptr_set_mutex_);
 
-        for(std::set<EventMethEpollEquiv *>::iterator it =
+        for(std::set<EventMethEpollEquivImpl *>::iterator it =
                                                         emee_cptr_set_.begin();
             it != emee_cptr_set_.end(); it++)
         {
-            EventMethEpollEquiv * epoll_equiv = *it;
+            EventMethEpollEquivImpl * epoll_equiv = *it;
             if (!epoll_equiv)
             {
                 PS_LOG_WARNING("epoll_equiv null");
@@ -2605,7 +3103,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     }
 
     // Returns number of removals (0, 1 or 2)
-    std::size_t EventMethEpollEquiv::removeFromInterestAndReady(
+    std::size_t EventMethEpollEquivImpl::removeFromInterestAndReady(
                                                      EmEvent * em_event)
     {
         GUARD_AND_DBG_LOG(interest_mutex_);
@@ -2620,62 +3118,40 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     }
     
     #ifdef DEBUG
-    int EventMethEpollEquiv::getEmEventCount()
+    int EventMethEpollEquivImpl::getEmEventCount()
         { return(em_event_count__); }
     
-    int EventMethEpollEquiv::getLibeventEventCount()
+    int EventMethEpollEquivImpl::getLibeventEventCount()
         { return(libevent_event_count__); }
     
-    int EventMethEpollEquiv::getEventMethEpollEquivCount()
+    int EventMethEpollEquivImpl::getEventMethEpollEquivCount()
         { return(event_meth_epoll_equiv_count__); }
     
-    int EventMethEpollEquiv::getEventMethBaseCount()
+    int EventMethEpollEquivImpl::getEventMethBaseCount()
         { return(event_meth_base_count__); }
 
-    int EventMethEpollEquiv::getWaitThenGetAndEmptyReadyEvsCount()
+    int EventMethEpollEquivImpl::getWaitThenGetAndEmptyReadyEvsCount()
         { return(wait_then_get_count__); }
     #endif
     
-    EventMethEpollEquiv * EventMethEpollEquiv::createCPtr(int size)
+    EventMethEpollEquivImpl::EventMethEpollEquivImpl(int size) :
+        event_meth_base_(std::make_unique<EventMethBase>())
     { // size is a hint as to how many FDs to be monitored
-        PS_TIMEDBG_START;
         
+        PS_TIMEDBG_START;
+
         if (size <= 0)
         {
             PS_LOG_WARNING("size non-positive");
             throw std::invalid_argument("size non-positive");
         }
 
-        EventMethBase * event_meth_base = new EventMethBase();
-        if (!event_meth_base)
-        {
-            PS_LOG_WARNING("EventMethBase * null");
-            throw std::runtime_error("EventMethBase * null");
-        }
-
-        return(new EventMethEpollEquiv(event_meth_base));
-    }
-    
-    std::shared_ptr<EventMethEpollEquiv> EventMethEpollEquiv::create(int size)
-    { // size is a hint as to how many FDs to be monitored
-        PS_TIMEDBG_START;
-        
-        std::shared_ptr<EventMethEpollEquiv> res(createCPtr(size));
-        
-        return(res);
-    }
-    
-    EventMethEpollEquiv::EventMethEpollEquiv(EventMethBase * event_meth_base)
-        : event_meth_base_(event_meth_base)
-    {
-        PS_TIMEDBG_START;
-        
         if (!event_meth_base_)
         {
             PS_LOG_WARNING("EventMethBase * null");
             throw std::runtime_error("EventMethBase * null");
         }
-        
+
         GUARD_AND_DBG_LOG(emee_cptr_set_mutex_);
 
         emee_cptr_set_.insert(this);
@@ -2683,7 +3159,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         INC_DEBUG_CTR(event_meth_epoll_equiv);
     }
 
-    EventMethEpollEquiv::~EventMethEpollEquiv()
+    EventMethEpollEquivImpl::~EventMethEpollEquivImpl()
     {
         DEC_DEBUG_CTR(event_meth_epoll_equiv);
 
@@ -2692,6 +3168,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         // When emee_cptr_set_mutex_ is to be locked together with
         // interest_mutex_, emee_cptr_set_mutex_ must be locked first
         GUARD_AND_DBG_LOG(emee_cptr_set_mutex_);
+        emee_cptr_set_.erase(this);
 
         GUARD_AND_DBG_LOG(interest_mutex_);
         for(std::set<Fd>::iterator it = interest_.begin();
@@ -2715,10 +3192,6 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         }
         ready_.clear();
 
-        // Note: We are deliberately leaving interest_ and ready_ locked while
-        // removing this from emee_cptr_set_
-        emee_cptr_set_.erase(this);
-
         // exit libevent loop
         // 
         // Note we call event_base_loopbreak not event_base_loopexit; the later
@@ -2730,27 +3203,26 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
 
     // Returns emee if emee is in emee_cptr_set_, or NULL
     // otherwise. emee_cptr_set_mutex_ is locked inside the function.
-    EventMethEpollEquiv * EventMethEpollEquiv::
-                  getEventMethEpollEquivFromEmeeSet(EventMethEpollEquiv * emee)
+    EventMethEpollEquivImpl * EventMethEpollEquivImpl::
+          getEventMethEpollEquivImplFromEmeeSet(EventMethEpollEquivImpl * emee)
     {
         GUARD_AND_DBG_LOG(emee_cptr_set_mutex_);
         
-        std::set<EventMethEpollEquiv *>::iterator it(
+        std::set<EventMethEpollEquivImpl *>::iterator it(
                                                     emee_cptr_set_.find(emee));
         if (it == emee_cptr_set_.end())
             return(NULL);
         return(emee);
     }
-    
 
-    int EventMethEpollEquiv::getEventBaseFeatures() 
+    int EventMethEpollEquivImpl::getEventBaseFeatures() 
     {
         PS_TIMEDBG_START;
         
         return(event_meth_base_->getEventBaseFeatures());
     }
 
-    int EventMethEpollEquiv::toEvEvents(
+    int EventMethEpollEquivImpl::toEvEvents(
                                       const Flags<Polling::NotifyOn>& interest)
     {
         PS_TIMEDBG_START;
@@ -2784,7 +3256,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         return events;
     }
 
-    Flags<Polling::NotifyOn> EventMethEpollEquiv::toNotifyOn(Fd fd)
+    Flags<Polling::NotifyOn> EventMethEpollEquivImpl::toNotifyOn(Fd fd)
     {
         PS_TIMEDBG_START;
         
@@ -2842,7 +3314,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         return flags;
     }
 
-    Fd EventMethEpollEquiv::findFdInInterest(Fd fd)
+    Fd EventMethEpollEquivImpl::findFdInInterest(Fd fd)
     {
         PS_TIMEDBG_START;
 
@@ -2855,7 +3327,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     }
 
     // ev_flags is one or more EV_* flags
-    void EventMethEpollEquiv::handleEventCallback(EmEvent * em_event,
+    void EventMethEpollEquivImpl::handleEventCallback(EmEvent * em_event,
                                                   short ev_flags)
     {
         PS_TIMEDBG_START_SQUARE;
@@ -2873,7 +3345,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     }
     
     
-    void EventMethEpollEquiv::addEventToReady(Fd fd, short ev_flags)
+    void EventMethEpollEquivImpl::addEventToReady(Fd fd, short ev_flags)
     {
         PS_TIMEDBG_START_ARGS("EmEvent %p", fd);
 
@@ -2914,7 +3386,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     };
     #endif
 
-    int EventMethEpollEquiv::waitThenGetAndEmptyReadyEvs(int timeout,
+    int EventMethEpollEquivImpl::waitThenGetAndEmptyReadyEvs(int timeout,
                                            std::set<Fd> & ready_evm_events_out)
     {
         #ifdef DEBUG
@@ -2942,7 +3414,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     }
 
     #ifdef DEBUG
-    void EventMethEpollEquiv::logPendingOrNot()
+    void EventMethEpollEquivImpl::logPendingOrNot()
     {
         PS_TIMEDBG_START;
 
@@ -3011,7 +3483,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     // If found in ready_, returns 1
     // If not found in ready_ but found in interest_, returns 0
     // If found in neither, returns -1
-    int EventMethEpollEquiv::removeSpecialTimerFromInterestAndReady(
+    int EventMethEpollEquivImpl::removeSpecialTimerFromInterestAndReady(
         EmEvent * loop_timer_eme,
         std::size_t * remaining_ready_size_out_ptr)
     {
@@ -3044,7 +3516,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     // "timeout" is in milliseconds, or -1 means wait indefinitely
     // Returns number of ready events being returned; or 0 if timed-out without
     // an event becoming ready; or -1, with errno set, on error
-    int EventMethEpollEquiv::waitThenGetAndEmptyReadyEvsHelper(int timeout,
+    int EventMethEpollEquivImpl::waitThenGetAndEmptyReadyEvsHelper(int timeout,
                                            std::set<Fd> & ready_evm_events_out)
     {
         PS_TIMEDBG_START_ARGS("EMEE %p", this);
@@ -3229,7 +3701,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         return(res);
     }
 
-    Fd EventMethEpollEquiv::em_event_new( // static method
+    Fd EventMethEpollEquivImpl::em_event_new( // static method
                              em_socket_t actual_fd, // file desc, signal, or -1
                              short flags, // EVM_... flags
                              // For setfd and setfl arg:
@@ -3248,7 +3720,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
                                  f_setfd_flags, f_setfl_flags));
     }
 
-    Fd EventMethEpollEquiv::em_timer_new(clockid_t clock_id,
+    Fd EventMethEpollEquivImpl::em_timer_new(clockid_t clock_id,
                               // For setfd and setfl arg:
                               //   F_SETFDL_NOTHING - change nothing
                               //   Zero or pos number that is not
@@ -3259,7 +3731,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
                               //   but don't clear any flags
                               int f_setfd_flags,   // e.g. FD_CLOEXEC
                               int f_setfl_flags,  // e.g. O_NONBLOCK
-                              EventMethEpollEquiv * emee/*may be NULL*/)
+                              EventMethEpollEquivImpl * emee/*may be NULL*/)
     {
         return(EmEventTmrFd::make_new(clock_id, f_setfd_flags, f_setfl_flags,
                                       emee));
@@ -3269,7 +3741,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     // 
     // Note that FdEventFd does not have an "actual fd" that the caller can
     // access; the caller must use FdEventFd's member functions instead
-    FdEventFd EventMethEpollEquiv::em_eventfd_new(unsigned int initval,
+    FdEventFd EventMethEpollEquivImpl::em_eventfd_new(unsigned int initval,
                                           int f_setfd_flags, // e.g. FD_CLOEXEC
                                           int f_setfl_flags) // e.g. O_NONBLOCK
     {
@@ -3278,7 +3750,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
 
     // Add to interest list
     // Returns 0 for success, on error -1 with errno set
-    int EventMethEpollEquiv::ctl(EventCtlAction op, // add, mod, or del
+    int EventMethEpollEquivImpl::ctl(EventCtlAction op, // add, mod, or del
                                  Fd em_event,
                                  short     events, // bitmask of EVM_... events
                                  std::chrono::milliseconds * timeval_cptr)
@@ -3299,8 +3771,8 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
 
     // Returns 0 for success, on error -1 with errno set
     // Will add/remove from interest_ if appropriate
-    int EventMethEpollEquiv::ctl(EventCtlAction op, // add, mod, or del
-                   EventMethEpollEquiv * epoll_equiv,
+    int EventMethEpollEquivImpl::ctl(EventCtlAction op, // add, mod, or del
+                   EventMethEpollEquivImpl * epoll_equiv,
                    Fd event, // libevent event
                    short     events, // bitmask per epoll_ctl (EVM_... events)
                    std::chrono::milliseconds * timeval_cptr)
@@ -3322,7 +3794,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     // If forceEmEventCtlOnly is true, it will not call the ctl() function
     // of classes (like EmEventFd) derived from EmEvent but only the ctl
     // function of EmEvent itself. For internal use only.
-    int EventMethEpollEquiv::ctlEx(EventCtlAction op, // add, mod, or del
+    int EventMethEpollEquivImpl::ctlEx(EventCtlAction op, // add, mod, or del
                                    Fd em_event,
                                    short events, // bitmask of EVM... events
                                    std::chrono::milliseconds * timeval_cptr,
@@ -3462,7 +3934,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     }
 
      // rets 0 on success, -1 error
-    int EventMethEpollEquiv::closeEvent(EmEvent * em_event)
+    int EventMethEpollEquivImpl::closeEvent(EmEvent * em_event)
     {
         PS_TIMEDBG_START;
         
@@ -3477,8 +3949,8 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
 
         if (res == 0)
         {
-            EventMethEpollEquiv * epoll_equiv_cptr =
-                                            em_event->getEventMethEpollEquiv();
+            EventMethEpollEquivImpl * epoll_equiv_cptr =
+                                        em_event->getEventMethEpollEquivImpl();
             if ((!epoll_equiv_cptr) && 
                 (!findEmEventInAnInterestSet((void *)em_event,
                                              &epoll_equiv_cptr)))

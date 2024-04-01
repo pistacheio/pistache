@@ -244,14 +244,14 @@ namespace Pistache
         EmEvEventFd   = 2,
         EmEvTimer     = 3
     };
-        
+
+    class EventMethEpollEquivImpl;
+
     class EventMethEpollEquiv
     { // See man epoll, epoll_create, epoll_ctl, epl_wait
     public:
         // size is a hint as to how many FDs to be monitored
         static std::shared_ptr<EventMethEpollEquiv> create(int size);
-
-        int getEventBaseFeatures();
 
         // Add to interest list
         // Returns 0 for success, on error -1 with errno set
@@ -307,11 +307,12 @@ namespace Pistache
 
         // EvEvents are some combination of EVM_TIMEOUT, EVM_READ, EVM_WRITE,
         // EVM_SIGNAL, EVM_PERSIST, EVM_ET, EVM_FINALIZE, EVM_CLOSED
-        
+
+        // !!!! ? Could be static?
         int toEvEvents(const Flags<Polling::NotifyOn>& interest);
 
+        // !!!! ? Could be static?
         Flags<Polling::NotifyOn> toNotifyOn(Fd fd); // uses fd->ready_flags
-
 
         // Returns 0 for success, on error -1 with errno set
         // Will add/remove from interest_ if appropriate
@@ -332,11 +333,6 @@ namespace Pistache
         static EventMethEpollEquiv * getEventMethEpollEquivFromEmeeSet(
                                                    EventMethEpollEquiv * emee);
         
-        static int getTcpProtNum(); // As per getprotobyname("tcp")
-
-        void handleEventCallback(EmEvent * em_event,
-                                 short ev_flags); // One or more EVM_* flags
-
     public:
         static int getActualFd(const EmEvent * em_event);
 
@@ -375,22 +371,6 @@ namespace Pistache
 
         static void resetEmEventReadyFlags(EmEvent * fd);
 
-    public:
-        // findEmEventInAnInterestSet scans the interest_ set of all the
-        // EventMethEpollEquiv looking for an EMEvent pointer that matches
-        // arg. If one if found, that matching EmEvent pointer is returned and
-        // *epoll_equiv_cptr_out is set to point to the EventMethEpollEquiv
-        // whose interest_ was found to contain the match; otherwise, NULL is
-        // returned
-        static EmEvent * findEmEventInAnInterestSet(void * arg,
-                                 EventMethEpollEquiv * * epoll_equiv_cptr_out);
-
-        // Returns number of removals (0, 1 or 2)
-        std::size_t removeFromInterestAndReady(EmEvent * em_event);
-
-        // Note there is a different EventMethBase for each EventMethEpollEquiv
-        EventMethBase * getEventMethBase() {return(event_meth_base_.get());}
-
     #ifdef DEBUG
     public:
         static std::string getActFdAndFdlFlagsAsStr(int actual_fd);
@@ -407,74 +387,9 @@ namespace Pistache
     #endif
 
     private:
-        // size is a hint as to how many FDs to be monitored
-        static EventMethEpollEquiv * createCPtr(int size);
-        
-        EventMethEpollEquiv(EventMethBase * event_meth_base);
+        EventMethEpollEquiv(int size);
 
-        // If found in ready_, returns 1
-        // If not found in ready_ but found in interest_, returns 0
-        // If found in neither, returns -1
-        int removeSpecialTimerFromInterestAndReady(
-            EmEvent * loop_timer_eme,
-            std::size_t * remaining_ready_size_out_ptr);
-
-        int waitThenGetAndEmptyReadyEvsHelper(int timeout,
-                                          std::set<Fd> & ready_evm_events_out);
-        
-        // returns FD_EMPTY if not found, returns fd if found
-        Fd findFdInInterest(Fd fd);
-        void addEventToReady(Fd fd, short ev_flags);// One or more EVM_* flags
-
-        #ifdef DEBUG
-        void logPendingOrNot();
-        #endif
-
-        // Add to interest list
-        // Returns 0 for success, on error -1 with errno set
-        // If forceEmEventCtlOnly is true, it will not call the ctl() function
-        // of classes (like EmEventFd) derived from EmEvent but only the ctl
-        // function of EmEvent itself. For internal use only.
-        int ctlEx(EventCtlAction op, // add, mod, or del
-                  Fd em_event,
-                  short     events, // bitmask of EVM_... events
-                  std::chrono::milliseconds * timeval_cptr,
-                  bool forceEmEventCtlOnly);
-        // friend renewEv() so it can call EventMethEpollEquiv::ctlEx
-        // Likewise for EmEventTmrFd::settime
-        friend class EmEventCtr; // for use of renewEv
-        friend class EmEventTmrFd; // for use of settime
-        /*
-         * !!!!
-        friend void EmEventCtr::renewEv();
-        friend int EmEventTmrFd::settime(const std::chrono::milliseconds *,
-                                         EventMethEpollEquiv * );
-        */
-
-        // Note there is a different EventMethBase for each EventMethEpollEquiv
-        std::unique_ptr<EventMethBase> event_meth_base_;
-        
-        // interest list - events that process has asked to be monitored
-        std::set<Fd> interest_;
-        // ready - members of interest list ready for IO
-        std::set<Fd> ready_;
-
-        // If both interest_mutex_ and ready_mutex_ are to be locked, lock
-        // interest FIRST
-        std::mutex interest_mutex_;
-        std::mutex ready_mutex_;
-
-        // Don't access tcp_prot_num directly, use getTcpProtNum()
-        static int tcp_prot_num;
-        static std::mutex tcp_prot_num_mutex;
-
-
-    private:
-        static std::set<EventMethEpollEquiv *> emee_cptr_set_;
-        static std::mutex emee_cptr_set_mutex_;
-        // Note: If emee_cptr_set_mutex_ is to be locked together with
-        // interest_mutex_, emee_cptr_set_mutex_ must be locked first
-        
+        std::unique_ptr<EventMethEpollEquivImpl> impl_;
     };
 
     // To enable to_string of an Fd
