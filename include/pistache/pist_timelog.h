@@ -5,7 +5,7 @@
  */
 
 /******************************************************************************
- * PS_TimeLog.h
+ * pist_timelog.h
  *
  * Utility to log start and end time of activities
  *
@@ -30,7 +30,7 @@
 
 // ---------------------------------------------------------------------------
 
-#include <pistache/PistSysLog.h>
+#include <pistache/pist_syslog.h>
 
 #ifdef DEBUG
 #define PS_TIMINGS_DBG 1

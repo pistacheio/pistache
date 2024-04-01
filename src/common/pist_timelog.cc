@@ -5,13 +5,13 @@
  */
 
 /******************************************************************************
- * PS_TimeLog.cpp
+ * pist_timelog.cpp
  *
  * Utility to log start and end time of activities
  *
  */
 
-#include <pistache/PS_TimeLog.h>
+#include <pistache/pist_timelog.h>
 
 #ifdef DEBUG
 unsigned __PS_TIMEDBG::mUniCounter = 0;

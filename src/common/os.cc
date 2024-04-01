@@ -15,7 +15,7 @@
 
 #include <fcntl.h>
 
-#include <pistache/PS_TimeLog.h>
+#include <pistache/pist_timelog.h>
 
 #include <pistache/eventmeth.h>
 #ifndef _USE_LIBEVENT

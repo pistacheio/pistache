@@ -20,7 +20,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <pistache/PS_TimeLog.h>
+#include <pistache/pist_timelog.h>
 
 using namespace std::string_literals;
 

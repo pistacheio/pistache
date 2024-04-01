@@ -17,7 +17,7 @@
 #include <pistache/common.h>
 #include <pistache/os.h>
 
-#include <pistache/PS_TimeLog.h>
+#include <pistache/pist_timelog.h>
 
 namespace Pistache
 {

@@ -5,7 +5,7 @@
  */
 
 /******************************************************************************
- * PistCheck.cc
+ * pist_check.cc
  * 
  * Debugging breakpoints
  *
@@ -23,8 +23,8 @@
 #include <execinfo.h>
 
 #include <dlfcn.h>
-#include "pistache/PistSysLog.h"
-#include "pistache/PistCheck.h"
+#include "pistache/pist_syslog.h"
+#include "pistache/pist_check.h"
 
 /*****************************************************************************/
 
