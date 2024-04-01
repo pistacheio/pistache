@@ -7,7 +7,10 @@
 #
 # Install debug pistache build
 
-source ./mesdebugflibevsetdirvars.sh
+# Execute this script from the parent directory by invoking:
+#   bldscripts/mesinstallflibev.sh
+
+source bldscripts/mesdebugflibevsetdirvars.sh
 
 # Installs to /usr/local
 

@@ -26,11 +26,11 @@ Then, install the necessary brew packages via terminal command line:
 
 Convenience shell scripts are provided to make the build. At terminal,
 do:
-  ./mesbuild.sh
+  bldscripts/mesbuild.sh
 To test:
-  ./mestest.sh
+  bldscripts/mestest.sh
 To install:
-  ./mesinstall.sh
+  bldscripts/mesinstall.sh
 
 The meaning of each convenience script is as follows:
   mesbuild.sh - build release version using meson

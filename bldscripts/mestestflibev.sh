@@ -8,7 +8,10 @@
 
 # Run the test suite for Meson force-libevent debug build
 
-source ./mesdebugflibevsetdirvars.sh
+# Execute this script from the parent directory by invoking:
+#   bldscripts/mestestflibev.sh
+
+source bldscripts/mesdebugflibevsetdirvars.sh
 
 if [ -e "./${MESON_BUILD_DIR}" ]
 then

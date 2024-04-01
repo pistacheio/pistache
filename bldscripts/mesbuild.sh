@@ -5,24 +5,25 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# Make debug build that forces use of libevent
 
-source ./mesdebugflibevsetdirvars.sh
+# Execute this script from the parent directory by invoking:
+#   bldscripts/mesbuild.sh
+
+source bldscripts/messetdirvars.sh
 
 if [ -e "./${MESON_BUILD_DIR}" ]
 then
     echo "Using existing build dir ${MESON_BUILD_DIR}"
 else
     meson setup ${MESON_BUILD_DIR} \
-    --buildtype=debug \
+    --buildtype=release \
     -DPISTACHE_USE_SSL=true \
     -DPISTACHE_BUILD_EXAMPLES=true \
     -DPISTACHE_BUILD_TESTS=true \
     -DPISTACHE_BUILD_DOCS=false \
     -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true \
-    -DPISTACHE_DEBUG=true \
     --prefix="${MESON_PREFIX_DIR}" \
-    -DPISTACHE_FORCE_LIBEVENT=true
+#    -DPISTACHE_FORCE_LIBEVENT=true
     
 fi
 
