@@ -380,8 +380,8 @@ namespace Pistache
                       // Are set on create, or, sometimes on mod/rearm
 
         bool add_was_artificial_; // This flag is set when the EmEvent has been
-                                  // added to event_meth_epoll_equiv_impl_ but by
-                                  // internal eventmeth code not by other
+                                  // added to event_meth_epoll_equiv_impl_ but
+                                  // by internal eventmeth code not by other
                                   // Pistache code calling
                                   // ctl(EvCtlAdd...). This can happen with
                                   // settime, for instance. If other pistache
@@ -1706,7 +1706,8 @@ namespace Pistache
         return(res);
     }
 
-    std::string EventMethEpollEquivImpl::getActFdAndFdlFlagsAsStr(int actual_fd)
+    std::string EventMethEpollEquivImpl::getActFdAndFdlFlagsAsStr(
+                                                                 int actual_fd)
     { // static method
         std::string res("actual-fd ");
         res += std::to_string(actual_fd);
@@ -2288,9 +2289,10 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
 
         if ((event_meth_epoll_equiv_impl_) && (flgs & (EVM_CLOSED | EVM_ET)))
         {
-            int base_features= event_meth_epoll_equiv_impl_->getEventBaseFeatures();
+            int base_features =
+                event_meth_epoll_equiv_impl_->getEventBaseFeatures();
             
-            if ((flgs & EVM_ET) &&  (!(base_features & EV_FEATURE_ET)))
+            if ((flgs & EVM_ET) && (!(base_features & EV_FEATURE_ET)))
             {
                 PS_LOG_INFO("No edge trigger");
                 throw std::system_error(EOPNOTSUPP,
@@ -2408,11 +2410,11 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         return(tmp_event_meth_epoll_equiv);
     }
 
-    // As well as setting event_meth_epoll_equiv_impl_ to NULL, we must release ev_
-    // (the libevent event) which effectively holds a reference to the libevent
-    // event_base class, which is in EventMethBase, which in turn is in
-    // EventMethEpollEquiv. So if EventMethEpollEquiv goes out of scope, then
-    // ev_ needs to be freed
+    // As well as setting event_meth_epoll_equiv_impl_ to NULL, we must release
+    // ev_ (the libevent event) which effectively holds a reference to the
+    // libevent event_base class, which is in EventMethBase, which in turn is
+    // in EventMethEpollEquiv. So if EventMethEpollEquiv goes out of scope,
+    // then ev_ needs to be freed
     void EmEvent::detachEventMethEpollEquiv()
     {
         if (ev_)
@@ -2792,7 +2794,8 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
                 if (!event_meth_epoll_equiv_impl_)
                 {
                     PS_LOG_INFO("event_meth_epoll_equiv_impl_ null");
-                    throw std::runtime_error("event_meth_epoll_equiv_impl_ null");
+                    throw std::runtime_error(
+                        "event_meth_epoll_equiv_impl_ null");
                 }
 
                 event_del(ev_);
@@ -2840,9 +2843,9 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
 
         resetReadyFlags();
 
-        // Note: Modification of EventMethEpollEquivImpl::interest_ and ready_ are
-        // handled in EventMethEpollEquivImpl::ctl after this EmEvent::ctl has
-        // returned
+        // Note: Modification of EventMethEpollEquivImpl::interest_ and ready_
+        // are handled in EventMethEpollEquivImpl::ctl after this EmEvent::ctl
+        // has returned
         switch(op)
         {
         case EvCtlAdd:
@@ -2900,7 +2903,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         return(EmEvent::getActualFd(em_event));
     }
 
-    ssize_t EventMethEpollEquivImpl::writeEfd(EmEvent * efd, const uint64_t val)
+    ssize_t EventMethEpollEquivImpl::writeEfd(EmEvent* efd, const uint64_t val)
     { // static
         EmEventFd * this_efd = EmEventFd::getFromEmEventCPtrNoLogIfNull(efd);
         if (!this_efd)
@@ -2919,7 +2922,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         return(this_efd->read(val_out_ptr));
     }
 
-    ssize_t EventMethEpollEquivImpl::read(EmEvent * fd, void * buf, size_t count)
+    ssize_t EventMethEpollEquivImpl::read(EmEvent* fd, void* buf, size_t count)
     { // static
         if (!fd)
         {
@@ -2952,7 +2955,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         return(efd->getAsFd());
     }
     
-    uint64_t EventMethEpollEquivImpl::getEmEventUserDataUi64(const EmEvent * fd)
+    uint64_t EventMethEpollEquivImpl::getEmEventUserDataUi64(const EmEvent* fd)
     { // static
         if (!fd)
         {
@@ -2987,7 +2990,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     }
 
     // sets fd's user-data to fd
-    void EventMethEpollEquivImpl::setEmEventUserData(EmEvent * fd, Fd user_data)
+    void EventMethEpollEquivImpl::setEmEventUserData(EmEvent* fd, Fd user_data)
     { // static
         if (!fd)
         {
