@@ -63,19 +63,18 @@ port:
   in process. See comment in code for more specifics.
   3. A mutex is required to protect the peers_ unordered_map in
   transport.h/.cc. See comment in code for more specifics.
-  4. http_server_test should use atomic_int counters.
-  5. https_server_test modified so curl_global_init is called only once
+  4. https_server_test modified so curl_global_init is called only once
   (see comment in the code).
-  6. Updated some yaml files for benefit of github, e.g. to use newer
+  5. Updated some yaml files for benefit of github, e.g. to use newer
   actions/checkout.
-  7. The C pointer 'Handler::Reactor* reactor_' was allowing a Reactor
+  6. The C pointer 'Handler::Reactor* reactor_' was allowing a Reactor
   instance to be accessed after the Reactor destructor was
   called. Fixed by allowing deregistering of
   pollers/handlers/reactors, and also by protecting the deregistering
   with a mutex. See comment in code for details.
-Of these issues, all but #4 were seen in practice while testing. None
-are huge changes at all; the fix for #7 is the only one that is more
-than a fix at a single point in the code. None of the issues are macOS
+Of these issues, all were seen in practice while testing. None are
+huge changes at all; the fix for #6 is the only one that is more than
+a fix at a single point in the code. None of the issues are macOS
 specific; the issues showed up in macOS due to differences in timing,
 threading and heap/memory management in macOS vs. Linux.
 
