@@ -1334,7 +1334,7 @@ namespace Pistache::Http
         , version(version)
         , transport(transport_)
         , armed(false)
-        , timerFd(FD_EMPTY)
+        , timerFd(PS_FD_EMPTY)
         , peer(peer_)
     { }
 

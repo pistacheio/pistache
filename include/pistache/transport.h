@@ -199,7 +199,7 @@ namespace Pistache::Tcp
 #ifdef _USE_LIBEVENT_LIKE_APPLE
             bool msg_more_style = false;
 #endif
-            Fd peerFd = FD_EMPTY;
+            Fd peerFd = PS_FD_EMPTY;
         };
 
         struct TimerEntry

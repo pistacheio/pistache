@@ -274,7 +274,7 @@ namespace Pistache
                 , peer(std::move(other.peer))
             {
                 // cppcheck-suppress useInitializationList
-                other.timerFd = FD_EMPTY;
+                other.timerFd = PS_FD_EMPTY;
                 // For libevent, don't need to free, passed to this->timerFd
             }
 
@@ -286,7 +286,7 @@ namespace Pistache
                 armed     = other.armed;
                 timerFd   = other.timerFd;
 
-                other.timerFd = FD_EMPTY;
+                other.timerFd = PS_FD_EMPTY;
                 // For libevent, don't need to free, passed to this->timerFd
 
                 peer = std::move(other.peer);
@@ -322,7 +322,7 @@ namespace Pistache
                         this->armed = false;
                         this->onTimeout(numWakeup);
                         CLOSE_FD(timerFd);
-                        timerFd = FD_EMPTY;
+                        timerFd = PS_FD_EMPTY;
                     },
                     [=](std::exception_ptr exc) { std::rethrow_exception(exc); });
 

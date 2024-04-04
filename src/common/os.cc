@@ -533,15 +533,15 @@ namespace Pistache
     } // namespace Polling
 
     NotifyFd::NotifyFd()
-        : event_fd(FD_EMPTY)
+        : event_fd(PS_FD_EMPTY)
     { }
 
     NotifyFd::~NotifyFd()
     {
-        if (event_fd != FD_EMPTY)
+        if (event_fd != PS_FD_EMPTY)
         {
             CLOSE_FD(event_fd);
-            event_fd = FD_EMPTY;
+            event_fd = PS_FD_EMPTY;
         }
     }
 
@@ -566,19 +566,19 @@ namespace Pistache
 
     void NotifyFd::unbind(Polling::Epoll& poller)
     {
-        if (event_fd != FD_EMPTY)
+        if (event_fd != PS_FD_EMPTY)
         {
             PS_LOG_DEBUG_ARGS("Remove and close event_fd %" PIST_QUOTE(PS_FD_PRNTFCD), event_fd);
 
             poller.removeFd(event_fd);
             CLOSE_FD(event_fd);
-            event_fd = FD_EMPTY;
+            event_fd = PS_FD_EMPTY;
         }
     }
 
     bool NotifyFd::isBound() const
     {
-        return (event_fd != FD_EMPTY);
+        return (event_fd != PS_FD_EMPTY);
     }
 
     Polling::Tag NotifyFd::tag() const { return Polling::Tag(event_fd); }

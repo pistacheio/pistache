@@ -749,7 +749,7 @@ namespace Pistache::Tcp
 
         int res = -1;
 #ifdef _USE_LIBEVENT
-        assert(entry.fd != FD_EMPTY);
+        assert(entry.fd != PS_FD_EMPTY);
         res = EventMethFns::setEmEventTime(entry.fd, &(entry.value));
 #else
         itimerspec spec;

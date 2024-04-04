@@ -188,8 +188,6 @@ namespace Pistache::Http::Experimental
         RequestBuilder& body(std::string&& val);
         RequestBuilder& timeout(std::chrono::milliseconds val);
 
-        
-
         Async::Promise<Response> send();
 
     private:
@@ -256,7 +254,7 @@ namespace Pistache::Http::Experimental
 
         std::atomic<uint64_t> ioIndex;
 
-        // Note: queuesLock is declared before requestsQueues.This means that
+        // Note: queuesLock is declared before requestsQueues. This means that
         // when Client destructor is called, since members are destroyed in
         // reverse order of their declaration, requestsQueues will be destroyed
         // before queuesLock. Since we use queuesLock and

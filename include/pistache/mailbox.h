@@ -66,19 +66,19 @@ namespace Pistache
     {
     public:
         PollableMailbox()
-            : event_fd(FD_EMPTY)
+            : event_fd(PS_FD_EMPTY)
         { }
 
         ~PollableMailbox()
         {
-            if (event_fd != FD_EMPTY)
+            if (event_fd != PS_FD_EMPTY)
             {
                 CLOSE_FD(event_fd);
-                event_fd = FD_EMPTY;
+                event_fd = PS_FD_EMPTY;
             }
         }
 
-        bool isBound() const { return event_fd != FD_EMPTY; }
+        bool isBound() const { return event_fd != PS_FD_EMPTY; }
 
         Polling::Tag bind(Polling::Epoll& poller)
         {
@@ -155,7 +155,7 @@ namespace Pistache
 
         void unbind(Polling::Epoll& poller)
         {
-            if (event_fd == FD_EMPTY)
+            if (event_fd == PS_FD_EMPTY)
             {
                 throw std::runtime_error("The mailbox is not bound");
             }
@@ -163,7 +163,7 @@ namespace Pistache
             poller.removeFd(event_fd);
 
             CLOSE_FD(event_fd);
-            event_fd = FD_EMPTY;
+            event_fd = PS_FD_EMPTY;
         }
 
     private:
@@ -285,16 +285,16 @@ namespace Pistache
         typedef typename Queue<T>::Entry Entry;
 
         PollableQueue()
-            : event_fd(FD_EMPTY)
+            : event_fd(PS_FD_EMPTY)
         { }
 
         ~PollableQueue() override
         {
-            if (event_fd != FD_EMPTY)
+            if (event_fd != PS_FD_EMPTY)
                 CLOSE_FD(event_fd);
         }
 
-        bool isBound() const { return event_fd != FD_EMPTY; }
+        bool isBound() const { return event_fd != PS_FD_EMPTY; }
 
         Polling::Tag bind(Polling::Epoll& poller)
         {
@@ -332,13 +332,13 @@ namespace Pistache
                 return; // nothing to do
             }
 
-            if (event_fd != FD_EMPTY)
+            if (event_fd != PS_FD_EMPTY)
             {
                 PS_LOG_DEBUG_ARGS("Remove and close event_fd %" PIST_QUOTE(PS_FD_PRNTFCD), event_fd);
 
                 poller.removeFd(event_fd);
                 CLOSE_FD(event_fd);
-                event_fd = FD_EMPTY;
+                event_fd = PS_FD_EMPTY;
             }
         }
 

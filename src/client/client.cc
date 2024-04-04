@@ -379,7 +379,7 @@ namespace Pistache::Http::Experimental
             throw std::runtime_error("Send request error");
 
         auto fd = conn->fd();
-        if (fd == FD_EMPTY)
+        if (fd == PS_FD_EMPTY)
         {
             PS_LOG_DEBUG_ARGS("Connection %p has empty fd", conn.get());
 
@@ -461,7 +461,7 @@ namespace Pistache::Http::Experimental
             }
 
             Fd fd = conn->fd();
-            if (fd == FD_EMPTY)
+            if (fd == PS_FD_EMPTY)
             {
                 PS_LOG_DEBUG_ARGS("Connection %p has empty fd", conn.get());
                 data->reject(Error::system("Failed to connect, fd now empty"));
@@ -559,7 +559,7 @@ namespace Pistache::Http::Experimental
             if (connection)
             {
                 Fd conn_fd = connection->fd();
-                if (conn_fd == FD_EMPTY)
+                if (conn_fd == PS_FD_EMPTY)
                 {
                     PS_LOG_DEBUG_ARGS("Connection %p has empty fd",
                                       connection.get());
@@ -622,7 +622,7 @@ namespace Pistache::Http::Experimental
             };
 
             Fd conn_fd = connection->fd();
-            if (conn_fd == FD_EMPTY)
+            if (conn_fd == PS_FD_EMPTY)
                 break; // can happen if fd was closed meanwhile
 
             const ssize_t bytes = recv(GET_ACTUAL_FD(conn_fd),
@@ -654,7 +654,7 @@ namespace Pistache::Http::Experimental
     }
 
     Connection::Connection(size_t maxResponseSize)
-        : fd_(FD_EMPTY)
+        : fd_(PS_FD_EMPTY)
         , requestEntry(nullptr)
         , parser(maxResponseSize)
     {
@@ -789,7 +789,7 @@ namespace Pistache::Http::Experimental
     Fd Connection::fd() const
     {
 #ifdef DEBUG
-        if (fd_ == FD_EMPTY) // can happen if fd was closed meanwhile
+        if (fd_ == PS_FD_EMPTY) // can happen if fd was closed meanwhile
             PS_LOG_DEBUG_ARGS("Connection %p has empty fd", this);
 #endif
 

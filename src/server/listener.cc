@@ -263,10 +263,10 @@ namespace Pistache::Tcp
         if (acceptThread.joinable())
             acceptThread.join();
 
-        if (listen_fd != FD_EMPTY)
+        if (listen_fd != PS_FD_EMPTY)
         {
             CLOSE_FD(listen_fd);
-            listen_fd = FD_EMPTY;
+            listen_fd = PS_FD_EMPTY;
         }
     }
 
@@ -460,7 +460,7 @@ namespace Pistache::Tcp
         }
     }
 
-    bool Listener::isBound() const { return listen_fd != FD_EMPTY; }
+    bool Listener::isBound() const { return listen_fd != PS_FD_EMPTY; }
 
     // Return actual TCP port Listener is on, or 0 on error / no port.
     // Notes:
@@ -472,7 +472,7 @@ namespace Pistache::Tcp
     //    threaded program this method is of little value.
     Port Listener::getPort() const
     {
-        if (listen_fd == FD_EMPTY)
+        if (listen_fd == PS_FD_EMPTY)
         {
             return Port();
         }

@@ -95,7 +95,7 @@ namespace Pistache::Tcp
 
     private:
         Address addr_;
-        Fd listen_fd = FD_EMPTY;
+        Fd listen_fd = PS_FD_EMPTY;
         int backlog_ = Const::MaxBacklog;
         NotifyFd shutdownFd;
         Polling::Epoll poller;
