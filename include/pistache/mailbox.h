@@ -379,16 +379,16 @@ namespace Pistache
                     // "pop" function here.
                     //
                     // However, in the problem case, very occasionally when the
-                    // "pop" above has returned null, then two pushes - and
-                    // hence two WRITE_EFD - occur just ahead of the READ_EFD,
-                    // and both WRITE_EFD succeed by the time we are calling
-                    // READ_EFD the second time in the for(;;) loop. This
-                    // causes the _second_ READ_EFD to succeeed, which clears
-                    // the eventfd readiness caused by the WRITE_EFD. Since the
-                    // eventfd is no longer ready, we may never get the eventfd
-                    // notification need to prompt another pop and pop the
-                    // values that were pushed. Hence the values that were
-                    // pushed may never be processed off of this queue.
+                    // the two pushes - and hence two WRITE_EFD - occur just
+                    // ahead of the READ_EFD, and both WRITE_EFD succeed by the
+                    // time we are calling READ_EFD the second time in the
+                    // for(;;) loop. This causes the _second_ READ_EFD to
+                    // succeeed, which clears the eventfd readiness caused by
+                    // the WRITE_EFD. Since the eventfd is no longer ready, we
+                    // may never get the eventfd notification need to prompt
+                    // another pop and pop the values that were pushed. Hence
+                    // the values that were pushed may never be processed off
+                    // of this queue.
                     if (efdread_res == 0)
                     { // success
                         PS_LOG_DEBUG_ARGS("event_fd read, val %u",
