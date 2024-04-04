@@ -30,7 +30,7 @@ namespace Pistache
 
         // Add to interest list
         // Returns 0 for success, on error -1 with errno set
-        int ctl(EventCtlAction op, // add, mod, or del
+        int ctl(EvCtlAction op, // add, mod, or del
                 Fd em_event,
                 short     events, // bitmask of EVM_... events
                 std::chrono::milliseconds * timeval_cptr);
@@ -90,7 +90,7 @@ namespace Pistache
 
         // Returns 0 for success, on error -1 with errno set
         // Will add/remove from interest_ if appropriate
-        static int ctl(EventCtlAction op, // add, mod, or del
+        static int ctl(EvCtlAction op, // add, mod, or del
                        EventMethEpollEquivImpl * epoll_equiv,
                        Fd event, // libevent event
                        short events, // bitmask per epoll_ctl (EVM_... events)
@@ -206,7 +206,7 @@ namespace Pistache
         // If forceEmEventCtlOnly is true, it will not call the ctl() function
         // of classes (like EmEventFd) derived from EmEvent but only the ctl
         // function of EmEvent itself. For internal use only.
-        int ctlEx(EventCtlAction op, // add, mod, or del
+        int ctlEx(EvCtlAction op, // add, mod, or del
                   Fd em_event,
                   short     events, // bitmask of EVM_... events
                   std::chrono::milliseconds * timeval_cptr,
@@ -293,7 +293,7 @@ namespace Pistache
         virtual ssize_t write(const void * buf, size_t count);
 
         virtual int ctl(
-            EventCtlAction op, //add,mod,del
+            EvCtlAction op, //add,mod,del
             EventMethEpollEquivImpl * emee,
             short events,     // bitmask of EVM... events
             std::chrono::milliseconds * timeval_cptr);
@@ -383,9 +383,9 @@ namespace Pistache
                                   // added to event_meth_epoll_equiv_impl_ but
                                   // by internal eventmeth code not by other
                                   // Pistache code calling
-                                  // ctl(EvCtlAdd...). This can happen with
+                                  // ctl(Add...). This can happen with
                                   // settime, for instance. If other pistache
-                                  // code calls ctl(EvCtlAdd...) subsequently,
+                                  // code calls ctl(Add...) subsequently,
                                   // then add_was_artificial_ is reset.
 
         EventMethEpollEquivImpl * event_meth_epoll_equiv_impl_;
@@ -451,7 +451,7 @@ namespace Pistache
         // nothing. Returns old counter_val.
         uint64_t resetCounterVal();
 
-        int ctl(EventCtlAction op, //add,mod,del
+        int ctl(EvCtlAction op, //add,mod,del
                 EventMethEpollEquivImpl * emee,
                 short events,     // bitmask of EVM... events
                 std::chrono::milliseconds * timeval_cptr) override;
@@ -731,7 +731,7 @@ namespace Pistache
 
     // Returns 0 for success, on error -1 with errno set
     // Will add/remove from interest_ if appropriate
-    int EventMethFns::ctl(EventCtlAction op, // add, mod, or del
+    int EventMethFns::ctl(EvCtlAction op, // add, mod, or del
                        EventMethEpollEquiv * epoll_equiv,
                        Fd event, // libevent event
                        short events, // bitmask per epoll_ctl (EVM_... events)
@@ -896,7 +896,7 @@ namespace Pistache
 
     // Add to interest list
     // Returns 0 for success, on error -1 with errno set
-    int EventMethEpollEquiv::ctl(EventCtlAction op, // add, mod, or del
+    int EventMethEpollEquiv::ctl(EvCtlAction op, // add, mod, or del
                                  Fd em_event,
                                  short     events, // bitmask of EVM_... events
                                  std::chrono::milliseconds * timeval_cptr)
@@ -1538,7 +1538,7 @@ namespace Pistache
         return(cv_read_sptr_.get());
     }
 
-    int EmEventCtr::ctl(EventCtlAction op, // add,mod,del
+    int EmEventCtr::ctl(EvCtlAction op, // add,mod,del
                         EventMethEpollEquivImpl * emee,
                         short events,     // bitmask of EVM... events
                         std::chrono::milliseconds * timeval_cptr) // override
@@ -1609,7 +1609,7 @@ namespace Pistache
                 if (ev_in_emee)
                 {
                     
-                    int ctl_res = emee->ctlEx(EvCtlDel,
+                    int ctl_res = emee->ctlEx(EvCtlAction::Del,
                                               this,
                                               0 /* events*/,
                                               NULL /*timeval_cptr*/,
@@ -1617,9 +1617,9 @@ namespace Pistache
                     if (ctl_res != 0)
                     {
                         PS_LOG_INFO_ARGS(
-                            "EmEventFd %p failed to EvCtlDel ev_ %p",
+                            "EmEventFd %p failed to EvCtlAction::Del ev_ %p",
                             this, ev_);
-                        throw std::runtime_error("EvCtlDel failed");
+                        throw std::runtime_error("EvCtlAction::Del failed");
                     }
                 }
             }
@@ -1637,19 +1637,20 @@ namespace Pistache
         {
             if (ev_in_emee)
             { // Have to add back the (new) ev_
-                int ctl_res = emee->ctlEx(EvCtlAdd,
+                int ctl_res = emee->ctlEx(EvCtlAction::Add,
                            this,
                            old_flags /* events*/,
                            NULL /* timeval_cptr - use prior_tv_ if available*/,
                            true/*forceEmEventCtlOnly*/);
                 if (ctl_res != 0)
                 {
-                    PS_LOG_INFO_ARGS("EmEventFd %p failed to EvCtlAdd", this);
-                    throw std::runtime_error("EvCtlAdd failed");
+                    PS_LOG_INFO_ARGS("EmEventFd %p failed to EvCtlAction::Add",
+                                     this);
+                    throw std::runtime_error("EvCtlAction::Add failed");
                 }
 
                 if (!ev_)
-                { // ctl EvCtlAdd should cause ev_ to be created
+                { // ctl EvCtlAction::Add should cause ev_ to be created
                     PS_LOG_INFO_ARGS("EmEventFd %p null ev_", this);
                     throw std::runtime_error("ev_ null");
                 }
@@ -2005,15 +2006,16 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
                 return(0);
             }
 
-            int ctl_res = emee->ctlEx(EvCtlAdd,
+            int ctl_res = emee->ctlEx(EvCtlAction::Add,
                            this,
                            flags_ /* events*/,
                            NULL /* timeval_cptr - use prior_tv_*/,
                            true/*forceEmEventCtlOnly*/);
             if (ctl_res != 0)
             {
-                PS_LOG_INFO_ARGS("EmEventTmrFd %p failed to EvCtlAdd", this);
-                throw std::runtime_error("EvCtlAdd failed");
+                PS_LOG_INFO_ARGS("EmEventTmrFd %p failed to EvCtlAction::Add",
+                                 this);
+                throw std::runtime_error("EvCtlAction::Add failed");
             }
             add_was_artificial_ = true;
         }
@@ -2021,7 +2023,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         {
             if (emee)
             {
-                int ctl_res = emee->ctlEx(EvCtlDel,
+                int ctl_res = emee->ctlEx(EvCtlAction::Del,
                                           this,
                                           0 /* events*/,
                                           NULL /*timeval_cptr*/,
@@ -2029,9 +2031,9 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
                 if (ctl_res != 0)
                 {
                     PS_LOG_INFO_ARGS(
-                        "EmEventTmrFd %p failed to EvCtlDel ev_ %p",
+                        "EmEventTmrFd %p failed to EvCtlAction::Del ev_ %p",
                         this, ev_);
-                    throw std::runtime_error("EvCtlDel failed");
+                    throw std::runtime_error("EvCtlAction::Del failed");
                 }
                 add_was_artificial_ = false;
 
@@ -2500,21 +2502,21 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
 
     #ifdef DEBUG
     static std::shared_ptr<std::string> ctlActionToStr(
-                                      EventCtlAction op)
+                                      EvCtlAction op)
     {
         std::shared_ptr<std::string> res(std::make_shared<std::string>(""));
 
         switch(op)
         {
-        case EvCtlAdd:
+        case EvCtlAction::Add:
             (*res) += "Add";
             break;
 
-        case EvCtlMod:
+        case EvCtlAction::Mod:
             (*res) += "Mod";
             break;
 
-        case EvCtlDel:
+        case EvCtlAction::Del:
             (*res) += "Del";
             break;
 
@@ -2633,13 +2635,13 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     #endif
 
     int EmEvent::ctl(
-                EventCtlAction op, // add, mod, or del
+                EvCtlAction op, // add, mod, or del
                 EventMethEpollEquivImpl * emee,
                 short     events, // bitmask of EVM_... events
                 std::chrono::milliseconds * timeval_cptr)
     {
         PS_TIMEDBG_START_ARGS("EmEvent (this) %p, EMEE %p, "
-                              "EventCtlAction %s, "
+                              "EvCtlAction %s, "
                               "EmEvent type %s, "
                               "events %s, timeval %dms, prior_tv_ %ds %dms",
                               this, emee,
@@ -2732,8 +2734,8 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
             tv_cptr = prior_tv_cptr_;
         }
 
-        if ((op == EvCtlAdd) ||
-            (op == EvCtlMod))
+        if ((op == EvCtlAction::Add) ||
+            (op == EvCtlAction::Mod))
         {
             if (!ev_)
             {
@@ -2848,7 +2850,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         // has returned
         switch(op)
         {
-        case EvCtlAdd:
+        case EvCtlAction::Add:
             // Note: Although there is a flag EVM_TIMEOUT, it is not an input
             // to event_add; it is used when an event is ready, to indicate
             // whether a timeout occured on the event. Rather, the second parm
@@ -2865,7 +2867,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
             ctl_res = event_add(ev_, tv_cptr);
             break;
 
-        case EvCtlMod: // rearm
+        case EvCtlAction::Mod: // rearm
             // For a deactivated event, reactivated by adding again
             // 
             // Per libevent documentation, if the event is already active, it
@@ -2875,13 +2877,13 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
             ctl_res = event_add(ev_, tv_cptr);
             break;
 
-        case EvCtlDel:
+        case EvCtlAction::Del:
             // Note event_del does nothing if event already inactive
             ctl_res = event_del(ev_);
             break;
 
         default:
-            PS_LOG_WARNING("Invalid EventCtlAction");
+            PS_LOG_WARNING("Invalid EvCtlAction");
             errno = EINVAL;
             ctl_res = -1;
             break;
@@ -3568,7 +3570,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
                 }
 
                 std::chrono::milliseconds rel_time_in_ms(timeout);
-                if (ctl(EvCtlAdd, loop_timer_eme.get(), 0 /* events */,
+                if (ctl(EvCtlAction::Add, loop_timer_eme.get(), 0 /* events */,
                         &rel_time_in_ms) != 0)
                 {
                     PS_LOG_WARNING("Failed to add loop_timer_eme");
@@ -3767,7 +3769,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
 
     // Add to interest list
     // Returns 0 for success, on error -1 with errno set
-    int EventMethEpollEquivImpl::ctl(EventCtlAction op, // add, mod, or del
+    int EventMethEpollEquivImpl::ctl(EvCtlAction op, // add, mod, or del
                                  Fd em_event,
                                  short     events, // bitmask of EVM_... events
                                  std::chrono::milliseconds * timeval_cptr)
@@ -3788,7 +3790,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
 
     // Returns 0 for success, on error -1 with errno set
     // Will add/remove from interest_ if appropriate
-    int EventMethEpollEquivImpl::ctl(EventCtlAction op, // add, mod, or del
+    int EventMethEpollEquivImpl::ctl(EvCtlAction op, // add, mod, or del
                    EventMethEpollEquivImpl * epoll_equiv,
                    Fd event, // libevent event
                    short     events, // bitmask per epoll_ctl (EVM_... events)
@@ -3811,13 +3813,13 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     // If forceEmEventCtlOnly is true, it will not call the ctl() function
     // of classes (like EmEventFd) derived from EmEvent but only the ctl
     // function of EmEvent itself. For internal use only.
-    int EventMethEpollEquivImpl::ctlEx(EventCtlAction op, // add, mod, or del
+    int EventMethEpollEquivImpl::ctlEx(EvCtlAction op, // add, mod, or del
                                    Fd em_event,
                                    short events, // bitmask of EVM... events
                                    std::chrono::milliseconds * timeval_cptr,
                                    bool forceEmEventCtlOnly)
     {
-        PS_TIMEDBG_START_ARGS("emee %p, EventCtlAction %s, em_event %p, "
+        PS_TIMEDBG_START_ARGS("emee %p, EvCtlAction %s, em_event %p, "
                               "events %s, timeval %dms",
                               this,
                               ctlActionToStr(op)->c_str(), em_event,
@@ -3838,12 +3840,12 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
             std::set<Fd>::iterator eme_interest_it(interest_.find(em_event));
             eme_found_in_interest = (eme_interest_it != interest_.end());
         
-            if ((op == EvCtlAdd) && (eme_found_in_interest) &&
+            if ((op == EvCtlAction::Add) && (eme_found_in_interest) &&
                 (!(em_event->addWasArtificial())))
             {
                 PS_LOG_WARNING_ARGS(
                     "em_event %p not added to EMEE %p interest_, "
-                    "and em_event->ctl(EvCtlAdd...) not called; "
+                    "and em_event->ctl(EvCtlAction::Add...) not called; "
                     "em_event is already in interest_",
                     em_event, this);
             
@@ -3861,7 +3863,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         {
             switch(op)
             {
-            case EvCtlAdd:
+            case EvCtlAction::Add:
             {
                 if (!eme_found_in_interest)
                 { // else was inserted artificially previously
@@ -3883,7 +3885,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
             }
             break;
 
-            case EvCtlMod:
+            case EvCtlAction::Mod:
             {
                 if (!eme_found_in_interest)
                 {
@@ -3916,7 +3918,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
             }
             break;
 
-            case EvCtlDel:
+            case EvCtlAction::Del:
             {
                 if (eme_found_in_interest)
                     interest_.erase(em_event);

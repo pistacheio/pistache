@@ -219,11 +219,11 @@ namespace Pistache
     #define EVM_FINALIZE     0x40
     #define EVM_CLOSED       0x80
 
-    enum EventCtlAction
+    enum class EvCtlAction
     {
-        EvCtlAdd = 1,
-        EvCtlMod = 2, // rearm
-        EvCtlDel = 3
+        Add = 1,
+        Mod = 2, // rearm
+        Del = 3
     };
 
     enum EmEventType
@@ -286,7 +286,7 @@ namespace Pistache
 
         // Returns 0 for success, on error -1 with errno set
         // Will add/remove from interest_ if appropriate
-        int ctl(EventCtlAction op, // add, mod, or del
+        int ctl(EvCtlAction op, // add, mod, or del
                        EventMethEpollEquiv * epoll_equiv,
                        Fd event, // libevent event
                        short events, // bitmask per epoll_ctl (EVM_... events)
@@ -364,7 +364,7 @@ namespace Pistache
         
         // Add to interest list
         // Returns 0 for success, on error -1 with errno set
-        int ctl(EventCtlAction op, // add, mod, or del
+        int ctl(EvCtlAction op, // add, mod, or del
                 Fd em_event,
                 short     events, // bitmask of EVM_... events
                 std::chrono::milliseconds * timeval_cptr);
