@@ -19,7 +19,7 @@
 
 // _USE_LIBEVENT_LIKE_APPLE not only forces libevent, but even in Linux causes
 // the code to be as similar as possible to the way it is for __APPLE__
-// (e.g. whereever possible, even on Linux it uses solely OS calls that are
+// (e.g. wherever possible, even on Linux it uses solely OS calls that are
 // also available on macOS)
 //
 // Can comment out if not wanted
@@ -44,9 +44,9 @@
   #define _USE_LIBEVENT 1
 #endif
 
-// Note: libevent's event.h should NOT be included in this file, it is included
-// only in the eventmeth CPP file. eventmeth.h users should not be using
-// libevent directly, since eventmeth is our wrapper for libevent
+// Note: eventmeth wraps and abstracts capabilities of the libevent library,
+// providing interfaces to pistache that are similar to the epoll, eventfd and
+// timerfd_* capabilities seen natively in Linux.
 
 /* ------------------------------------------------------------------------- */
 
@@ -54,7 +54,7 @@
 // Windows, this is an intptr_t; elsewhere, it is an int.
 // Note: Mapped directly from evutil_socket_t in libevent's event2/util.h
 #ifdef _WIN32
-#define em_socket_t intptr_t
+#define em_socket_t SOCKET
 #else
 #define em_socket_t int
 #endif
@@ -124,23 +124,23 @@
 
 #ifdef _USE_LIBEVENT
 // Note - closeEvent calls delete __ev__;
-#define CLOSE_FD(__ev__)                                \
-    {                                                   \
-        if (__ev__ != FD_EMPTY)                         \
-        {                                               \
-            EventMethFns::closeEvent(__ev__);    \
-            __ev__ = FD_EMPTY;                          \
-        }                                               \
+#define CLOSE_FD(__ev__)                                   \
+    {                                                      \
+        if (__ev__ != PS_FD_EMPTY)                         \
+        {                                                  \
+            EventMethFns::closeEvent(__ev__);              \
+            __ev__ = PS_FD_EMPTY;                          \
+        }                                                  \
     }
 #else
 #define CLOSE_FD(__fd__)                                        \
     {                                                           \
-        if (__fd__ != FD_EMPTY)                                 \
+        if (__fd__ != PS_FD_EMPTY)                              \
         {                                                       \
             ::close(__fd__);                                    \
             PS_LOG_DEBUG_ARGS("::close actual_fd %d", __fd__);  \
                                                                 \
-            __fd__ = FD_EMPTY;                                  \
+            __fd__ = PS_FD_EMPTY;                               \
         }                                                       \
     }
 #endif
@@ -176,11 +176,11 @@ namespace Pistache
       using FdEventTmrFd = EmEventTmrFd *;
       using FdEventTmrFdConst = const EmEventTmrFd *;
 
-      #define FD_EMPTY NULL
+      #define PS_FD_EMPTY NULL
     #else
       using Fd = int;
       using FdConst = int;
-      #define FD_EMPTY -1
+      #define PS_FD_EMPTY -1
     #endif
 }
 

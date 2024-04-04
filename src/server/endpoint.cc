@@ -56,15 +56,15 @@ namespace Pistache::Http
     TransportImpl::TransportImpl(const std::shared_ptr<Tcp::Handler>& handler)
         : Tcp::Transport(handler)
         , handler_(handler)
-        , timerFd(FD_EMPTY)
+        , timerFd(PS_FD_EMPTY)
     { }
 
     TransportImpl::~TransportImpl()
     {
-        if (timerFd != FD_EMPTY)
+        if (timerFd != PS_FD_EMPTY)
         {
             CLOSE_FD(timerFd);
-            timerFd = FD_EMPTY;
+            timerFd = PS_FD_EMPTY;
         }
     }
 
@@ -90,9 +90,9 @@ namespace Pistache::Http
             "Timer frequency should be less than 1 second");
 
 #ifdef _USE_LIBEVENT
-        if (timerFd == FD_EMPTY)
+        if (timerFd == PS_FD_EMPTY)
         {
-            assert(timerFd != FD_EMPTY);
+            assert(timerFd != PS_FD_EMPTY);
             PS_LOG_DEBUG("timerFd NULL");
             throw std::runtime_error("timerFd NULL");
         }
@@ -122,7 +122,7 @@ namespace Pistache::Http
     {
         PS_TIMEDBG_START_THIS;
 
-        if (timerFd != FD_EMPTY)
+        if (timerFd != PS_FD_EMPTY)
         {
             PS_LOG_DEBUG_ARGS("Remove and close timer fd %" PIST_QUOTE(PS_FD_PRNTFCD), timerFd);
 

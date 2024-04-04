@@ -193,7 +193,7 @@ namespace Pistache
         int waitThenGetAndEmptyReadyEvsHelper(int timeout,
                                           std::set<Fd> & ready_evm_events_out);
         
-        // returns FD_EMPTY if not found, returns fd if found
+        // returns PS_FD_EMPTY if not found, returns fd if found
         Fd findFdInInterest(Fd fd);
         void addEventToReady(Fd fd, short ev_flags);// One or more EVM_* flags
 
@@ -3338,7 +3338,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         GUARD_AND_DBG_LOG(interest_mutex_);
         std::set<Fd>::iterator it = interest_.find(fd);
         if (it == interest_.end())
-            return(FD_EMPTY);
+            return(PS_FD_EMPTY);
 
         return(fd);
     }

@@ -110,7 +110,7 @@ namespace Pistache::Tcp
 
     Fd Peer::fd() const
     {
-        if (fd_ == FD_EMPTY)
+        if (fd_ == PS_FD_EMPTY)
             throw std::runtime_error("The peer has no associated fd");
 
         return fd_;

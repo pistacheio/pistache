@@ -79,7 +79,7 @@ namespace Pistache::Tcp
 
         Transport* transport_ = nullptr;
 
-        Fd fd_ = FD_EMPTY;
+        Fd fd_ = PS_FD_EMPTY;
 
         Address addr;
 

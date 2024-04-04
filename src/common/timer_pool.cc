@@ -26,7 +26,7 @@ namespace Pistache
 {
 
     TimerPool::Entry::Entry()
-        : fd_(FD_EMPTY)
+        : fd_(PS_FD_EMPTY)
         , registered(false)
     {
         state.store(static_cast<uint32_t>(State::Idle));
@@ -34,23 +34,23 @@ namespace Pistache
 
     TimerPool::Entry::~Entry()
     {
-        if (fd_ != FD_EMPTY)
+        if (fd_ != PS_FD_EMPTY)
         {
             CLOSE_FD(fd_);
-            fd_ = FD_EMPTY;
+            fd_ = PS_FD_EMPTY;
         }
     }
 
     Fd TimerPool::Entry::fd() const
     {
-        assert(fd_ != FD_EMPTY);
+        assert(fd_ != PS_FD_EMPTY);
 
         return fd_;
     }
 
     void TimerPool::Entry::initialize()
     {
-        if (fd_ == FD_EMPTY)
+        if (fd_ == PS_FD_EMPTY)
         {
 #ifdef _USE_LIBEVENT
             fd_ = TRY_NULL_RET(EventMethFns::em_timer_new(
@@ -70,9 +70,9 @@ namespace Pistache
 
     void TimerPool::Entry::disarm()
     {
-        if (fd_ == FD_EMPTY)
+        if (fd_ == PS_FD_EMPTY)
         {
-            assert(fd_ != FD_EMPTY);
+            assert(fd_ != PS_FD_EMPTY);
             PS_LOG_DEBUG("fd_ empty");
             throw std::runtime_error("fd_ empty");
         }
@@ -106,10 +106,10 @@ namespace Pistache
 
     void TimerPool::Entry::armMs(std::chrono::milliseconds value)
     {
-        if (fd_ == FD_EMPTY)
+        if (fd_ == PS_FD_EMPTY)
         {
             PS_LOG_DEBUG("fd_ NULL");
-            assert(fd_ != FD_EMPTY);
+            assert(fd_ != PS_FD_EMPTY);
             throw std::runtime_error("fd_ NULL");
         }
 

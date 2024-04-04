@@ -15,14 +15,12 @@ follow the Homebrew instructions to install:
 
 Then, install the necessary brew packages via terminal command line:
   brew install meson
-  brew install cmake
   brew install doxygen
   brew install googletest
   brew install openssl
   brew install rapidjson
   brew install howard-hinnant-date
-(Note: you can skip cmake if you will only use meson; and you may be
-  able to skip howard-hinnant-date)
+(You may be able to skip howard-hinnant-date)
 
 Convenience shell scripts are provided to make the build. At terminal,
 do:
@@ -47,53 +45,6 @@ The meaning of each convenience script is as follows:
 
   clean.sh - remove build directories
   
-  cmkbuild.sh - build release version using cmake
-  cmkbuilddebug.sh - build debug version using cmake
-
-If using cmake, you should add some homebrew setup to your .bashrc/.zshrc:
-
-  if [ "$(uname)" == "Darwin" ]; then
-      MYBREWCMD=brew
-      if [[ $(uname -m) == 'x86_64' ]]; then
-          if [ -e "/usr/local/bin/brew" ]; then
-              MYBREWCMD="/usr/local/bin/brew"
-          fi
-      else
-          if [ -e "/opt/homebrew/bin/brew" ]; then
-              MYBREWCMD="/opt/homebrew/bin/brew"
-          fi
-      fi
-      if command -v ${MYBREWCMD} &> /dev/null
-      then
-          # Setup brew environment variables
-          #     HOMEBREW_PREFIX, HOMEBREW_CELLAR and HOMEBREW_REPOSITORY
-          # Also updates PATH, MANPATH and INFOPATH
-          eval "$(${MYBREWCMD} shellenv)"
-      fi
-      unset MYBREWCMD
-  fi
-
-And then also add to your .bashrc/.zshrc:
-  if command -v brew &> /dev/null
-  then
-      export HOMEBREW_LIB_DIR=$HOMEBREW_PREFIX/lib
-      export HOMEBREW_INC_DIR=$HOMEBREW_PREFIX/include
-  
-      if [ -d "$HOMEBREW_LIB_DIR" ]
-         then
-         export LD_LIBRARY_PATH=$HOMEBREW_LIB_DIR:$LD_LIBRARY_PATH
-      fi
-  
-      if [ -d "$HOMEBREW_INC_DIR" ]
-         then
-         export CFLAGS="-I$HOMEBREW_INC_DIR $CFLAGS"
-         export CXXFLAGS="-I$HOMEBREW_INC_DIR $CXXFLAGS"
-         export CPPFLAGS="-I$HOMEBREW_INC_DIR $CPPFLAGS"
-      fi
-  fi
-
-(If using meson, you likely won't need to do these .bashrc/.zshrc
-updates - meson will figure out the environment for you)
 
 
 
