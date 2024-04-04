@@ -198,7 +198,7 @@ namespace Pistache
                 events |= EVM_ET;
             EventMethFns::setEmEventUserData(fd, tag.value_);
 
-            TRY(epoll_fd->ctl(EvCtlAdd,
+            TRY(epoll_fd->ctl(EvCtlAction::Add,
                               fd, events, NULL /* time */));
 
 #else
@@ -231,7 +231,7 @@ namespace Pistache
             // event is assumed to be "oneshot" unless EVM_PERSIST is set.
 
             EventMethFns::setEmEventUserData(fd, tag.value_);
-            TRY(epoll_fd->ctl(EvCtlAdd,
+            TRY(epoll_fd->ctl(EvCtlAction::Add,
                               fd, events, NULL /* time */));
 #else
             struct epoll_event ev;
@@ -250,7 +250,7 @@ namespace Pistache
             PS_TIMEDBG_START_ARGS("fd %" PIST_QUOTE(PS_FD_PRNTFCD), fd);
 
 #ifdef _USE_LIBEVENT
-            TRY(epoll_fd->ctl(EvCtlDel,
+            TRY(epoll_fd->ctl(EvCtlAction::Del,
                               fd, 0 /* events */, NULL /* time */));
 #else
             struct epoll_event ev;
@@ -284,7 +284,7 @@ namespace Pistache
             if (mode == Mode::Edge)
                 events |= EVM_ET;
             EventMethFns::setEmEventUserData(fd, tag.value_);
-            TRY(epoll_fd->ctl(EvCtlMod,
+            TRY(epoll_fd->ctl(EvCtlAction::Mod,
                               fd, events, NULL /* time */));
 
 #else
