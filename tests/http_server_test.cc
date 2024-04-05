@@ -345,6 +345,41 @@ TEST(http_server_test, multiple_client_with_requests_to_multithreaded_server)
     ASSERT_EQ(res2, SECOND_CLIENT_REQUEST_SIZE);
 }
 
+TEST(http_server_test, many_client_with_requests_to_multithreaded_server)
+{
+    const Pistache::Address address("localhost", Pistache::Port(0));
+
+    Http::Endpoint server(address);
+    auto flags       = Tcp::Options::ReuseAddr;
+    auto server_opts = Http::Endpoint::options().flags(flags).threads(6);
+    server.init(server_opts);
+    LOGGER("test", "Trying to run server...");
+    server.setHandler(Http::make_handler<HelloHandlerWithDelay>());
+    ASSERT_NO_THROW(server.serveThreaded());
+
+    const std::string server_address = "localhost:" + server.getPort().toString();
+    LOGGER("test", "Server address: " << server_address);
+
+    const int NO_TIMEOUT                = 0;
+    const int SECONDS_TIMOUT            = 10;
+    const int FIRST_CLIENT_REQUEST_SIZE = 128;
+    std::future<int> result1(std::async(clientLogicFunc,
+                                        FIRST_CLIENT_REQUEST_SIZE, server_address,
+                                        NO_TIMEOUT, SECONDS_TIMOUT));
+    const int SECOND_CLIENT_REQUEST_SIZE = 192;
+    std::future<int> result2(
+        std::async(clientLogicFunc, SECOND_CLIENT_REQUEST_SIZE, server_address,
+                   NO_TIMEOUT, SECONDS_TIMOUT));
+
+    int res1 = result1.get();
+    int res2 = result2.get();
+
+    server.shutdown();
+
+    ASSERT_EQ(res1, FIRST_CLIENT_REQUEST_SIZE);
+    ASSERT_EQ(res2, SECOND_CLIENT_REQUEST_SIZE);
+}
+
 TEST(http_server_test,
      multiple_client_with_different_requests_to_multithreaded_server)
 {
@@ -893,7 +928,8 @@ struct ContentEncodingHandler : public Http::Handler
         writer.setCompression(encoding);
 
         // Set compression level...
-        switch(encoding) {
+        switch (encoding)
+        {
 
 #ifdef PISTACHE_USE_CONTENT_ENCODING_BROTLI
         // Set maximum compression if using Brotli

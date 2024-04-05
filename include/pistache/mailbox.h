@@ -311,10 +311,47 @@ namespace Pistache
 
             if (isBound())
             {
-                uint64_t val;
+                uint64_t val = 0;
                 for (;;)
                 {
                     ssize_t bytes = read(event_fd, &val, sizeof val);
+
+                    // Note: Without the read-success check below, there can be
+                    // an issue that shows up in the test
+                    // multiple_client_with_requests_to_multithreaded_server
+                    // when calling run_http_server_test over and over again.
+                    //
+                    // Without the check, in a typical success case the read in
+                    // this function would be called twice. First time, read
+                    // reads val. Second time, read fails with errno = EAGAIN /
+                    // EWOULDBLOCK, causing us to break out of the loop and
+                    // return from our "pop" function here.
+                    // 
+                    // However, in the problem case, very occasionally two
+                    // pushes - and hence two writes to event_fd - occur just
+                    // ahead of the read, and both writes succeed by the time
+                    // we are calling read the second time in the for(;;)
+                    // loop. This causes the _second_ read to succeeed, which
+                    // clears the eventfd readiness caused by the write, even
+                    // though we have yet to pop that push off the queue. Hence
+                    // the values that were pushed might never be processed off
+                    // of this queue. So, we should break out of the loop when
+                    // the read succeeds.
+                    if (bytes == (sizeof val))
+                    { // success
+                        
+                        if (!ret)
+                        {
+                            // Have another try at pop, in case there was no
+                            // "pop" to do at the top of this function, but
+                            // then a push happened after the first pop attempt
+                            // but before the read above
+                            ret = Queue<T>::pop();
+                        }
+                        
+                        break;
+                    }
+                    
                     if (bytes == -1)
                     {
                         if (errno == EAGAIN || errno == EWOULDBLOCK)
