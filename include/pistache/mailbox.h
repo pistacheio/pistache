@@ -376,7 +376,7 @@ namespace Pistache
                     // reads val. Second time, read fails with errno = EAGAIN /
                     // EWOULDBLOCK, causing us to break out of the loop and
                     // return from our "pop" function here.
-                    // 
+                    //
                     // However, in the problem case, very occasionally two
                     // pushes - and hence two writes to event_fd - occur just
                     // ahead of the read, and both writes succeed by the time
