@@ -404,7 +404,7 @@ TEST(http_server_test, many_client_with_requests_to_multithreaded_server)
     LOGGER("test", "Server address: " << server_address);
 
     const int NO_TIMEOUT                = 0;
-     const int SECONDS_TIMOUT           = 10;
+    const int SECONDS_TIMOUT            = 10;
     const int FIRST_CLIENT_REQUEST_SIZE = 128;
     std::future<int> result1(std::async(clientLogicFunc,
                                         FIRST_CLIENT_REQUEST_SIZE, server_address,
@@ -422,7 +422,6 @@ TEST(http_server_test, many_client_with_requests_to_multithreaded_server)
     ASSERT_EQ(res1, FIRST_CLIENT_REQUEST_SIZE);
     ASSERT_EQ(res2, SECOND_CLIENT_REQUEST_SIZE);
 }
-
 
 TEST(http_server_test,
      multiple_client_with_different_requests_to_multithreaded_server)
