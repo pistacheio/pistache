@@ -1,0 +1,12 @@
+cc_library(
+    name = "pistache_lib",
+    srcs = glob(["src/**/*.cc"]),
+    hdrs = glob(["include/pistache/**/*.h"]) + [
+        "subprojects/hinnant-date/include/date/date.h",
+    ],
+    includes = [
+        "include",
+        "subprojects/hinnant-date/include",
+    ],
+    visibility = ["//visibility:public"],
+)
