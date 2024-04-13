@@ -36,8 +36,12 @@
 
 #ifdef PISTACHE_USE_SSL
 
+#include <openssl/conf.h>
 #include <openssl/err.h>
 #include <openssl/ssl.h>
+#include <openssl/evp.h>
+#include <openssl/opensslv.h>
+
 
 #endif /* PISTACHE_USE_SSL */
 
@@ -50,6 +54,19 @@ namespace Pistache::Tcp
 
     namespace
     {
+        void load_custom_openssl_config() {
+                // Chemin vers votre fichier de configuration OpenSSL personnalisé
+                const char* config_file = "/root/oqs-provider/openssl/apps/openssl.cnf";
+
+            // Charger la configuration OpenSSL
+                long errorline = -1; // Pour la détection d'erreurs dans le fichier de configuration
+                if (!CONF_modules_load_file(config_file, NULL, CONF_MFLAGS_DEFAULT_SECTION)) {
+                    fprintf(stderr, "Erreur lors du chargement de la configuration OpenSSL de %s\n", config_file);
+                    // Gérer l'erreur, par exemple en imprimant plus d'informations sur l'erreur
+                    ERR_print_errors_fp(stderr);
+                    exit(1); // ou gérer l'erreur d'une manière qui convient à votre application
+                }
+        }
 
         std::string ssl_print_errors_to_string()
         {
@@ -86,58 +103,49 @@ namespace Pistache::Tcp
         }
 
         ssl::SSLCtxPtr ssl_create_context(const std::string& cert,
-                                          const std::string& key,
-                                          bool use_compression,
-                                          int (*cb)(char*, int, int, void*))
+                                  const std::string& key,
+                                  bool use_compression,
+                                  int (*cb)(char*, int, int, void*))
         {
-            const SSL_METHOD* method = SSLv23_server_method();
-
+            const SSL_METHOD* method = TLS_server_method();
             ssl::SSLCtxPtr ctx { SSL_CTX_new(method) };
-            if (ctx == nullptr)
-            {
+            if (ctx == nullptr) {
                 throw std::runtime_error("Cannot setup SSL context");
             }
 
-            if (!use_compression)
-            {
-                /* Disable compression to prevent BREACH and CRIME vulnerabilities. */
-                if (!SSL_CTX_set_options(GetSSLContext(ctx), SSL_OP_NO_COMPRESSION))
-                {
+            if (!use_compression) {
+                if (!SSL_CTX_set_options(GetSSLContext(ctx), SSL_OP_NO_COMPRESSION)) {
                     std::string err = "SSL error - cannot disable compression: "
                         + ssl_print_errors_to_string();
                     throw std::runtime_error(err);
                 }
             }
 
-            if (cb != NULL)
-            {
-                /* Use the user-defined callback for password if provided */
+            if (cb != NULL) {
                 SSL_CTX_set_default_passwd_cb(GetSSLContext(ctx), cb);
             }
 
-/* Function introduced in 1.0.2 */
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-            SSL_CTX_set_ecdh_auto(GetSSLContext(ctx), 1);
-#endif /* OPENSSL_VERSION_NUMBER */
-
-            if (SSL_CTX_use_certificate_chain_file(GetSSLContext(ctx), cert.c_str()) <= 0)
-            {
+            if (SSL_CTX_use_certificate_file(GetSSLContext(ctx), cert.c_str(), SSL_FILETYPE_PEM) <= 0) {
                 std::string err = "SSL error - cannot load SSL certificate: "
                     + ssl_print_errors_to_string();
                 throw std::runtime_error(err);
             }
 
-            if (SSL_CTX_use_PrivateKey_file(GetSSLContext(ctx), key.c_str(), SSL_FILETYPE_PEM) <= 0)
-            {
+            if (SSL_CTX_use_PrivateKey_file(GetSSLContext(ctx), key.c_str(), SSL_FILETYPE_PEM) <= 0) {
                 std::string err = "SSL error - cannot load SSL private key: "
                     + ssl_print_errors_to_string();
                 throw std::runtime_error(err);
             }
 
-            if (!SSL_CTX_check_private_key(GetSSLContext(ctx)))
-            {
+            if (!SSL_CTX_check_private_key(GetSSLContext(ctx))) {
                 std::string err = "SSL error - Private key does not match certificate public key: "
                     + ssl_print_errors_to_string();
+                throw std::runtime_error(err);
+            }
+
+            // Set Kyber512 as the KEM algorithm
+            if (SSL_CTX_set1_groups_list(GetSSLContext(ctx), "kyber512") != 1) {
+                std::string err = "SSL error - cannot set Kyber512 as KEM group: " + ssl_print_errors_to_string();
                 throw std::runtime_error(err);
             }
 
@@ -145,6 +153,7 @@ namespace Pistache::Tcp
             SSL_CTX_set_mode(GetSSLContext(ctx), SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
             return ctx;
         }
+
 
     }
 #endif /* PISTACHE_USE_SSL */
@@ -665,14 +674,15 @@ namespace Pistache::Tcp
     }
 
     void Listener::setupSSL(const std::string& cert_path,
-                            const std::string& key_path,
-                            bool use_compression,
-                            int (*cb_password)(char*, int, int, void*),
-                            std::chrono::milliseconds sslHandshakeTimeout)
+                        const std::string& key_path,
+                        bool use_compression,
+                        int (*cb_password)(char*, int, int, void*),
+                        std::chrono::milliseconds sslHandshakeTimeout)
     {
-        SSL_load_error_strings();
-        OpenSSL_add_ssl_algorithms();
+        PISTACHE_LOG_STRING_INFO(logger_, "Setting up SSL with cert: " + cert_path + " and key: " + key_path);
+        std::cout << "Setting up SSL with cert: " << cert_path << " and key: " << key_path << std::endl;
 
+        std::cout << "OpenSSL version: " << OpenSSL_version(OPENSSL_VERSION) << std::endl;
         try
         {
             ssl_ctx_ = ssl_create_context(cert_path, key_path, use_compression, cb_password);
@@ -683,7 +693,7 @@ namespace Pistache::Tcp
             throw;
         }
         sslHandshakeTimeout_ = sslHandshakeTimeout;
-        useSSL_              = true;
+        useSSL_ = true;
     }
 
 #endif /* PISTACHE_USE_SSL */
