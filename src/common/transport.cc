@@ -67,6 +67,11 @@ namespace Pistache::Tcp
 #endif
     }
 
+    Transport::~Transport()
+    {
+        removeAllPeers();
+    }
+
     std::shared_ptr<Aio::Handler> Transport::clone() const
     {
         return std::make_shared<Transport>(handler_->clone());
@@ -339,9 +344,13 @@ namespace Pistache::Tcp
 
             auto it = peers_.find(fd);
             if (it == std::end(peers_))
-                throw std::runtime_error("Could not find peer to erase");
-
-            peers_.erase(it->first);
+            {
+                PS_LOG_WARNING_ARGS("peer %p not found in peers_", peer.get());
+            }
+            else
+            {
+                peers_.erase(it);
+            }
         }
 
         {
@@ -361,6 +370,31 @@ namespace Pistache::Tcp
             r->removeFd(key(), fd);
 
         CLOSE_FD(fd);
+    }
+
+    void Transport::removeAllPeers()
+    {
+        for (;;)
+        {
+            std::shared_ptr<Peer> peer;
+
+            { // encapsulate
+                std::lock_guard<std::mutex> l_guard(peers_mutex_);
+                auto it = peers_.begin();
+                if (it == peers_.end())
+                    break;
+
+                peer = it->second;
+                if (!peer)
+                {
+                    peers_.erase(it);
+                    PS_LOG_DEBUG("peer NULL");
+                    continue;
+                }
+            }
+
+            removePeer(peer); // Note: removePeer locks mutex
+        }
     }
 
     void Transport::asyncWriteImpl(Fd fd)

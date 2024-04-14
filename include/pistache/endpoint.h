@@ -103,6 +103,7 @@ namespace Pistache::Http
         };
         Endpoint();
         explicit Endpoint(const Address& addr);
+        ~Endpoint();
 
         template <typename... Args>
         void initArgs(Args&&... args)
