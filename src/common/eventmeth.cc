@@ -632,11 +632,78 @@ namespace Pistache
 
 } // namespace Pistache
 
+#ifdef DEBUG
+namespace Pistache
+{
+    static std::set<const EmEvent *> dbg_emv_set;
+    static std::mutex dbg_emv_set_mutex;
+
+    static void dbg_new_emv(const EmEvent * emv)
+    {
+        std::lock_guard<std::mutex> l_guard(dbg_emv_set_mutex);
+        dbg_emv_set.insert(emv);
+    }
+
+    static void dbg_delete_emv(const EmEvent * emv)
+    {
+        std::lock_guard<std::mutex> l_guard(dbg_emv_set_mutex);
+        dbg_emv_set.erase(emv);
+    }
+
+    void dbg_log_all_emes()
+    {
+        std::lock_guard<std::mutex> l_guard(dbg_emv_set_mutex);
+        PS_LOG_DEBUG_ARGS("Full set of %u EmEvent * follows:",
+                          dbg_emv_set.size());
+    
+        for(auto it = dbg_emv_set.begin(); it != dbg_emv_set.end(); it++)
+        {
+            bool break_out = false;
+            std::stringstream sss;
+            sss << "    EmEvents: ";
+        
+            for(unsigned int i = 0; i<6; i++)
+            {
+                if (i != 0)
+                {
+                    it++;
+                    if (it == dbg_emv_set.end())
+                    {
+                        break_out = true;
+                        break;
+                    }
+                    sss << " ";
+                }
+
+                const EmEvent * eme = *it;
+                sss << eme;
+            }
+        
+            const std::string s = sss.str();
+            PS_LOG_DEBUG_ARGS("%s", s.c_str());
+
+            if (break_out)
+                break;
+        }
+    }
+}
+
+
+#define DBG_NEW_EMV(__EME) dbg_new_emv(__EME)
+#define DBG_DELETE_EMV(__EME) dbg_delete_emv(__EME)
+
+#else // ifdef DEBUG
+// Not DEBUG
+#define DBG_NEW_EMV(__EME)
+#define DBG_DELETE_EMV(__EME)
+#endif
+
 /* ------------------------------------------------------------------------- */
 
 #include <sys/errno.h>
 
 #include <chrono>
+#include <set>
 
 #include <pistache/pist_check.h>
 #include <pistache/pist_timelog.h>
@@ -1772,6 +1839,7 @@ namespace Pistache
         EmEventFd * emefd = new EmEventFd(initval);
         if (!emefd)
             return(NULL);
+        DBG_NEW_EMV(emefd);
 
         if (!(f_setfl_flags & O_NONBLOCK))
         {
@@ -1795,6 +1863,7 @@ namespace Pistache
         if (!eme_res)
         {
             delete emefd;
+            DBG_DELETE_EMV(emefd);
             emefd = NULL;
         }
         
@@ -1908,6 +1977,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         EmEventTmrFd * emefd = new EmEventTmrFd(clock_id, emee);
         if (!emefd)
             return(NULL);
+        DBG_NEW_EMV(emefd);
 
         if (!(f_setfl_flags & O_NONBLOCK))
         {
@@ -1931,6 +2001,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         if (!eme_res)
         {
             delete emefd;
+            DBG_DELETE_EMV(emefd);
             emefd = NULL;
         }
         
@@ -2120,6 +2191,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         EmEvent * eme = new EmEvent();
         if (!eme) 
             return(NULL);
+        DBG_NEW_EMV(eme);
 
         PS_LOG_DEBUG_ARGS("EmEvent created %p", eme);
 
@@ -3979,11 +4051,12 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
                 epoll_equiv_cptr->removeFromInterestAndReady(em_event);
                 
             delete em_event;
+            DBG_DELETE_EMV(em_event);
         }
         #ifdef DEBUG
         else
         {
-            PS_LOG_DEBUG("em_event->close() failed");
+            PS_LOG_DEBUG_ARGS("em_event->close() failed for %p", em_event);
         }
         #endif
 

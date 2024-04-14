@@ -145,6 +145,20 @@
     }
 #endif
 
+#if defined DEBUG && defined _USE_LIBEVENT
+namespace Pistache
+{
+extern void dbg_log_all_emes();
+}
+#define DBG_LOG_ALL_EMEVENTS                                \
+    {                                                       \
+	PS_LOG_DEBUG("Listing EmEvents");                   \
+        Pistache::dbg_log_all_emes();                       \
+    }
+#else
+#define DBG_LOG_ALL_EMEVENTS
+#endif
+
 #ifndef PIST_QUOTE // used for placing quote signs around a preprocessor parm
   #define PIST_Q(x) #x
   #define PIST_QUOTE(x) PIST_Q(x)
