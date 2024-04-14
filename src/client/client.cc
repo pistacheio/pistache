@@ -171,13 +171,14 @@ namespace Pistache::Http::Experimental
     public:
         PROTOTYPE_OF(Aio::Handler, Transport)
 
-        Transport() = default;
+        Transport() : stopHandling(false) { };
         Transport(const Transport&)
             : requestsQueue()
             , connectionsQueue()
             , connections()
             , timeouts()
             , timeoutsLock()
+            , stopHandling(false)
         { }
 
         void onReady(const Aio::FdSet& fds) override;
@@ -198,6 +199,9 @@ namespace Pistache::Http::Experimental
             return (epoll_fd);
         }
 #endif
+
+        std::mutex& getHandlingMutex() { return(handlingMutex); }
+        void setStopHandlingwMutexAlreadyLocked() { stopHandling = true; }
 
     private:
         enum WriteStatus { FirstTry,
@@ -257,6 +261,9 @@ namespace Pistache::Http::Experimental
         using Guard = std::lock_guard<Lock>;
         Lock timeoutsLock;
 
+        std::mutex handlingMutex;
+        bool stopHandling;
+
 #ifdef _USE_LIBEVENT
         std::shared_ptr<EventMethEpollEquiv> epoll_fd;
 #endif
@@ -276,6 +283,16 @@ namespace Pistache::Http::Experimental
     void Transport::onReady(const Aio::FdSet& fds)
     {
         PS_TIMEDBG_START_THIS;
+
+        PS_LOG_DEBUG_ARGS("Locking handlingMutex %p", &handlingMutex);
+        Guard guard(handlingMutex);
+        if (stopHandling)
+        {
+            PS_LOG_DEBUG_ARGS("Ignoring ready fds for Transport %p "
+                              "due to closed Fds", this);
+            PS_LOG_DEBUG_ARGS("Unlocking handlingMutex %p", &handlingMutex);
+            return;
+        }
 
         for (const auto& entry : fds)
         {
@@ -304,6 +321,7 @@ namespace Pistache::Http::Experimental
                 assert(false && "Unexpected event in entry");
             }
         }
+        PS_LOG_DEBUG_ARGS("Unlocking handlingMutex %p", &handlingMutex);
     }
 
     void Transport::registerPoller(Polling::Epoll& poller)
@@ -768,8 +786,33 @@ namespace Pistache::Http::Experimental
     {
         PS_TIMEDBG_START_THIS;
 
-        connectionState_.store(NotConnected);
-        CLOSE_FD(fd_);
+        if (transport_)
+        {
+            // we need to make sure that, if the connection's Fd has an event
+            // pending, that Fd is not accessed by Transport::handleIncoming
+            // (called from Transport::onReady after epoll returns) after the
+            // Fd has been closed
+            std::mutex & handling_mutex(
+                transport_->getHandlingMutex());
+            PS_LOG_DEBUG_ARGS("Locking handling_mutex %p",
+                              &handling_mutex);
+            std::lock_guard<std::mutex> guard(handling_mutex);
+
+            transport_->setStopHandlingwMutexAlreadyLocked();
+
+            connectionState_.store(NotConnected);
+            CLOSE_FD(fd_);
+
+            PS_LOG_DEBUG_ARGS("Unlocking handling_mutex %p",
+                              &handling_mutex);
+        }
+        else
+        {
+            PS_LOG_DEBUG_ARGS("Closing connection %p without transport", this);
+
+            connectionState_.store(NotConnected);
+            CLOSE_FD(fd_);
+        }
     }
 
     void Connection::associateTransport(
@@ -1181,11 +1224,19 @@ namespace Pistache::Http::Experimental
         PS_TIMEDBG_START_THIS;
 
         reactor_->shutdown();
-        pool.shutdown();
 
         PS_LOG_DEBUG_ARGS("Locking queuesLock %p", &queuesLock);
         Guard guard(queuesLock);
         stopProcessRequestQueues = true;
+
+        // Note, queuesLock should be locked before pool.shutdown() is called
+        // pool.shutdown() closes the connections in the pool, which closes
+        // each connection's FD; we need to make sure that, if one of those Fds
+        // has an event pending, it is not accessed by
+        // Transport::handleIncoming (called from onReady after epoll returns)
+        // after being closed
+        //
+        pool.shutdown();
 
         PS_LOG_DEBUG_ARGS("Unlocking queuesLock %p", &queuesLock);
     }
