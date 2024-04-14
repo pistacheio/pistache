@@ -39,6 +39,8 @@ namespace Pistache::Tcp
         Transport(const Transport&)            = delete;
         Transport& operator=(const Transport&) = delete;
 
+        ~Transport();
+
         void init(const std::shared_ptr<Tcp::Handler>& handler);
 
         void registerPoller(Polling::Epoll& poller) override;
@@ -106,6 +108,9 @@ namespace Pistache::Tcp
             return (epoll_fd);
         }
 #endif
+
+        // !!!! Make protected like removePeer
+        void removeAllPeers(); // cleans up toWrite and does CLOSE_FD on each
 
     private:
         enum WriteStatus { FirstTry,
