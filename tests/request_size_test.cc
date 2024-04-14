@@ -147,7 +147,9 @@ TEST(request_size, manual_construction)
         }
 
     private:
-#ifndef __linux__
+#ifndef __GNUC__
+        // maybe_unused is legit here but gcc warns about it anyway
+        // gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0 April/2024
         [[maybe_unused]]
 #endif
         tag placeholder;
