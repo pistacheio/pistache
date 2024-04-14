@@ -311,7 +311,10 @@ public:
         {
             auto server = prepare_listener(options);
             server->bind();
-            std::system("sleep 10 <&- &"); // leak open socket to child of our child process
+
+            // leak open socket to child of our child process
+            // static_cast<void> to ignore return value
+            [[maybe_unused]] int sys_res = (std::system("sleep 10 <&- &"));
             exit(0);
         }
 
