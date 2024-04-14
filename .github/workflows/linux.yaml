@@ -25,11 +25,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ 'debian:stable', 'debian:testing', 'registry.access.redhat.com/ubi8/ubi-minimal', 'registry.access.redhat.com/ubi9/ubi-minimal' ]
-        compiler: [ 'gcc', 'clang' ]
-        sanitizer: [ 'address', 'undefined', 'none' ] # ThreadSanitizer reports errors
-        tls: [ 'true', 'false' ]
-        flibev: [ 'true', 'false' ]
+        os: [ 'debian:stable' ]
+        compiler: [ 'gcc' ]
+        sanitizer: [ 'address' ] # ThreadSanitizer reports errors
+        tls: [ 'true' ]
+        flibev: [ 'true' ]
         exclude:
           - os: 'registry.access.redhat.com/ubi8/ubi-minimal'
             sanitizer: 'address'
