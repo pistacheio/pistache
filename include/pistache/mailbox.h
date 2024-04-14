@@ -129,8 +129,8 @@ namespace Pistache
                 uint64_t val;
                 for (;;)
                 {
-                    ssize_t bytes = read(event_fd, &val, sizeof val);
-                    if (bytes == -1)
+                    int efdread_res = READ_EFD(event_fd, &val);
+                    if (efdread_res == -1)
                     {
                         if (errno == EAGAIN || errno == EWOULDBLOCK)
                             break;
