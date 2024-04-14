@@ -354,11 +354,13 @@ public:
 
             auto server = prepare_listener(options);
             server->bind();
-            [[maybe_unused]] int sys_res = std::system("sleep 10 <&- &"); // leak open socket to child of our child process
+
+            // leak open socket to child of our child process
+            [[maybe_unused]] int sys_res = (std::system("sleep 10 <&- &"));
             // Assign result of std::system to suppress Linux warning:
             //   warning: ignoring return value of ‘int system(const char*)’
             //   declared with attribute ‘warn_unused_result’ [-Wunused-result]
-
+            
             exit(0);
         }
 

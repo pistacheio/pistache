@@ -139,7 +139,7 @@ public:
     StreamingTests()
         : address(Pistache::Ipv4::any(), Pistache::Port(0))
         , endpoint(address)
-        , curl(curl_easy_init())
+        , curl(curl_easy_init()) // calls curl_global_init automatically
     {
     }
 
@@ -294,6 +294,7 @@ public:
     }
 };
 
+// MUST be LAST test, since it calls curl_global_cleanup
 TEST(StreamingTest, ClientDisconnect)
 {
     Http::Endpoint endpoint(Address(IP::loopback(), Port(0)));
@@ -303,32 +304,51 @@ TEST(StreamingTest, ClientDisconnect)
 
     const std::string url = "http://localhost:" + std::to_string(endpoint.getPort());
 
-    std::thread thread([&url]() {
-        CURL* curl = curl_easy_init();
-        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    {   // encapsulate the "thread" variable
+        // 
+        // If we don't encapsulate "thread" in this fashion (i.e. if we have
+        // "thread" remain in scope until the end of the function), then the
+        // github test runners will believe that this TEST has a memory leak
+        // when libevent is in use, and so fail. Specifically, the gtest/github
+        // test makes it appear that we have leaked an Fd/EmEvent.
+        //
+        // With this encapsulation in place, there is no leak detected. It is
+        // not clear to me why "thread" going out of scope should allow the Fd
+        // to be freed, but equally it seems OK that the thread should have to
+        // be out of scope before the Fd resource is released.
 
-        CURLM* curlm      = curl_multi_init();
-        int still_running = 1;
-        curl_multi_add_handle(curlm, curl);
+        std::thread thread([&url]() {
+            CURL* curl = curl_easy_init();
+            curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+            curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
-        // This sequence of _perform, _wait, _perform starts a requests (all 3 are needed)
-        curl_multi_perform(curlm, &still_running);
-        if (still_running)
-        {
-            curl_multi_wait(curlm, NULL, 0, 1000, NULL);
+            CURLM* curlm = curl_multi_init();
+            int still_running = 1;
+            curl_multi_add_handle(curlm, curl);
+
+            // This sequence of _perform, _wait, _perform starts a requests
+            // (all 3 are needed)
             curl_multi_perform(curlm, &still_running);
+            if (still_running)
+            {
+                curl_multi_wait(curlm, NULL, 0, 1000, NULL);
+                curl_multi_perform(curlm, &still_running);
+            }
+
+            // Hard-close the client request & socket before server is done
+            // responding
+            curl_multi_cleanup(curlm);
+            curl_easy_cleanup(curl);
+        });
+
+        if (thread.joinable())
+        {
+            thread.join();
         }
-
-        // Hard-close the client request & socket before server is done responding
-        curl_multi_cleanup(curlm);
-        curl_easy_cleanup(curl);
-    });
-
-    if (thread.joinable())
-    {
-        thread.join();
-    }
+    } // end encapsulate
 
     // Don't care about response content, this test will fail if SIGPIPE is raised
+
+    endpoint.shutdown();
+    curl_global_cleanup();
 }
