@@ -397,8 +397,10 @@ namespace Pistache::Tcp
 
         auto transport = transportFactory_();
 
-        reactor_.init(Aio::AsyncContext(workers_, workersName_));
-        transportKey = reactor_.addHandler(transport);
+        reactor_ = std::make_shared<Aio::Reactor>();
+        reactor_->init(Aio::AsyncContext(workers_, workersName_));
+
+        transportKey = reactor_->addHandler(transport);
 
         LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(actual_fd);
 
@@ -506,7 +508,7 @@ namespace Pistache::Tcp
     {
         if (!shutdownFd.isBound())
             shutdownFd.bind(poller);
-        reactor_.run();
+        reactor_->run();
 
         for (;;)
         {
@@ -569,7 +571,8 @@ namespace Pistache::Tcp
             shutdownFd.notify();
         }
 
-        reactor_.shutdown();
+        if (reactor_)
+            reactor_->shutdown();
     }
 
     Async::Promise<Listener::Load>
@@ -577,7 +580,7 @@ namespace Pistache::Tcp
     {
         PS_TIMEDBG_START_THIS;
 
-        auto handlers = reactor_.handlers(transportKey);
+        auto handlers = reactor_->handlers(transportKey);
 
         std::vector<Async::Promise<rusage>> loads;
         for (const auto& handler : handlers)
@@ -872,7 +875,7 @@ namespace Pistache::Tcp
     {
         PS_TIMEDBG_START_THIS;
 
-        auto handlers  = reactor_.handlers(transportKey);
+        auto handlers  = reactor_->handlers(transportKey);
         auto idx       = (GET_ACTUAL_FD(peer->fd())) % handlers.size();
         auto transport = std::static_pointer_cast<Transport>(handlers[idx]);
 
@@ -966,7 +969,7 @@ namespace Pistache::Tcp
     std::vector<std::shared_ptr<Tcp::Peer>> Listener::getAllPeer()
     {
         std::vector<std::shared_ptr<Tcp::Peer>> vecPeers;
-        auto handlers = reactor_.handlers(transportKey);
+        auto handlers = reactor_->handlers(transportKey);
 
         for (const auto& handler : handlers)
         {
