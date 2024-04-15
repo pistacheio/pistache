@@ -107,7 +107,7 @@ namespace Pistache::Tcp
         std::string workersName_;
         std::shared_ptr<Handler> handler_;
 
-        Aio::Reactor reactor_;
+        std::shared_ptr<Aio::Reactor> reactor_;
         Aio::Reactor::Key transportKey;
 
         TransportFactory transportFactory_;
