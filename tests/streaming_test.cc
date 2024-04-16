@@ -183,6 +183,16 @@ public:
 
 TEST_F(StreamingTests, FromDescription)
 {
+    PS_TIMEDBG_START;
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_before = EventMethFns::getEmEventCount();
+#endif
+#endif
+
+    { // encapsulate
+
     Rest::Description desc("Rest Description Test", "v1");
     Rest::Router router;
 
@@ -199,6 +209,18 @@ TEST_F(StreamingTests, FromDescription)
 
     ASSERT_EQ(res, CURLE_OK);
     ASSERT_EQ(chunksToString(chunks).size(), SET_REPEATS * LETTER_REPEATS * N_LETTERS);
+
+    } // end encapsulate
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_after = EventMethFns::getEmEventCount();
+
+    PS_LOG_DEBUG_ARGS("em_event_count_before %d, em_event_count_after %d",
+                      em_event_count_before, em_event_count_after);
+    ASSERT_EQ(em_event_count_before, em_event_count_after);
+#endif
+#endif
 }
 
 class HelloHandler : public Http::Handler
@@ -241,6 +263,16 @@ private:
 
 TEST_F(StreamingTests, ChunkedStream)
 {
+    PS_TIMEDBG_START;
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_before = EventMethFns::getEmEventCount();
+#endif
+#endif
+
+    { // encapsulate
+    
     SyncContext ctx;
 
     // force unbuffered
@@ -266,6 +298,18 @@ TEST_F(StreamingTests, ChunkedStream)
     EXPECT_EQ(chunks[0], "Hello ");
     EXPECT_EQ(chunks[1], "world");
     EXPECT_EQ(chunks[2], "!");
+
+    } // end encapsulate
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_after = EventMethFns::getEmEventCount();
+
+    PS_LOG_DEBUG_ARGS("em_event_count_before %d, em_event_count_after %d",
+                      em_event_count_before, em_event_count_after);
+    ASSERT_EQ(em_event_count_before, em_event_count_after);
+#endif
+#endif
 }
 
 class ClientDisconnectHandler : public Http::Handler
@@ -297,7 +341,15 @@ public:
 // MUST be LAST test, since it calls curl_global_cleanup
 TEST(StreamingTest, ClientDisconnect)
 {
-    {   // encapsulate the "thread" variable
+    PS_TIMEDBG_START;
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_before = EventMethFns::getEmEventCount();
+#endif
+#endif
+    
+    { // encapsulate
         
     Http::Endpoint endpoint(Address(IP::loopback(), Port(0)));
     endpoint.init(Http::Endpoint::options().flags(Tcp::Options::ReuseAddr));
@@ -352,4 +404,14 @@ TEST(StreamingTest, ClientDisconnect)
     curl_global_cleanup();
 
     } // end encapsulate
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_after = EventMethFns::getEmEventCount();
+
+    PS_LOG_DEBUG_ARGS("em_event_count_before %d, em_event_count_after %d",
+                      em_event_count_before, em_event_count_after);
+    ASSERT_EQ(em_event_count_before, em_event_count_after);
+#endif
+#endif
 }
