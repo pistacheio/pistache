@@ -297,6 +297,8 @@ public:
 // MUST be LAST test, since it calls curl_global_cleanup
 TEST(StreamingTest, ClientDisconnect)
 {
+    {   // encapsulate the "thread" variable
+        
     Http::Endpoint endpoint(Address(IP::loopback(), Port(0)));
     endpoint.init(Http::Endpoint::options().flags(Tcp::Options::ReuseAddr));
     endpoint.setHandler(Http::make_handler<ClientDisconnectHandler>());
@@ -304,8 +306,6 @@ TEST(StreamingTest, ClientDisconnect)
 
     const std::string url = "http://localhost:" + std::to_string(endpoint.getPort());
 
-    {   // encapsulate the "thread" variable
-        // 
         // If we don't encapsulate "thread" in this fashion (i.e. if we have
         // "thread" remain in scope until the end of the function), then the
         // github test runners will believe that this TEST has a memory leak
@@ -345,10 +345,11 @@ TEST(StreamingTest, ClientDisconnect)
         {
             thread.join();
         }
-    } // end encapsulate
 
     // Don't care about response content, this test will fail if SIGPIPE is raised
 
     endpoint.shutdown();
     curl_global_cleanup();
+
+    } // end encapsulate
 }
