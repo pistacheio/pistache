@@ -1722,8 +1722,8 @@ TEST(http_server_test, http_server_is_not_leaked)
     ASSERT_EQ(event_meth_base_count_before, event_meth_base_count_after);
     ASSERT_EQ(wait_then_get_count_before, wait_then_get_count_after);
 
+#endif
+#endif
+
     } // end encapsulate
-    
-#endif
-#endif
 }
