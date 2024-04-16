@@ -393,7 +393,7 @@ namespace Pistache::Tcp
                 }
             }
 
-            removePeer(peer); // Note: removePeer locks mutex
+            removePeer(peer);// removePeer locks mutex, erases peer from peers_
         }
     }
 
