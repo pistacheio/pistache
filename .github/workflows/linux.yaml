@@ -90,10 +90,7 @@ jobs:
       run: ninja -C build
 
     - name: Test
-      # run: meson test -C build --verbose
-      # !!!! Run solely streaming_test for now
-      # !!!! Change back to "meson test" above
-      run: build/tests/run_streaming_test
+      run: meson test -C build --verbose
 
     - name: Coverage
       if: ${{ !contains(matrix.os, 'redhat') }}
