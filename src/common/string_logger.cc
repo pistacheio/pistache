@@ -26,7 +26,9 @@ namespace Pistache::Log
             (*out_) << message << std::endl;
 
             // Save in syslog / os_log as well
-            PSLogNoLocFn((int)level, "%s", message.c_str());
+            PSLogNoLocFn((int)level,
+                         false, // Don't send to stdout - just did that
+                         "%s", message.c_str());
         }
     }
 

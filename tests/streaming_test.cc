@@ -359,13 +359,17 @@ TEST(StreamingTest, ClientDisconnect)
     const int em_event_count_before = EventMethFns::getEmEventCount();
 #endif
 #endif
-    
+
+    DBG_LOG_ALL_EMEVENTS;
+
     { // encapsulate
         
     Http::Endpoint endpoint(Address(IP::loopback(), Port(0)));
     endpoint.init(Http::Endpoint::options().flags(Tcp::Options::ReuseAddr));
     endpoint.setHandler(Http::make_handler<ClientDisconnectHandler>());
     endpoint.serveThreaded();
+
+    DBG_LOG_ALL_EMEVENTS;
 
     const std::string url = "http://localhost:" + std::to_string(endpoint.getPort());
 
@@ -380,41 +384,53 @@ TEST(StreamingTest, ClientDisconnect)
         // to be freed, but equally it seems OK that the thread should have to
         // be out of scope before the Fd resource is released.
 
-        std::thread thread([&url]() {
-            CURL* curl = curl_easy_init();
-            curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-            curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    std::thread thread([&url]() {
+        DBG_LOG_ALL_EMEVENTS;
+            
+        CURL* curl = curl_easy_init();
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
-            CURLM* curlm = curl_multi_init();
-            int still_running = 1;
-            curl_multi_add_handle(curlm, curl);
+        CURLM* curlm = curl_multi_init();
+        int still_running = 1;
+        curl_multi_add_handle(curlm, curl);
 
-            // This sequence of _perform, _wait, _perform starts a requests
-            // (all 3 are needed)
-            curl_multi_perform(curlm, &still_running);
-            if (still_running)
-            {
-                curl_multi_wait(curlm, NULL, 0, 1000, NULL);
-                curl_multi_perform(curlm, &still_running);
-            }
-
-            // Hard-close the client request & socket before server is done
-            // responding
-            curl_multi_cleanup(curlm);
-            curl_easy_cleanup(curl);
-        });
-
-        if (thread.joinable())
+        // This sequence of _perform, _wait, _perform starts a requests
+        // (all 3 are needed)
+        curl_multi_perform(curlm, &still_running);
+        if (still_running)
         {
-            thread.join();
+            curl_multi_wait(curlm, NULL, 0, 1000, NULL);
+            curl_multi_perform(curlm, &still_running);
         }
+
+        // Hard-close the client request & socket before server is done
+        // responding
+        curl_multi_cleanup(curlm);
+        curl_easy_cleanup(curl);
+
+        DBG_LOG_ALL_EMEVENTS;
+    });
+
+    DBG_LOG_ALL_EMEVENTS;
+
+    if (thread.joinable())
+    {
+        thread.join();
+    }
+
+    DBG_LOG_ALL_EMEVENTS;
 
     // Don't care about response content, this test will fail if SIGPIPE is raised
 
     endpoint.shutdown();
     curl_global_cleanup();
 
+    DBG_LOG_ALL_EMEVENTS;
+
     } // end encapsulate
+
+    DBG_LOG_ALL_EMEVENTS;
 
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 #ifdef DEBUG

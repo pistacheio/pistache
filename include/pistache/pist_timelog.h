@@ -270,12 +270,12 @@ public:
             setMarkerChars(&(marker_chars[0]), mMarkerChar, call_depth);
             
             if (_inf)
-                PSLogFn(LOG_DEBUG, false/*no printf*/,
+                PSLogFn(LOG_DEBUG, PS_LOG_AND_STDOUT,
                         mFileName, mLineNum, mFnName,
                         "%sCtr:%u %s [%s]", &(marker_chars[0]),
                         mCounter, ps_time_str, _inf);
             else
-                PSLogFn(LOG_DEBUG, false/*no printf*/,
+                PSLogFn(LOG_DEBUG, PS_LOG_AND_STDOUT,
                         mFileName, mLineNum, mFnName,
                         "%sCtr:%u %s", &(marker_chars[0]),
                         mCounter, ps_time_str);
@@ -361,7 +361,7 @@ public:
             setMarkerChars(&(marker_chars[0]), reverseMarkerChar(mMarkerChar),
                            call_depth);
             
-            PSLogFn(LOG_DEBUG, false /*no printf*/,
+            PSLogFn(LOG_DEBUG, PS_LOG_AND_STDOUT,
                 mFileName, mLineNum, mFnName,
                 "%s diff=%s ctr:%u%s", ps_time_str, ps_diff_time_str, mCounter,
                 &(marker_chars[0]));

@@ -31,25 +31,30 @@
 #define PS_LOG_INFO(__str) PS_LOG_INFO_ARGS("%s", __str)
 #define PS_LOG_DEBUG(__str) PS_LOG_DEBUG_ARGS("%s", __str)
 
+// Comment in exactly one of these. Usually "false". When true, sends all
+// logging to stdout
+#define PS_LOG_AND_STDOUT true
+// #define PS_LOG_AND_STDOUT false
+
 #define PS_LOG_ALERT_ARGS(__fmt, ...)                                   \
-    PSLogFn(LOG_ALERT, false, __FILE__, __LINE__, __FUNCTION__,         \
+    PSLogFn(LOG_ALERT, PS_LOG_AND_STDOUT, __FILE__, __LINE__, __FUNCTION__, \
             __fmt, __VA_ARGS__)
 
 #define PS_LOG_ERR_ARGS(__fmt, ...)                                     \
-    PSLogFn(LOG_ERR, false, __FILE__, __LINE__, __FUNCTION__,           \
+    PSLogFn(LOG_ERR, PS_LOG_AND_STDOUT, __FILE__, __LINE__, __FUNCTION__, \
             __fmt, __VA_ARGS__)
 
 #define PS_LOG_WARNING_ARGS(__fmt, ...)                                 \
-    PSLogFn(LOG_WARNING, false, __FILE__, __LINE__, __FUNCTION__,       \
+    PSLogFn(LOG_WARNING, PS_LOG_AND_STDOUT, __FILE__, __LINE__, __FUNCTION__, \
             __fmt, __VA_ARGS__)
 
 #define PS_LOG_INFO_ARGS(__fmt, ...)                                    \
-    PSLogFn(LOG_INFO, false, __FILE__, __LINE__, __FUNCTION__,          \
+    PSLogFn(LOG_INFO, PS_LOG_AND_STDOUT, __FILE__, __LINE__, __FUNCTION__, \
             __fmt, __VA_ARGS__)
 
 #ifdef DEBUG
 #define PS_LOG_DEBUG_ARGS(__fmt, ...)                                   \
-    PSLogFn(LOG_DEBUG, false, __FILE__, __LINE__, __FUNCTION__,         \
+    PSLogFn(LOG_DEBUG, PS_LOG_AND_STDOUT, __FILE__, __LINE__, __FUNCTION__, \
             __fmt, __VA_ARGS__)
 #else
 #define PS_LOG_DEBUG_ARGS(__fmt, ...) { }
@@ -71,7 +76,8 @@ extern "C" void PSLogFn(int _pri, bool _andPrintf,
                         const char * _format, ...);
 
 // Log without file location - used in Check code
-extern "C" void PSLogNoLocFn(int _pri, const char * _format, ...);
+extern "C" void PSLogNoLocFn(int _pri, bool _andPrintf,
+                             const char * _format, ...);
 
 // If using SysLog (i.e. on Linux), if setPsLogCategory is called with NULL or
 // zero-length string then pistachio does not call openlog; and if

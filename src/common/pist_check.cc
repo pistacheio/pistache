@@ -30,7 +30,8 @@
 
 static void logStackTrace(int pri)
 {
-    PSLogNoLocFn(pri, "%s", "PS Check failed. Stack trace follows...");
+    PSLogNoLocFn(pri, PS_LOG_AND_STDOUT,
+                 "%s", "PS Check failed. Stack trace follows...");
 
     // write the stack trace to the logging facility
 
@@ -44,7 +45,8 @@ static void logStackTrace(int pri)
     {
         if (!(stack[i]))
         {
-            PSLogNoLocFn(pri, "%s", "  ST- [Null Stack entry] ");
+            PSLogNoLocFn(pri, PS_LOG_AND_STDOUT,
+                         "%s", "  ST- [Null Stack entry] ");
             continue;
         }
         
@@ -58,23 +60,27 @@ static void logStackTrace(int pri)
             {
                 if (info.dli_saddr)
                 {
-                    PSLogNoLocFn(pri, "  ST- %p:%p %s", info.dli_saddr,
+                    PSLogNoLocFn(pri, PS_LOG_AND_STDOUT,
+                                 "  ST- %p:%p %s", info.dli_saddr,
                                  stack[i], realname);
                 }
                 else
                 {
-                    PSLogNoLocFn(pri, "  ST- %p %s", stack[i], realname);
+                    PSLogNoLocFn(pri, PS_LOG_AND_STDOUT,
+                                 "  ST- %p %s", stack[i], realname);
                 }
             }
             else
             {
                 if (info.dli_sname)
-                    PSLogNoLocFn(pri, "  ST- %s", info.dli_sname);
+                    PSLogNoLocFn(pri, PS_LOG_AND_STDOUT,
+                                 "  ST- %s", info.dli_sname);
                 else if (info.dli_fname)
-                    PSLogNoLocFn(pri, "  ST- [Unknown addr] %p in %s",
+                    PSLogNoLocFn(pri, PS_LOG_AND_STDOUT,
+                                 "  ST- [Unknown addr] %p in %s",
                                  stack[i], info.dli_fname);
                 else
-                    PSLogNoLocFn(pri, 
+                    PSLogNoLocFn(pri, PS_LOG_AND_STDOUT,
                                  "  ST- [Unknown addr] %p in unknown file",
                                  stack[i]);
 
@@ -93,7 +99,8 @@ static void logStackTrace(int pri)
         } 
         else
         {
-            PSLogNoLocFn(pri, "  ST- [Unknown addr] %p", stack[i]);
+            PSLogNoLocFn(pri, PS_LOG_AND_STDOUT,
+                         "  ST- [Unknown addr] %p", stack[i]);
         }
     }
 }

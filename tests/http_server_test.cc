@@ -62,7 +62,9 @@ namespace
             std::cout << message << std::endl;
 
             // Save in syslog / os_log as well
-            PSLogNoLocFn(LOG_INFO, "%s", message.c_str());
+            PSLogNoLocFn(LOG_INFO,
+                         false, // don't send to stdout - just did that
+                         "%s", message.c_str());
         }
 
     private:
