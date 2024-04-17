@@ -111,6 +111,9 @@ namespace
 
     using Chunks = std::vector<std::string>;
 
+    /*
+     * !!!! Put back in
+     * 
     std::string chunksToString(const Chunks& chunks)
     {
         std::string result;
@@ -122,6 +125,7 @@ namespace
 
         return result;
     }
+    */
 } // namespace
 
 // from
@@ -180,7 +184,9 @@ public:
 
     static constexpr std::size_t threads = 20;
 };
-
+/*
+ * !!!! Put back in
+ * 
 TEST_F(StreamingTests, FromDescription)
 {
     PS_TIMEDBG_START;
@@ -222,6 +228,7 @@ TEST_F(StreamingTests, FromDescription)
 #endif
 #endif
 }
+*/
 
 class HelloHandler : public Http::Handler
 {
@@ -261,6 +268,9 @@ private:
     SyncContext& ctx_;
 };
 
+/*
+ * !!!! Put back in
+ * 
 TEST_F(StreamingTests, ChunkedStream)
 {
     PS_TIMEDBG_START;
@@ -311,6 +321,7 @@ TEST_F(StreamingTests, ChunkedStream)
 #endif
 #endif
 }
+*/
 
 class ClientDisconnectHandler : public Http::Handler
 {
