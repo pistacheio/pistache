@@ -774,7 +774,7 @@ namespace Pistache::Tcp
             peer = Peer::Create(client_fd, Address::fromUnix(peer_alias));
         }
 
-        PS_LOG_DEBUG("Calling dispatchPeer");
+        PS_LOG_DEBUG_ARGS("Calling dispatchPeer %p", peer.get());
         dispatchPeer(peer);
     }
 

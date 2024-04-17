@@ -200,7 +200,7 @@ namespace Pistache::Tcp
 
                 if (isPeerFd(tag))
                 {
-                    auto& peer = getPeer(tag);
+                    auto peer = getPeer(tag);
                     PS_LOG_DEBUG("handleIncoming");
                     handleIncoming(peer);
                 }
@@ -369,11 +369,13 @@ namespace Pistache::Tcp
         if (r) // or if r is NULL then reactor has been detached already
             r->removeFd(key(), fd);
 
-        CLOSE_FD(fd);
+        peer->closeFd();
     }
 
     void Transport::removeAllPeers()
     {
+        PS_TIMEDBG_START_THIS;
+        
         for (;;)
         {
             std::shared_ptr<Peer> peer;
@@ -1000,7 +1002,7 @@ namespace Pistache::Tcp
         return isTimerFd(static_cast<FdConst>(tag.value()));
     }
 
-    std::shared_ptr<Peer>& Transport::getPeer(FdConst fdconst)
+    std::shared_ptr<Peer> Transport::getPeer(FdConst fdconst)
     {
         PS_TIMEDBG_START_THIS;
 
@@ -1018,7 +1020,7 @@ namespace Pistache::Tcp
         return it->second;
     }
 
-    std::shared_ptr<Peer>& Transport::getPeer(Polling::Tag tag)
+    std::shared_ptr<Peer> Transport::getPeer(Polling::Tag tag)
     {
         return getPeer(static_cast<FdConst>(tag.value()));
     }

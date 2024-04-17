@@ -54,6 +54,8 @@ namespace Pistache::Tcp
         const std::string& hostname();
         Fd fd() const;
 
+        void closeFd();
+
         void* ssl() const;
 
         void putData(std::string name, std::shared_ptr<void> data);

@@ -289,8 +289,8 @@ namespace Pistache::Tcp
         bool isPeerFd(Polling::Tag tag) const;
         bool isTimerFd(Polling::Tag tag) const;
 
-        std::shared_ptr<Peer>& getPeer(FdConst fd);
-        std::shared_ptr<Peer>& getPeer(Polling::Tag tag);
+        std::shared_ptr<Peer> getPeer(FdConst fd);
+        std::shared_ptr<Peer> getPeer(Polling::Tag tag);
 
         void armTimerMs(Fd fd, std::chrono::milliseconds value,
                         Async::Deferred<uint64_t> deferred);
