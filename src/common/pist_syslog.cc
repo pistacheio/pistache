@@ -91,8 +91,10 @@ public:
     static std::shared_ptr<PSLogging> getPSLogging();
 
 public:
-    void log(int _priority, const char * _format, va_list _ap);
-    void log(int _priority, const char * _str);
+    void log(int _priority, bool _andPrintf,
+             const char * _format, va_list _ap);
+    void log(int _priority, bool _andPrintf,
+             const char * _str);
 };
 
 // For use of class PSLogging only; treat as private to PSLogging
@@ -303,7 +305,45 @@ static int snprintProcessAndThread(char * _buff, size_t _buffSize)
 #define OS_LOG_BY_PRIORITY OS_LOG_BY_PRIORITY_FORMAT_ARG("%s", &(buff[0]))
 #endif
 
-void PSLogging::log(int _priority, const char * _format, va_list _ap)
+// ---------------------------------------------------------------------------
+
+static const char * levelCStr(int _pri)
+{
+    const char * res = NULL;
+    switch(_pri)
+    {
+    case LOG_ALERT:
+        res = "ALERT";
+        break;
+        
+    case LOG_WARNING:
+        res = "WRN";
+        break;
+        
+    case LOG_INFO:
+        res = "INF";
+        break;
+        
+    case LOG_DEBUG:
+        res = "DBG";
+        break;
+
+    case LOG_ERR:
+        res = "ERR";
+        break;
+        
+    default:
+        res = "UNKNOWN";
+        break;
+    }
+
+    return(res);
+}
+
+// ---------------------------------------------------------------------------
+
+void PSLogging::log(int _priority, bool _andPrintf,
+                    const char * _format, va_list _ap)
 {
     char buff[2048];
     buff[0] = '(';
@@ -328,7 +368,10 @@ void PSLogging::log(int _priority, const char * _format, va_list _ap)
 
     if ((res < 0) && (_priority >= LOG_WARNING))
     {
-        fprintf(stderr, "vsnprintf failed for log in PSLogging::log");
+        fprintf(stderr, "vsnprintf failed for log in PSLogging::log\n");
+        if (_andPrintf)
+            fprintf(stdout, "ALERT: vsnprintf failed for log\n");
+
         #ifdef __clang__
         // Temporarily disable -Wformat-nonliteral
         #pragma clang diagnostic push
@@ -347,6 +390,7 @@ void PSLogging::log(int _priority, const char * _format, va_list _ap)
           if (_format)
               OS_LOG_BY_PRIORITY_FORMAT_ARG(
                   "Failing log vsnprintf format: %s", _format);
+
         #else
           vsyslog(_priority, _format, _ap);
         #endif
@@ -361,15 +405,18 @@ void PSLogging::log(int _priority, const char * _format, va_list _ap)
         #else
         syslog(_priority, "%s", &(buff[0]));
         #endif
+
+        if (_andPrintf)
+            fprintf(stdout, "%s: %s\n", levelCStr(_priority), &(buff[0]));
         
         #ifndef DEBUG
         if (_priority >= LOG_WARNING)
-            fprintf(stderr, "%s", &(buff[0]));
+            fprintf(stderr, "%s: %s\n", levelCStr(_priority), &(buff[0]));
         #endif
     }
 }
 
-void PSLogging::log(int _priority, const char * _str)
+void PSLogging::log(int _priority, bool _andPrintf, const char * _str)
 {
     if (!_str)
         return;
@@ -388,7 +435,10 @@ void PSLogging::log(int _priority, const char * _str)
     int res = snprintf(remaining_buff, remaining_buff_size-2, "%s", _str);
     if ((res < 0) && (_priority >= LOG_WARNING))
     {
-        fprintf(stderr, "snprintf failed for log in PSLogging::log");
+        fprintf(stderr, "snprintf failed for log in PSLogging::log\n");
+        if (_andPrintf)
+            fprintf(stdout, "ALERT: snprintf failed for log\n");
+        
         #ifdef PIST_USE_OS_LOG
           OS_LOG_BY_PRIORITY_FORMAT_ARG("%s", _str);
         #else
@@ -402,17 +452,21 @@ void PSLogging::log(int _priority, const char * _str)
         #else
         syslog(_priority, "%s", &(buff[0]));
         #endif
+
+        if (_andPrintf)
+            fprintf(stdout, "%s: %s\n", levelCStr(_priority), &(buff[0]));
         
         #ifndef DEBUG
         if (_priority >= LOG_WARNING)
-            fprintf(stderr, "%s", &(buff[0]));
+            fprintf(stderr, "%s: %s\n", levelCStr(_priority), &(buff[0]));
         #endif
     }
 }
 
 /*****************************************************************************/
 
-static void PSLogPrv(int _priority, const char * _format, va_list _ap)
+static void PSLogPrv(int _priority, bool _andPrintf,
+                     const char * _format, va_list _ap)
 {
     #ifndef DEBUG
     if (_priority == LOG_DEBUG)
@@ -421,10 +475,10 @@ static void PSLogPrv(int _priority, const char * _format, va_list _ap)
     if (!_format)
         return;
     
-    PSLogging::getPSLogging()->log(_priority, _format, _ap);
+    PSLogging::getPSLogging()->log(_priority, _andPrintf, _format, _ap);
 }
 
-static void PSLogStrPrv(int _priority, const char * _str)
+static void PSLogStrPrv(int _priority, bool _andPrintf, const char * _str)
 {
     #ifndef DEBUG
     if (_priority == LOG_DEBUG)
@@ -433,12 +487,13 @@ static void PSLogStrPrv(int _priority, const char * _str)
     if (!_str)
         return;
     
-    PSLogging::getPSLogging()->log(_priority, _str);
+    PSLogging::getPSLogging()->log(_priority, _andPrintf, _str);
 }
 
 // ---------------------------------------------------------------------------
 
-extern "C" void PSLogNoLocFn(int _pri, const char * _format, ...)
+extern "C" void PSLogNoLocFn(int _pri, bool _andPrintf,
+                             const char * _format, ...)
 {
     int tmp_errno = errno; // See note on preserving errno in PSLogFn
 
@@ -446,46 +501,12 @@ extern "C" void PSLogNoLocFn(int _pri, const char * _format, ...)
         return;
     va_list ap;
     va_start(ap, _format);
-    PSLogPrv(_pri, _format, ap);
+    PSLogPrv(_pri, _andPrintf, _format, ap);
     va_end(ap);
 
     errno = tmp_errno;
 }
 
-// ---------------------------------------------------------------------------
-
-static const char * levelCStr(int _pri)
-{
-    const char * res = NULL;
-    switch(_pri)
-    {
-    case LOG_ALERT:
-        res = "ALERT";
-        break;
-        
-    case LOG_WARNING:
-        res = "WARNING";
-        break;
-        
-    case LOG_INFO:
-        res = "INFO";
-        break;
-        
-    case LOG_DEBUG:
-        res = "DEBUG";
-        break;
-
-    case LOG_ERR:
-        res = "ERR";
-        break;
-        
-    default:
-        res = "UNKNWN";
-        break;
-    }
-
-    return(res);
-}
 
 #ifdef __APPLE__
 #define my_basename_r basename_r
@@ -588,15 +609,7 @@ extern "C" void PSLogFn(int _pri, bool _andPrintf,
         strcat(buf_ptr, &(form_and_args_buf[0]));
     }
 
-    PSLogStrPrv(_pri, buf);
-
-    if (_andPrintf)
-    {
-        fprintf((_pri >= LOG_WARNING) ? stderr : stdout, "%s%s%s\n",
-                levelCStr(_pri),
-                (form_and_args_buf[0]) ? ": " : "",
-                form_and_args_buf);
-    }
+    PSLogStrPrv(_pri, _andPrintf, buf);
 
     errno = tmp_errno;
 }
