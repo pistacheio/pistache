@@ -50,7 +50,9 @@ namespace Pistache::Tcp
         PS_LOG_DEBUG_ARGS("peer %p, fd %" PIST_QUOTE(PS_FD_PRNTFCD)
                           ", Address ptr %p, ssl %p",
                           this, fd_, &addr, ssl_);
-        
+
+        closeFd(); // does nothing if already closed
+
 #ifdef PISTACHE_USE_SSL
         if (ssl_)
             SSL_free(static_cast<SSL*>(ssl_));
