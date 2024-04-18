@@ -185,12 +185,6 @@ TEST_F(StreamingTests, FromDescription)
 {
     PS_TIMEDBG_START;
 
-#ifdef _USE_LIBEVENT_LIKE_APPLE
-#ifdef DEBUG
-    const int em_event_count_before = EventMethFns::getEmEventCount();
-#endif
-#endif
-
     { // encapsulate
 
     Rest::Description desc("Rest Description Test", "v1");
@@ -212,15 +206,6 @@ TEST_F(StreamingTests, FromDescription)
 
     } // end encapsulate
 
-#ifdef _USE_LIBEVENT_LIKE_APPLE
-#ifdef DEBUG
-    const int em_event_count_after = EventMethFns::getEmEventCount();
-
-    PS_LOG_DEBUG_ARGS("em_event_count_before %d, em_event_count_after %d",
-                      em_event_count_before, em_event_count_after);
-    // !!!! ASSERT_EQ(em_event_count_before, em_event_count_after);
-#endif
-#endif
 }
 
 class HelloHandler : public Http::Handler
@@ -265,12 +250,6 @@ TEST_F(StreamingTests, ChunkedStream)
 {
     PS_TIMEDBG_START;
 
-#ifdef _USE_LIBEVENT_LIKE_APPLE
-#ifdef DEBUG
-    const int em_event_count_before = EventMethFns::getEmEventCount();
-#endif
-#endif
-
     { // encapsulate
     
     SyncContext ctx;
@@ -301,15 +280,6 @@ TEST_F(StreamingTests, ChunkedStream)
 
     } // end encapsulate
 
-#ifdef _USE_LIBEVENT_LIKE_APPLE
-#ifdef DEBUG
-    const int em_event_count_after = EventMethFns::getEmEventCount();
-
-    PS_LOG_DEBUG_ARGS("em_event_count_before %d, em_event_count_after %d",
-                      em_event_count_before, em_event_count_after);
-    // !!!! ASSERT_EQ(em_event_count_before, em_event_count_after);
-#endif
-#endif
 }
 
 class ClientDisconnectHandler : public Http::Handler
@@ -358,8 +328,6 @@ TEST(StreamingTest, ClientDisconnect)
     endpoint.setHandler(Http::make_handler<ClientDisconnectHandler>());
     endpoint.serveThreaded();
 
-    DBG_LOG_ALL_EMEVENTS;
-
     const std::string url = "http://localhost:" + std::to_string(endpoint.getPort());
 
         // If we don't encapsulate "thread" in this fashion (i.e. if we have
@@ -374,8 +342,6 @@ TEST(StreamingTest, ClientDisconnect)
         // be out of scope before the Fd resource is released.
 
     std::thread thread([&url]() {
-        DBG_LOG_ALL_EMEVENTS;
-            
         CURL* curl = curl_easy_init();
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
@@ -397,26 +363,17 @@ TEST(StreamingTest, ClientDisconnect)
         // responding
         curl_multi_cleanup(curlm);
         curl_easy_cleanup(curl);
-
-        DBG_LOG_ALL_EMEVENTS;
     });
-
-    DBG_LOG_ALL_EMEVENTS;
 
     if (thread.joinable())
     {
         thread.join();
     }
 
-    DBG_LOG_ALL_EMEVENTS;
-
     // Don't care about response content, this test will fail if SIGPIPE is raised
 
     endpoint.shutdown();
     curl_global_cleanup();
-
-    DBG_LOG_ALL_EMEVENTS;
-
     } // end encapsulate
 
     DBG_LOG_ALL_EMEVENTS;
