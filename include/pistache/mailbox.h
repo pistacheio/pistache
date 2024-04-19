@@ -391,7 +391,6 @@ namespace Pistache
                     { // success
                         PS_LOG_DEBUG_ARGS("event_fd read, val %u",
                                           (uint64_t)val);
-
                         if (!ret)
                         {
                             // Have another try at pop, in case the push
