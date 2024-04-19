@@ -110,7 +110,8 @@ namespace Pistache
         
         static int getTcpProtNum(); // As per getprotobyname("tcp")
 
-        void handleEventCallback(EmEvent * em_event,
+        void handleEventCallback(void * cb_arg,
+                                 em_socket_t cb_actual_fd,
                                  short ev_flags); // One or more EVM_* flags
 
     public:
@@ -162,7 +163,8 @@ namespace Pistache
                              EventMethEpollEquivImpl * * epoll_equiv_cptr_out);
 
         // Returns number of removals (0, 1 or 2)
-        std::size_t removeFromInterestAndReady(EmEvent * em_event);
+        static std::size_t removeFromInterestAndReadyAndDelete(
+                                                           EmEvent * em_event);
 
         // Note there is a different EventMethBase for each EventMethEpollEquiv
         EventMethBase * getEventMethBase() {return(event_meth_base_.get());}
@@ -195,7 +197,8 @@ namespace Pistache
         
         // returns PS_FD_EMPTY if not found, returns fd if found
         Fd findFdInInterest(Fd fd);
-        void addEventToReady(Fd fd, short ev_flags);// One or more EVM_* flags
+        void addEventToReadyInterestAlrdyLocked(Fd fd,
+                                    short ev_flags); // One or more EVM_* flags
 
         #ifdef DEBUG
         void logPendingOrNot();
@@ -1149,73 +1152,51 @@ class GuardAndDbgLog // used by GUARD_AND_DBG_LOG below
 /* ------------------------------------------------------------------------- */
 
 
-extern "C" void eventCallbackFn([[maybe_unused]] em_socket_t actual_fd,
+extern "C" void eventCallbackFn(em_socket_t cb_actual_fd,
                                 short ev_flags, // One or more EV_* flags
-                                void * arg) // caller-supplied arg
+                                void * cb_arg) // caller-supplied arg
 {
     PS_TIMEDBG_START_SQUARE;
 
     PS_LOG_DEBUG_ARGS("callback actual-fd %d, ev_flags %s, EmEvent %p",
-                      actual_fd,
+                      cb_actual_fd,
                       evmFlagsToStdString(ev_flags)->c_str(),
-                      arg);
+                      cb_arg);
 
     // "arg" will be a pointer to an EmEvent, all being well
-    if (!arg)
+    if (!cb_arg)
     {
         PS_LOG_WARNING("arg null");
         return;
     }
     
-    if (arg == ((void *) -1))
+    if (cb_arg == ((void *) -1))
     {
         PS_LOG_WARNING("arg -1");
         return;
     }
-    
+
+    // Note: Do not dereference the EmEvent (cb_arg) here. It may be deleted in
+    // another thread at any time. You can't use it safely until additional
+    // mutex(es) are claimed in epoll_equiv->handleEventCallback(...).
+
     Pistache::EventMethEpollEquivImpl * epoll_equiv = NULL;
-    Pistache::EmEvent * em_event =
-        Pistache::EventMethEpollEquivImpl::findEmEventInAnInterestSet(
-                                                            arg, &epoll_equiv);
-    if (!em_event)
+    if (!Pistache::EventMethEpollEquivImpl::findEmEventInAnInterestSet(
+                                                         cb_arg, &epoll_equiv))
     {
         #ifdef DEBUG
-        PS_LOG_INFO_ARGS("EmEvent as arg %p not found", arg);
+        PS_LOG_INFO_ARGS("EmEvent as arg %p not found", cb_arg);
         #endif
         return;
     }
-    
-    Pistache::EventMethEpollEquivImpl * em_events_epoll_equiv =
-                                        em_event->getEventMethEpollEquivImpl();
-    if (em_events_epoll_equiv != epoll_equiv)
-    {
-        PS_LOG_WARNING_ARGS("epoll_equiv pointers %p and %p do not match",
-                            em_events_epoll_equiv, epoll_equiv);
-        return;
-    }
-    
+
     if (!epoll_equiv)
     {
-        PS_LOG_WARNING("epoll_equiv is null");
+        PS_LOG_WARNING("epoll_equiv is null for EmEvent as arg %p, arg");
         return;
     }
 
-    #ifdef DEBUG
-    // There is no actual-fd for EmEventFd or EmEventTmrFd
-    em_socket_t em_events_actual_fd = -1;
-    if (em_event->getEmEventType() == Pistache::EmEvReg)
-        em_events_actual_fd = em_event->getActualFdPrv();
-
-    if (actual_fd != em_events_actual_fd)
-    {
-        PS_LOG_WARNING_ARGS("EmEvent %p actual-fd %d doesn't match callback "
-                            "parameter %d",
-                            em_event, em_events_actual_fd, actual_fd);
-        return;
-    }
-    #endif
-
-    epoll_equiv->handleEventCallback(em_event, ev_flags);
+    epoll_equiv->handleEventCallback(cb_arg, cb_actual_fd, ev_flags);
 }
 
 namespace Pistache
@@ -3194,18 +3175,46 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     }
 
     // Returns number of removals (0, 1 or 2)
-    std::size_t EventMethEpollEquivImpl::removeFromInterestAndReady(
-                                                     EmEvent * em_event)
-    {
-        GUARD_AND_DBG_LOG(interest_mutex_);
+    std::size_t EventMethEpollEquivImpl::removeFromInterestAndReadyAndDelete(
+                                                            EmEvent * em_event)
+    { // static, and emeei may be NULL
 
-        std::size_t res = interest_.erase(em_event);
+        if (!em_event)
+        {
+            PS_LOG_INFO("em_event null");
+            return(0);
+        }
 
-        GUARD_AND_DBG_LOG(ready_mutex_);
+        EventMethEpollEquivImpl* emeei= em_event->getEventMethEpollEquivImpl();
+        if ((!emeei) && (!findEmEventInAnInterestSet((void *)em_event,&emeei)))
+                emeei = NULL;
 
-        res += ready_.erase(em_event);
+        if (emeei)
+        {
+            std::mutex & int_mut(emeei->interest_mutex_);
+            std::mutex & red_mut(emeei->ready_mutex_);
+            GUARD_AND_DBG_LOG(int_mut);
+            GUARD_AND_DBG_LOG(red_mut);
 
-        return(res);
+            // Erasing em_event from interest_ also stops em_event being added
+            // to ready_ subsequently (see addEventToReadyInterestAlrdyLocked),
+            // which is important given we're about to delete em_event
+            std::size_t res = emeei->interest_.erase(em_event);
+            res += emeei->ready_.erase(em_event);
+
+            // The interest and ready mutexes must remain locked while we
+            // perform the delete, to make sure we're not adding em_event to
+            // ready in another thread that's doing polling
+            delete em_event;
+            DBG_DELETE_EMV(em_event);
+
+            return(res);
+        }
+
+        // No EMEEI, just have to delete
+        delete em_event;
+        DBG_DELETE_EMV(em_event);
+        return(0);
     }
     
     #ifdef DEBUG
@@ -3418,35 +3427,78 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     }
 
     // ev_flags is one or more EV_* flags
-    void EventMethEpollEquivImpl::handleEventCallback(EmEvent * em_event,
-                                                  short ev_flags)
+    // cb_arg is the parm passed to our callback by libevent. All being well it
+    // will be a pointer to an EmEvent
+    void EventMethEpollEquivImpl::handleEventCallback(void * cb_arg,
+                                                      em_socket_t cb_actual_fd,
+                                                      short ev_flags)
     {
         PS_TIMEDBG_START_SQUARE;
-        
-        if (!em_event)
+
+        GUARD_AND_DBG_LOG(interest_mutex_);
+
+        // We check again that cb_arg is in interest_ to make sure em_event
+        // hasn't been closed/deleted since we called
+        // findEmEventInAnInterestSet in eventCallbackFn
+        // 
+        // Note: So long as em_event has not already been closed/deleted, it
+        // can't be deleted now so long as we have interest_mutex_ locked
+        EmEvent * em_event = ((EmEvent *)cb_arg);
+        if (interest_.find(em_event) == interest_.end())
         {
-            PS_LOG_WARNING("em_event is NULL");
-            throw std::runtime_error("em_event is NULL");
+            PS_LOG_DEBUG_ARGS("cb_arg %p is not in interest_ of EMEEI %p",
+                              cb_arg, this);
+            return;
         }
+
+        #ifdef DEBUG
+        // There is no actual-fd for EmEventFd or EmEventTmrFd
+        em_socket_t em_events_actual_fd = -1;
+        if (em_event->getEmEventType() == Pistache::EmEvReg)
+            em_events_actual_fd = em_event->getActualFdPrv();
+
+        if (cb_actual_fd != em_events_actual_fd)
+        {
+            PS_LOG_WARNING_ARGS("EmEvent %p actual-fd %d doesn't match "
+                                "callback parameter %d",
+                                em_event, em_events_actual_fd, cb_actual_fd);
+            return;
+        }
+        #endif
 
         // handleEventCallback may update ev_flags and/or em_event 
         em_event->handleEventCallback(ev_flags); 
 
-        addEventToReady(em_event, ev_flags);
+        addEventToReadyInterestAlrdyLocked(em_event, ev_flags);
     }
     
     
-    void EventMethEpollEquivImpl::addEventToReady(Fd fd, short ev_flags)
+    void EventMethEpollEquivImpl::addEventToReadyInterestAlrdyLocked(Fd fd,
+                                                                short ev_flags)
     {
         PS_TIMEDBG_START_ARGS("EmEvent %p", fd);
-
-        GUARD_AND_DBG_LOG(ready_mutex_);
 
         if (!fd)
         {
             PS_LOG_WARNING("fd null");
             throw std::runtime_error("fd null");
         }
+
+        auto interest_it = interest_.find(fd);
+        if (interest_it == interest_.end())
+        {
+            PS_LOG_DEBUG_ARGS("EmEvent %p of EMEEI %p no longer in interest_",
+                              fd, this);
+
+            // This could happen if fd was removed the EMEEI's interest_ during
+            // a closeEvent (by removeFromInterestAndReadyAndDelete). In that
+            // case, we do NOT want to add fd to ready_, since fd may be
+            // closing or already closed, and will shortly be, or has already
+            // been, deleted
+            return;
+        }
+        
+        GUARD_AND_DBG_LOG(ready_mutex_);
 
         #ifdef DEBUG
         short old_ev_flags = fd->getReadyFlags();
@@ -3456,6 +3508,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
 
         std::pair<std::set<Fd>::iterator, bool> ins_res = ready_.insert(fd);
         if (!ins_res.second)
+        {
             PS_LOG_DEBUG_ARGS("EmEvent %p failed to insert in ready_, "
                               "ready flags were %s already",
                               fd,
@@ -3466,6 +3519,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
             // in ready_ (because of the timeout), here we are adding EVM_READ
             // to the existing EVM_TIMEOUT for available (ready) events in the
             // event flags
+        }
     }
 
     #ifdef DEBUG
@@ -4036,31 +4090,17 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
             return(-1);
         }
 
-        int res = em_event->close();
+        int close_res = em_event->close();
 
-        if (res == 0)
-        {
-            EventMethEpollEquivImpl * epoll_equiv_cptr =
-                                        em_event->getEventMethEpollEquivImpl();
-            if ((!epoll_equiv_cptr) && 
-                (!findEmEventInAnInterestSet((void *)em_event,
-                                             &epoll_equiv_cptr)))
-                epoll_equiv_cptr = NULL;
-
-            if (epoll_equiv_cptr)
-                epoll_equiv_cptr->removeFromInterestAndReady(em_event);
-                
-            delete em_event;
-            DBG_DELETE_EMV(em_event);
-        }
+        if (close_res == 0)
+            removeFromInterestAndReadyAndDelete(em_event);
+        
         #ifdef DEBUG
-        else
-        {
+        if (close_res != 0)
             PS_LOG_DEBUG_ARGS("em_event->close() failed for %p", em_event);
-        }
         #endif
 
-        return(res);
+        return(close_res);
     }
 
     /* --------------------------------------------------------------------- */

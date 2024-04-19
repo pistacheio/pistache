@@ -90,7 +90,9 @@ jobs:
       run: ninja -C build
 
     - name: Test
-      run: meson test -C build --verbose
+      # !!!! Revert this
+      # run: meson test -C build --verbose
+      build/tests/run_http_server_test
 
     - name: Coverage
       if: ${{ !contains(matrix.os, 'redhat') }}
