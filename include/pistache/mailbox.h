@@ -326,7 +326,7 @@ namespace Pistache
                     // reads val. Second time, read fails with errno = EAGAIN /
                     // EWOULDBLOCK, causing us to break out of the loop and
                     // return from our "pop" function here.
-                    // 
+                    //
                     // However, in the problem case, very occasionally two
                     // pushes - and hence two writes to event_fd - occur just
                     // ahead of the read, and both writes succeed by the time
@@ -339,7 +339,7 @@ namespace Pistache
                     // the read succeeds.
                     if (bytes == (sizeof val))
                     { // success
-                        
+
                         if (!ret)
                         {
                             // Have another try at pop, in case there was no
@@ -348,10 +348,10 @@ namespace Pistache
                             // but before the read above
                             ret = Queue<T>::pop();
                         }
-                        
+
                         break;
                     }
-                    
+
                     if (bytes == -1)
                     {
                         if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -402,14 +402,14 @@ namespace Pistache
         static constexpr size_t Mask = Size - 1;
 
     public:
-        MPMCQueue(const MPMCQueue& other) = delete;
+        MPMCQueue(const MPMCQueue& other)            = delete;
         MPMCQueue& operator=(const MPMCQueue& other) = delete;
 
         /*
-   * Note that you should not move a queue. This is somehow needed for gcc 4.7,
-   * otherwise the client won't compile
-   * @Investigate why
-   */
+         * Note that you should not move a queue. This is somehow needed for gcc 4.7,
+         * otherwise the client won't compile
+         * @Investigate why
+         */
         MPMCQueue(MPMCQueue&& other) { *this = std::move(other); }
 
         MPMCQueue& operator=(MPMCQueue&& other)
