@@ -92,7 +92,7 @@ jobs:
     - name: Test
       # !!!! Revert this
       # run: meson test -C build --verbose
-      build/tests/run_http_server_test
+      run: build/tests/run_http_server_test
 
     - name: Coverage
       if: ${{ !contains(matrix.os, 'redhat') }}
