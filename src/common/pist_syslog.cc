@@ -20,6 +20,8 @@
 
 #include <stdio.h> // snprintf
 #include <stdlib.h> // malloc
+#include <time.h>
+#include <string.h>
 
 #include <libgen.h> // basename
 #include <cctype> // std::ispunct
@@ -340,6 +342,57 @@ static const char * levelCStr(int _pri)
     return(res);
 }
 
+static int logToStdOutMaybeErr(int _priority, bool _andPrintf,
+                               const char * _str)
+{
+    if (!_str)
+        _str = "";
+    
+    char dAndT[256];
+    dAndT[0] = 0;
+    if ((_andPrintf)
+        #ifndef DEBUG
+        || (_priority >= LOG_WARNING)
+        #endif
+        )
+    {
+        strcpy(&(dAndT[0]), "<No Timestamp>>");
+
+        time_t t = time(NULL);
+        if (t >= 0)
+        {
+            struct tm * tm_ptr = localtime(&t);
+            if (tm_ptr)
+            {
+                snprintf(&(dAndT[0]), sizeof(dAndT)-9, "%d %02d:%02d:%02d",
+                         tm_ptr->tm_mday,
+                         tm_ptr->tm_hour, tm_ptr->tm_min, tm_ptr->tm_sec);
+            }
+        }
+    }
+    
+    
+    int print_res = 0;
+
+    if (_andPrintf)
+        print_res = fprintf(stdout, "%s %s %s\n",
+                            &(dAndT[0]), levelCStr(_priority), _str);
+
+    #ifndef DEBUG
+    if (_priority >= LOG_WARNING)
+    {
+        int stderr_print_res = 
+            fprintf(stderr, "%s %s: %s\n",
+                    &(dAndT[0]), levelCStr(_priority), _str);
+        if (!_andPrintf)
+            print_res = stderr_print_res;
+    }
+    #endif
+
+    return(print_res);
+}
+
+
 // ---------------------------------------------------------------------------
 
 void PSLogging::log(int _priority, bool _andPrintf,
@@ -368,9 +421,8 @@ void PSLogging::log(int _priority, bool _andPrintf,
 
     if ((res < 0) && (_priority >= LOG_WARNING))
     {
-        fprintf(stderr, "vsnprintf failed for log in PSLogging::log\n");
-        if (_andPrintf)
-            fprintf(stdout, "ALERT: vsnprintf failed for log\n");
+        logToStdOutMaybeErr(LOG_ALERT, _andPrintf,
+                            "vsnprintf failed for log in PSLogging::log\n");
 
         #ifdef __clang__
         // Temporarily disable -Wformat-nonliteral
@@ -406,13 +458,7 @@ void PSLogging::log(int _priority, bool _andPrintf,
         syslog(_priority, "%s", &(buff[0]));
         #endif
 
-        if (_andPrintf)
-            fprintf(stdout, "%s: %s\n", levelCStr(_priority), &(buff[0]));
-        
-        #ifndef DEBUG
-        if (_priority >= LOG_WARNING)
-            fprintf(stderr, "%s: %s\n", levelCStr(_priority), &(buff[0]));
-        #endif
+        logToStdOutMaybeErr(_priority, _andPrintf, &(buff[0]));
     }
 }
 
@@ -435,15 +481,16 @@ void PSLogging::log(int _priority, bool _andPrintf, const char * _str)
     int res = snprintf(remaining_buff, remaining_buff_size-2, "%s", _str);
     if ((res < 0) && (_priority >= LOG_WARNING))
     {
-        fprintf(stderr, "snprintf failed for log in PSLogging::log\n");
-        if (_andPrintf)
-            fprintf(stdout, "ALERT: snprintf failed for log\n");
+        logToStdOutMaybeErr(LOG_ALERT, _andPrintf,
+                            "snprintf failed for log in PSLogging::log");
         
         #ifdef PIST_USE_OS_LOG
           OS_LOG_BY_PRIORITY_FORMAT_ARG("%s", _str);
         #else
           syslog(_priority, "%s", _str);
         #endif
+          
+        logToStdOutMaybeErr(_priority, _andPrintf, _str);
     }
     else
     {
@@ -453,13 +500,7 @@ void PSLogging::log(int _priority, bool _andPrintf, const char * _str)
         syslog(_priority, "%s", &(buff[0]));
         #endif
 
-        if (_andPrintf)
-            fprintf(stdout, "%s: %s\n", levelCStr(_priority), &(buff[0]));
-        
-        #ifndef DEBUG
-        if (_priority >= LOG_WARNING)
-            fprintf(stderr, "%s: %s\n", levelCStr(_priority), &(buff[0]));
-        #endif
+        logToStdOutMaybeErr(_priority, _andPrintf, &(buff[0]));
     }
 }
 

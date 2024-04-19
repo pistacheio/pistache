@@ -33,8 +33,8 @@
 
 // Comment in exactly one of these. Usually "false". When true, sends all
 // logging to stdout
-#define PS_LOG_AND_STDOUT true
-// #define PS_LOG_AND_STDOUT false
+// #define PS_LOG_AND_STDOUT true
+#define PS_LOG_AND_STDOUT false
 
 #define PS_LOG_ALERT_ARGS(__fmt, ...)                                   \
     PSLogFn(LOG_ALERT, PS_LOG_AND_STDOUT, __FILE__, __LINE__, __FUNCTION__, \
