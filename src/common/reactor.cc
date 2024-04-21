@@ -67,8 +67,8 @@ namespace Pistache::Aio
     };
 
     /* Synchronous implementation of the reactor that polls in the context
- * of the same thread
- */
+     * of the same thread
+     */
     class SyncImpl : public Reactor::Impl
     {
     public:
@@ -244,10 +244,10 @@ namespace Pistache::Aio
                 std::fill(std::begin(handlers), std::end(handlers), nullptr);
             }
 
-            HandlerList(const HandlerList& other) = delete;
+            HandlerList(const HandlerList& other)            = delete;
             HandlerList& operator=(const HandlerList& other) = delete;
 
-            HandlerList(HandlerList&& other) = default;
+            HandlerList(HandlerList&& other)            = default;
             HandlerList& operator=(HandlerList&& other) = default;
 
             HandlerList clone() const
@@ -332,30 +332,30 @@ namespace Pistache::Aio
     };
 
     /* Asynchronous implementation of the reactor that spawns a number N of threads
- * and creates a polling fd per thread
- *
- * Implementation detail:
- *
- *  Here is how it works: the implementation simply starts a synchronous variant
- *  of the implementation in its own std::thread. When adding an handler, it
- * will add a clone() of the handler to every worker (thread), and assign its
- * own key to the handler. Here is where things start to get interesting. Here
- * is how the key encoding works for every handler:
- *
- *  [     handler idx      ] [       worker idx         ]
- *  ------------------------ ----------------------------
- *       ^ 32 bits                   ^ 32 bits
- *  -----------------------------------------------------
- *                       ^ 64 bits
- *
- * Since we have up to 64 bits of data for every key, we encode the index of the
- * handler that has been assigned by the SyncImpl in the upper 32 bits, and
- * encode the index of the worker thread in the lowest 32 bits.
- *
- * When registering a fd for a given key, the AsyncImpl then knows which worker
- * to use by looking at the lowest 32 bits of the Key's data. The SyncImpl will
- * then use the highest 32 bits to retrieve the index of the handler.
- */
+     * and creates a polling fd per thread
+     *
+     * Implementation detail:
+     *
+     *  Here is how it works: the implementation simply starts a synchronous variant
+     *  of the implementation in its own std::thread. When adding an handler, it
+     * will add a clone() of the handler to every worker (thread), and assign its
+     * own key to the handler. Here is where things start to get interesting. Here
+     * is how the key encoding works for every handler:
+     *
+     *  [     handler idx      ] [       worker idx         ]
+     *  ------------------------ ----------------------------
+     *       ^ 32 bits                   ^ 32 bits
+     *  -----------------------------------------------------
+     *                       ^ 64 bits
+     *
+     * Since we have up to 64 bits of data for every key, we encode the index of the
+     * handler that has been assigned by the SyncImpl in the upper 32 bits, and
+     * encode the index of the worker thread in the lowest 32 bits.
+     *
+     * When registering a fd for a given key, the AsyncImpl then knows which worker
+     * to use by looking at the lowest 32 bits of the Key's data. The SyncImpl will
+     * then use the highest 32 bits to retrieve the index of the handler.
+     */
 
     class AsyncImpl : public Reactor::Impl
     {

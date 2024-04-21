@@ -206,7 +206,7 @@ namespace Pistache
         char buff[INET6_ADDRSTRLEN];
         const auto* addr_sa = reinterpret_cast<const struct sockaddr*>(&addr_);
         int err             = getnameinfo(
-            addr_sa, sizeof(addr_), buff, sizeof(buff), NULL, 0, NI_NUMERICHOST);
+                        addr_sa, sizeof(addr_), buff, sizeof(buff), NULL, 0, NI_NUMERICHOST);
         if (err) /* [[unlikely]] */
         {
             throw std::runtime_error(gai_strerror(err));
