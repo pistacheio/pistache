@@ -21,7 +21,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  linux:
+  linuxflibev:
     strategy:
       fail-fast: false
       matrix:
