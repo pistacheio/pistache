@@ -31,10 +31,14 @@
 #define PS_LOG_INFO(__str) PS_LOG_INFO_ARGS("%s", __str)
 #define PS_LOG_DEBUG(__str) PS_LOG_DEBUG_ARGS("%s", __str)
 
-// Comment in exactly one of these. Usually "false". When true, sends all
-// logging to stdout
-// #define PS_LOG_AND_STDOUT true
+// If PS_LOG_AND_STDOUT is true, all logging is sent to stdout in addition to
+// being sent to log file
+// 
+// You can define PS_LOG_AND_STDOUT to true using the meson build option
+// "PISTACHE_LOG_AND_STDOUT", or simple #define it here
+#ifndef PS_LOG_AND_STDOUT
 #define PS_LOG_AND_STDOUT false
+#endif
 
 #define PS_LOG_ALERT_ARGS(__fmt, ...)                                   \
     PSLogFn(LOG_ALERT, PS_LOG_AND_STDOUT, __FILE__, __LINE__, __FUNCTION__, \

@@ -53,6 +53,10 @@ if get_option('PISTACHE_DEBUG')
         add_project_arguments('-DDEBUG=1', language: 'cpp')
 endif
 
+if get_option('PISTACHE_LOG_AND_STDOUT')
+        add_project_arguments('-DPS_LOG_AND_STDOUT=true', language: 'cpp')
+endif
+
 if get_option('PISTACHE_FORCE_LIBEVENT')
         add_project_arguments('-DPISTACHE_FORCE_LIBEVENT', language: 'cpp')
 endif
