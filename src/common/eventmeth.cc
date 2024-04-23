@@ -3758,6 +3758,14 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
             // loop as needed
         }
 
+        // We lock interest_mutex_ here *before* we grab the ready events from
+        // ready_, to ensure that no event (Fd) we get from ready_ can be
+        // closed (noting that close of an Fd requires the interest_mutex_)
+        // until processing of said event/Fd has completed
+        
+        lockInterestMutex(); // interest_mutex_ shall remain locked on return
+                             // from this function
+
         { // encapsulate ready_mutex_ lock
             GUARD_AND_DBG_LOG(ready_mutex_);
             
@@ -3784,9 +3792,6 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         
         if (ready_evm_events_out_initial_size)
         {
-            lockInterestMutex(); // interest_mutex_ shall remain locked on
-                                 // return from this function
-            
             bool repeat_for = false;
 
             do {
