@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-name: linux
+name: linuxflibev
 
 on:
   push:
@@ -25,23 +25,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ 'debian:stable', 'debian:testing', 'registry.access.redhat.com/ubi8/ubi-minimal', 'registry.access.redhat.com/ubi9/ubi-minimal' ]
+        os: [ 'debian:stable' ]
         compiler: [ 'gcc', 'clang' ]
-        sanitizer: [ 'address', 'undefined', 'none' ] # ThreadSanitizer reports errors
+        sanitizer: [ 'address', 'undefined', 'none' ]
         tls: [ 'true', 'false' ]
-        exclude:
-          - os: 'registry.access.redhat.com/ubi8/ubi-minimal'
-            sanitizer: 'address'
-          - os: 'registry.access.redhat.com/ubi8/ubi-minimal'
-            sanitizer: 'thread'
-          - os: 'registry.access.redhat.com/ubi8/ubi-minimal'
-            sanitizer: 'undefined'
-          - os: 'registry.access.redhat.com/ubi9/ubi-minimal'
-            sanitizer: 'address'
-          - os: 'registry.access.redhat.com/ubi9/ubi-minimal'
-            sanitizer: 'thread'
-          - os: 'registry.access.redhat.com/ubi9/ubi-minimal'
-            sanitizer: 'undefined'
+        def_debug: [ 'true', 'false' ]
+        flibev: [ 'true' ]
 
     runs-on: ubuntu-latest
     container:
@@ -57,7 +46,7 @@ jobs:
       run: |
         if [ ${{ matrix.compiler }} = gcc ]; then compiler=g++; else compiler="clang lld ?exact-name(libclang-rt-dev)"; fi
         apt -y update
-        apt -y install $compiler meson pkg-config cmake rapidjson-dev libssl-dev netbase '?exact-name(libhowardhinnant-date-dev)' '?exact-name(libgmock-dev) (?version([1-9]\.[1-9][1-9]) | ?version([1-9]\.[2-9][0-9]))' '?exact-name(libcpp-httplib-dev)' libcurl4-openssl-dev git ca-certificates curl gpg gpgv gpg-agent lcov llvm-dev --no-install-recommends
+        apt -y install $compiler meson pkg-config cmake rapidjson-dev libssl-dev libevent-dev netbase '?exact-name(libhowardhinnant-date-dev)' '?exact-name(libgmock-dev) (?version([1-9]\.[1-9][1-9]) | ?version([1-9]\.[2-9][0-9]))' '?exact-name(libcpp-httplib-dev)' libcurl4-openssl-dev git ca-certificates curl gpg gpgv gpg-agent lcov llvm-dev --no-install-recommends
 
     - name: Install dependencies (Red Hat)
       if: contains(matrix.os, 'redhat')
@@ -70,7 +59,7 @@ jobs:
         rm ninja-linux.zip
         pip3 install meson
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: true
 
@@ -79,7 +68,7 @@ jobs:
         if [ ${{ matrix.compiler }} = gcc ]; then CXX=g++; else CXX=clang++ CXX_LD=lld; fi
         export CXX CXX_LD
         meson setup build \
-          -DPISTACHE_BUILD_TESTS=true -DPISTACHE_USE_SSL=${{ matrix.tls }} -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true \
+          -DPISTACHE_BUILD_TESTS=true -DPISTACHE_DEBUG=${{ matrix.def_debug }} -DPISTACHE_USE_SSL=${{ matrix.tls }} -DPISTACHE_FORCE_LIBEVENT=${{ matrix.flibev }} -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true \
           --buildtype=debug -Db_coverage=true -Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false \
           || (cat build/meson-logs/meson-log.txt ; false)
       env:
@@ -90,6 +79,8 @@ jobs:
 
     - name: Test
       run: meson test -C build --verbose
+      # Use the following to run just a single test (e.g. http_server_test)
+      # run: build/tests/run_http_server_test
 
     - name: Coverage
       if: ${{ !contains(matrix.os, 'redhat') }}
