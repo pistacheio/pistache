@@ -358,23 +358,73 @@ namespace Pistache
                         const std::chrono::milliseconds timeout) const
         {
 #ifdef _USE_LIBEVENT
+            // Note; We can't use PIST_QUOTE(PS_FD_PRNTFCD) for this logging
+            // because the Fd expression is different ("epoll_fd.get()"
+            // vs. "epoll_fd")
             PS_TIMEDBG_START_ARGS("waitThenGet on EMEE (epoll_fd) %p",
                                   epoll_fd.get());
 #else
             PS_TIMEDBG_START_ARGS("waitThenGet on EMEE (epoll_fd) %d",
                                   epoll_fd);
 #endif
-
+            
 #ifdef _USE_LIBEVENT
             std::set<Fd> ready_evm_events;
             int ready_evs = -1;
+
+            try { // wrapping a try/catch around this to make sure we don't
+                  // miss out on calling unlockInterestMutexIfLocked below
             do
             {
-                ready_evs = epoll_fd->waitThenGetAndEmptyReadyEvs(
-                    static_cast<int>(timeout.count()), ready_evm_events);
+                ready_evs = epoll_fd->getReadyEmEvents(
+                          static_cast<int>(timeout.count()), ready_evm_events);
             } while (ready_evs < 0 && errno == EINTR);
 
             PS_LOG_DEBUG_ARGS("ready_evs %d", ready_evs);
+
+            if ((ready_evs > 0) && (!ready_evm_events.empty()))
+            {
+#ifdef DEBUG
+                int i = 0;
+#endif
+                for (std::set<Fd>::iterator it = ready_evm_events.begin();
+                     it != ready_evm_events.end(); it++
+#ifdef DEBUG
+                         , i++
+#endif
+                    )
+                {
+                    Fd fd(*it);
+#ifdef DEBUG
+                    if (!fd)
+                    {
+                        PS_LOG_ERR("fd is NULL");
+                        continue;
+                    }
+#endif
+
+                    const Tag tag(EventMethFns::getEmEventUserData(fd));
+                    Event event(tag);
+                    event.flags = epoll_fd->toNotifyOn(fd); // uses fd's ready_flags
+                    PS_LOG_DBG_FD_AND_NOTIFY;
+                    events.push_back(event);
+
+                    // fd's ready_flags have been transferred to event.flags
+                    EventMethFns::resetEmEventReadyFlags(fd);
+                }
+            }
+            } // end of "try {"
+            catch(...)
+            {
+                PS_LOG_ERR("Throw while polling");
+            }
+
+            // unlockInterestMutexIfLocked must be called after
+            // getReadyEmEvents, and after we have finished processing the
+            // ready_evm_events set. Leaving the mutex locked to this point
+            // prevents any other thread closing/invalidating an Fd in the
+            // ready_evm_events set while we're processing the set above.
+            epoll_fd->unlockInterestMutexIfLocked();
 
             if (ready_evs <= 0)
                 return (ready_evs);
@@ -382,35 +432,9 @@ namespace Pistache
             if (ready_evm_events.empty())
                 return (0); // 0 FDs
 
-#ifdef DEBUG
-            int i = 0;
-#endif
-            for (std::set<Fd>::iterator it = ready_evm_events.begin();
-                 it != ready_evm_events.end(); it++
-#ifdef DEBUG
-                                               ,
-                                        i++
-#endif
-            )
-            {
-                Fd fd(*it);
-#ifdef DEBUG
-                if (!fd)
-                    throw std::runtime_error("fd is NULL");
-#endif
+            return((int)events.size());
 
-                const Tag tag(EventMethFns::getEmEventUserData(fd));
-                Event event(tag);
-                event.flags = epoll_fd->toNotifyOn(fd); // uses fd's ready_flags
-                PS_LOG_DBG_FD_AND_NOTIFY;
-                events.push_back(event);
-
-                // fd's ready_flags have been transferred to event.flags
-                EventMethFns::resetEmEventReadyFlags(fd);
-            }
-            return ((int)events.size());
-
-#else
+#else // not ifdef _USE_LIBEVENT
 
             struct epoll_event evs[Const::MaxEvents];
 

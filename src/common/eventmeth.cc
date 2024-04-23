@@ -72,13 +72,25 @@ namespace Pistache
                                  int f_setfd_flags, // e.g. FD_CLOEXEC
                                  int f_setfl_flags);  // e.g. O_NONBLOCK
 
+        // unlockInterestMutexIfLocked is used only in conjunction with
+        // getReadyEmEvents
+        void unlockInterestMutexIfLocked();
+
         // Waits (if needed) until events are ready, then sets the _out set to
         // be equal to ready events, and empties the list of ready events
         // "timeout" is in milliseconds, or -1 means wait indefinitely
         // Returns number of ready events being returned; or 0 if timed-out
         // without an event becoming ready; or -1, with errno set, on error
-        int waitThenGetAndEmptyReadyEvs(int timeout,
-                                        std::set<Fd> & ready_evm_events_out);
+        //
+        // NOTE: Caller must call unlockInterestMutexIfLocked after
+        // getReadyEmEvents has returned and after the caller has finished
+        // processing any Fds in ready_evm_events_out. getReadyEmEvents returns
+        // with the interest mutex locked (or it may be locked) to ensure that
+        // another thread cannot close an Fd in the interest list, given that
+        // that Fd may also be in returned ready_evm_events_out and could be
+        // invalidated by the close before the caller could get to it.
+        int getReadyEmEvents(int timeout,
+                             std::set<Fd> & ready_evm_events_out);
 
         // EvEvents are some combination of EVM_TIMEOUT, EVM_READ, EVM_WRITE,
         // EVM_SIGNAL, EVM_PERSIST, EVM_ET, EVM_FINALIZE, EVM_CLOSED
@@ -192,7 +204,7 @@ namespace Pistache
             EmEvent * loop_timer_eme,
             std::size_t * remaining_ready_size_out_ptr);
 
-        int waitThenGetAndEmptyReadyEvsHelper(int timeout,
+        int getReadyEmEventsHelper(int timeout,
                                           std::set<Fd> & ready_evm_events_out);
         
         // returns PS_FD_EMPTY if not found, returns fd if found
@@ -219,6 +231,9 @@ namespace Pistache
         friend class EmEventCtr; // for use of renewEv
         friend class EmEventTmrFd; // for use of settime
 
+        // For use of getReadyEmEventsHelper only
+        void lockInterestMutex();
+
         // Note there is a different EventMethBase for each EventMethEpollEquiv
         std::unique_ptr<EventMethBase> event_meth_base_;
         
@@ -231,6 +246,9 @@ namespace Pistache
         // interest FIRST
         std::mutex interest_mutex_;
         std::mutex ready_mutex_;
+
+        std::mutex int_mut_locked_by_get_ready_em_events_mutex_;
+        bool int_mut_locked_by_get_ready_em_events_;
 
         // Don't access tcp_prot_num directly, use getTcpProtNum()
         static int tcp_prot_num;
@@ -974,16 +992,22 @@ namespace Pistache
         return(impl_->ctl(op, em_event, events, timeval_cptr));
     }
 
+    // unlockInterestMutexIfLocked is used only in conjunction with
+    // getReadyEmEvents
+    void EventMethEpollEquiv::unlockInterestMutexIfLocked()
+    {
+        impl_->unlockInterestMutexIfLocked();
+    }
+
     // Waits (if needed) until events are ready, then sets the _out set to
     // be equal to ready events, and empties the list of ready events
     // "timeout" is in milliseconds, or -1 means wait indefinitely
     // Returns number of ready events being returned; or 0 if timed-out
     // without an event becoming ready; or -1, with errno set, on error
-    int EventMethEpollEquiv::waitThenGetAndEmptyReadyEvs(int timeout,
+    int EventMethEpollEquiv::getReadyEmEvents(int timeout,
                                            std::set<Fd> & ready_evm_events_out)
     {
-        return(impl_->waitThenGetAndEmptyReadyEvs(timeout,
-                                                  ready_evm_events_out));
+        return(impl_->getReadyEmEvents(timeout, ready_evm_events_out));
     }
 
     // EvEvents are some combination of EVM_TIMEOUT, EVM_READ, EVM_WRITE,
@@ -1152,7 +1176,10 @@ namespace Pistache
 
         static int event_base_features_;
     };
-    
+
+    // Note: A new event_base is created for each EventMethBase (i.e. they are
+    // not global). However, we only need to read and save event_base_features_
+    // once, so that we do make global
     int EventMethBase::event_base_features_ = 0;
     bool EventMethBase::event_meth_base_inited_previously = false;
     std::mutex EventMethBase::event_meth_base_inited_previously_mutex;
@@ -1161,7 +1188,7 @@ namespace Pistache
         event_base_(NULL)
     {
         PS_TIMEDBG_START;
-        
+
         if (event_meth_base_inited_previously)
         {
             event_base_ = TRY_NULL_RET(event_base_new());
@@ -3166,7 +3193,8 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     #endif
     
     EventMethEpollEquivImpl::EventMethEpollEquivImpl(int size) :
-        event_meth_base_(std::make_unique<EventMethBase>())
+        event_meth_base_(std::make_unique<EventMethBase>()),
+        int_mut_locked_by_get_ready_em_events_(false)
     { // size is a hint as to how many FDs to be monitored
         
         PS_TIMEDBG_START;
@@ -3465,7 +3493,38 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     };
     #endif
 
-    int EventMethEpollEquivImpl::waitThenGetAndEmptyReadyEvs(int timeout,
+    // For use by the caller of getReadyEmEvents after getReadyEmEvents returns
+    void EventMethEpollEquivImpl::unlockInterestMutexIfLocked()
+    {
+        GUARD_AND_DBG_LOG(int_mut_locked_by_get_ready_em_events_mutex_);
+        if (int_mut_locked_by_get_ready_em_events_)
+        {
+            int_mut_locked_by_get_ready_em_events_ = false;
+            PS_LOG_DEBUG_ARGS("Unlocking interest_mutex_ (at %p)",
+                              &interest_mutex_);
+            interest_mutex_.unlock();
+        }
+    }
+
+    // For use of getReadyEmEventsHelper only
+    void EventMethEpollEquivImpl::lockInterestMutex()
+    {
+        GUARD_AND_DBG_LOG(int_mut_locked_by_get_ready_em_events_mutex_);
+        
+        #ifdef DEBUG
+        if (int_mut_locked_by_get_ready_em_events_)
+            PS_LOG_WARNING_ARGS("interest_mutex_ (at %p) already locked?",
+                                &interest_mutex_);
+        #endif
+
+        int_mut_locked_by_get_ready_em_events_ = true;
+        PS_LOG_DEBUG_ARGS("Locking interest_mutex_ (at %p)", &interest_mutex_);
+        interest_mutex_.lock();
+    }
+    
+    
+
+    int EventMethEpollEquivImpl::getReadyEmEvents(int timeout,
                                            std::set<Fd> & ready_evm_events_out)
     {
         #ifdef DEBUG
@@ -3480,13 +3539,13 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         int num_ready_out = 0;
 
         // Note: It's possible in thoery (perhaps not in practice) for
-        // waitThenGetAndEmptyReadyEvsHelper to move some events to
+        // getReadyEmEventsHelper to move some events to
         // ready_evm_events_out, but then to remove them again e.g. if they
-        // have null EmEvent. In that case, waitThenGetAndEmptyReadyEvsHelper
+        // have null EmEvent. In that case, getReadyEmEventsHelper
         // returns -1, and we try again
         do {
             num_ready_out = 
-              waitThenGetAndEmptyReadyEvsHelper(timeout, ready_evm_events_out);
+              getReadyEmEventsHelper(timeout, ready_evm_events_out);
         } while (num_ready_out < 0);
         
         return(num_ready_out);
@@ -3595,8 +3654,16 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     // "timeout" is in milliseconds, or -1 means wait indefinitely
     // Returns number of ready events being returned; or 0 if timed-out without
     // an event becoming ready; or -1, with errno set, on error
-    int EventMethEpollEquivImpl::waitThenGetAndEmptyReadyEvsHelper(int timeout,
-                                           std::set<Fd> & ready_evm_events_out)
+    //
+    // NOTE: Caller must call unlockInterestMutexIfLocked after
+    // getReadyEmEvents has returned and after the caller has finished
+    // processing any Fds in ready_evm_events_out. getReadyEmEvents returns
+    // with the interest mutex locked (or it may be locked) to ensure that
+    // another thread cannot close an Fd in the interest list, given that that
+    // Fd may also be in returned ready_evm_events_out and could be invalidated
+    // by the close before the caller could get to it.
+    int EventMethEpollEquivImpl::getReadyEmEventsHelper(
+                              int timeout, std::set<Fd> & ready_evm_events_out)
     {
         PS_TIMEDBG_START_ARGS("EMEE %p", this);
         
@@ -3690,21 +3757,25 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
             // loop_timer_eme gets deleted here, causing it to be removed from
             // loop as needed
         }
-        
-        if (ready_.empty())
-        {
-            PS_LOG_DEBUG("ready_ empty despite dispatch completion");
 
-            return(0);
+        { // encapsulate ready_mutex_ lock
+            GUARD_AND_DBG_LOG(ready_mutex_);
+            
+            if (ready_.empty())
+            {
+                PS_LOG_DEBUG("ready_ empty despite dispatch completion");
+
+                return(0);
+            }
+        
+            PS_LOG_DEBUG_ARGS("ready_ events ready. Number: %d",
+                              ready_.size());
+        
+            ready_evm_events_out = std::move(ready_);
+            ready_.clear(); // probably unneeded because using std::move, but
+                            // just in case...
         }
-        
-        PS_LOG_DEBUG_ARGS("ready_ events ready. Number: %d",
-                          ready_.size());
-        
-        ready_evm_events_out = std::move(ready_);
-        ready_.clear(); // probably unneeded because using std::move, but just
-                        // in case...
-        
+
         std::size_t ready_evm_events_out_initial_size =
                                                    ready_evm_events_out.size();
 
@@ -3712,10 +3783,12 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
                           ready_evm_events_out_initial_size);
         
         if (ready_evm_events_out_initial_size)
-        { // encapsulate interest_mutex_ lock
-            bool repeat_for = false;
-            GUARD_AND_DBG_LOG(interest_mutex_);
+        {
+            lockInterestMutex(); // interest_mutex_ shall remain locked on
+                                 // return from this function
             
+            bool repeat_for = false;
+
             do {
                 repeat_for = false;
                 for(std::set<Fd>::iterator it = ready_evm_events_out.begin();

@@ -383,13 +383,24 @@ namespace Pistache
                 short     events, // bitmask of EVM_... events
                 std::chrono::milliseconds * timeval_cptr);
 
+        // unlockInterestMutexIfLocked is used only in conjunction with
+        // getReadyEmEvents
+        void unlockInterestMutexIfLocked();
+
         // Waits (if needed) until events are ready, then sets the _out set to
         // be equal to ready events, and empties the list of ready events
         // "timeout" is in milliseconds, or -1 means wait indefinitely
         // Returns number of ready events being returned; or 0 if timed-out
         // without an event becoming ready; or -1, with errno set, on error
-        int waitThenGetAndEmptyReadyEvs(int timeout,
-                                        std::set<Fd> & ready_evm_events_out);
+        // 
+        // NOTE: Caller must call unlockInterestMutexIfLocked after
+        // getReadyEmEvents has returned and after the caller has finished
+        // processing any Fds in ready_evm_events_out. getReadyEmEvents returns
+        // with the interest mutex locked (or it may be locked) to ensure that
+        // another thread cannot close an Fd in the interest list, given that
+        // that Fd may also be in returned ready_evm_events_out and could be
+        // invalidated by the close before the caller could get to it.
+        int getReadyEmEvents(int timeout, std::set<Fd> & ready_evm_events_out);
 
         // EvEvents are some combination of EVM_TIMEOUT, EVM_READ, EVM_WRITE,
         // EVM_SIGNAL, EVM_PERSIST, EVM_ET, EVM_FINALIZE, EVM_CLOSED
