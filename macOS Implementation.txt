@@ -52,12 +52,11 @@ environment repeatedly executing the Pistache test suite without
 error. It also ran successfully in macOS and Linux as part of an
 application that reads and writes to the Azure blob API.
 
-Porting to macOS revealed a small number of issues in the existing
-Pistache implementation, which have been addressed as part of the
-port:
+Porting to macOS revealed a number of issues in the existing Pistache
+implementation, which have been addressed as part of the port:
   1. A mutex is required for access to requestsQueues in client.cc, to
-  make sure the Client's destructor cannot run until processing of
-  the queues is complete.
+  make sure the queues are not corrupted by being accessed from
+  multiple threads.
   2. The 'Entry* pop()' function in mailbox.h was vulnerable to
   multiple new queue pushes arriving at the same moment the pop is
   in process. See comment in code for more specifics.
@@ -72,11 +71,32 @@ port:
   called. Fixed by allowing deregistering of
   pollers/handlers/reactors, and also by protecting the deregistering
   with a mutex. See comment in code for details.
+  7. Made getPeer in transport return a shared_ptr to Peer, NOT a
+  reference to a shared_ptr. Previously, the reference returned by
+  getPeer was to a shared_ptr stored in the map peers_ - so if the
+  entry was removed from peers_, or peers_ went out of scope, the
+  reference could refer to a shared_ptr that no longer existed. This
+  was causing access to memory after free, showing up in github
+  workflows in http_server_test in force-libevent mode.
+  8. Rather than closing a peer's Fd directly in transport
+  (Transport::removePeer in transport.cc), now call peer->closeFd(),
+  which not only closes the Fd but allows peer to set it's fd_ to
+  empty, helping ensure that the Fd is closed exactly once. This,
+  together with the above getPeer fix, fixes a memory/Fd leak that was
+  showing up in github workflows in http_server_test in force-libevent
+  mode.
+  9. Introduced a handling_mutex, owned by client Transport
+  (client.cc). This mutex is claimed by Transport::onReady, and also
+  claimed when an Fd is being closed, to stop an Fd that is about to
+  be processed by onReady being closed/freed before onReady handling
+  can reach it. See comments in Client::shutdown for more.
+    
 Of these issues, all were seen in practice while testing. None are
-huge changes at all; the fix for #6 is the only one that is more than
-a fix at a single point in the code. None of the issues are macOS
+huge changes at all; the fix for #6 is the "biggest" in that it
+touches multiple points in the code.  None of the issues are macOS
 specific; the issues showed up in macOS due to differences in timing,
-threading and heap/memory management in macOS vs. Linux.
+threading and heap/memory management in macOS and/or libevent
+vs. Linux and/or epoll.
 
 
 

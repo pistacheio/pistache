@@ -1234,7 +1234,7 @@ namespace Pistache::Http::Experimental
             // Note: Do not hold queuesLock locked beyond here - otherwise you
             // can get into a deadlock with a transport_'s handling_mutex. Here
             // we are locking queuesLock and then during shutdown we'll lock
-            // the handling_mutex. Conversely in onReady (handling), we'lll
+            // the handling_mutex. Conversely in onReady (handling), we'll
             // lock handling_mutex first and may subsequently lock queuesLock
             // to allow us to change a queue. By doing the locking in opposite
             // order, without unlocking queuesLock here thanks to this
