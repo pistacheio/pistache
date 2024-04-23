@@ -22,6 +22,8 @@
 #include <cxxabi.h>
 #include <execinfo.h>
 
+#include <limits.h> // PATH_MAX
+
 #include <dlfcn.h>
 #include "pistache/pist_syslog.h"
 #include "pistache/pist_check.h"
@@ -144,3 +146,30 @@ int PS_LogWoBreak(int pri, const char *p,
 }
 
 // ---------------------------------------------------------------------------
+
+
+#ifdef DEBUG
+
+// class GuardAndDbgLog is used by GUARD_AND_DBG_LOG when DEBUG defined
+
+GuardAndDbgLog::GuardAndDbgLog(const char * mtx_name,
+                   unsigned ln, const char * fn,
+                   std::mutex * mutex_ptr) :
+    mtx_name_(mtx_name), locked_ln_(ln), mutex_ptr_(mutex_ptr)
+{
+    char buff[PATH_MAX+6];
+    buff[0] = 0;
+    locked_fn_ = std::string(my_basename_r(fn, &(buff[0])));
+}
+
+GuardAndDbgLog::~GuardAndDbgLog()
+{
+    PS_LOG_DEBUG_ARGS("%s (at %p) unlocked, was locked %s:%u",
+                      mtx_name_.c_str(), mutex_ptr_,
+                      locked_fn_.c_str(),
+                      locked_ln_);
+}
+
+#endif
+
+

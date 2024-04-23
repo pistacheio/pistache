@@ -171,7 +171,8 @@ namespace Pistache::Http::Experimental
     public:
         PROTOTYPE_OF(Aio::Handler, Transport)
 
-        Transport() : stopHandling(false) { };
+        Transport()
+            : stopHandling(false) {};
         Transport(const Transport&)
             : requestsQueue()
             , connectionsQueue()
@@ -200,7 +201,7 @@ namespace Pistache::Http::Experimental
         }
 #endif
 
-        std::mutex& getHandlingMutex() { return(handlingMutex); }
+        std::mutex& getHandlingMutex() { return (handlingMutex); }
         void setStopHandlingwMutexAlreadyLocked() { stopHandling = true; }
 
     private:
@@ -289,7 +290,8 @@ namespace Pistache::Http::Experimental
         if (stopHandling)
         {
             PS_LOG_DEBUG_ARGS("Ignoring ready fds for Transport %p "
-                              "due to closed Fds", this);
+                              "due to closed Fds",
+                              this);
             PS_LOG_DEBUG_ARGS("Unlocking handlingMutex %p", &handlingMutex);
             return;
         }
@@ -792,7 +794,7 @@ namespace Pistache::Http::Experimental
             // pending, that Fd is not accessed by Transport::handleIncoming
             // (called from Transport::onReady after epoll returns) after the
             // Fd has been closed
-            std::mutex & handling_mutex(
+            std::mutex& handling_mutex(
                 transport_->getHandlingMutex());
             PS_LOG_DEBUG_ARGS("Locking handling_mutex %p",
                               &handling_mutex);
@@ -1105,7 +1107,7 @@ namespace Pistache::Http::Experimental
 
     namespace RequestBuilderAddOns
     {
-        std::size_t bodySize(RequestBuilder & rb)
+        std::size_t bodySize(RequestBuilder& rb)
         {
             return (rb.request_.body().size());
         }
@@ -1225,17 +1227,38 @@ namespace Pistache::Http::Experimental
 
         reactor_->shutdown();
 
-        PS_LOG_DEBUG_ARGS("Locking queuesLock %p", &queuesLock);
-        Guard guard(queuesLock);
-        stopProcessRequestQueues = true;
+        { // encapsulate
+            GUARD_AND_DBG_LOG(queuesLock);
+            stopProcessRequestQueues = true;
 
-        // Note, queuesLock should be locked before pool.shutdown() is called
-        // pool.shutdown() closes the connections in the pool, which closes
-        // each connection's FD; we need to make sure that, if one of those Fds
-        // has an event pending, it is not accessed by
-        // Transport::handleIncoming (called from onReady after epoll returns)
-        // after being closed
+            // Note: Do not hold queuesLock locked beyond here - otherwise you
+            // can get into a deadlock with a transport_'s handling_mutex. Here
+            // we are locking queuesLock and then during shutdown we'll lock
+            // the handling_mutex. Conversely in onReady (handling), we'lll
+            // lock handling_mutex first and may subsequently lock queuesLock
+            // to allow us to change a queue. By doing the locking in opposite
+            // order, without unlocking queuesLock here thanks to this
+            // encapsulate, we'd create a race-condition/deadlock.
+        }
+
+        // Note about the shutdown procedure. pool.shutdown()
+        // (ConnectionPool::shutdown()) calls Connection::close() for each
+        // connection in ConnectionPool::conns. Connection::close() claims and
+        // holds the transport_'s handling_mutex before excuting the connection
+        // and Fd close.
         //
+        // Meanwhile, Transport::onReady claims and holds the handling_mutex
+        // while executing. So a connection close (which includes an Fd close)
+        // cannot happen while handling is going on - i.e. the Fd cannot be
+        // closed just when the handling needs it (which might otherwise happen
+        // when Transport::onReady called handleReadableEntry which in turn
+        // called handleIncoming(...)).
+        //
+        // If the close() gets possession of the handling_mutex first, that is
+        // also managed - the close will remove the Fd that is being closed
+        // from the set of ready Fds before releasing the mutex and allowing
+        // onReady to proceed.
+
         pool.shutdown();
 
         PS_LOG_DEBUG_ARGS("Unlocking queuesLock %p", &queuesLock);

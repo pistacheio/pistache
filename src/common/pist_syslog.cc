@@ -356,7 +356,7 @@ static int logToStdOutMaybeErr(int _priority, bool _andPrintf,
         #endif
         )
     {
-        strcpy(&(dAndT[0]), "<No Timestamp>>");
+        strcpy(&(dAndT[0]), "<No Timestamp>");
 
         time_t t = time(NULL);
         if (t >= 0)
@@ -548,34 +548,6 @@ extern "C" void PSLogNoLocFn(int _pri, bool _andPrintf,
     errno = tmp_errno;
 }
 
-
-#ifdef __APPLE__
-#define my_basename_r basename_r
-#else
-#include <mutex>
-static std::mutex my_basename_r_mutex;
-static char * my_basename_r(const char * path, char * bname)
-{
-    if (!bname)
-        return(NULL);
-        
-    bname[0] = 0;
-    
-    std::lock_guard<std::mutex> l_guard(my_basename_r_mutex);
-
-    char * path_copy = (char *) malloc((path ? strlen(path) : 0) + 6);
-    strcpy(path_copy, path); // since basename may change path contents
-
-    char * bname_res = basename(path_copy);
-
-    if (bname_res)
-       strcpy(&(bname[0]), bname_res);
-
-    free(path_copy);
-    return(bname);
-}
-#endif
-
 extern "C" void PSLogFn(int _pri, bool _andPrintf,
                         const char * f, int l, const char * m,
                         const char * _format, ...)
@@ -691,6 +663,32 @@ extern "C" void setPsLogCategory(const char * _category)
     gSetPsLogCategoryCalledWithNull = false;
     strcpy(&(gIdentBuff[0]), _category);
 }
+
+// ---------------------------------------------------------------------------
+
+#ifndef __APPLE__
+static std::mutex ps_basename_r_mutex;
+extern "C" char * ps_basename_r(const char * path, char * bname)
+{
+    if (!bname)
+        return(NULL);
+        
+    bname[0] = 0;
+    
+    std::lock_guard<std::mutex> l_guard(ps_basename_r_mutex);
+
+    char * path_copy = (char *) malloc((path ? strlen(path) : 0) + 6);
+    strcpy(path_copy, path); // since basename may change path contents
+
+    char * bname_res = basename(path_copy);
+
+    if (bname_res)
+       strcpy(&(bname[0]), bname_res);
+
+    free(path_copy);
+    return(bname);
+}
+#endif // ifndef __APPLE__
 
 
 // ---------------------------------------------------------------------------

@@ -1027,75 +1027,6 @@ static std::atomic_int wait_then_get_count__ = 0; // by EventMethEpollEquiv
 #define DEC_DEBUG_CTR(_DCTR_NAME_)
 #endif
 
-#ifdef DEBUG
-
-#ifdef __APPLE__
-#define my_basename_r basename_r
-#else
-static std::mutex my_basename_r_mutex;
-static char * my_basename_r(const char * path, char * bname)
-{
-    if (!bname)
-        return(NULL);
-        
-    bname[0] = 0;
-    
-    std::lock_guard<std::mutex> l_guard(my_basename_r_mutex);
-
-    char * path_copy = (char *) malloc((path ? strlen(path) : 0) + 6);
-    strcpy(path_copy, path); // since basename may change path contents
-
-    char * bname_res = basename(path_copy);
-
-    if (bname_res)
-       strcpy(&(bname[0]), bname_res);
-
-    free(path_copy);
-    return(bname);
-}
-#endif
-
-class GuardAndDbgLog // used by GUARD_AND_DBG_LOG below
-    {
-    public:
-        GuardAndDbgLog(const char * mtx_name,
-                         unsigned ln, const char * fn,
-                         std::mutex * mutex_ptr) :
-            mtx_name_(mtx_name), locked_ln_(ln), mutex_ptr_(mutex_ptr)
-        {
-            char buff[MAXPATHLEN+6];
-            buff[0] = 0;
-            locked_fn_ = std::string(my_basename_r(fn, &(buff[0])));
-        }
-
-        inline ~GuardAndDbgLog()
-        {
-            PS_LOG_DEBUG_ARGS("%s (at %p) unlocked, was locked %s:%u",
-                              mtx_name_.c_str(), mutex_ptr_,
-                              locked_fn_.c_str(),
-                              locked_ln_);
-        }
-
-    private:
-        std::string mtx_name_;
-        unsigned int locked_ln_;
-        std::string locked_fn_;
-        void * mutex_ptr_;
-    };
-#endif
-
-#ifdef DEBUG
-#define GUARD_AND_DBG_LOG(_MTX_NAME_)                                   \
-    GuardAndDbgLog guard_log_##_MTX_NAME_(PIST_QUOTE(_MTX_NAME_),     \
-                                      __LINE__, __FILE__, &_MTX_NAME_); \
-    PS_LOG_DEBUG_ARGS("Locking %s (at %p)", PIST_QUOTE(_MTX_NAME_),     \
-                      &_MTX_NAME_);                                     \
-    std::lock_guard<std::mutex> l_guard_##_MTX_NAME_(_MTX_NAME_);
-#else
-#define GUARD_AND_DBG_LOG(_MTX_NAME_)                                   \
-    std::lock_guard<std::mutex> l_guard_##_MTX_NAME_(_MTX_NAME_);
-#endif
-
 /* ------------------------------------------------------------------------- */
 
     #ifdef DEBUG
@@ -3430,6 +3361,9 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     // cb_arg is the parm passed to our callback by libevent. All being well it
     // will be a pointer to an EmEvent
     void EventMethEpollEquivImpl::handleEventCallback(void * cb_arg,
+                                     #ifndef DEBUG
+                                     [[maybe_unused]]
+                                     #endif
                                                       em_socket_t cb_actual_fd,
                                                       short ev_flags)
     {
