@@ -361,10 +361,10 @@ namespace Pistache
             // Note; We can't use PIST_QUOTE(PS_FD_PRNTFCD) for this logging
             // because the Fd expression is different ("epoll_fd.get()"
             // vs. "epoll_fd")
-            PS_TIMEDBG_START_ARGS("waitThenGet on EMEE (epoll_fd) %p",
+            PS_TIMEDBG_START_ARGS("getReadyEmEvents on EMEE (epoll_fd) %p",
                                   epoll_fd.get());
 #else
-            PS_TIMEDBG_START_ARGS("waitThenGet on EMEE (epoll_fd) %d",
+            PS_TIMEDBG_START_ARGS("epoll on EMEE (epoll_fd) %d",
                                   epoll_fd);
 #endif
             
