@@ -14,6 +14,8 @@
 #ifndef INCLUDED_PSCHECK_H
 #define INCLUDED_PSCHECK_H
 
+#include <mutex>
+
 #include "pist_syslog.h"
 
 // If DEBUG is enabled, PS_LOGDBG_STACK_TRACE logs a stack trace
@@ -63,6 +65,41 @@
 
 extern int PS_LogWoBreak(int pri, const char *p,
                          const char *f, int l, const char * m = 0);
+
+// ---------------------------------------------------------------------------
+
+#ifdef DEBUG
+
+class GuardAndDbgLog // used by GUARD_AND_DBG_LOG below
+{
+public:
+    GuardAndDbgLog(const char * mtx_name,
+                   unsigned ln, const char * fn,
+                   std::mutex * mutex_ptr);
+    
+    ~GuardAndDbgLog();
+
+private:
+    std::string mtx_name_;
+    unsigned int locked_ln_;
+    std::string locked_fn_;
+    void * mutex_ptr_;
+};
+
+#endif // ifdef DEBUG
+
+#ifdef DEBUG
+#define GUARD_AND_DBG_LOG(_MTX_NAME_)                                   \
+    GuardAndDbgLog guard_log_##_MTX_NAME_(PIST_QUOTE(_MTX_NAME_),     \
+                                      __LINE__, __FILE__, &_MTX_NAME_); \
+    PS_LOG_DEBUG_ARGS("Locking %s (at %p)", PIST_QUOTE(_MTX_NAME_),     \
+                      &_MTX_NAME_);                                     \
+    std::lock_guard<std::mutex> l_guard_##_MTX_NAME_(_MTX_NAME_);
+#else
+#define GUARD_AND_DBG_LOG(_MTX_NAME_)                                   \
+    std::lock_guard<std::mutex> l_guard_##_MTX_NAME_(_MTX_NAME_);
+#endif
+
 
 // ---------------------------------------------------------------------------
 
