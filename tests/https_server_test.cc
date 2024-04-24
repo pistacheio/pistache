@@ -11,11 +11,6 @@
 #include <pistache/endpoint.h>
 #include <pistache/http.h>
 
-#ifdef DEBUG
-#include "helpers/fd_utils.h" // for get_open_fds_count()
-#include <pistache/eventmeth.h> // for EventMethFns::getXxxCount() !!!! Remove?
-#endif
-
 #include <gtest/gtest.h>
 
 #include <curl/curl.h>
