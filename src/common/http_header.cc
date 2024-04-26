@@ -26,6 +26,7 @@
 #include <string>
 #include <string_view>
 #include <sys/socket.h>
+#include <charconv>
 
 namespace Pistache::Http::Header
 {
@@ -221,13 +222,21 @@ namespace Pistache::Http::Header
                                 "Invalid caching directive, missing delta-seconds");
                         }
 
-                        char* end;
                         const char* beg = cursor.offset();
+                        const char* beg_trim = beg;
                         // @Security: if str is not \0 terminated, there might be a situation
                         // where strtol can overflow. Double-check that it's harmless and fix
                         // if not
-                        auto secs = strtol(beg, &end, 10);
-                        cursor.advance(end - beg);
+                        while (*beg_trim == '+' || *beg_trim == ' ')
+                        {
+                            if (*(beg_trim + 1))
+                                ++beg_trim; 
+                        }
+                        std::string_view view = beg_trim;
+                        const char* end = view.data() + view.size();
+                        long secs = 0;
+                        auto res = std::from_chars(beg_trim, end, secs);
+                        cursor.advance(res.ptr - beg);
                         if (!cursor.eof() && cursor.current() != ',')
                         {
                             throw std::runtime_error(
