@@ -174,10 +174,6 @@ namespace Pistache
         static EmEvent * findEmEventInAnInterestSet(void * arg,
                              EventMethEpollEquivImpl * * epoll_equiv_cptr_out);
 
-        // Returns number of removals (0, 1 or 2)
-        static std::size_t removeFromInterestAndReadyAndDelete(
-                                                           EmEvent * em_event);
-
         // Note there is a different EventMethBase for each EventMethEpollEquiv
         EventMethBase * getEventMethBase() {return(event_meth_base_.get());}
 
@@ -1601,7 +1597,7 @@ namespace Pistache
 
     void EmEventCtr::renewEv()
     {
-        PS_TIMEDBG_START_ARGS("EmEventFd %p", this);
+        PS_TIMEDBG_START_ARGS("EmEventCtr %p", this);
         
         short old_flags = flags_;
         EventMethEpollEquivImpl * emee = getEventMethEpollEquivImpl();
@@ -1623,7 +1619,7 @@ namespace Pistache
                     if (ctl_res != 0)
                     {
                         PS_LOG_INFO_ARGS(
-                            "EmEventFd %p failed to EvCtlAction::Del ev_ %p",
+                            "EmEventCtr %p failed to EvCtlAction::Del ev_ %p",
                             this, ev_);
                         throw std::runtime_error("EvCtlAction::Del failed");
                     }
@@ -1650,14 +1646,14 @@ namespace Pistache
                            true/*forceEmEventCtlOnly*/);
                 if (ctl_res != 0)
                 {
-                    PS_LOG_INFO_ARGS("EmEventFd %p failed to EvCtlAction::Add",
-                                     this);
+                    PS_LOG_INFO_ARGS(
+                        "EmEventCtr %p failed to EvCtlAction::Add", this);
                     throw std::runtime_error("EvCtlAction::Add failed");
                 }
 
                 if (!ev_)
                 { // ctl EvCtlAction::Add should cause ev_ to be created
-                    PS_LOG_INFO_ARGS("EmEventFd %p null ev_", this);
+                    PS_LOG_INFO_ARGS("EmEventCtr %p null ev_", this);
                     throw std::runtime_error("ev_ null");
                 }
             }
@@ -1666,7 +1662,7 @@ namespace Pistache
         short emefd_flags = 0;
         if ((flags_ & EVM_READ) && (counter_val_ > 0))
         {
-            PS_LOG_DEBUG_ARGS("EmEventFd %p renewal activating read",
+            PS_LOG_DEBUG_ARGS("EmEventCtr %p renewal activating read",
                               this);
             emefd_flags |= EV_READ;
         }
@@ -1683,12 +1679,12 @@ namespace Pistache
         {
             if (!ev_)
             {
-                PS_LOG_WARNING_ARGS("EmEventFd %p can't activate with no ev_",
+                PS_LOG_WARNING_ARGS("EmEventCtr %p can't activate with no ev_",
                                     this);
                 throw std::runtime_error("ev_ null");
             }
 
-            PS_LOG_DEBUG_ARGS("EmEventFd %p activating in renewal", this);
+            PS_LOG_DEBUG_ARGS("EmEventCtr %p activating in renewal", this);
             event_active(ev_, emefd_flags, 0 /* obsolete parm*/);
         }
     }
@@ -3132,49 +3128,6 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         return(em_event);
     }
 
-    // Returns number of removals (0, 1 or 2)
-    std::size_t EventMethEpollEquivImpl::removeFromInterestAndReadyAndDelete(
-                                                            EmEvent * em_event)
-    { // static, and emeei may be NULL
-
-        if (!em_event)
-        {
-            PS_LOG_INFO("em_event null");
-            return(0);
-        }
-
-        EventMethEpollEquivImpl* emeei= em_event->getEventMethEpollEquivImpl();
-        if ((!emeei) && (!findEmEventInAnInterestSet((void *)em_event,&emeei)))
-                emeei = NULL;
-
-        if (emeei)
-        {
-            std::mutex & int_mut(emeei->interest_mutex_);
-            std::mutex & red_mut(emeei->ready_mutex_);
-            GUARD_AND_DBG_LOG(int_mut);
-            GUARD_AND_DBG_LOG(red_mut);
-
-            // Erasing em_event from interest_ also stops em_event being added
-            // to ready_ subsequently (see addEventToReadyInterestAlrdyLocked),
-            // which is important given we're about to delete em_event
-            std::size_t res = emeei->interest_.erase(em_event);
-            res += emeei->ready_.erase(em_event);
-
-            // The interest and ready mutexes must remain locked while we
-            // perform the delete, to make sure we're not adding em_event to
-            // ready in another thread that's doing polling
-            delete em_event;
-            DBG_DELETE_EMV(em_event);
-
-            return(res);
-        }
-
-        // No EMEEI, just have to delete
-        delete em_event;
-        DBG_DELETE_EMV(em_event);
-        return(0);
-    }
-    
     #ifdef DEBUG
     int EventMethEpollEquivImpl::getEmEventCount()
         { return(em_event_count__); }
@@ -3453,10 +3406,9 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
                               fd, this);
 
             // This could happen if fd was removed the EMEEI's interest_ during
-            // a closeEvent (by removeFromInterestAndReadyAndDelete). In that
-            // case, we do NOT want to add fd to ready_, since fd may be
-            // closing or already closed, and will shortly be, or has already
-            // been, deleted
+            // a closeEvent. In that case, we do NOT want to add fd to ready_,
+            // since fd may be closing or already closed, and will shortly be,
+            // or has already been, deleted
             return;
         }
         
@@ -4102,16 +4054,90 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
             return(-1);
         }
 
+        EventMethEpollEquivImpl* emeei= em_event->getEventMethEpollEquivImpl();
+
+        if (emeei)
+        {
+            GUARD_AND_DBG_LOG(emee_cptr_set_mutex_);
+            // Note: We leave emee_cptr_set_mutex_ locked while we close the
+            // emevent, erase it from interest_ and ready_, and delete it. The
+            // prevents the EventMethEpollEquivImpl emeei itself exiting
+            // (e.g. during a shutdown) while we are part way through the
+            // close-erase-delete actions.
+
+            // Check that emeei is in emee_cptr_set_. If it's not, the
+            // EventMethEpollEquivImpl emeei may already be exiting, or exited,
+            // and we don't want to access it
+            if (emee_cptr_set_.find(emeei) != emee_cptr_set_.end())
+            {
+                std::mutex & int_mut(emeei->interest_mutex_);
+                GUARD_AND_DBG_LOG(int_mut);
+
+                // Check that the em_event is really, and still, in the emeei's
+                // interest_ set.
+                auto interest_it = emeei->interest_.find(em_event);
+                if (interest_it != emeei->interest_.end())
+                {
+                    
+                    std::mutex & red_mut(emeei->ready_mutex_);
+            
+                    GUARD_AND_DBG_LOG(red_mut);
+
+                    int close_res = em_event->close();
+                    if (close_res == 0)
+                    {
+                        // Erasing em_event from interest_ also stops em_event
+                        // being added to ready_ subsequently (see
+                        // addEventToReadyInterestAlrdyLocked), which is
+                        // important given we're about to delete em_event
+                        emeei->interest_.erase(interest_it);
+                        #ifdef DEBUG
+                        std::size_t res = 1 + emeei->ready_.erase(em_event);
+                        PS_LOG_DEBUG_ARGS(
+                            "Num erased from interest and ready: %u", res);
+                        #else
+                        emeei->ready_.erase(em_event);
+                        #endif
+
+                        // The interest and ready mutexes must remain locked
+                        // while we perform the delete, to make sure we're not
+                        // adding em_event to ready in another thread that's
+                        // doing polling
+                        // 
+                        // Also so that if another thread is processing
+                        // em_event (e.g. after polling) it can, by claiming
+                        // interest_mutex_, avoid having em_event stamped on
+                        // until it has finished processing it.
+                        delete em_event;
+                        DBG_DELETE_EMV(em_event);
+                    }
+
+                    #ifdef DEBUG
+                    if (close_res != 0)
+                        PS_LOG_DEBUG_ARGS(
+                            "em_event->close() failed for %p", em_event);
+                    #endif
+            
+                    return(close_res);
+                }
+            }
+        }
+
+        // No valid/safe EMEEI to erase from, just close and delete
+
         int close_res = em_event->close();
-
         if (close_res == 0)
-            removeFromInterestAndReadyAndDelete(em_event);
-        
+        {
+                delete em_event;
+                DBG_DELETE_EMV(em_event);
+        }
         #ifdef DEBUG
-        if (close_res != 0)
+        else
+        {
             PS_LOG_DEBUG_ARGS("em_event->close() failed for %p", em_event);
+        }
         #endif
-
+            
         return(close_res);
     }
 
