@@ -252,11 +252,23 @@ TEST(router_test, test_remove_not_existing)
 {
     SegmentTreeNode routes;
 
-    ASSERT_THROW(routes.removeRoute("/v1/hello"), std::runtime_error);
-    ASSERT_THROW(routes.removeRoute("/v1/hello/:name/"), std::runtime_error);
-    ASSERT_THROW(routes.removeRoute("/get/:key?/bar"), std::runtime_error);
-    ASSERT_THROW(routes.removeRoute("/say/*/to/*"), std::runtime_error);
-    ASSERT_THROW(routes.removeRoute("*/api"), std::runtime_error);
+    using testing::ThrowsMessage;
+
+    ASSERT_THAT(
+        [&] { routes.removeRoute("/v1/hello"); },
+        ThrowsMessage<std::runtime_error>("Requested route does not exist."));
+    ASSERT_THAT(
+        [&] { routes.removeRoute("/v1/hello/:name/"); },
+        ThrowsMessage<std::runtime_error>("Requested route does not exist."));
+    ASSERT_THAT(
+        [&] { routes.removeRoute("/get/:key?/bar"); },
+        ThrowsMessage<std::runtime_error>("Requested route does not exist."));
+    ASSERT_THAT(
+        [&] { routes.removeRoute("/say/*/to/*"); },
+        ThrowsMessage<std::runtime_error>("Requested route does not exist."));
+    ASSERT_THAT(
+        [&] { routes.removeRoute("*/api"); },
+        ThrowsMessage<std::runtime_error>("Requested route does not exist."));
 }
 
 class MyHandler
