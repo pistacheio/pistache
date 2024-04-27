@@ -217,6 +217,8 @@ namespace Pistache::Rest
                 collection      = &optional_;
                 break;
             case SegmentType::Splat:
+                if (!splat_)
+                    throw std::runtime_error("Requested route does not exist.");
                 return splat_->removeRoute(lower_path);
             }
 

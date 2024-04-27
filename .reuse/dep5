@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 
-Files: tests/fuzzers/corpus/http-*.txt
+Files: tests/fuzzers/corpus/*
 Copyright: 2024 Mikhail Khachayants
 License: Apache-2.0
 

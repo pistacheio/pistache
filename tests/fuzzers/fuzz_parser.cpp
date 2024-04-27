@@ -117,7 +117,7 @@ void fuzz_router(const std::string& input)
             });
             break;
         case 'R':
-            // ignoreExceptions([&] { tree.removeRoute(path); });
+            ignoreExceptions([&] { tree.removeRoute(path); });
             break;
         case 'F':
             ignoreExceptions([&] { tree.findRoute(path); });

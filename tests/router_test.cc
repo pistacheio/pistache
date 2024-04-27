@@ -248,6 +248,17 @@ TEST(router_test, test_route_head_request)
     endpoint->shutdown();
 }
 
+TEST(router_test, test_remove_not_existing)
+{
+    SegmentTreeNode routes;
+
+    ASSERT_THROW(routes.removeRoute("/v1/hello"), std::runtime_error);
+    ASSERT_THROW(routes.removeRoute("/v1/hello/:name/"), std::runtime_error);
+    ASSERT_THROW(routes.removeRoute("/get/:key?/bar"), std::runtime_error);
+    ASSERT_THROW(routes.removeRoute("/say/*/to/*"), std::runtime_error);
+    ASSERT_THROW(routes.removeRoute("*/api"), std::runtime_error);
+}
+
 class MyHandler
 {
 public:
