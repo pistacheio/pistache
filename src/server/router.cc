@@ -232,7 +232,7 @@ namespace Pistache::Rest
             }
             catch (const std::out_of_range&)
             {
-                throw std::runtime_error("Requested does not exist.");
+                throw std::runtime_error("Requested route does not exist.");
             }
         }
         else
