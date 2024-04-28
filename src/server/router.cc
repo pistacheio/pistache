@@ -85,6 +85,9 @@ namespace Pistache::Rest
     SegmentTreeNode::SegmentType
     SegmentTreeNode::getSegmentType(const std::string_view& fragment)
     {
+        if (fragment.empty())
+            return SegmentType::Fixed;
+
         auto optpos = fragment.find('?');
         if (fragment[0] == ':')
         {
@@ -217,6 +220,8 @@ namespace Pistache::Rest
                 collection      = &optional_;
                 break;
             case SegmentType::Splat:
+                if (!splat_)
+                    throw std::runtime_error("Requested route does not exist.");
                 return splat_->removeRoute(lower_path);
             }
 
@@ -230,7 +235,7 @@ namespace Pistache::Rest
             }
             catch (const std::out_of_range&)
             {
-                throw std::runtime_error("Requested does not exist.");
+                throw std::runtime_error("Requested route does not exist.");
             }
         }
         else
