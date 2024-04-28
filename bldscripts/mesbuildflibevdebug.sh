@@ -10,7 +10,13 @@
 # Execute this script from the parent directory by invoking:
 #   bldscripts/mesbuildflibevdebug.sh
 
-source bldscripts/mesdebugflibevsetdirvars.sh
+if [ "$(uname)" == "Darwin" ]; then
+    source bldscripts/mesdebugsetdirvars.sh
+    PFLEV=""
+else
+    source bldscripts/mesdebugflibevsetdirvars.sh
+    PFLEV="-DPISTACHE_FORCE_LIBEVENT=true"
+fi
 
 if [ -e "./${MESON_BUILD_DIR}" ]
 then
@@ -25,8 +31,8 @@ else
     -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true \
     -DPISTACHE_DEBUG=true \
     --prefix="${MESON_PREFIX_DIR}" \
-    -DPISTACHE_FORCE_LIBEVENT=true
-    
+    $PFLEV
+
 fi
 
 meson compile -C ${MESON_BUILD_DIR}

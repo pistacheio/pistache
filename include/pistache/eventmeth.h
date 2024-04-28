@@ -230,7 +230,7 @@ namespace Pistache
     #define EVM_SIGNAL       0x08
     #define EVM_PERSIST      0x10
     #define EVM_ET           0x20
-    #define EVM_FINALIZE     0x40
+    // FINALIZE is internal to eventmeth, not to be used by eventmeth user
     #define EVM_CLOSED       0x80
 
     enum class EvCtlAction
@@ -403,7 +403,7 @@ namespace Pistache
         int getReadyEmEvents(int timeout, std::set<Fd> & ready_evm_events_out);
 
         // EvEvents are some combination of EVM_TIMEOUT, EVM_READ, EVM_WRITE,
-        // EVM_SIGNAL, EVM_PERSIST, EVM_ET, EVM_FINALIZE, EVM_CLOSED
+        // EVM_SIGNAL, EVM_PERSIST, EVM_ET, EVM_CLOSED
 
         int toEvEvents(const Flags<Polling::NotifyOn>& interest);
         Flags<Polling::NotifyOn> toNotifyOn(Fd fd); // uses fd->ready_flags
@@ -411,7 +411,7 @@ namespace Pistache
         ~EventMethEpollEquiv();
 
     private:
-        // Allow create to call the cnostructor
+        // Allow create to call the constructor
         friend std::shared_ptr<EventMethEpollEquiv> EventMethFns::create(int);
         
         EventMethEpollEquiv(int size);
