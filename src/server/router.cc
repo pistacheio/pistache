@@ -85,6 +85,9 @@ namespace Pistache::Rest
     SegmentTreeNode::SegmentType
     SegmentTreeNode::getSegmentType(const std::string_view& fragment)
     {
+        if (fragment.empty())
+            return SegmentType::Fixed;
+
         auto optpos = fragment.find('?');
         if (fragment[0] == ':')
         {
