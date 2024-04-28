@@ -93,7 +93,7 @@ namespace Pistache
                              std::set<Fd> & ready_evm_events_out);
 
         // EvEvents are some combination of EVM_TIMEOUT, EVM_READ, EVM_WRITE,
-        // EVM_SIGNAL, EVM_PERSIST, EVM_ET, EVM_FINALIZE, EVM_CLOSED
+        // EVM_SIGNAL, EVM_PERSIST, EVM_ET, EVM_CLOSED
         
         int toEvEvents(const Flags<Polling::NotifyOn>& interest);
 
@@ -1007,7 +1007,7 @@ namespace Pistache
     }
 
     // EvEvents are some combination of EVM_TIMEOUT, EVM_READ, EVM_WRITE,
-    // EVM_SIGNAL, EVM_PERSIST, EVM_ET, EVM_FINALIZE, EVM_CLOSED
+    // EVM_SIGNAL, EVM_PERSIST, EVM_ET, EVM_CLOSED
 
     int EventMethEpollEquiv::toEvEvents(
                                       const Flags<Polling::NotifyOn>& interest)
@@ -1083,11 +1083,10 @@ static std::atomic_int wait_then_get_count__ = 0; // by EventMethEpollEquiv
             NAME_EVM_FLAG(SIGNAL, Signal);
             NAME_EVM_FLAG(PERSIST, Persist);
             NAME_EVM_FLAG(ET, Edge);
-            NAME_EVM_FLAG(FINALIZE, Finalize);
             NAME_EVM_FLAG(CLOSED, Closed);
 
             if (flags > (EVM_TIMEOUT + EVM_READ + EVM_WRITE + EVM_SIGNAL +
-                         EVM_PERSIST + EVM_ET + EVM_FINALIZE + EVM_CLOSED))
+                         EVM_PERSIST + EVM_ET + EVM_CLOSED))
             {
                 if (!fst_flag)
                     (*res) += ", and ";
@@ -2775,7 +2774,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
                         event_meth_epoll_equiv_impl_->getEventMethBase()->
                                                                 getEventBase(),
                         actual_fd,
-                        flags_,
+                        flags_ | EV_FINALIZE,
                         eventCallbackFn,
                         (void *)this
                         /*final arg here is passed to callback as "arg"*/));
@@ -2812,7 +2811,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
                     event_meth_epoll_equiv_impl_->getEventMethBase()->
                                                                 getEventBase(),
                     actual_fd, // keep same actual fd, if any
-                    events,
+                    events | EV_FINALIZE,
                     eventCallbackFn,
                     (void *)this/*passed to callback as "arg"*/);
                 if (!replacement_ev)
