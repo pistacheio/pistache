@@ -92,7 +92,7 @@ jobs:
       run: meson test -C build --verbose
 
     - name: Coverage
-      if: ${{ !contains(matrix.os, 'redhat') }}
+      if: ${{ matrix.os == 'debian:stable' }}
       run: |
         mkdir -p $HOME/.local/bin
         if [ "${{ matrix.compiler }}" = 'clang' ]; then printf 'llvm-cov gcov "$@"' > $HOME/.local/bin/cov.sh; else printf 'gcov "$@"' > $HOME/.local/bin/cov.sh; fi && chmod +x $HOME/.local/bin/cov.sh

@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <gtest/gtest.h>
+#include <gmock/gmock-matchers.h>
 
 #include <pistache/common.h>
 #include <pistache/endpoint.h>
@@ -246,6 +247,29 @@ TEST(router_test, test_route_head_request)
     ASSERT_EQ(count_found, 1);
 
     endpoint->shutdown();
+}
+
+TEST(router_test, test_remove_not_existing)
+{
+    SegmentTreeNode routes;
+
+    using testing::ThrowsMessage;
+
+    ASSERT_THAT(
+        [&] { routes.removeRoute("/v1/hello"); },
+        ThrowsMessage<std::runtime_error>("Requested route does not exist."));
+    ASSERT_THAT(
+        [&] { routes.removeRoute("/v1/hello/:name/"); },
+        ThrowsMessage<std::runtime_error>("Requested route does not exist."));
+    ASSERT_THAT(
+        [&] { routes.removeRoute("/get/:key?/bar"); },
+        ThrowsMessage<std::runtime_error>("Requested route does not exist."));
+    ASSERT_THAT(
+        [&] { routes.removeRoute("/say/*/to/*"); },
+        ThrowsMessage<std::runtime_error>("Requested route does not exist."));
+    ASSERT_THAT(
+        [&] { routes.removeRoute("*/api"); },
+        ThrowsMessage<std::runtime_error>("Requested route does not exist."));
 }
 
 class MyHandler
