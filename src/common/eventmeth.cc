@@ -1149,6 +1149,50 @@ extern "C" void eventCallbackFn(em_socket_t cb_actual_fd,
     epoll_equiv->handleEventCallback(cb_arg, cb_actual_fd, ev_flags);
 }
 
+// Why and how we use libevent's finalize
+//
+// Whenever we do a libevent event_new, we set the EV_FINALIZE flag
+//
+// Otherwise libevent will have a de facto mutex on the libevent event such
+// that the ev_ mutex is claimed before a callback and before allowing
+// event_del to execute. So, when an event is being closed, interest_mutex_ is
+// claimed (in eventmeth), and then event_del is called, claiming the ev_
+// mutex. When a callback happens, libevent claims the ev_ mutex, and then our
+// code claims the interest_mutex_. I.e. the two mutexes (interest_mutex_ and
+// ev_ mutex) are claimed in the opposite order for a closeEvent vs. a libevent
+// callback, causing a deadlock on a race condition.
+//
+// Subsequently, where we would have otherwise have done event_del and
+// event_free, we instead do event_free_finalize. This makes libevent do the
+// event_del+event_free for us, but out of the event loop thread so that they
+// won't happen while an event callback handler has been called (instead, the
+// del and free happen after the handler has run to completion).
+//
+// However, when we are doing an event_del but not event_free, we don't use
+// event_finalize. You can't do event_add again after an event_finalize, which
+// may want to do if we're not doing event_free.
+
+// Use for event_free_finalize
+extern "C" void libevEventFinalizeAndFreeCallback(
+            [[maybe_unused]] struct event * ev, [[maybe_unused]] void * cb_arg)
+{
+    PS_TIMEDBG_START;
+
+    PS_LOG_DEBUG_ARGS("Finalize+free cb for ev %p of EmEvent %p",
+                      ev, cb_arg);
+
+    // Note - no need to call event_del, it is a no-op here; libevent takes
+    // care of it for us. Libevent also does event_free as soon as this
+    // callback function returns (presuming event_free_finalize was used to
+    // invoke this callback).
+
+    DEC_DEBUG_CTR(libevent_event);
+}
+
+
+/* ------------------------------------------------------------------------- */
+
+
 namespace Pistache
 {
     class EventMethBase
@@ -2319,9 +2363,6 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
             }
         }
 
-        // !!!! Also, if EV_FINALIZE is set, where event_del would be invoked,
-        // need to use event_finalize or event_free_finalize instead
-        
         flags_ = flgs;
     }
 
@@ -2334,6 +2375,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
 
         // Note. If the event has already executed or has never been added,
         // event_del will have no effect (i.e. is harmless).
+        // Note: Don't use finalize here, this Fd may be armed again later
         int event_del_res = TRY_RET(event_del(ev_));
         return(event_del_res);
     }
@@ -2343,7 +2385,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         PS_TIMEDBG_START_THIS;
 
         em_socket_t actual_fd = -1; // em_socket_t is type int
-        int event_del_res = 0;
+        int finalize_res = 0;
 
         if (ev_ == NULL)
         {
@@ -2353,13 +2395,22 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         {
             actual_fd = event_get_fd(ev_);
 
-            PS_LOG_DEBUG_ARGS("Deleting and freeing ev_ %p", ev_);
-            event_del_res = TRY_RET(event_del(ev_));
-            event_free(ev_);
-            
+            // See earlier comment: Why and how we use libevent's finalize
+            PS_LOG_DEBUG_ARGS("About to finalize+free ev_ %p of EmEvent %p",
+                              ev_, this);
+
+            auto old_ev = ev_;
             ev_ = 0;
 
-            DEC_DEBUG_CTR(libevent_event);
+            finalize_res = event_free_finalize(0,//reserved
+                                    old_ev, libevEventFinalizeAndFreeCallback);
+
+            PS_LOG_DEBUG_ARGS("finalize_res %d, ev_ %p", finalize_res, old_ev);
+
+            // Deliberately leak ev_ if finalize_res = -1
+
+            // Note: libevEventFinalizeAndFreeCallback does
+            // DEC_DEBUG_CTR(libevent_event)
         }
 
         requested_actual_fd_ = -1;
@@ -2371,7 +2422,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
             actual_fd_close_res = ::close(actual_fd);
         }
 
-        if (event_del_res < 0)
+        if (finalize_res < 0)
         {
             PS_LOG_DEBUG_ARGS("event_del failed, ev_ %p", ev_);
             return(-1);
@@ -2427,12 +2478,24 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     {
         if (ev_)
         {
-            event_del(ev_); // harmless if not added
-            
-            event_free(ev_);
-            ev_ = NULL;
+            // See earlier comment: Why and how we use libevent's finalize
+            PS_LOG_DEBUG_ARGS("About to finalize+free ev_ %p of EmEvent %p",
+                              ev_, this);
 
-            DEC_DEBUG_CTR(libevent_event);
+	    auto old_ev = ev_;
+            ev_ = 0;
+
+            #ifdef DEBUG
+            int ev_free_finalize_initial_res =
+            #endif
+                event_free_finalize(0,//reserved
+                                    old_ev, libevEventFinalizeAndFreeCallback);
+
+            PS_LOG_DEBUG_ARGS("ev_free_finalize_initial_res %d, ev_ %p",
+                              ev_free_finalize_initial_res, old_ev);
+
+            // Note: libevEventFinalizeAndFreeCallback does
+            // DEC_DEBUG_CTR(libevent_event)
         }
 
         event_meth_epoll_equiv_impl_ = NULL;
@@ -2774,10 +2837,12 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
                         event_meth_epoll_equiv_impl_->getEventMethBase()->
                                                                 getEventBase(),
                         actual_fd,
-                        flags_ | EV_FINALIZE,
+                        flags_ | EV_FINALIZE, // See earlier comment: Why and
+                                              // how we use libevent's finalize
                         eventCallbackFn,
                         (void *)this
                         /*final arg here is passed to callback as "arg"*/));
+
                 if (!ev_)
                 {
                     PS_LOG_DEBUG("libev event_new returned null");
@@ -2806,12 +2871,30 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
                         "event_meth_epoll_equiv_impl_ null");
                 }
 
-                event_del(ev_);
+                // See earlier comment: Why and how we use libevent's finalize
+                PS_LOG_DEBUG_ARGS("About to finalize+free ev_ %p, EmEvent %p",
+                                  ev_, this);
+
+                struct event * old_ev = ev_;
+                ev_ = NULL;
+
+                #ifdef DEBUG
+                int ev_free_finalize_initial_res =
+                #endif
+                    event_free_finalize(0,//reserved
+                                    old_ev, libevEventFinalizeAndFreeCallback);
+                // Note libevEventFinalizeAndFreeCallback does
+                // DEC_DEBUG_CTR(libevent_event)
+
+                PS_LOG_DEBUG_ARGS("ev_free_finalize_initial_res %d, ev_ %p",
+                                  ev_free_finalize_initial_res, old_ev);
+
                 struct event * replacement_ev = event_new(
                     event_meth_epoll_equiv_impl_->getEventMethBase()->
                                                                 getEventBase(),
                     actual_fd, // keep same actual fd, if any
-                    events | EV_FINALIZE,
+                    events | EV_FINALIZE, // See earlier comment: Why and how
+                                          // we use libevent's finalize
                     eventCallbackFn,
                     (void *)this/*passed to callback as "arg"*/);
                 if (!replacement_ev)
@@ -2828,13 +2911,10 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
                                   this, actual_fd,
                                   evmFlagsToStdString(flags_)->c_str(),
                                   evmFlagsToStdString(events)->c_str(),
-                                  ev_, replacement_ev);
+                                  old_ev, replacement_ev);
 
-                struct event * old_ev = ev_;
                 ev_ = replacement_ev;
                 setFlags(events);
-                event_free(old_ev);
-                DEC_DEBUG_CTR(libevent_event);
             }
         }
 
@@ -2885,6 +2965,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
 
         case EvCtlAction::Del:
             // Note event_del does nothing if event already inactive
+            // Note: Don't use finalize here, this Fd may be armed again later
             ctl_res = event_del(ev_);
             break;
 
