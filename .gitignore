@@ -45,6 +45,15 @@
 .vscode
 .idea
 
+# macOS .DS_Store has custom attributes of containing folder
+.DS_Store
+._.DS_Store
+**/.DS_Store
+**/._.DS_Store
+
+.DS_Store
+**/.DS_Store
+
 # Vim swap files
 .*.swp
 
@@ -53,6 +62,7 @@
 
 # Ad hoc scripts to run tests repeatedly
 repeat_*.sh
+repeatx86_*.sh
 
 # Meson Wrap DB cache
 /subprojects/*
