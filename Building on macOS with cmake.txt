@@ -6,7 +6,7 @@ Making Pistache on macOS with cmake
 ===================================
 
 Building pistache using cmake is deprecated. Users are encouraged to
-use Meson only when buidling from source. CMake build scripts are only
+use Meson only when building from source. CMake build scripts are only
 offered for convenience to users who depend on them for some reason,
 since they previously were the recommended way to build Pistache.
 
@@ -63,3 +63,7 @@ And then also add to your .bashrc/.zshrc:
       fi
   fi
 
+Note: When using cmake on Linux (NOT macOS), you will need to manually
+install googletest. install_gtest_gmock.sh in this gist provides the
+method (verified on Ubuntu 22.04, April/2024):
+    https://gist.github.com/dlime/313f74fd23e4267c4a915086b84c7d3d
