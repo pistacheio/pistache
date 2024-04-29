@@ -57,42 +57,38 @@ implementation, which have been addressed as part of the port:
   1. A mutex is required for access to requestsQueues in client.cc, to
   make sure the queues are not corrupted by being accessed from
   multiple threads.
-  2. The 'Entry* pop()' function in mailbox.h was vulnerable to
-  multiple new queue pushes arriving at the same moment the pop is
-  in process. See comment in code for more specifics.
-  3. A mutex is required to protect the peers_ unordered_map in
+  2. A mutex is required to protect the peers_ unordered_map in
   transport.h/.cc. See comment in code for more specifics.
-  4. https_server_test modified so curl_global_init is called only once
+  3. https_server_test modified so curl_global_init is called only once
   (see comment in the code).
-  5. Updated some yaml files for benefit of github, e.g. to use newer
-  actions/checkout.
-  6. The C pointer 'Handler::Reactor* reactor_' was allowing a Reactor
+  4. The C pointer 'Handler::Reactor* reactor_' was allowing a Reactor
   instance to be accessed after the Reactor destructor was
   called. Fixed by allowing deregistering of
   pollers/handlers/reactors, and also by protecting the deregistering
   with a mutex. See comment in code for details.
-  7. Made getPeer in transport return a shared_ptr to Peer, NOT a
+  5. Made getPeer in transport return a shared_ptr to Peer, NOT a
   reference to a shared_ptr. Previously, the reference returned by
   getPeer was to a shared_ptr stored in the map peers_ - so if the
   entry was removed from peers_, or peers_ went out of scope, the
   reference could refer to a shared_ptr that no longer existed. This
   was causing access to memory after free, showing up in github
   workflows in http_server_test in force-libevent mode.
-  8. Rather than closing a peer's Fd directly in transport
+  6. Rather than closing a peer's Fd directly in transport
   (Transport::removePeer in transport.cc), now call peer->closeFd(),
   which not only closes the Fd but allows peer to set it's fd_ to
   empty, helping ensure that the Fd is closed exactly once. This,
   together with the above getPeer fix, fixes a memory/Fd leak that was
   showing up in github workflows in http_server_test in force-libevent
-  mode.
-  9. Introduced a handling_mutex, owned by client Transport
+  mode, and also fixes memory leak in test streaming_test
+  ClientDisconnect.
+  7. Introduced a handling_mutex, owned by client Transport
   (client.cc). This mutex is claimed by Transport::onReady, and also
   claimed when an Fd is being closed, to stop an Fd that is about to
   be processed by onReady being closed/freed before onReady handling
   can reach it. See comments in Client::shutdown for more.
     
 Of these issues, all were seen in practice while testing. None are
-huge changes at all; the fix for #6 is the "biggest" in that it
+huge changes at all; the fix for #4 is the "biggest" in that it
 touches multiple points in the code.  None of the issues are macOS
 specific; the issues showed up in macOS due to differences in timing,
 threading and heap/memory management in macOS and/or libevent

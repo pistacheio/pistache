@@ -39,9 +39,13 @@ The meaning of each convenience script is as follows:
   mestestdebug.sh - test debug version with meson
   mesinstalldebug.sh - install debug version using meson
   
-  mesbuildflibev.sh - build debug version using meson forcing libevnet use
-  mestestflibev.sh - test debug version using meson with libevnet use  
-  mesinstallflibev.sh - install debug version using meson with libevnet use
+  mesbuildflibev.sh - build version using meson forcing libevnet use
+  mestestflibev.sh - test version using meson with libevnet use  
+  mesinstallflibev.sh - install version using meson with libevnet use
+
+  mesbuildflibevdebug.sh - build debug ver using meson forcing libevnet use
+  mestestflibevdebug.sh - test debug ver using meson with libevnet use  
+  mesinstallflibevdebug.sh - install debug ver using meson with libevnet use
 
   clean.sh - remove build directories
   
