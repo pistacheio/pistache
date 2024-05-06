@@ -152,7 +152,7 @@ extern void dbg_log_all_emes();
 }
 #define DBG_LOG_ALL_EMEVENTS                                \
     {                                                       \
-	PS_LOG_DEBUG("Listing EmEvents");                   \
+        PS_LOG_DEBUG("Listing EmEvents");                   \
         Pistache::dbg_log_all_emes();                       \
     }
 #else
