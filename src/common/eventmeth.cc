@@ -2482,7 +2482,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
             PS_LOG_DEBUG_ARGS("About to finalize+free ev_ %p of EmEvent %p",
                               ev_, this);
 
-	    auto old_ev = ev_;
+            auto old_ev = ev_;
             ev_ = 0;
 
             #ifdef DEBUG
