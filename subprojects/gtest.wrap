@@ -1,15 +1,16 @@
-# SPDX-FileCopyrightText: 2021 Andrea Pappacoda
-#
-# SPDX-License-Identifier: CC0-1.0
+# SPDX-FileCopyrightText: 2021 The Meson development team
+# SPDX-License-Identifier: MIT
 
 [wrap-file]
-directory = googletest-release-1.11.0
-source_url = https://github.com/google/googletest/archive/release-1.11.0.tar.gz
-source_filename = gtest-1.11.0.tar.gz
-source_hash = b4870bf121ff7795ba20d20bcdd8627b8e088f2d1dab299a031c1034eddc93d5
-patch_filename = gtest_1.11.0-2_patch.zip
-patch_url = https://wrapdb.mesonbuild.com/v2/gtest_1.11.0-2/get_patch
-patch_hash = 764530d812ac161c9eab02a8cfaec67c871fcfc5548e29fd3d488070913d4e94
+directory = googletest-1.14.0
+source_url = https://github.com/google/googletest/archive/refs/tags/v1.14.0.tar.gz
+source_filename = gtest-1.14.0.tar.gz
+source_hash = 8ad598c73ad796e0d8280b082cebd82a630d73e73cd3c70057938a6501bba5d7
+patch_filename = gtest_1.14.0-2_patch.zip
+patch_url = https://wrapdb.mesonbuild.com/v2/gtest_1.14.0-2/get_patch
+patch_hash = 4ec7f767364386a99f7b2d61678287a73ad6ba0f9998be43b51794c464a63732
+source_fallback_url = https://github.com/mesonbuild/wrapdb/releases/download/gtest_1.14.0-2/gtest-1.14.0.tar.gz
+wrapdb_version = 1.14.0-2
 
 [provide]
 gtest = gtest_dep
