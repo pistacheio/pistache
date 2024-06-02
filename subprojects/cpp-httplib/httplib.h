@@ -6903,7 +6903,7 @@ inline bool ClientImpl::read_response_line(Stream &strm, const Request &req,
                                            Response &res) const {
   std::array<char, 2048> buf{};
 
-  detail::stream_line_reader line_reader(strm, buf.data(), bufsiz);
+  detail::stream_line_reader line_reader(strm, buf.data(), buf.size());
 
   if (!line_reader.getline()) { return false; }
 
