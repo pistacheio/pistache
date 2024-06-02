@@ -6,7 +6,7 @@ project(
   'cpp-httplib',
   'cpp',
   license: 'MIT',
-  version: '0.9.0'
+  version: '0.15.3'
 )
 
 cpp_httplib_dep = declare_dependency(include_directories: include_directories('.'))
