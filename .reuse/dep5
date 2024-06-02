@@ -1,6 +1,9 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 
+Files: subprojects/cpp-httplib/httplib.h
+Copyright: 2017 Yuji Hirose
+License: MIT
+
 Files: tests/fuzzers/corpus/*
 Copyright: 2024 Mikhail Khachayants
 License: Apache-2.0
-
