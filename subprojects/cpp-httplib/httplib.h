@@ -6943,7 +6943,7 @@ inline bool ClientImpl::read_response_line(Stream &strm, const Request &req,
   std::array<char, 2048> buf{};
 >>>>>>> d6bfeb7 (build: update cpp-httplib subproject to 0.15.3)
 
-  detail::stream_line_reader line_reader(strm, buf.data(), bufsiz);
+  detail::stream_line_reader line_reader(strm, buf.data(), buf.size());
 
   if (!line_reader.getline()) { return false; }
 
