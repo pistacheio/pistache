@@ -29,6 +29,7 @@ install_headers(
 	'net.h',
 	'os.h',
 	'peer.h',
+	'pist_quote.h',
         'pist_check.h',
         'pist_syslog.h',
 	'prototype.h',
