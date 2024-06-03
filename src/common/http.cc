@@ -29,6 +29,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <charconv>
 
 namespace Pistache::Http
 {
@@ -287,9 +288,18 @@ namespace Pistache::Http
             if (!match_until(' ', cursor))
                 return State::Again;
 
-            char* end;
-            auto code = strtol(codeToken.rawText(), &end, 10);
-            if (*end != ' ')
+            const char* beg = codeToken.rawText();
+            const char* beg_trim = beg;
+            while (*beg_trim == '+' || *beg_trim == ' ')
+            {
+                if (*(beg_trim + 1))
+                    ++beg_trim;                    
+            }
+            std::string_view view(beg_trim, codeToken.size());
+            const char* end = view.data() + view.size();
+            long code = 0;
+            auto res = std::from_chars(beg_trim, end, code);
+            if (*res.ptr != ' ')
                 raise("Failed to parse return code");
             response->code_ = static_cast<Http::Code>(code);
 
@@ -455,10 +465,18 @@ namespace Pistache::Http
                     if (!cursor.advance(1))
                         return Incomplete;
 
-                char* end;
-                const char* raw = chunkSize.rawText();
-                auto sz         = std::strtol(raw, &end, 16);
-                if (*end != '\r')
+                const char* beg = chunkSize.rawText();
+                const char* beg_trim = beg;
+                while (*beg_trim == '+' || *beg_trim == ' ')
+                {
+                    if (*(beg_trim + 1))
+                        ++beg_trim; 
+                }
+                std::string_view view = beg_trim;
+                const char* end = view.data() + view.size();
+                long sz = 0;
+                auto res = std::from_chars(beg_trim, end, sz, 16);
+                if (*res.ptr != '\r')
                     throw std::runtime_error("Invalid chunk size");
 
                 // CRLF

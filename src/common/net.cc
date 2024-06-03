@@ -27,6 +27,7 @@
 #include <netdb.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <charconv>
 
 namespace Pistache
 {
@@ -38,9 +39,18 @@ namespace Pistache
     {
         if (data.empty())
             throw std::invalid_argument("Invalid port: empty port");
-        char* end     = nullptr;
-        long port_num = strtol(data.c_str(), &end, 10);
-        if (*end != 0 || port_num < Port::min() || port_num > Port::max())
+        const char* beg = data.c_str();
+        const char* beg_trim = beg;
+        while (*beg_trim == '+' || *beg_trim == ' ')
+        {
+            if (*(beg_trim + 1))
+                ++beg_trim; 
+        }
+        std::string_view view = beg_trim;
+        const char* end = view.data() + view.size();
+        long port_num = 0;
+        auto res = std::from_chars(beg_trim, end, port_num);
+        if (*res.ptr != 0 || port_num < Port::min() || port_num > Port::max())
             throw std::invalid_argument("Invalid port: " + data);
         port = static_cast<uint16_t>(port_num);
     }
@@ -312,9 +322,18 @@ namespace Pistache
                 throw std::invalid_argument("Invalid port");
 
             // Check if port_ is a valid number
-            char* tmp;
-            std::strtol(port_.c_str(), &tmp, 10);
-            hasNumericPort_ = *tmp == '\0';
+            const char* beg = port_.c_str();
+            const char* beg_trim = beg;
+            while (*beg_trim == '+' || *beg_trim == ' ')
+            {
+                if (*(beg_trim + 1))
+                    ++beg_trim; 
+            }
+            std::string_view view = beg_trim;
+            const char* end = view.data() + view.size();
+            long port_num = 0;
+            auto res = std::from_chars(beg_trim, end, port_num);
+            hasNumericPort_ = !(res.ec != std::errc{} || res.ptr != end);
         }
     }
 
@@ -446,7 +465,18 @@ namespace Pistache
         port_ = Port(ip_.getPort());
 
         // Check that the port has not overflowed while calling getaddrinfo()
-        if (parser.hasNumericPort() && port_ != std::strtol(addrinfo_port, nullptr, 10))
+        const char* beg = addrinfo_port;
+        const char* beg_trim = beg;
+        while (*beg_trim == '+' || *beg_trim == ' ')
+        {
+            if (*(beg_trim + 1))
+                ++beg_trim; 
+        }
+        std::string_view view = beg_trim;
+        const char* end = view.data() + view.size();
+        long addrinfo_port_num = 0;
+        std::from_chars(beg_trim, end, addrinfo_port_num);
+        if (parser.hasNumericPort() && port_ != addrinfo_port_num)
         {
             throw std::invalid_argument("Invalid numeric port");
         }
