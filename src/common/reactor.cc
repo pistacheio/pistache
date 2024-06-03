@@ -21,6 +21,7 @@
 #include <vector>
 
 #include <pistache/pist_timelog.h>
+#include <pistache/pist_quote.h>
 
 using namespace std::string_literals;
 

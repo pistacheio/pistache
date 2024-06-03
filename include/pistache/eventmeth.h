@@ -159,11 +159,6 @@ extern void dbg_log_all_emes();
 #define DBG_LOG_ALL_EMEVENTS
 #endif
 
-#ifndef PIST_QUOTE // used for placing quote signs around a preprocessor parm
-  #define PIST_Q(x) #x
-  #define PIST_QUOTE(x) PIST_Q(x)
-#endif
-
 #if defined DEBUG && defined _USE_LIBEVENT
   #define LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(__ACTUAL_FD__)                   \
            PS_LOG_DEBUG_ARGS("%s",                                        \

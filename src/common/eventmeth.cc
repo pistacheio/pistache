@@ -5,6 +5,7 @@
  */
 
 #include <pistache/eventmeth.h>
+#include <pistache/pist_quote.h>
 
 /* ------------------------------------------------------------------------- */
 
