@@ -18,6 +18,7 @@
 #include <pistache/pist_timelog.h>
 
 #include <pistache/eventmeth.h>
+#include <pistache/pist_quote.h>
 #ifndef _USE_LIBEVENT
 #include <sys/epoll.h>
 #endif

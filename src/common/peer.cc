@@ -20,6 +20,7 @@
 #include <pistache/async.h>
 #include <pistache/peer.h>
 #include <pistache/transport.h>
+#include <pistache/pist_quote.h>
 
 namespace Pistache::Tcp
 {

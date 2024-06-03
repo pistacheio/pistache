@@ -16,6 +16,7 @@
 #include <cassert>
 
 #include <pistache/eventmeth.h>
+#include <pistache/pist_quote.h>
 
 #ifndef _USE_LIBEVENT_LIKE_APPLE
 // Note: sys/timerfd.h is linux-only (and certainly POSIX only)

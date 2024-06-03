@@ -12,6 +12,7 @@
 
 #include <array>
 #include <pistache/eventmeth.h>
+#include <pistache/pist_quote.h>
 #include <unistd.h>
 
 #include <pistache/common.h>
