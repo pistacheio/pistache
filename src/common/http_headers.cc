@@ -36,6 +36,7 @@ namespace Pistache::Http::Header
     RegisterHeader(Date);
     RegisterHeader(Expect);
     RegisterHeader(Host);
+    RegisterHeader(LastModified);
     RegisterHeader(Location);
     RegisterHeader(Server);
     RegisterHeader(UserAgent);

@@ -603,6 +603,16 @@ namespace Pistache::Http::Header
         }
     }
 
+    void LastModified::parse(const std::string& data)
+    {
+        fullDate_ = FullDate::fromString(data);
+    }
+
+    void LastModified::write(std::ostream& os) const
+    {
+        fullDate_.write(os, FullDate::Type::RFC1123GMT);
+    }
+
     Location::Location(const std::string& location)
         : location_(location)
     { }

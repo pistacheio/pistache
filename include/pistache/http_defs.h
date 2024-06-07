@@ -237,7 +237,8 @@ namespace Pistache::Http
 
         enum class Type { RFC1123,
                           RFC850,
-                          AscTime };
+                          AscTime,
+                          RFC1123GMT };
 
         explicit FullDate(time_point date)
             : date_(date)
