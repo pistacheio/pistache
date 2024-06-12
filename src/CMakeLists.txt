@@ -75,7 +75,7 @@ if (BUILD_SHARED_LIBS)
     set_target_properties(pistache_shared PROPERTIES
         OUTPUT_NAME ${PROJECT_NAME}
         VERSION ${pistache_VERSION}
-        SOVERSION ${pistache_VERSION_MAJOR}
+        SOVERSION "${pistache_VERSION_MAJOR}.${pistache_VERSION_MINOR}"
     )
 endif ()
 
