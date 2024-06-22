@@ -128,6 +128,12 @@ namespace Pistache::Http
         case Type::RFC1123:
             date::to_stream(os, "%a, %d %b %Y %T %Z", date_);
             break;
+        case Type::RFC1123GMT: {
+            // Requires GMT so we must use std::gmtime to convert to GMT
+            time_t t = std::chrono::system_clock::to_time_t(date_);
+            os << std::put_time(std::gmtime(&t), "%a, %d %b %Y %T %Z");
+        }
+        break;
         case Type::RFC850:
             date::to_stream(os, "%a, %d-%b-%y %T %Z", date_);
             break;

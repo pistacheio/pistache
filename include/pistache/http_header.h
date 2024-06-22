@@ -588,6 +588,28 @@ namespace Pistache::Http::Header
         Port port_;
     };
 
+    class LastModified : public Header
+    {
+    public:
+        NAME("Last-Modified");
+
+        LastModified()
+            : fullDate_()
+        { }
+
+        explicit LastModified(const FullDate& fullDate)
+            : fullDate_(fullDate)
+        { }
+
+        void parse(const std::string& data) override;
+        void write(std::ostream& os) const override;
+
+        FullDate fullDate() const { return fullDate_; }
+
+    private:
+        FullDate fullDate_;
+    };
+
     class Location : public Header
     {
     public:
