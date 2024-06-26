@@ -11,6 +11,10 @@
 #include <pistache/http.h>
 #include <pistache/peer.h>
 
+#ifdef DEBUG
+#include <pistache/eventmeth.h>
+#endif
+
 #include <gtest/gtest.h>
 
 #ifdef PISTACHE_USE_CONTENT_ENCODING_BROTLI
@@ -56,6 +60,11 @@ namespace
         {
             std::lock_guard<std::mutex> guard { m_coutLock };
             std::cout << message << std::endl;
+
+            // Save in syslog / os_log as well
+            PSLogNoLocFn(LOG_INFO,
+                         false, // don't send to stdout - just did that
+                         "%s", message.c_str());
         }
 
     private:
@@ -104,7 +113,12 @@ struct HelloHandlerWithDelay : public Http::Handler
     void onRequest(const Http::Request& /*request*/,
                    Http::ResponseWriter writer) override
     {
+        PS_TIMEDBG_START_THIS;
+
+        PS_LOG_DEBUG_ARGS("Sleeping for %ds", delay_);
         std::this_thread::sleep_for(std::chrono::seconds(delay_));
+
+        PS_LOG_DEBUG("Sleep done, calling send");
         writer.send(Http::Code::Ok, "Hello, World!");
     }
 
@@ -124,6 +138,8 @@ struct HandlerWithSlowPage : public Http::Handler
     void onRequest(const Http::Request& request,
                    Http::ResponseWriter writer) override
     {
+        PS_TIMEDBG_START_THIS;
+
         std::string message;
         if (request.resource() == SLOW_PAGE)
         {
@@ -156,6 +172,8 @@ struct FileHandler : public Http::Handler
     void onRequest(const Http::Request& /*request*/,
                    Http::ResponseWriter writer) override
     {
+        PS_TIMEDBG_START_THIS;
+
         Http::serveFile(writer, fileName_)
             .then(
                 [this](ssize_t bytes) {
@@ -177,6 +195,8 @@ struct AddressEchoHandler : public Http::Handler
     void onRequest(const Http::Request& request,
                    Http::ResponseWriter writer) override
     {
+        PS_TIMEDBG_START_THIS;
+
         std::string requestAddress = request.address().host();
         writer.send(Http::Code::Ok, requestAddress);
         LOGGER("server", "Sent: " << requestAddress);
@@ -194,6 +214,8 @@ struct PingHandler : public Http::Handler
     void onRequest(const Http::Request& request,
                    Http::ResponseWriter writer) override
     {
+        PS_TIMEDBG_START_THIS;
+
         if (request.resource() == "/ping")
         {
             writer.send(Http::Code::Ok, "PONG");
@@ -208,30 +230,45 @@ struct PingHandler : public Http::Handler
 int clientLogicFunc(size_t response_size, const std::string& server_page,
                     int timeout_seconds, int wait_seconds)
 {
+    PS_TIMEDBG_START;
+
     Http::Experimental::Client client;
     client.init();
 
     std::vector<Async::Promise<Http::Response>> responses;
-    auto rb              = client.get(server_page).timeout(std::chrono::seconds(timeout_seconds));
+    auto rb = client.get(server_page).timeout(std::chrono::seconds(timeout_seconds));
+
+    // multiple_client_with_requests_to_multithreaded_server could fail
+    // intermittently if these counters are not atomic
     int resolver_counter = 0;
     int reject_counter   = 0;
     for (size_t i = 0; i < response_size; ++i)
     {
+        PS_TIMEDBG_START;
+
         auto response = rb.send();
+        PS_LOG_DEBUG_ARGS("rb.send() done, i = %u", i);
+
         response.then(
             [&resolver_counter, pos = i](Http::Response resp) {
                 if (resp.code() == Http::Code::Ok)
                 {
+                    PS_LOG_DEBUG_ARGS("response OK %u", pos);
+
                     LOGGER("client", "[" << pos << "] Response: " << resp.code() << ", body: `" << resp.body() << "`");
                     ++resolver_counter;
                 }
                 else
                 {
+                    PS_LOG_DEBUG_ARGS("response error %u", pos);
+
                     LOGGER("client", "[" << pos << "] Response: " << resp.code());
                 }
             },
             [&reject_counter, pos = i](std::exception_ptr exc) {
                 PrintException excPrinter;
+                PS_LOG_DEBUG_ARGS("response exception %u", pos);
+
                 LOGGER("client", "[" << pos << "] Reject with reason:");
                 excPrinter(exc);
                 ++reject_counter;
@@ -239,14 +276,16 @@ int clientLogicFunc(size_t response_size, const std::string& server_page,
         responses.push_back(std::move(response));
     }
 
-    auto sync = Async::whenAll(responses.begin(), responses.end());
-    Async::Barrier<std::vector<Http::Response>> barrier(sync);
-    barrier.wait_for(std::chrono::seconds(wait_seconds));
+    {
+        PS_TIMEDBG_START;
+        auto sync = Async::whenAll(responses.begin(), responses.end());
+        Async::Barrier<std::vector<Http::Response>> barrier(sync);
+        barrier.wait_for(std::chrono::seconds(wait_seconds));
+    }
 
     client.shutdown();
 
-    LOGGER("client", "resolves: " << resolver_counter << ", rejects: " << reject_counter << ", request timeout: " << timeout_seconds << " seconds"
-                                  << ", wait: " << wait_seconds << " seconds");
+    LOGGER("client", "resolves: " << resolver_counter << ", rejects: " << reject_counter << ", request timeout: " << timeout_seconds << " seconds" << ", wait: " << wait_seconds << " seconds");
 
     return resolver_counter;
 }
@@ -254,6 +293,16 @@ int clientLogicFunc(size_t response_size, const std::string& server_page,
 TEST(http_server_test,
      client_disconnection_on_timeout_from_single_threaded_server)
 {
+    PS_TIMEDBG_START;
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_before = EventMethFns::getEmEventCount();
+#endif
+#endif
+
+    { // encapsulate
+        
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
@@ -278,12 +327,34 @@ TEST(http_server_test,
     server.shutdown();
 
     ASSERT_EQ(counter, 0);
+
+    } // end encapsulate
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_after = EventMethFns::getEmEventCount();
+
+    PS_LOG_DEBUG_ARGS("em_event_count_before %d, em_event_count_after %d",
+                      em_event_count_before, em_event_count_after);
+    ASSERT_EQ(em_event_count_before, em_event_count_after);
+#endif
+#endif
 }
 
 TEST(
     http_server_test,
     client_multiple_requests_disconnection_on_timeout_from_single_threaded_server)
 {
+    PS_TIMEDBG_START;
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_before = EventMethFns::getEmEventCount();
+#endif
+#endif
+
+    { // encapsulate
+
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
@@ -308,10 +379,32 @@ TEST(
     server.shutdown();
 
     ASSERT_EQ(counter, 0);
+
+    } // end encapsulate
+    
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_after = EventMethFns::getEmEventCount();
+
+    PS_LOG_DEBUG_ARGS("em_event_count_before %d, em_event_count_after %d",
+                      em_event_count_before, em_event_count_after);
+    ASSERT_EQ(em_event_count_before, em_event_count_after);
+#endif
+#endif
 }
 
 TEST(http_server_test, multiple_client_with_requests_to_multithreaded_server)
 {
+    PS_TIMEDBG_START;
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_before = EventMethFns::getEmEventCount();
+#endif
+#endif
+
+    { // encapsulate
+
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
@@ -343,10 +436,32 @@ TEST(http_server_test, multiple_client_with_requests_to_multithreaded_server)
 
     ASSERT_EQ(res1, FIRST_CLIENT_REQUEST_SIZE);
     ASSERT_EQ(res2, SECOND_CLIENT_REQUEST_SIZE);
+
+    } // end encapsulate
+    
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_after = EventMethFns::getEmEventCount();
+
+    PS_LOG_DEBUG_ARGS("em_event_count_before %d, em_event_count_after %d",
+                      em_event_count_before, em_event_count_after);
+    ASSERT_EQ(em_event_count_before, em_event_count_after);
+#endif
+#endif
 }
 
 TEST(http_server_test, many_client_with_requests_to_multithreaded_server)
 {
+    PS_TIMEDBG_START;
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_before = EventMethFns::getEmEventCount();
+#endif
+#endif
+
+    { // encapsulate
+
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
@@ -361,7 +476,7 @@ TEST(http_server_test, many_client_with_requests_to_multithreaded_server)
     LOGGER("test", "Server address: " << server_address);
 
     const int NO_TIMEOUT                = 0;
-    const int SECONDS_TIMOUT            = 10;
+    const int SECONDS_TIMOUT            = 12;
     const int FIRST_CLIENT_REQUEST_SIZE = 128;
     std::future<int> result1(std::async(clientLogicFunc,
                                         FIRST_CLIENT_REQUEST_SIZE, server_address,
@@ -369,7 +484,7 @@ TEST(http_server_test, many_client_with_requests_to_multithreaded_server)
     const int SECOND_CLIENT_REQUEST_SIZE = 192;
     std::future<int> result2(
         std::async(clientLogicFunc, SECOND_CLIENT_REQUEST_SIZE, server_address,
-                   NO_TIMEOUT, SECONDS_TIMOUT));
+                   NO_TIMEOUT, 2 * SECONDS_TIMOUT));
 
     int res1 = result1.get();
     int res2 = result2.get();
@@ -378,11 +493,33 @@ TEST(http_server_test, many_client_with_requests_to_multithreaded_server)
 
     ASSERT_EQ(res1, FIRST_CLIENT_REQUEST_SIZE);
     ASSERT_EQ(res2, SECOND_CLIENT_REQUEST_SIZE);
+
+    } // end encapsulate
+    
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_after = EventMethFns::getEmEventCount();
+
+    PS_LOG_DEBUG_ARGS("em_event_count_before %d, em_event_count_after %d",
+                      em_event_count_before, em_event_count_after);
+    ASSERT_EQ(em_event_count_before, em_event_count_after);
+#endif
+#endif
 }
 
 TEST(http_server_test,
      multiple_client_with_different_requests_to_multithreaded_server)
 {
+    PS_TIMEDBG_START;
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_before = EventMethFns::getEmEventCount();
+#endif
+#endif
+
+    { // encapsulate
+
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
@@ -421,10 +558,32 @@ TEST(http_server_test,
     {
         ASSERT_TRUE(true);
     }
+
+    } // end encapsulate
+    
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_after = EventMethFns::getEmEventCount();
+
+    PS_LOG_DEBUG_ARGS("em_event_count_before %d, em_event_count_after %d",
+                      em_event_count_before, em_event_count_after);
+    ASSERT_EQ(em_event_count_before, em_event_count_after);
+#endif
+#endif
 }
 
 TEST(http_server_test, server_with_static_file)
 {
+    PS_TIMEDBG_START;
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_before = EventMethFns::getEmEventCount();
+#endif
+#endif
+
+    { // encapsulate
+
     const std::string data("Hello, World!");
     char fileName[PATH_MAX] = "/tmp/pistacheioXXXXXX";
     if (!mkstemp(fileName))
@@ -452,11 +611,16 @@ TEST(http_server_test, server_with_static_file)
 
     Http::Experimental::Client client;
     client.init();
-    auto rb       = client.get(server_address);
+    auto rb = client.get(server_address);
+    PS_LOG_DEBUG("Calling send");
+
     auto response = rb.send();
     std::string resultData;
+    PS_LOG_DEBUG("About to wait for response");
     response.then(
         [&resultData](Http::Response resp) {
+            PS_LOG_DEBUG_ARGS("Http::Response %d", resp.code());
+
             std::cout << "Response code is " << resp.code() << std::endl;
             if (resp.code() == Http::Code::Ok)
             {
@@ -464,6 +628,7 @@ TEST(http_server_test, server_with_static_file)
             }
         },
         Async::Throw);
+    PS_LOG_DEBUG("response.then() returned");
 
     const int WAIT_TIME = 2;
     Async::Barrier<Http::Response> barrier(response);
@@ -476,10 +641,32 @@ TEST(http_server_test, server_with_static_file)
     std::remove(fileName);
 
     ASSERT_EQ(data, resultData);
+
+    } // end encapsulate
+    
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_after = EventMethFns::getEmEventCount();
+
+    PS_LOG_DEBUG_ARGS("em_event_count_before %d, em_event_count_after %d",
+                      em_event_count_before, em_event_count_after);
+    ASSERT_EQ(em_event_count_before, em_event_count_after);
+#endif
+#endif
 }
 
 TEST(http_server_test, server_request_copies_address)
 {
+    PS_TIMEDBG_START;
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_before = EventMethFns::getEmEventCount();
+#endif
+#endif
+
+    { // encapsulate
+
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
@@ -526,6 +713,18 @@ TEST(http_server_test, server_request_copies_address)
     {
         ASSERT_TRUE(false);
     }
+
+    } // end encapsulate
+    
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_after = EventMethFns::getEmEventCount();
+
+    PS_LOG_DEBUG_ARGS("em_event_count_before %d, em_event_count_after %d",
+                      em_event_count_before, em_event_count_after);
+    ASSERT_EQ(em_event_count_before, em_event_count_after);
+#endif
+#endif
 }
 
 struct ResponseSizeHandler : public Http::Handler
@@ -540,6 +739,8 @@ struct ResponseSizeHandler : public Http::Handler
     void onRequest(const Http::Request& request,
                    Http::ResponseWriter writer) override
     {
+        PS_TIMEDBG_START_THIS;
+
         std::string requestAddress = request.address().host();
         writer.send(Http::Code::Ok, requestAddress);
         LOGGER("server", "Sent: " << requestAddress);
@@ -553,6 +754,16 @@ struct ResponseSizeHandler : public Http::Handler
 
 TEST(http_server_test, response_size_captured)
 {
+    PS_TIMEDBG_START;
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_before = EventMethFns::getEmEventCount();
+#endif
+#endif
+
+    { // encapsulate
+
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     size_t rsize = 0;
@@ -611,10 +822,32 @@ TEST(http_server_test, response_size_captured)
     ASSERT_GT(rsize, 1u);
     ASSERT_LT(rsize, 300u);
     ASSERT_EQ(rcode, Http::Code::Ok);
+
+    } // end encapsulate
+    
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_after = EventMethFns::getEmEventCount();
+
+    PS_LOG_DEBUG_ARGS("em_event_count_before %d, em_event_count_after %d",
+                      em_event_count_before, em_event_count_after);
+    ASSERT_EQ(em_event_count_before, em_event_count_after);
+#endif
+#endif
 }
 
 TEST(http_server_test, client_request_timeout_on_only_connect_raises_http_408)
 {
+    PS_TIMEDBG_START;
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_before = EventMethFns::getEmEventCount();
+#endif
+#endif
+
+    { // encapsulate
+
     Pistache::Address address("localhost", Pistache::Port(0));
 
     const auto headerTimeout = std::chrono::seconds(2);
@@ -644,10 +877,32 @@ TEST(http_server_test, client_request_timeout_on_only_connect_raises_http_408)
     EXPECT_EQ(0, strncmp(recvBuf, ExpectedResponseLine, strlen(ExpectedResponseLine)));
 
     server.shutdown();
+
+    } // end encapsulate
+    
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_after = EventMethFns::getEmEventCount();
+
+    PS_LOG_DEBUG_ARGS("em_event_count_before %d, em_event_count_after %d",
+                      em_event_count_before, em_event_count_after);
+    ASSERT_EQ(em_event_count_before, em_event_count_after);
+#endif
+#endif
 }
 
 TEST(http_server_test, client_request_timeout_on_delay_in_header_send_raises_http_408)
 {
+    PS_TIMEDBG_START;
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_before = EventMethFns::getEmEventCount();
+#endif
+#endif
+
+    { // encapsulate
+
     Pistache::Address address("localhost", Pistache::Port(0));
 
     const auto headerTimeout = std::chrono::seconds(1);
@@ -684,10 +939,32 @@ TEST(http_server_test, client_request_timeout_on_delay_in_header_send_raises_htt
     EXPECT_EQ(0, strncmp(recvBuf, ExpectedResponseLine, strlen(ExpectedResponseLine)));
 
     server.shutdown();
+
+    } // end encapsulate
+    
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_after = EventMethFns::getEmEventCount();
+
+    PS_LOG_DEBUG_ARGS("em_event_count_before %d, em_event_count_after %d",
+                      em_event_count_before, em_event_count_after);
+    ASSERT_EQ(em_event_count_before, em_event_count_after);
+#endif
+#endif
 }
 
 TEST(http_server_test, client_request_timeout_on_delay_in_request_line_send_raises_http_408)
 {
+    PS_TIMEDBG_START;
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_before = EventMethFns::getEmEventCount();
+#endif
+#endif
+
+    { // encapsulate
+
     Pistache::Address address("localhost", Pistache::Port(0));
 
     const auto headerTimeout = std::chrono::seconds(2);
@@ -728,10 +1005,32 @@ TEST(http_server_test, client_request_timeout_on_delay_in_request_line_send_rais
     EXPECT_EQ(0, strncmp(recvBuf, ExpectedResponseLine, strlen(ExpectedResponseLine)));
 
     server.shutdown();
+
+    } // end encapsulate
+    
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_after = EventMethFns::getEmEventCount();
+
+    PS_LOG_DEBUG_ARGS("em_event_count_before %d, em_event_count_after %d",
+                      em_event_count_before, em_event_count_after);
+    ASSERT_EQ(em_event_count_before, em_event_count_after);
+#endif
+#endif
 }
 
 TEST(http_server_test, client_request_timeout_on_delay_in_body_send_raises_http_408)
 {
+    PS_TIMEDBG_START;
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_before = EventMethFns::getEmEventCount();
+#endif
+#endif
+
+    { // encapsulate
+
     Pistache::Address address("localhost", Pistache::Port(0));
 
     const auto headerTimeout = std::chrono::seconds(1);
@@ -766,10 +1065,32 @@ TEST(http_server_test, client_request_timeout_on_delay_in_body_send_raises_http_
     EXPECT_EQ(0, strncmp(recvBuf, ExpectedResponseLine, strlen(ExpectedResponseLine)));
 
     server.shutdown();
+
+    } // end encapsulate
+    
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_after = EventMethFns::getEmEventCount();
+
+    PS_LOG_DEBUG_ARGS("em_event_count_before %d, em_event_count_after %d",
+                      em_event_count_before, em_event_count_after);
+    ASSERT_EQ(em_event_count_before, em_event_count_after);
+#endif
+#endif
 }
 
 TEST(http_server_test, client_request_no_timeout)
 {
+    PS_TIMEDBG_START;
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_before = EventMethFns::getEmEventCount();
+#endif
+#endif
+
+    { // encapsulate
+
     Pistache::Address address("localhost", Pistache::Port(0));
 
     const auto headerTimeout = std::chrono::seconds(2);
@@ -810,6 +1131,18 @@ TEST(http_server_test, client_request_no_timeout)
     EXPECT_NE(0, strncmp(recvBuf, ExpectedResponseLine, strlen(ExpectedResponseLine)));
 
     server.shutdown();
+
+    } // end encapsulate
+    
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_after = EventMethFns::getEmEventCount();
+
+    PS_LOG_DEBUG_ARGS("em_event_count_before %d, em_event_count_after %d",
+                      em_event_count_before, em_event_count_after);
+    ASSERT_EQ(em_event_count_before, em_event_count_after);
+#endif
+#endif
 }
 
 namespace
@@ -850,6 +1183,8 @@ namespace
         void onRequest(const Http::Request& request,
                        Http::ResponseWriter writer) override
         {
+            PS_TIMEDBG_START_THIS;
+
             auto peer = writer.getPeer();
             if (peer)
             {
@@ -880,6 +1215,16 @@ namespace
 
 TEST(http_server_test, client_multiple_requests_disconnects_handled)
 {
+    PS_TIMEDBG_START;
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_before = EventMethFns::getEmEventCount();
+#endif
+#endif
+
+    { // encapsulate
+
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
@@ -903,6 +1248,18 @@ TEST(http_server_test, client_multiple_requests_disconnects_handled)
     server.shutdown();
 
     ASSERT_EQ(result, true);
+
+    } // end encapsulate
+    
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_after = EventMethFns::getEmEventCount();
+
+    PS_LOG_DEBUG_ARGS("em_event_count_before %d, em_event_count_after %d",
+                      em_event_count_before, em_event_count_after);
+    ASSERT_EQ(em_event_count_before, em_event_count_after);
+#endif
+#endif
 }
 
 struct ContentEncodingHandler : public Http::Handler
@@ -916,6 +1273,8 @@ struct ContentEncodingHandler : public Http::Handler
     void onRequest(const Http::Request& request,
                    Http::ResponseWriter writer) override
     {
+        PS_TIMEDBG_START_THIS;
+
         LOGGER("server", "ContentEncodingHandler::onResponse()");
 
         // Get the client body...
@@ -957,6 +1316,16 @@ struct ContentEncodingHandler : public Http::Handler
 #ifdef PISTACHE_USE_CONTENT_ENCODING_BROTLI
 TEST(http_server_test, server_with_content_encoding_brotli)
 {
+    PS_TIMEDBG_START;
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_before = EventMethFns::getEmEventCount();
+#endif
+#endif
+
+    { // encapsulate
+
     // Data to send to server to expect it to return compressed...
 
     // Allocate storage...
@@ -1095,12 +1464,34 @@ TEST(http_server_test, server_with_content_encoding_brotli)
     // Check to ensure the compressed data received back from server after
     //  decompression matches exactly what we originally sent it...
     ASSERT_EQ(originalUncompressedData, newlyDecompressedData);
+
+    } // end encapsulate
+    
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_after = EventMethFns::getEmEventCount();
+
+    PS_LOG_DEBUG_ARGS("em_event_count_before %d, em_event_count_after %d",
+                      em_event_count_before, em_event_count_after);
+    ASSERT_EQ(em_event_count_before, em_event_count_after);
+#endif
+#endif
 }
 #endif
 
 #ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
 TEST(http_server_test, server_with_content_encoding_deflate)
 {
+    PS_TIMEDBG_START;
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_before = EventMethFns::getEmEventCount();
+#endif
+#endif
+
+    { // encapsulate
+
     // Data to send to server to expect it to return compressed...
 
     // Allocate storage...
@@ -1239,11 +1630,37 @@ TEST(http_server_test, server_with_content_encoding_deflate)
     // Check to ensure the compressed data received back from server after
     //  decompression matches exactly what we originally sent it...
     ASSERT_EQ(originalUncompressedData, newlyDecompressedData);
+
+    } // end encapsulate
+    
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_after = EventMethFns::getEmEventCount();
+
+    PS_LOG_DEBUG_ARGS("em_event_count_before %d, em_event_count_after %d",
+                      em_event_count_before, em_event_count_after);
+    ASSERT_EQ(em_event_count_before, em_event_count_after);
+#endif
+#endif
 }
 #endif
 
 TEST(http_server_test, http_server_is_not_leaked)
 {
+    PS_TIMEDBG_START;
+
+    { // encapsulate
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_before               = EventMethFns::getEmEventCount();
+    const int libevent_event_count_before         = EventMethFns::getLibeventEventCount();
+    const int event_meth_epoll_equiv_count_before = EventMethFns::getEventMethEpollEquivCount();
+    const int event_meth_base_count_before        = EventMethFns::getEventMethBaseCount();
+    const int wait_then_get_count_before          = EventMethFns::getWaitThenGetAndEmptyReadyEvsCount();
+#endif
+#endif
+
     const auto fds_before = get_open_fds_count();
     const Pistache::Address address("localhost", Pistache::Port(0));
 
@@ -1253,9 +1670,62 @@ TEST(http_server_test, http_server_is_not_leaked)
     server->init(server_opts);
     server->setHandler(Http::make_handler<PingHandler>());
     server->serveThreaded();
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_during               = EventMethFns::getEmEventCount();
+    const int libevent_event_count_during         = EventMethFns::getLibeventEventCount();
+    const int event_meth_epoll_equiv_count_during = EventMethFns::getEventMethEpollEquivCount();
+    const int event_meth_base_count_during        = EventMethFns::getEventMethBaseCount();
+    const int wait_then_get_count_during          = EventMethFns::getWaitThenGetAndEmptyReadyEvsCount();
+#endif
+#endif
+
     server->shutdown();
     server.reset();
 
     const auto fds_after = get_open_fds_count();
     ASSERT_EQ(fds_before, fds_after);
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#ifdef DEBUG
+    const int em_event_count_after               = EventMethFns::getEmEventCount();
+    const int libevent_event_count_after         = EventMethFns::getLibeventEventCount();
+    const int event_meth_epoll_equiv_count_after = EventMethFns::getEventMethEpollEquivCount();
+    const int event_meth_base_count_after        = EventMethFns::getEventMethBaseCount();
+    const int wait_then_get_count_after          = EventMethFns::getWaitThenGetAndEmptyReadyEvsCount();
+
+    PS_LOG_DEBUG_ARGS(
+        "em_event_count_before %d, em_event_count_during %d, "
+        "em_event_count_after %d; "
+        "libevent_event_count_before %d, libevent_event_count_during %d, "
+        "libevent_event_count_after %d; "
+        "event_meth_epoll_equiv_count_before %d, "
+        "event_meth_epoll_equiv_count_during %d, "
+        "event_meth_epoll_equiv_count_after %d; "
+        "event_meth_base_count_before %d, event_meth_base_count_during %d, "
+        "event_meth_base_count_after %d; "
+        "wait_then_get_count_before %d, wait_then_get_count_during %d, "
+        "wait_then_get_count_after %d; ",
+        em_event_count_before, em_event_count_during, em_event_count_after,
+        libevent_event_count_before, libevent_event_count_during,
+        libevent_event_count_after,
+        event_meth_epoll_equiv_count_before,
+        event_meth_epoll_equiv_count_during, event_meth_epoll_equiv_count_after,
+        event_meth_base_count_before, event_meth_base_count_during,
+        event_meth_base_count_after,
+        wait_then_get_count_before, wait_then_get_count_during,
+        wait_then_get_count_after);
+
+    ASSERT_EQ(em_event_count_before, em_event_count_after);
+    ASSERT_EQ(libevent_event_count_before, libevent_event_count_after);
+    ASSERT_EQ(event_meth_epoll_equiv_count_before,
+              event_meth_epoll_equiv_count_after);
+    ASSERT_EQ(event_meth_base_count_before, event_meth_base_count_after);
+    ASSERT_EQ(wait_then_get_count_before, wait_then_get_count_after);
+
+#endif
+#endif
+
+    } // end encapsulate
 }

@@ -12,12 +12,22 @@
 
 #include <pistache/client.h>
 #include <pistache/common.h>
+#include <pistache/eventmeth.h>
 #include <pistache/http.h>
 #include <pistache/net.h>
 #include <pistache/stream.h>
 
 #include <netdb.h>
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+// For sendfile(...) function
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/uio.h>
+#else
 #include <sys/sendfile.h>
+#endif
+
 #include <sys/socket.h>
 #include <sys/types.h>
 
@@ -37,12 +47,25 @@ namespace Pistache::Http::Experimental
         // Using const_cast can result in undefined behavior.
         // C++17 provides a non-const .data() overload,
         // but url must be passed as a non-const reference (or by value)
-        std::pair<std::string_view, std::string_view> splitUrl(const std::string& url)
+
+        // if https_out is non null, then *https_out is set to true if URL
+        // starts with "https://" and false otherwise
+        std::pair<std::string_view, std::string_view> splitUrl(
+            const std::string& url, bool* https_out = NULL)
         {
             RawStreamBuf<char> buf(const_cast<char*>(url.data()), url.size());
             StreamCursor cursor(&buf);
 
-            match_string("http://", cursor);
+            if (https_out)
+                *https_out = false;
+
+            if (!match_string("http://", cursor))
+            {
+                bool looks_like_https = match_string("https://", cursor);
+                if (https_out)
+                    *https_out = looks_like_https;
+            }
+
             match_string("www", cursor);
             match_literal('.', cursor);
 
@@ -148,17 +171,20 @@ namespace Pistache::Http::Experimental
     public:
         PROTOTYPE_OF(Aio::Handler, Transport)
 
-        Transport() = default;
+        Transport()
+            : stopHandling(false) {};
         Transport(const Transport&)
             : requestsQueue()
             , connectionsQueue()
             , connections()
             , timeouts()
             , timeoutsLock()
+            , stopHandling(false)
         { }
 
         void onReady(const Aio::FdSet& fds) override;
         void registerPoller(Polling::Epoll& poller) override;
+        void unregisterPoller(Polling::Epoll& poller) override;
 
         Async::Promise<void> asyncConnect(std::shared_ptr<Connection> connection,
                                           const struct sockaddr* address,
@@ -167,6 +193,16 @@ namespace Pistache::Http::Experimental
         Async::Promise<ssize_t>
         asyncSendRequest(std::shared_ptr<Connection> connection,
                          std::shared_ptr<TimerPool::Entry> timer, std::string buffer);
+
+#ifdef _USE_LIBEVENT
+        std::shared_ptr<EventMethEpollEquiv> getEventMethEpollEquiv()
+        {
+            return (epoll_fd);
+        }
+#endif
+
+        std::mutex& getHandlingMutex() { return (handlingMutex); }
+        void setStopHandlingwMutexAlreadyLocked() { stopHandling = true; }
 
     private:
         enum WriteStatus { FirstTry,
@@ -226,6 +262,13 @@ namespace Pistache::Http::Experimental
         using Guard = std::lock_guard<Lock>;
         Lock timeoutsLock;
 
+        std::mutex handlingMutex;
+        bool stopHandling;
+
+#ifdef _USE_LIBEVENT
+        std::shared_ptr<EventMethEpollEquiv> epoll_fd;
+#endif
+
     private:
         void asyncSendRequestImpl(const RequestEntry& req,
                                   WriteStatus status = FirstTry);
@@ -240,6 +283,19 @@ namespace Pistache::Http::Experimental
 
     void Transport::onReady(const Aio::FdSet& fds)
     {
+        PS_TIMEDBG_START_THIS;
+
+        PS_LOG_DEBUG_ARGS("Locking handlingMutex %p", &handlingMutex);
+        Guard guard(handlingMutex);
+        if (stopHandling)
+        {
+            PS_LOG_DEBUG_ARGS("Ignoring ready fds for Transport %p "
+                              "due to closed Fds",
+                              this);
+            PS_LOG_DEBUG_ARGS("Unlocking handlingMutex %p", &handlingMutex);
+            return;
+        }
+
         for (const auto& entry : fds)
         {
             if (entry.getTag() == connectionsQueue.tag())
@@ -267,20 +323,41 @@ namespace Pistache::Http::Experimental
                 assert(false && "Unexpected event in entry");
             }
         }
+        PS_LOG_DEBUG_ARGS("Unlocking handlingMutex %p", &handlingMutex);
     }
 
     void Transport::registerPoller(Polling::Epoll& poller)
     {
+        PS_TIMEDBG_START_THIS;
+
         requestsQueue.bind(poller);
         connectionsQueue.bind(poller);
+
+#ifdef _USE_LIBEVENT
+        epoll_fd = poller.getEventMethEpollEquiv();
+#endif
+    }
+
+    void Transport::unregisterPoller(Polling::Epoll& poller)
+    {
+#ifdef _USE_LIBEVENT
+        epoll_fd = NULL;
+#endif
+
+        connectionsQueue.unbind(poller);
+        requestsQueue.unbind(poller);
     }
 
     Async::Promise<void>
     Transport::asyncConnect(std::shared_ptr<Connection> connection,
                             const struct sockaddr* address, socklen_t addr_len)
     {
+        PS_TIMEDBG_START_THIS;
+
         return Async::Promise<void>(
             [=](Async::Resolver& resolve, Async::Rejection& reject) {
+                PS_TIMEDBG_START;
+
                 ConnectionEntry entry(std::move(resolve), std::move(reject), connection,
                                       address, addr_len);
                 connectionsQueue.push(std::move(entry));
@@ -292,9 +369,11 @@ namespace Pistache::Http::Experimental
                                 std::shared_ptr<TimerPool::Entry> timer,
                                 std::string buffer)
     {
+        PS_TIMEDBG_START_THIS;
 
         return Async::Promise<ssize_t>(
             [&](Async::Resolver& resolve, Async::Rejection& reject) {
+                PS_TIMEDBG_START;
                 auto ctx = context();
                 RequestEntry req(std::move(resolve), std::move(reject), connection,
                                  timer, std::move(buffer));
@@ -312,19 +391,29 @@ namespace Pistache::Http::Experimental
     void Transport::asyncSendRequestImpl(const RequestEntry& req,
                                          WriteStatus status)
     {
+        PS_TIMEDBG_START_THIS;
+
         const auto& buffer = req.buffer;
         auto conn          = req.connection.lock();
         if (!conn)
             throw std::runtime_error("Send request error");
 
         auto fd = conn->fd();
+        if (fd == PS_FD_EMPTY)
+        {
+            PS_LOG_DEBUG_ARGS("Connection %p has empty fd", conn.get());
+
+            conn->handleError("Could not send request");
+            return;
+        }
 
         ssize_t totalWritten = 0;
         for (;;)
         {
             const char* data           = buffer.data() + totalWritten;
             const ssize_t len          = buffer.size() - totalWritten;
-            const ssize_t bytesWritten = ::send(fd, data, len, 0);
+            const ssize_t bytesWritten = ::send(GET_ACTUAL_FD(fd), data,
+                                                len, 0);
             if (bytesWritten < 0)
             {
                 if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -361,6 +450,8 @@ namespace Pistache::Http::Experimental
 
     void Transport::handleRequestsQueue()
     {
+        PS_TIMEDBG_START_THIS;
+
         // Let's drain the queue
         for (;;)
         {
@@ -374,6 +465,8 @@ namespace Pistache::Http::Experimental
 
     void Transport::handleConnectionQueue()
     {
+        PS_TIMEDBG_START_THIS;
+
         for (;;)
         {
             auto data = connectionsQueue.popSafe();
@@ -387,12 +480,22 @@ namespace Pistache::Http::Experimental
                 continue;
             }
 
-            int res = ::connect(conn->fd(), data->getAddr(), data->addr_len);
+            Fd fd = conn->fd();
+            if (fd == PS_FD_EMPTY)
+            {
+                PS_LOG_DEBUG_ARGS("Connection %p has empty fd", conn.get());
+                data->reject(Error::system("Failed to connect, fd now empty"));
+                continue;
+            }
+
+            PS_LOG_DEBUG_ARGS("Calling ::connect fs %d", GET_ACTUAL_FD(fd));
+
+            int res = ::connect(GET_ACTUAL_FD(fd), data->getAddr(), data->addr_len);
             if (res == -1)
             {
                 if (errno == EINPROGRESS)
                 {
-                    reactor()->registerFdOneShot(key(), conn->fd(),
+                    reactor()->registerFdOneShot(key(), fd,
                                                  NotifyOn::Write | NotifyOn::Hangup | NotifyOn::Shutdown);
                 }
                 else
@@ -401,17 +504,30 @@ namespace Pistache::Http::Experimental
                     continue;
                 }
             }
-            connections.insert(std::make_pair(conn->fd(), std::move(*data)));
+            connections.insert(std::make_pair(fd, std::move(*data)));
         }
     }
 
     void Transport::handleReadableEntry(const Aio::FdSet::Entry& entry)
     {
+        PS_TIMEDBG_START_THIS;
+
         assert(entry.isReadable() && "Entry must be readable");
 
-        auto tag      = entry.getTag();
-        const auto fd = static_cast<Fd>(tag.value());
-        auto connIt   = connections.find(fd);
+        auto tag = entry.getTag();
+        const auto fd =
+#ifdef _USE_LIBEVENT
+            (tag.value());
+#else
+            static_cast<Fd>(tag.value());
+#endif
+
+        // Note: We only use the second element of *connIt (which is
+        // "connection"); fd is the first element (the map key). Since *fd is
+        // not in fact changed, it is OK to cast away the const of Fd here.
+        Fd fd_for_find = ((Fd)fd);
+
+        auto connIt = connections.find(fd_for_find);
         if (connIt != std::end(connections))
         {
             auto connection = connIt->second.connection.lock();
@@ -428,14 +544,14 @@ namespace Pistache::Http::Experimental
         else
         {
             Guard guard(timeoutsLock);
-            auto timerIt = timeouts.find(fd);
+            auto timerIt = timeouts.find(fd_for_find);
             if (timerIt != std::end(timeouts))
             {
                 auto connection = timerIt->second.lock();
                 if (connection)
                 {
                     connection->handleTimeout();
-                    timeouts.erase(fd);
+                    timeouts.erase(fd_for_find);
                 }
             }
         }
@@ -443,20 +559,38 @@ namespace Pistache::Http::Experimental
 
     void Transport::handleWritableEntry(const Aio::FdSet::Entry& entry)
     {
+        PS_TIMEDBG_START_THIS;
+
         assert(entry.isWritable() && "Entry must be writable");
 
-        auto tag      = entry.getTag();
-        const auto fd = static_cast<Fd>(tag.value());
-        auto connIt   = connections.find(fd);
+        auto tag            = entry.getTag();
+        const auto fd_const = static_cast<FdConst>(tag.value());
+
+        // Note: We only use the second element of *connIt (which is
+        // "connection"); fd is the first element (the map key). Since *fd is
+        // not in fact changed, it is OK to cast away the const of Fd here.
+        Fd fd = ((Fd)fd_const);
+
+        auto connIt = connections.find(fd);
         if (connIt != std::end(connections))
         {
             auto& connectionEntry = connIt->second;
             auto connection       = connIt->second.connection.lock();
             if (connection)
             {
-                connectionEntry.resolve();
-                // We are connected, we can start reading data now
-                reactor()->modifyFd(key(), connection->fd(), NotifyOn::Read);
+                Fd conn_fd = connection->fd();
+                if (conn_fd == PS_FD_EMPTY)
+                {
+                    PS_LOG_DEBUG_ARGS("Connection %p has empty fd",
+                                      connection.get());
+                    connectionEntry.reject(Error::system("Connection lost"));
+                }
+                else
+                {
+                    connectionEntry.resolve();
+                    // We are connected, we can start reading data now
+                    reactor()->modifyFd(key(), conn_fd, NotifyOn::Read);
+                }
             }
             else
             {
@@ -471,11 +605,19 @@ namespace Pistache::Http::Experimental
 
     void Transport::handleHangupEntry(const Aio::FdSet::Entry& entry)
     {
+        PS_TIMEDBG_START_THIS;
+
         assert(entry.isHangup() && "Entry must be hangup");
 
-        auto tag      = entry.getTag();
-        const auto fd = static_cast<Fd>(tag.value());
-        auto connIt   = connections.find(fd);
+        auto tag = entry.getTag();
+
+        const auto fd_const = static_cast<FdConst>(tag.value());
+        // Note: We only use the second element of *connIt (which is
+        // "connection"); fd is the first element (the map key). Since *fd is
+        // not in fact changed, it is OK to cast away the const of Fd here.
+        Fd fd = ((Fd)fd_const);
+
+        auto connIt = connections.find(fd);
         if (connIt != std::end(connections))
         {
             auto& connectionEntry = connIt->second;
@@ -489,6 +631,8 @@ namespace Pistache::Http::Experimental
 
     void Transport::handleIncoming(std::shared_ptr<Connection> connection)
     {
+        PS_TIMEDBG_START_THIS;
+
         ssize_t totalBytes = 0;
 
         for (;;)
@@ -496,7 +640,13 @@ namespace Pistache::Http::Experimental
             char buffer[Const::MaxBuffer] = {
                 0,
             };
-            const ssize_t bytes = recv(connection->fd(), buffer, Const::MaxBuffer, 0);
+
+            Fd conn_fd = connection->fd();
+            if (conn_fd == PS_FD_EMPTY)
+                break; // can happen if fd was closed meanwhile
+
+            const ssize_t bytes = recv(GET_ACTUAL_FD(conn_fd),
+                                       buffer, Const::MaxBuffer, 0);
             if (bytes == -1)
             {
                 if (errno != EAGAIN && errno != EWOULDBLOCK)
@@ -511,7 +661,7 @@ namespace Pistache::Http::Experimental
                 {
                     connection->handleError("Remote closed connection");
                 }
-                connections.erase(connection->fd());
+                connections.erase(conn_fd);
                 connection->close();
                 break;
             }
@@ -524,7 +674,7 @@ namespace Pistache::Http::Experimental
     }
 
     Connection::Connection(size_t maxResponseSize)
-        : fd_(-1)
+        : fd_(PS_FD_EMPTY)
         , requestEntry(nullptr)
         , parser(maxResponseSize)
     {
@@ -534,6 +684,8 @@ namespace Pistache::Http::Experimental
 
     void Connection::connect(const Address& addr)
     {
+        PS_TIMEDBG_START_THIS;
+
         struct addrinfo hints = {};
         hints.ai_family       = addr.family();
         hints.ai_socktype     = SOCK_STREAM; /* Stream socket */
@@ -551,13 +703,27 @@ namespace Pistache::Http::Experimental
         for (const addrinfo* addr = addrs; addr; addr = addr->ai_next)
         {
             sfd = ::socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
+            PS_LOG_DEBUG_ARGS("::socket actual_fd %d", sfd);
             if (sfd < 0)
                 continue;
 
             make_non_blocking(sfd);
 
             connectionState_.store(Connecting);
+
+#ifdef _USE_LIBEVENT
+            // We're openning a connection to a remote resource - I guess it
+            // makes sense to allow either read or write?
+            fd_ = TRY_NULL_RET(
+                EventMethFns::em_event_new(
+                    sfd, // pre-allocated file desc
+                    EVM_READ | EVM_WRITE | EVM_PERSIST,
+                    F_SETFDL_NOTHING, // setfd
+                    O_NONBLOCK // setfl
+                    ));
+#else
             fd_ = sfd;
+#endif
 
             transport_
                 ->asyncConnect(shared_from_this(), addr->ai_addr, addr->ai_addrlen)
@@ -620,13 +786,42 @@ namespace Pistache::Http::Experimental
 
     void Connection::close()
     {
-        connectionState_.store(NotConnected);
-        ::close(fd_);
+        PS_TIMEDBG_START_THIS;
+
+        if (transport_)
+        {
+            // we need to make sure that, if the connection's Fd has an event
+            // pending, that Fd is not accessed by Transport::handleIncoming
+            // (called from Transport::onReady after epoll returns) after the
+            // Fd has been closed
+            std::mutex& handling_mutex(
+                transport_->getHandlingMutex());
+            PS_LOG_DEBUG_ARGS("Locking handling_mutex %p",
+                              &handling_mutex);
+            std::lock_guard<std::mutex> guard(handling_mutex);
+
+            transport_->setStopHandlingwMutexAlreadyLocked();
+
+            connectionState_.store(NotConnected);
+            CLOSE_FD(fd_);
+
+            PS_LOG_DEBUG_ARGS("Unlocking handling_mutex %p",
+                              &handling_mutex);
+        }
+        else
+        {
+            PS_LOG_DEBUG_ARGS("Closing connection %p without transport", this);
+
+            connectionState_.store(NotConnected);
+            CLOSE_FD(fd_);
+        }
     }
 
     void Connection::associateTransport(
         const std::shared_ptr<Transport>& transport)
     {
+        PS_TIMEDBG_START_THIS;
+
         if (transport_)
             throw std::runtime_error(
                 "A transport has already been associated to the connection");
@@ -638,12 +833,18 @@ namespace Pistache::Http::Experimental
 
     Fd Connection::fd() const
     {
-        assert(fd_ != -1);
+#ifdef DEBUG
+        if (fd_ == PS_FD_EMPTY) // can happen if fd was closed meanwhile
+            PS_LOG_DEBUG_ARGS("Connection %p has empty fd", this);
+#endif
+
         return fd_;
     }
 
     void Connection::handleResponsePacket(const char* buffer, size_t totalBytes)
     {
+        PS_TIMEDBG_START_THIS;
+
         try
         {
             const bool result = parser.feed(buffer, totalBytes);
@@ -682,6 +883,8 @@ namespace Pistache::Http::Experimental
 
     void Connection::handleError(const char* error)
     {
+        PS_TIMEDBG_START_THIS;
+
         if (requestEntry)
         {
             if (requestEntry->timer)
@@ -703,6 +906,8 @@ namespace Pistache::Http::Experimental
 
     void Connection::handleTimeout()
     {
+        PS_TIMEDBG_START_THIS;
+
         if (requestEntry)
         {
             requestEntry->timer->disarm();
@@ -723,8 +928,11 @@ namespace Pistache::Http::Experimental
     Async::Promise<Response> Connection::perform(const Http::Request& request,
                                                  Connection::OnDone onDone)
     {
+        PS_TIMEDBG_START_THIS;
+
         return Async::Promise<Response>(
             [=](Async::Resolver& resolve, Async::Rejection& reject) {
+                PS_TIMEDBG_START;
                 performImpl(request, std::move(resolve), std::move(reject),
                             std::move(onDone));
             });
@@ -733,8 +941,12 @@ namespace Pistache::Http::Experimental
     Async::Promise<Response> Connection::asyncPerform(const Http::Request& request,
                                                       Connection::OnDone onDone)
     {
+        PS_TIMEDBG_START_THIS;
+
         return Async::Promise<Response>(
             [=](Async::Resolver& resolve, Async::Rejection& reject) {
+                PS_TIMEDBG_START;
+
                 requestsQueue.push(RequestData(std::move(resolve), std::move(reject),
                                                request, std::move(onDone)));
             });
@@ -744,6 +956,7 @@ namespace Pistache::Http::Experimental
                                  Async::Resolver resolve, Async::Rejection reject,
                                  Connection::OnDone onDone)
     {
+        PS_TIMEDBG_START_THIS;
 
         std::stringstream streamBuf;
         writeRequest(streamBuf, request);
@@ -766,6 +979,8 @@ namespace Pistache::Http::Experimental
 
     void Connection::processRequestQueue()
     {
+        PS_TIMEDBG_START_THIS;
+
         for (;;)
         {
             auto req = requestsQueue.popSafe();
@@ -787,6 +1002,8 @@ namespace Pistache::Http::Experimental
     std::shared_ptr<Connection>
     ConnectionPool::pickConnection(const std::string& domain)
     {
+        PS_TIMEDBG_START_THIS;
+
         Connections pool;
 
         {
@@ -819,6 +1036,8 @@ namespace Pistache::Http::Experimental
     void ConnectionPool::releaseConnection(
         const std::shared_ptr<Connection>& connection)
     {
+        PS_TIMEDBG_START_ARGS("connection %p", connection.get());
+
         connection->setAsIdle();
     }
 
@@ -870,6 +1089,8 @@ namespace Pistache::Http::Experimental
 
     void ConnectionPool::shutdown()
     {
+        PS_TIMEDBG_START_THIS;
+
         // close all connections
         Guard guard(connsLock);
         for (auto& it : conns)
@@ -881,6 +1102,14 @@ namespace Pistache::Http::Experimental
                     conn->close();
                 }
             }
+        }
+    }
+
+    namespace RequestBuilderAddOns
+    {
+        std::size_t bodySize(RequestBuilder& rb)
+        {
+            return (rb.request_.body().size());
         }
     }
 
@@ -935,6 +1164,8 @@ namespace Pistache::Http::Experimental
 
     Async::Promise<Response> RequestBuilder::send()
     {
+        PS_TIMEDBG_START_THIS;
+
         return client_->doRequest(request_);
     }
 
@@ -968,13 +1199,16 @@ namespace Pistache::Http::Experimental
         , transportKey()
         , ioIndex(0)
         , queuesLock()
+        , stopProcessRequestQueues(false)
         , requestsQueues()
-        , stopProcessPequestsQueues(false)
     { }
 
     Client::~Client()
     {
-        assert(stopProcessPequestsQueues == true && "You must explicitly call shutdown method of Client object");
+        PS_TIMEDBG_START_THIS;
+
+        Guard guard(queuesLock);
+        assert(stopProcessRequestQueues == true && "You must explicitly call shutdown method of Client object");
     }
 
     Client::Options Client::options() { return Client::Options(); }
@@ -989,40 +1223,81 @@ namespace Pistache::Http::Experimental
 
     void Client::shutdown()
     {
+        PS_TIMEDBG_START_THIS;
+
         reactor_->shutdown();
+
+        { // encapsulate
+            GUARD_AND_DBG_LOG(queuesLock);
+            stopProcessRequestQueues = true;
+
+            // Note: Do not hold queuesLock locked beyond here - otherwise you
+            // can get into a deadlock with a transport_'s handling_mutex. Here
+            // we are locking queuesLock and then during shutdown we'll lock
+            // the handling_mutex. Conversely in onReady (handling), we'll
+            // lock handling_mutex first and may subsequently lock queuesLock
+            // to allow us to change a queue. By doing the locking in opposite
+            // order, without unlocking queuesLock here thanks to this
+            // encapsulate, we'd create a race-condition/deadlock.
+        }
+
+        // Note about the shutdown procedure. pool.shutdown()
+        // (ConnectionPool::shutdown()) calls Connection::close() for each
+        // connection in ConnectionPool::conns. Connection::close() claims and
+        // holds the transport_'s handling_mutex before excuting the connection
+        // and Fd close.
+        //
+        // Meanwhile, Transport::onReady claims and holds the handling_mutex
+        // while executing. So a connection close (which includes an Fd close)
+        // cannot happen while handling is going on - i.e. the Fd cannot be
+        // closed just when the handling needs it (which might otherwise happen
+        // when Transport::onReady called handleReadableEntry which in turn
+        // called handleIncoming(...)).
+        //
+        // If the close() gets possession of the handling_mutex first, that is
+        // also managed - the close will remove the Fd that is being closed
+        // from the set of ready Fds before releasing the mutex and allowing
+        // onReady to proceed.
+
         pool.shutdown();
-        Guard guard(queuesLock);
-        stopProcessPequestsQueues = true;
+
+        PS_LOG_DEBUG_ARGS("Unlocking queuesLock %p", &queuesLock);
     }
 
     RequestBuilder Client::get(const std::string& resource)
     {
+        PS_TIMEDBG_START_THIS;
         return prepareRequest(resource, Http::Method::Get);
     }
 
     RequestBuilder Client::post(const std::string& resource)
     {
+        PS_TIMEDBG_START_THIS;
         return prepareRequest(resource, Http::Method::Post);
     }
 
     RequestBuilder Client::put(const std::string& resource)
     {
+        PS_TIMEDBG_START_THIS;
         return prepareRequest(resource, Http::Method::Put);
     }
 
     RequestBuilder Client::patch(const std::string& resource)
     {
+        PS_TIMEDBG_START_THIS;
         return prepareRequest(resource, Http::Method::Patch);
     }
 
     RequestBuilder Client::del(const std::string& resource)
     {
+        PS_TIMEDBG_START_THIS;
         return prepareRequest(resource, Http::Method::Delete);
     }
 
     RequestBuilder Client::prepareRequest(const std::string& resource,
                                           Http::Method method)
     {
+        PS_TIMEDBG_START_THIS;
         RequestBuilder builder(this);
         builder.resource(resource).method(method);
 
@@ -1031,18 +1306,35 @@ namespace Pistache::Http::Experimental
 
     Async::Promise<Response> Client::doRequest(Http::Request request)
     {
+        PS_TIMEDBG_START_THIS;
+
         // request.headers_.add<Header::Connection>(ConnectionControl::KeepAlive);
         request.headers().remove<Header::UserAgent>();
         auto resourceData = request.resource();
 
-        auto resource = splitUrl(resourceData);
-        auto conn     = pool.pickConnection(std::string(resource.first));
+        PS_LOG_DEBUG_ARGS("resourceData %s", resourceData.c_str());
+
+        bool https_url = false;
+        auto resource  = splitUrl(resourceData, &https_url);
+        if (https_url)
+        {
+            PS_LOG_WARNING_ARGS("URL %s is https, but Client class does not "
+                                "currently support HTTPS",
+                                resourceData.c_str());
+        }
+
+        auto conn = pool.pickConnection(std::string(resource.first));
 
         if (conn == nullptr)
         {
+            PS_LOG_DEBUG("No connection found");
+
             return Async::Promise<Response>([this, resource = std::move(resource),
                                              request](Async::Resolver& resolve,
                                                       Async::Rejection& reject) {
+                PS_TIMEDBG_START;
+
+                PS_LOG_DEBUG_ARGS("Locking queuesLock %p", &queuesLock);
                 Guard guard(queuesLock);
 
                 auto data = std::make_shared<Connection::RequestData>(
@@ -1050,22 +1342,31 @@ namespace Pistache::Http::Experimental
                 auto& queue = requestsQueues[std::string(resource.first)];
                 if (!queue.enqueue(data))
                     data->reject(std::runtime_error("Queue is full"));
+
+                PS_LOG_DEBUG_ARGS("Unlocking queuesLock %p", &queuesLock);
             });
         }
         else
         {
-
+            PS_LOG_DEBUG_ARGS("Connection found %p", conn.get());
             if (!conn->hasTransport())
             {
+                PS_LOG_DEBUG("No transport yet on connection");
+
                 auto transports = reactor_->handlers(transportKey);
                 auto index      = ioIndex.fetch_add(1) % transports.size();
 
                 auto transport = std::static_pointer_cast<Transport>(transports[index]);
+                PS_LOG_DEBUG_ARGS("Associating transport %p on connection %p",
+                                  transport.get(), conn.get());
                 conn->associateTransport(transport);
             }
 
             if (!conn->isConnected())
             {
+                PS_LOG_DEBUG_ARGS("Connection %p not connected yet",
+                                  conn.get());
+
                 std::weak_ptr<Connection> weakConn = conn;
                 auto res                           = conn->asyncPerform(request, [this, weakConn]() {
                     auto conn = weakConn.lock();
@@ -1075,7 +1376,13 @@ namespace Pistache::Http::Experimental
                         processRequestQueue();
                     }
                 });
-                conn->connect(helpers::httpAddr(resource.first));
+
+                PS_LOG_DEBUG("Making addr");
+                Address addr(helpers::httpAddr(resource.first,
+                                               https_url ? 443 : 0 /* default port*/));
+
+                PS_LOG_DEBUG_ARGS("Connection %p calling connect", conn.get());
+                conn->connect(addr);
                 return res;
             }
 
@@ -1084,19 +1391,34 @@ namespace Pistache::Http::Experimental
                 auto conn = weakConn.lock();
                 if (conn)
                 {
+                    PS_LOG_DEBUG("Release connection");
                     pool.releaseConnection(conn);
                     processRequestQueue();
                 }
+                PS_LOG_DEBUG("Request performed");
             });
         }
     }
 
     void Client::processRequestQueue()
     {
+        PS_TIMEDBG_START_THIS;
+
+        if (stopProcessRequestQueues)
+        {
+            PS_LOG_DEBUG("Already shutting down, skip processRequestQueue");
+            return;
+        }
+
+        PS_LOG_DEBUG_ARGS("Locking queuesLock %p", &queuesLock);
         Guard guard(queuesLock);
 
-        if (stopProcessPequestsQueues)
+        if (stopProcessRequestQueues)
+        {
+            PS_LOG_DEBUG("Already shutting down, skip processRequestQueue");
+            PS_LOG_DEBUG_ARGS("Unlocking queuesLock %p", &queuesLock);
             return;
+        }
 
         for (auto& queues : requestsQueues)
         {
@@ -1122,6 +1444,8 @@ namespace Pistache::Http::Experimental
                                   });
             }
         }
+
+        PS_LOG_DEBUG_ARGS("Unlocking queuesLock %p", &queuesLock);
     }
 
 } // namespace Pistache::Http

@@ -4,6 +4,12 @@
 
 # Build files
 /*build*/
+/tests/build*/
+
+# Soft links to favorite build convenience files
+/build.sh
+/builddebug.sh
+/copyall.sh
 
 # Compiled Object files
 *.slo
@@ -39,11 +45,24 @@
 .vscode
 .idea
 
+# macOS .DS_Store has custom attributes of containing folder
+.DS_Store
+._.DS_Store
+**/.DS_Store
+**/._.DS_Store
+
+.DS_Store
+**/.DS_Store
+
 # Vim swap files
 .*.swp
 
 # Clangd cache
 /.cache/clangd
+
+# Ad hoc scripts to run tests repeatedly
+repeat_*.sh
+repeatx86_*.sh
 
 # Meson Wrap DB cache
 /subprojects/*
@@ -51,3 +70,6 @@
 
 !/subprojects/cpp-httplib
 !/subprojects/hinnant-date
+*.*~
+
+/How To Run All Tests (README).txt

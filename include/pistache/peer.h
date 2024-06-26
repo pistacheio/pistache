@@ -54,6 +54,8 @@ namespace Pistache::Tcp
         const std::string& hostname();
         Fd fd() const;
 
+        void closeFd();
+
         void* ssl() const;
 
         void putData(std::string name, std::shared_ptr<void> data);
@@ -64,6 +66,12 @@ namespace Pistache::Tcp
         size_t getID() const;
 
     protected:
+        // (provide default constructor so child class ConcretePeer can have
+        //  default constructor)
+        Peer()
+            : id_(0)
+        { }
+
         Peer(Fd fd, const Address& addr, void* ssl);
 
     private:
@@ -72,7 +80,9 @@ namespace Pistache::Tcp
         static size_t getUniqueId();
 
         Transport* transport_ = nullptr;
-        Fd fd_                = -1;
+
+        Fd fd_ = PS_FD_EMPTY;
+
         Address addr;
 
         std::string hostname_;

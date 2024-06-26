@@ -59,7 +59,7 @@ namespace Pistache::Http
     public:
         using HashMapCookies = std::unordered_map<std::string, Cookie>; // "value" -> Cookie
         using Storage        = std::unordered_map<
-            std::string, HashMapCookies>; // "name" -> Hashmap("value" -> Cookie)
+                   std::string, HashMapCookies>; // "name" -> Hashmap("value" -> Cookie)
 
         struct iterator
         {

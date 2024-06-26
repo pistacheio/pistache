@@ -1,0 +1,69 @@
+# SPDX-FileCopyrightText: 2024 Duncan Greatwood
+#
+# SPDX-License-Identifier: Apache-2.0
+
+Making Pistache on macOS with cmake
+===================================
+
+Building pistache using cmake is deprecated. Users are encouraged to
+use Meson only when building from source. CMake build scripts are only
+offered for convenience to users who depend on them for some reason,
+since they previously were the recommended way to build Pistache.
+
+In addition to what is described in "Making Pistache on macOS", the
+following are needed.
+
+brew:
+  brew install cmake
+  brew install howard-hinnant-date
+
+Additional convenience scripts can be used if helpful:
+  cmkbuild.sh - build release version using cmake
+  cmkbuilddebug.sh - build debug version using cmake
+
+If using cmake, you should add some homebrew setup to your .bashrc/.zshrc:
+
+  if [ "$(uname)" == "Darwin" ]; then
+      MYBREWCMD=brew
+      if [[ $(uname -m) == 'x86_64' ]]; then
+          if [ -e "/usr/local/bin/brew" ]; then
+              MYBREWCMD="/usr/local/bin/brew"
+          fi
+      else
+          if [ -e "/opt/homebrew/bin/brew" ]; then
+              MYBREWCMD="/opt/homebrew/bin/brew"
+          fi
+      fi
+      if command -v ${MYBREWCMD} &> /dev/null
+      then
+          # Setup brew environment variables
+          #     HOMEBREW_PREFIX, HOMEBREW_CELLAR and HOMEBREW_REPOSITORY
+          # Also updates PATH, MANPATH and INFOPATH
+          eval "$(${MYBREWCMD} shellenv)"
+      fi
+      unset MYBREWCMD
+  fi
+
+And then also add to your .bashrc/.zshrc:
+  if command -v brew &> /dev/null
+  then
+      export HOMEBREW_LIB_DIR=$HOMEBREW_PREFIX/lib
+      export HOMEBREW_INC_DIR=$HOMEBREW_PREFIX/include
+  
+      if [ -d "$HOMEBREW_LIB_DIR" ]
+         then
+         export LD_LIBRARY_PATH=$HOMEBREW_LIB_DIR:$LD_LIBRARY_PATH
+      fi
+  
+      if [ -d "$HOMEBREW_INC_DIR" ]
+         then
+         export CFLAGS="-I$HOMEBREW_INC_DIR $CFLAGS"
+         export CXXFLAGS="-I$HOMEBREW_INC_DIR $CXXFLAGS"
+         export CPPFLAGS="-I$HOMEBREW_INC_DIR $CPPFLAGS"
+      fi
+  fi
+
+Note: When using cmake on Linux (NOT macOS), you will need to manually
+install googletest. install_gtest_gmock.sh in this gist provides the
+method (verified on Ubuntu 22.04, April/2024):
+    https://gist.github.com/dlime/313f74fd23e4267c4a915086b84c7d3d

@@ -30,6 +30,8 @@ namespace Pistache::Http
         ~TransportImpl() override;
 
         void registerPoller(Polling::Epoll& poller) override;
+        void unregisterPoller(Polling::Epoll& poller) override;
+
         void onReady(const Aio::FdSet& fds) override;
 
         void setHeaderTimeout(std::chrono::milliseconds timeout);
@@ -44,7 +46,7 @@ namespace Pistache::Http
         std::chrono::milliseconds bodyTimeout_;
         std::chrono::milliseconds keepaliveTimeout_;
 
-        int timerFd;
+        Fd timerFd;
 
         void checkIdlePeers();
         bool checkTimeout(bool idle, Private::StepId id, std::chrono::milliseconds elapsed);
@@ -54,23 +56,31 @@ namespace Pistache::Http
     TransportImpl::TransportImpl(const std::shared_ptr<Tcp::Handler>& handler)
         : Tcp::Transport(handler)
         , handler_(handler)
-        , timerFd(-1)
+        , timerFd(PS_FD_EMPTY)
     { }
 
     TransportImpl::~TransportImpl()
     {
-        if (timerFd >= 0)
+        if (timerFd != PS_FD_EMPTY)
         {
-            close(timerFd);
-            timerFd = -1;
+            CLOSE_FD(timerFd);
+            timerFd = PS_FD_EMPTY;
         }
     }
 
     void TransportImpl::registerPoller(Polling::Epoll& poller)
     {
+        PS_TIMEDBG_START_THIS;
+
         Base::registerPoller(poller);
 
-        timerFd = TRY_RET(timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK));
+        timerFd =
+#ifdef _USE_LIBEVENT
+            TRY_NULL_RET(poller.em_timer_new(CLOCK_MONOTONIC,
+                                             F_SETFDL_NOTHING, O_NONBLOCK));
+#else
+            TRY_RET(timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK));
+#endif
 
         static constexpr auto TimerInterval   = std::chrono::milliseconds(500);
         static constexpr auto TimerIntervalNs = std::chrono::duration_cast<std::chrono::nanoseconds>(TimerInterval);
@@ -79,6 +89,19 @@ namespace Pistache::Http
             TimerInterval < std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::seconds(1)),
             "Timer frequency should be less than 1 second");
 
+#ifdef _USE_LIBEVENT
+        if (timerFd == PS_FD_EMPTY)
+        {
+            assert(timerFd != PS_FD_EMPTY);
+            PS_LOG_DEBUG("timerFd NULL");
+            throw std::runtime_error("timerFd NULL");
+        }
+
+        std::chrono::milliseconds interval_ms = std::chrono::
+            duration_cast<std::chrono::milliseconds>(TimerIntervalNs);
+        TRY(EventMethFns::setEmEventTime(timerFd, &interval_ms));
+
+#else
         itimerspec spec;
         spec.it_value.tv_sec  = 0;
         spec.it_value.tv_nsec = TimerIntervalNs.count();
@@ -87,19 +110,46 @@ namespace Pistache::Http
         spec.it_interval.tv_nsec = TimerIntervalNs.count();
 
         TRY(timerfd_settime(timerFd, 0, &spec, nullptr));
+#endif
 
         Polling::Tag tag(timerFd);
+        PS_LOG_DEBUG_ARGS("Add timer read fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", interval %dms",
+                          timerFd, TimerInterval.count());
         poller.addFd(timerFd, Flags<Polling::NotifyOn>(Polling::NotifyOn::Read), Polling::Tag(timerFd));
+    }
+
+    void TransportImpl::unregisterPoller(Polling::Epoll& poller)
+    {
+        PS_TIMEDBG_START_THIS;
+
+        if (timerFd != PS_FD_EMPTY)
+        {
+            PS_LOG_DEBUG_ARGS("Remove and close timer fd %" PIST_QUOTE(PS_FD_PRNTFCD), timerFd);
+
+            Aio::Reactor* r = reactor();
+            if (r) // or if r is NULL then reactor has been detached already
+                r->removeFd(key(), timerFd);
+
+            CLOSE_FD(timerFd);
+        }
+
+        Base::unregisterPoller(poller); // Transport unregisterPoller
     }
 
     void TransportImpl::onReady(const Aio::FdSet& fds)
     {
+        PS_TIMEDBG_START_THIS;
+
         for (const auto& entry : fds)
         {
             if (entry.getTag() == Polling::Tag(timerFd))
             {
                 uint64_t wakeups;
-                [[maybe_unused]] auto rv = ::read(timerFd, &wakeups, sizeof wakeups);
+                [[maybe_unused]] auto rv = READ_FD(timerFd,
+                                                   &wakeups, sizeof wakeups);
+                PS_LOG_DEBUG_ARGS("timerFd %p had %u wakeup%s",
+                                  timerFd, wakeups, (wakeups == 1) ? "" : "s");
+
                 checkIdlePeers();
                 break;
             }
@@ -125,19 +175,23 @@ namespace Pistache::Http
     {
         std::vector<std::shared_ptr<Tcp::Peer>> idlePeers;
 
-        for (const auto& peerPair : peers)
         {
-            const auto& peer = peerPair.second;
-            auto parser      = Http::Handler::getParser(peer);
-            auto time        = parser->time();
-
-            auto now     = std::chrono::steady_clock::now();
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - time);
-
-            auto* step = parser->step();
-            if (checkTimeout(peer->isIdle(), step->id(), elapsed))
+            // See comment in transport.h on why peers_ must be mutex-protected
+            std::lock_guard<std::mutex> l_guard(peers_mutex_);
+            for (const auto& peerPair : peers_)
             {
-                idlePeers.push_back(peer);
+                const auto& peer = peerPair.second;
+                auto parser      = Http::Handler::getParser(peer);
+                auto time        = parser->time();
+
+                auto now     = std::chrono::steady_clock::now();
+                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - time);
+
+                auto* step = parser->step();
+                if (checkTimeout(peer->isIdle(), step->id(), elapsed))
+                {
+                    idlePeers.push_back(peer);
+                }
             }
         }
 
@@ -170,6 +224,8 @@ namespace Pistache::Http
     }
     void TransportImpl::closePeer(std::shared_ptr<Tcp::Peer>& peer)
     {
+        PS_TIMEDBG_START_THIS;
+
         // true: there is no http request on the keepalive peer -> only call removePeer
         // false: there is at least one http request on the peer(keepalive or not) -> send 408 message first, then call removePeer
         if (peer->isIdle())
@@ -300,6 +356,8 @@ namespace Pistache::Http
     void Endpoint::serveThreaded() { serveImpl(&Tcp::Listener::runThreaded); }
 
     void Endpoint::shutdown() { listener.shutdown(); }
+
+    Endpoint::~Endpoint() { shutdown(); }
 
     void Endpoint::useSSL([[maybe_unused]] const std::string& cert, [[maybe_unused]] const std::string& key, [[maybe_unused]] bool use_compression, [[maybe_unused]] int (*pass_cb)(char*, int, int, void*))
     {

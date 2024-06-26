@@ -11,11 +11,14 @@
 #include <stdexcept>
 
 #include <array>
-#include <sys/eventfd.h>
+#include <pistache/eventmeth.h>
+#include <pistache/pist_quote.h>
 #include <unistd.h>
 
 #include <pistache/common.h>
 #include <pistache/os.h>
+
+#include <pistache/pist_timelog.h>
 
 namespace Pistache
 {
@@ -64,16 +67,19 @@ namespace Pistache
     {
     public:
         PollableMailbox()
-            : event_fd(-1)
+            : event_fd(PS_FD_EMPTY)
         { }
 
         ~PollableMailbox()
         {
-            if (event_fd != -1)
-                close(event_fd);
+            if (event_fd != PS_FD_EMPTY)
+            {
+                CLOSE_FD(event_fd);
+                event_fd = PS_FD_EMPTY;
+            }
         }
 
-        bool isBound() const { return event_fd != -1; }
+        bool isBound() const { return event_fd != PS_FD_EMPTY; }
 
         Polling::Tag bind(Polling::Epoll& poller)
         {
@@ -84,8 +90,18 @@ namespace Pistache
                 throw std::runtime_error("The mailbox has already been bound");
             }
 
+#ifdef _USE_LIBEVENT
+
+            FdEventFd emefd = TRY_NULL_RET(Epoll::em_eventfd_new(0, 0, O_NONBLOCK));
+            event_fd        = EventMethFns::getAsEmEvent(emefd);
+
+#else
             event_fd = TRY_RET(eventfd(0, EFD_NONBLOCK));
+#endif
             Tag tag_(event_fd);
+
+            PS_LOG_DEBUG_ARGS("Add read fd %" PIST_QUOTE(PS_FD_PRNTFCD),
+                              event_fd);
             poller.addFd(event_fd, Flags<Polling::NotifyOn>(NotifyOn::Read), tag_);
 
             return tag_;
@@ -98,7 +114,8 @@ namespace Pistache
             if (isBound())
             {
                 uint64_t val = 1;
-                TRY(write(event_fd, &val, sizeof val));
+
+                TRY(WRITE_EFD(event_fd, val));
             }
 
             return _ret;
@@ -113,8 +130,8 @@ namespace Pistache
                 uint64_t val;
                 for (;;)
                 {
-                    ssize_t bytes = read(event_fd, &val, sizeof val);
-                    if (bytes == -1)
+                    int efdread_res = READ_EFD(event_fd, &val);
+                    if (efdread_res == -1)
                     {
                         if (errno == EAGAIN || errno == EWOULDBLOCK)
                             break;
@@ -139,17 +156,19 @@ namespace Pistache
 
         void unbind(Polling::Epoll& poller)
         {
-            if (event_fd == -1)
+            if (event_fd == PS_FD_EMPTY)
             {
                 throw std::runtime_error("The mailbox is not bound");
             }
 
             poller.removeFd(event_fd);
-            close(event_fd), event_fd = -1;
+
+            CLOSE_FD(event_fd);
+            event_fd = PS_FD_EMPTY;
         }
 
     private:
-        int event_fd;
+        Fd event_fd;
     };
 
     /*
@@ -245,6 +264,7 @@ namespace Pistache
             std::unique_ptr<T> object;
 
             std::unique_ptr<Entry> entry(pop());
+
             if (entry)
             {
                 object.reset(new T(std::move(entry->data())));
@@ -266,16 +286,16 @@ namespace Pistache
         typedef typename Queue<T>::Entry Entry;
 
         PollableQueue()
-            : event_fd(-1)
+            : event_fd(PS_FD_EMPTY)
         { }
 
         ~PollableQueue() override
         {
-            if (event_fd != -1)
-                close(event_fd);
+            if (event_fd != PS_FD_EMPTY)
+                CLOSE_FD(event_fd);
         }
 
-        bool isBound() const { return event_fd != -1; }
+        bool isBound() const { return event_fd != PS_FD_EMPTY; }
 
         Polling::Tag bind(Polling::Epoll& poller)
         {
@@ -286,11 +306,41 @@ namespace Pistache
                 throw std::runtime_error("The queue has already been bound");
             }
 
+#ifdef _USE_LIBEVENT
+            FdEventFd emefd = TRY_NULL_RET(Epoll::em_eventfd_new(0, 0, O_NONBLOCK));
+
+            event_fd = EventMethFns::getAsEmEvent(emefd);
+
+#else
             event_fd = TRY_RET(eventfd(0, EFD_NONBLOCK));
+#endif
             Tag tag_(event_fd);
+            PS_LOG_DEBUG_ARGS("Add read fd %" PIST_QUOTE(PS_FD_PRNTFCD),
+                              event_fd);
             poller.addFd(event_fd, Flags<Polling::NotifyOn>(NotifyOn::Read), tag_);
 
             return tag_;
+        }
+
+        void unbind(Polling::Epoll& poller)
+        {
+            using namespace Polling;
+
+            if (!isBound())
+            {
+                PS_LOG_WARNING_ARGS("Unbinding unbound PollableQueue %p?",
+                                    this);
+                return; // nothing to do
+            }
+
+            if (event_fd != PS_FD_EMPTY)
+            {
+                PS_LOG_DEBUG_ARGS("Remove and close event_fd %" PIST_QUOTE(PS_FD_PRNTFCD), event_fd);
+
+                poller.removeFd(event_fd);
+                CLOSE_FD(event_fd);
+                event_fd = PS_FD_EMPTY;
+            }
         }
 
         template <class U>
@@ -301,7 +351,8 @@ namespace Pistache
             if (isBound())
             {
                 uint64_t val = 1;
-                TRY(write(event_fd, &val, sizeof val));
+
+                TRY(WRITE_EFD(event_fd, val));
             }
         }
 
@@ -314,7 +365,7 @@ namespace Pistache
                 uint64_t val = 0;
                 for (;;)
                 {
-                    ssize_t bytes = read(event_fd, &val, sizeof val);
+                    int efdread_res = READ_EFD(event_fd, &val);
 
                     // Note: Without the read-success check below, there can be
                     // an issue that shows up in the test
@@ -337,8 +388,9 @@ namespace Pistache
                     // the values that were pushed might never be processed off
                     // of this queue. So, we should break out of the loop when
                     // the read succeeds.
-                    if (bytes == (sizeof val))
+                    if (efdread_res == 0)
                     { // success
+                        PS_LOG_DEBUG_ARGS("event_fd read, val %u", val);
 
                         if (!ret)
                         {
@@ -346,24 +398,30 @@ namespace Pistache
                             // "pop" to do at the top of this function, but
                             // then a push happened after the first pop attempt
                             // but before the read above
+                            PS_LOG_DEBUG("event_fd read, but pop was null");
                             ret = Queue<T>::pop();
                         }
 
                         break;
                     }
 
-                    if (bytes == -1)
+                    if (efdread_res == -1)
                     {
                         if (errno == EAGAIN || errno == EWOULDBLOCK)
+                        {
                             break;
+                        }
                         else
                         {
+                            PS_LOG_DEBUG_ARGS("Unimplemented errno %d %s",
+                                              errno, strerror(errno));
                             // TODO
                         }
                     }
                 }
             }
 
+            PS_LOG_DEBUG_ARGS("ret %p", ret);
             return ret;
         }
 
@@ -375,19 +433,8 @@ namespace Pistache
             return Polling::Tag(event_fd);
         }
 
-        void unbind(Polling::Epoll& poller)
-        {
-            if (event_fd == -1)
-            {
-                throw std::runtime_error("The mailbox is not bound");
-            }
-
-            poller.removeFd(event_fd);
-            close(event_fd), event_fd = -1;
-        }
-
     private:
-        int event_fd;
+        Fd event_fd;
     };
 
     // A Multi-Producer Multi-Consumer bounded queue

@@ -174,7 +174,7 @@ TEST(rest_server_test, keepalive_server_timeout)
     EXPECT_EQ(res->status, 200);
     peer           = stats.getAllPeer();
     auto peerPort1 = (*peer.begin())->address().port();
-    EXPECT_EQ(peer.size(), 1);
+    EXPECT_EQ(peer.size(), 1ul);
 
     // second request
     res = client.Get("/read/hostname");
@@ -188,7 +188,7 @@ TEST(rest_server_test, keepalive_server_timeout)
     // wait for timeout, check whether the server has closed the connection
     std::this_thread::sleep_for(KEEPALIVE_TIMEOUT + std::chrono::milliseconds(700));
     peer = stats.getAllPeer();
-    EXPECT_EQ(peer.size(), 0);
+    EXPECT_EQ(peer.size(), 0ul);
 
     stats.shutdown();
 }
@@ -209,14 +209,14 @@ TEST(rest_server_test, keepalive_client_timeout)
         auto res = client.Get("/read/hostname");
         EXPECT_EQ(res->status, 200);
         auto peer = stats.getAllPeer();
-        EXPECT_EQ(peer.size(), 1);
+        EXPECT_EQ(peer.size(), 1ul);
         // The client actively closes the connection
     }
     // The server checks the connection status once every 500 milliseconds.
     // check whether the server has closed the connection
     std::this_thread::sleep_for(std::chrono::milliseconds(700));
     auto peer = stats.getAllPeer();
-    EXPECT_EQ(peer.size(), 0);
+    EXPECT_EQ(peer.size(), 0ul);
 
     stats.shutdown();
 }
@@ -230,9 +230,9 @@ TEST(rest_server_test, keepalive_multithread_client_request)
     stats.start();
     Port port = stats.getPort();
 
-    int THR_NUMBER = 10;
+    unsigned long THR_NUMBER = 10;
     std::vector<std::thread> threads;
-    for (int i = 0; i < THR_NUMBER; ++i)
+    for (unsigned long i = 0; i < THR_NUMBER; ++i)
     {
         threads.push_back(std::thread([&port] {
             httplib::Client client("localhost", port);
@@ -252,7 +252,7 @@ TEST(rest_server_test, keepalive_multithread_client_request)
         it->join();
     }
     peer = stats.getAllPeer();
-    EXPECT_EQ(peer.size(), 0);
+    EXPECT_EQ(peer.size(), 0ul);
 
     stats.shutdown();
 }

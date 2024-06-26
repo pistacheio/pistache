@@ -6,6 +6,7 @@ pistache_common_src = [
 	'common'/'base64.cc',
 	'common'/'cookie.cc',
 	'common'/'description.cc',
+	'common'/'eventmeth.cc',
 	'common'/'http.cc',
 	'common'/'http_defs.cc',
 	'common'/'http_header.cc',
@@ -14,6 +15,9 @@ pistache_common_src = [
 	'common'/'net.cc',
 	'common'/'os.cc',
 	'common'/'peer.cc',
+        'common'/'pist_check.cc',
+        'common'/'pist_syslog.cc',
+        'common'/'pist_timelog.cc',
 	'common'/'reactor.cc',
 	'common'/'stream.cc',
 	'common'/'string_logger.cc',
@@ -44,6 +48,19 @@ endif
 if get_option('PISTACHE_USE_CONTENT_ENCODING_DEFLATE')
 	public_args += '-DPISTACHE_USE_CONTENT_ENCODING_DEFLATE'
 endif
+
+if get_option('PISTACHE_DEBUG')
+        add_project_arguments('-DDEBUG=1', language: 'cpp')
+endif
+
+if get_option('PISTACHE_LOG_AND_STDOUT')
+        add_project_arguments('-DPS_LOG_AND_STDOUT=true', language: 'cpp')
+endif
+
+if get_option('PISTACHE_FORCE_LIBEVENT')
+        add_project_arguments('-DPISTACHE_FORCE_LIBEVENT', language: 'cpp')
+endif
+
 
 libpistache = library(
 	'pistache',

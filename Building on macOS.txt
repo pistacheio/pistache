@@ -1,0 +1,54 @@
+# SPDX-FileCopyrightText: 2024 Duncan Greatwood
+#
+# SPDX-License-Identifier: Apache-2.0
+
+Making Pistache on macOS
+========================
+
+Apple's clang compiler must be installed. It comes as part of
+Xcode. If not already installed, at terminal command line do:
+  xcode-select --install
+
+Homebrew (also known as "brew") is required. If not already installed,
+follow the Homebrew instructions to install:
+  In your browser: https://brew.sh/
+
+Then, install the necessary brew packages via terminal command line:
+  brew install meson
+  brew install doxygen
+  brew install googletest
+  brew install openssl
+  brew install rapidjson
+  brew install howard-hinnant-date
+(You may be able to skip howard-hinnant-date)
+
+Convenience shell scripts are provided to make the build. At terminal,
+do:
+  bldscripts/mesbuild.sh
+To test:
+  bldscripts/mestest.sh
+To install:
+  bldscripts/mesinstall.sh
+
+The meaning of each convenience script is as follows:
+  mesbuild.sh - build release version using meson
+  mestest.sh - test release version using meson
+  mesinstall.sh - install release version using meson
+  
+  mesbuilddebug.sh - build debug version using meson
+  mestestdebug.sh - test debug version with meson
+  mesinstalldebug.sh - install debug version using meson
+  
+  mesbuildflibev.sh - build version using meson forcing libevnet use
+  mestestflibev.sh - test version using meson with libevnet use  
+  mesinstallflibev.sh - install version using meson with libevnet use
+
+  mesbuildflibevdebug.sh - build debug ver using meson forcing libevnet use
+  mestestflibevdebug.sh - test debug ver using meson with libevnet use  
+  mesinstallflibevdebug.sh - install debug ver using meson with libevnet use
+
+  clean.sh - remove build directories
+  
+
+
+

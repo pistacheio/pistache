@@ -1,0 +1,99 @@
+# SPDX-FileCopyrightText: 2024 Duncan Greatwood
+#
+# SPDX-License-Identifier: Apache-2.0
+
+Implementation of Pistache on macOS
+===================================
+
+macOS lacks three OS capabilities used by Pistache: epoll, eventfd,
+and timerfd_create. Of these, epoll is the most significant.
+
+macOS does have a capability kqueue, which is similar in principle to
+epoll. However, rather than using kqueue directly, we have used the
+library libevent which wraps native OS event-loop capabilities. Using
+libevent: i) Could ease future ports to other operating systems beyond
+Linux and macOS; and ii) Enables a "libevent mode" Pistache to be
+built and tested on Linux, not just on macOS.
+
+The libevent-mode implementation uses an opaque class EmEvent. In
+libevent-mode, the Pistache type 'Fd' is defined to be an
+'EmEvent*'. Of course, in standard mode Pistache defines Fd to be a
+Linux file descriptor i.e. an int.
+
+The Linux eventfd and timerfd capabilities are provided by opaque
+classes EmEventFd and EmEventTmrFd, which inherit from EmEvent.
+
+With Fd defined to be EmEvent*, very little change is needed to the
+main Pistache code. In a few places, an actual file descriptor
+(i.e. an int) has to be extracted from the EmEvent via a function
+call.
+
+The reason why we use a raw C pointer EmEvent* for Fd, rather than a
+std::shared_ptr for instance, is to make the behavior as a similar as
+possible to that of a conventional file descriptor. A conventional
+file descriptor, just like a raw C pointer, must be freed ("closed")
+explicitly in order to release its resources.
+
+The implementation for macOS is largely contained to the two files
+eventmeth.h and eventmeth.cc. The eventmeth.h file defines the class
+EventMethEpollEquiv, through which everything takes places. The
+internals of EmEvent, EmEventFd and EmEventTmrFd are contained to
+eventmeth.cc, and remain opaque to the rest of the code base. The use
+of libevent itself is also contained in eventmeth.cc; the rest of the
+code base doesn't "know" that libevent is being used.
+
+Some new logging capabilities are included, which write to syslog or
+os_log on Linux or macOS respectively.
+
+This version has been tested on macOS Sonoma 14.4.1 on an M3 MacBook
+Air (arm64); on macOS Monterey v12.7.2 2015 Intel MacBook Pro
+(x86_64); and on Ubuntu 22.04.4 LTS. It ran overnight in each
+environment repeatedly executing the Pistache test suite without
+error. It also ran successfully in macOS and Linux as part of an
+application that reads and writes to the Azure blob API.
+
+Porting to macOS revealed a number of issues in the existing Pistache
+implementation, which have been addressed as part of the port:
+  1. A mutex is required for access to requestsQueues in client.cc, to
+  make sure the queues are not corrupted by being accessed from
+  multiple threads.
+  2. A mutex is required to protect the peers_ unordered_map in
+  transport.h/.cc. See comment in code for more specifics.
+  3. https_server_test modified so curl_global_init is called only once
+  (see comment in the code).
+  4. The C pointer 'Handler::Reactor* reactor_' was allowing a Reactor
+  instance to be accessed after the Reactor destructor was
+  called. Fixed by allowing deregistering of
+  pollers/handlers/reactors, and also by protecting the deregistering
+  with a mutex. See comment in code for details.
+  5. Made getPeer in transport return a shared_ptr to Peer, NOT a
+  reference to a shared_ptr. Previously, the reference returned by
+  getPeer was to a shared_ptr stored in the map peers_ - so if the
+  entry was removed from peers_, or peers_ went out of scope, the
+  reference could refer to a shared_ptr that no longer existed. This
+  was causing access to memory after free, showing up in github
+  workflows in http_server_test in force-libevent mode.
+  6. Rather than closing a peer's Fd directly in transport
+  (Transport::removePeer in transport.cc), now call peer->closeFd(),
+  which not only closes the Fd but allows peer to set it's fd_ to
+  empty, helping ensure that the Fd is closed exactly once. This,
+  together with the above getPeer fix, fixes a memory/Fd leak that was
+  showing up in github workflows in http_server_test in force-libevent
+  mode, and also fixes memory leak in test streaming_test
+  ClientDisconnect.
+  7. Introduced a handling_mutex, owned by client Transport
+  (client.cc). This mutex is claimed by Transport::onReady, and also
+  claimed when an Fd is being closed, to stop an Fd that is about to
+  be processed by onReady being closed/freed before onReady handling
+  can reach it. See comments in Client::shutdown for more.
+    
+Of these issues, all were seen in practice while testing. None are
+huge changes at all; the fix for #4 is the "biggest" in that it
+touches multiple points in the code.  None of the issues are macOS
+specific; the issues showed up in macOS due to differences in timing,
+threading and heap/memory management in macOS and/or libevent
+vs. Linux and/or epoll.
+
+
+
+

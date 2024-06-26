@@ -141,13 +141,16 @@ TEST(request_size, manual_construction)
         void onRequest(const Http::Request& /*request*/,
                        Http::ResponseWriter response) override
         {
+            PS_TIMEDBG_START_THIS;
+
             response.send(Http::Code::Ok, "All good");
         }
 
     private:
-#ifndef __GNUC__
+#if !defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER)
         // maybe_unused is legit here but gcc warns about it anyway
         // gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0 April/2024
+        // Note: CLANG and ICC define __GNUC__ even though they're not gcc
         [[maybe_unused]]
 #endif
         tag placeholder;

@@ -50,7 +50,7 @@ namespace Pistache
             template <typename Duration>
             void arm(Duration duration)
             {
-                assert(fd_ != -1 && "Entry is not initialized");
+                assert(fd_ != PS_FD_EMPTY && "Entry is not initialized");
 
                 armMs(std::chrono::duration_cast<std::chrono::milliseconds>(duration));
             }

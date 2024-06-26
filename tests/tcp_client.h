@@ -51,6 +51,8 @@ namespace Pistache
             for (; addr; addr = addr->ai_next)
             {
                 sfd = ::socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
+                PS_LOG_DEBUG_ARGS("::socket actual_fd %d", sfd);
+
                 if (sfd < 0)
                     continue;
 

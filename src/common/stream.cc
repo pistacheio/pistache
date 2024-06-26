@@ -84,7 +84,7 @@ namespace Pistache
         size_ = sb.st_size;
     }
 
-    Fd FileBuffer::fd() const { return fd_; }
+    int FileBuffer::fd() const { return fd_; }
 
     size_t FileBuffer::size() const { return size_; }
 

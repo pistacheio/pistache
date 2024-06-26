@@ -22,6 +22,9 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include <pistache/pist_check.h>
+#include <pistache/pist_syslog.h>
+
 #define TRY(...)                                               \
     do                                                         \
     {                                                          \
@@ -39,6 +42,9 @@
             {                                                  \
                 oss << strerror(errno);                        \
             }                                                  \
+            PS_LOG_INFO_ARGS("TRY ret %d  errno %d  throw %s", \
+                             ret, errno, oss.str().c_str());   \
+            PS_LOGDBG_STACK_TRACE;                             \
             oss << " (" << __FILE__ << ":" << __LINE__ << ")"; \
             throw std::runtime_error(oss.str());               \
         }                                                      \
@@ -52,6 +58,27 @@
             const char* str = #__VA_ARGS__;                    \
             std::ostringstream oss;                            \
             oss << str << ": " << strerror(errno);             \
+            PS_LOG_INFO_ARGS("TRY ret %d  errno %d  throw %s", \
+                             ret, errno, oss.str().c_str());   \
+            PS_LOGDBG_STACK_TRACE;                             \
+            oss << " (" << __FILE__ << ":" << __LINE__ << ")"; \
+            throw std::runtime_error(oss.str());               \
+        }                                                      \
+        return ret;                                            \
+    }();                                                       \
+    (void)0
+
+#define TRY_NULL_RET(...)                                      \
+    [&]() {                                                    \
+        auto ret = __VA_ARGS__;                                \
+        if (ret == NULL)                                       \
+        {                                                      \
+            const char* str = #__VA_ARGS__;                    \
+            std::ostringstream oss;                            \
+            oss << str << ": " << strerror(errno);             \
+            PS_LOG_INFO_ARGS("TRY_NULL_RET throw errno %d %s", \
+                             errno, oss.str().c_str());        \
+            PS_LOGDBG_STACK_TRACE;                             \
             oss << " (" << __FILE__ << ":" << __LINE__ << ")"; \
             throw std::runtime_error(oss.str());               \
         }                                                      \

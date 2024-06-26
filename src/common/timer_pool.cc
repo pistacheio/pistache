@@ -15,13 +15,19 @@
 
 #include <cassert>
 
+#include <pistache/eventmeth.h>
+#include <pistache/pist_quote.h>
+
+#ifndef _USE_LIBEVENT_LIKE_APPLE
+// Note: sys/timerfd.h is linux-only (and certainly POSIX only)
 #include <sys/timerfd.h>
+#endif
 
 namespace Pistache
 {
 
     TimerPool::Entry::Entry()
-        : fd_(-1)
+        : fd_(PS_FD_EMPTY)
         , registered(false)
     {
         state.store(static_cast<uint32_t>(State::Idle));
@@ -29,29 +35,52 @@ namespace Pistache
 
     TimerPool::Entry::~Entry()
     {
-        if (fd_ != -1)
-            close(fd_);
+        if (fd_ != PS_FD_EMPTY)
+        {
+            CLOSE_FD(fd_);
+            fd_ = PS_FD_EMPTY;
+        }
     }
 
     Fd TimerPool::Entry::fd() const
     {
-        assert(fd_ != -1);
+        assert(fd_ != PS_FD_EMPTY);
 
         return fd_;
     }
 
     void TimerPool::Entry::initialize()
     {
-        if (fd_ == -1)
+        if (fd_ == PS_FD_EMPTY)
         {
+#ifdef _USE_LIBEVENT
+            fd_ = TRY_NULL_RET(EventMethFns::em_timer_new(
+                CLOCK_MONOTONIC,
+                F_SETFDL_NOTHING, O_NONBLOCK,
+                NULL /* EventMethEpollEquiv ptr */));
+            // The EventMethEpollEquiv ptr gets set
+            // later, when
+            // TimerPool::Entry::registerReactor is
+            // called (the reactor owns the
+            // EventMethEpollEquiv)
+#else
             fd_ = TRY_RET(timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK));
+#endif
         }
     }
 
     void TimerPool::Entry::disarm()
     {
-        assert(fd_ != -1);
+        if (fd_ == PS_FD_EMPTY)
+        {
+            assert(fd_ != PS_FD_EMPTY);
+            PS_LOG_DEBUG("fd_ empty");
+            throw std::runtime_error("fd_ empty");
+        }
 
+#ifdef _USE_LIBEVENT
+        TRY(EventMethFns::setEmEventTime(fd_, NULL));
+#else
         itimerspec spec;
         spec.it_interval.tv_sec  = 0;
         spec.it_interval.tv_nsec = 0;
@@ -60,6 +89,7 @@ namespace Pistache
         spec.it_value.tv_nsec = 0;
 
         TRY(timerfd_settime(fd_, 0, &spec, nullptr));
+#endif
     }
 
     void TimerPool::Entry::registerReactor(const Aio::Reactor::Key& key,
@@ -67,6 +97,9 @@ namespace Pistache
     {
         if (!registered)
         {
+            PS_LOG_DEBUG_ARGS("Register fd %" PIST_QUOTE(PS_FD_PRNTFCD) " with reactor %p",
+                              fd_, reactor);
+
             reactor->registerFd(key, fd_, Polling::NotifyOn::Read);
             registered = true;
         }
@@ -74,6 +107,17 @@ namespace Pistache
 
     void TimerPool::Entry::armMs(std::chrono::milliseconds value)
     {
+        if (fd_ == PS_FD_EMPTY)
+        {
+            PS_LOG_DEBUG("fd_ NULL");
+            assert(fd_ != PS_FD_EMPTY);
+            throw std::runtime_error("fd_ NULL");
+        }
+
+#ifdef _USE_LIBEVENT
+        TRY(EventMethFns::setEmEventTime(fd_, &value));
+#else
+
         itimerspec spec;
         spec.it_interval.tv_sec  = 0;
         spec.it_interval.tv_nsec = 0;
@@ -89,6 +133,7 @@ namespace Pistache
             spec.it_value.tv_nsec = 0;
         }
         TRY(timerfd_settime(fd_, 0, &spec, nullptr));
+#endif
     }
 
     TimerPool::TimerPool(size_t initialSize)

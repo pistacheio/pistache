@@ -20,6 +20,7 @@
 #include <pistache/async.h>
 #include <pistache/peer.h>
 #include <pistache/transport.h>
+#include <pistache/pist_quote.h>
 
 namespace Pistache::Tcp
 {
@@ -38,10 +39,20 @@ namespace Pistache::Tcp
         , addr(addr)
         , ssl_(ssl)
         , id_(getUniqueId())
-    { }
+    {
+        PS_LOG_DEBUG_ARGS("peer %p, fd %" PIST_QUOTE(PS_FD_PRNTFCD)
+                          ", Address ptr %p, ssl %p",
+                          this, fd, &addr, ssl);
+    }
 
     Peer::~Peer()
     {
+        PS_LOG_DEBUG_ARGS("peer %p, fd %" PIST_QUOTE(PS_FD_PRNTFCD)
+                          ", Address ptr %p, ssl %p",
+                          this, fd_, &addr, ssl_);
+
+        closeFd(); // does nothing if already closed
+
 #ifdef PISTACHE_USE_SSL
         if (ssl_)
             SSL_free(static_cast<SSL*>(ssl_));
@@ -104,14 +115,27 @@ namespace Pistache::Tcp
     void* Peer::ssl() const { return ssl_; }
     size_t Peer::getID() const { return id_; }
 
-    int Peer::fd() const
+    Fd Peer::fd() const
     {
-        if (fd_ == -1)
+        if (fd_ == PS_FD_EMPTY)
         {
+            PS_LOG_DEBUG_ARGS("peer %p has no associated fd", this);
             throw std::runtime_error("The peer has no associated fd");
         }
 
         return fd_;
+    }
+
+    void Peer::closeFd()
+    {
+        PS_LOG_DEBUG_ARGS("peer %p, fd %" PIST_QUOTE(PS_FD_PRNTFCD),
+                          this, fd_);
+        
+        if (fd_ != PS_FD_EMPTY)
+        {
+            CLOSE_FD(fd_);
+            fd_ = PS_FD_EMPTY;
+        }
     }
 
     void Peer::putData(std::string name, std::shared_ptr<void> data)

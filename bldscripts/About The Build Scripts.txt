@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2024 Duncan Greatwood
+#
+# SPDX-License-Identifier: Apache-2.0
+
+About The Build Scripts
+=======================
+
+These scripts are optional convenience scripts for building, testing
+and installing Pistache. They can be used on Linux or on macOS.
+
+Invoke a script from the parent directory (aka the pistache source
+directory):
+    bldscripts/<Script Name>
+    Of course, substitute the actual script name for <Script Name>
+
+The meaning of each convenience script is as follows:
+  mesbuild.sh - build release version using meson
+  mestest.sh - test release version using meson
+  mesinstall.sh - install release version using meson
+  
+  mesbuilddebug.sh - build debug version using meson
+  mestestdebug.sh - test debug version with meson
+  mesinstalldebug.sh - install debug version using meson
+  
+  mesbuildflibev.sh - build debug version using meson forcing libevnet use
+  mestestflibev.sh - test debug version using meson with libevnet use  
+  mesinstallflibev.sh - install debug version using meson with libevnet use
+
+  clean.sh - remove build directories
+  
+  cmkbuild.sh - build release version using cmake
+  cmkbuilddebug.sh - build debug version using cmake

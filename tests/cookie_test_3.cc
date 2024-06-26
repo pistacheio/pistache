@@ -25,6 +25,8 @@ struct CookieHandler : public Http::Handler
     void onRequest(const Http::Request& request,
                    Http::ResponseWriter response) override
     {
+        PS_TIMEDBG_START_THIS;
+
         // Synthetic behaviour, just for testing purposes
         for (auto&& cookie : request.cookies())
         {

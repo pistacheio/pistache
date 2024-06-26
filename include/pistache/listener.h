@@ -95,8 +95,8 @@ namespace Pistache::Tcp
 
     private:
         Address addr_;
-        int listen_fd = -1;
-        int backlog_  = Const::MaxBacklog;
+        Fd listen_fd = PS_FD_EMPTY;
+        int backlog_ = Const::MaxBacklog;
         NotifyFd shutdownFd;
         Polling::Epoll poller;
 
@@ -107,7 +107,7 @@ namespace Pistache::Tcp
         std::string workersName_;
         std::shared_ptr<Handler> handler_;
 
-        Aio::Reactor reactor_;
+        std::shared_ptr<Aio::Reactor> reactor_;
         Aio::Reactor::Key transportKey;
 
         TransportFactory transportFactory_;

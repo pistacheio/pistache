@@ -20,12 +20,14 @@ namespace Pistache::Log
 {
 
     enum class Level {
-        TRACE,
-        DEBUG,
-        INFO,
-        WARN,
-        ERROR,
-        FATAL
+        // Use a "LL_" so definition of "DEBUG" doesn't clash with common
+        // #define "DEBUG"
+        LL_TRACE,
+        LL_DEBUG,
+        LL_INFO,
+        LL_WARN,
+        LL_ERROR,
+        LL_FATAL
     };
 
     class StringLogger

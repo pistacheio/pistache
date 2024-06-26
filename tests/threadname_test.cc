@@ -30,6 +30,8 @@ struct HelloHandlerWithDelay : public Http::Handler
     void onRequest(const Http::Request& /*request*/,
                    Http::ResponseWriter writer) override
     {
+        PS_TIMEDBG_START_THIS;
+
         std::this_thread::sleep_for(std::chrono::seconds(delay_));
         writer.send(Http::Code::Ok, "Hello, World!");
     }

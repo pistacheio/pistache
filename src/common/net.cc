@@ -30,6 +30,14 @@
 
 namespace Pistache
 {
+    namespace helpers
+    {
+        Address httpAddr(const std::string_view& view)
+        {
+            return(httpAddr(view, 0/*default port*/));
+        }
+    } // namespace helpers
+    
     Port::Port(uint16_t port)
         : port(port)
     { }
@@ -309,7 +317,13 @@ namespace Pistache
         {
             port_ = data.substr(end_pos + 1);
             if (port_.empty())
+            {
+                PS_LOG_DEBUG_ARGS("port_ empty, data (addr string) %s, "
+                                  "throwing \"Invalid port\"",
+                                  data.c_str());
+
                 throw std::invalid_argument("Invalid port");
+            }
 
             // Check if port_ is a valid number
             char* tmp;
@@ -339,12 +353,27 @@ namespace Pistache
         std::string addr = std::move(host);
         addr.append(":");
         addr.append(port.toString());
-        init(std::move(addr));
+        init(std::move(addr), 0 /* no default port, set explicitly */);
     }
 
-    Address::Address(std::string addr) { init(std::move(addr)); }
+    Address::Address(std::string addr)
+    {
+        init(std::move(addr), 0 /* default port*/);
+    }
 
-    Address::Address(const char* addr) { init(std::string(addr)); }
+    Address::Address(const char* addr)
+    {
+        init(std::string(addr), 0 /* default port*/);
+    }
+
+    Address Address::makeWithDefaultPort(std::string addr,
+                                         Port default_port /* defaults to zero*/)
+    { // static
+        Address res;
+        res.init(std::move(addr), default_port);
+
+        return (res);
+    }
 
     Address::Address(IP ip, Port port)
         : ip_(ip)
@@ -372,6 +401,11 @@ namespace Pistache
     int Address::family() const { return ip_.getFamily(); }
 
     void Address::init(const std::string& addr)
+    {
+        init(addr, 0 /*default port*/);
+    }
+    
+    void Address::init(const std::string& addr, Port default_port)
     {
         // Handle unix domain addresses separately.
         if (isUnixDomain(addr))
@@ -408,6 +442,10 @@ namespace Pistache
             return;
         }
 
+        if (!default_port)
+            default_port = 80;
+        std::string default_port_str(std::to_string(default_port));
+
         addrLen_ = family() == AF_INET ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
 
         const AddressParser parser(addr);
@@ -431,7 +469,7 @@ namespace Pistache
         // AI_PASSIVE flag, it yields the proper wildcard address. The port, if
         // empty, is set to 80 (http) by default.
         const char* const addrinfo_host = host.empty() || wildcard ? nullptr : host.c_str();
-        const char* const addrinfo_port = port.empty() ? "80" : port.c_str();
+        const char* const addrinfo_port = port.empty() ? default_port_str.c_str() : port.c_str();
 
         AddrInfo addrinfo;
         const int err = addrinfo.invoke(addrinfo_host, addrinfo_port, &hints);

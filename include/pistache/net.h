@@ -153,7 +153,8 @@ namespace Pistache
     public:
         Address();
         Address(std::string host, Port port);
-
+        Address(std::string host); // retained for backwards compatibility
+        
         /*
          * Constructors for creating addresses from strings.  They're
          * typically used to create IP-based addresses, but can also be used
@@ -168,8 +169,11 @@ namespace Pistache
          *  - addr[0] == '\0'
          *  - addr contains a '/' character
          */
-        explicit Address(std::string addr);
+
         explicit Address(const char* addr);
+
+        static Address makeWithDefaultPort(std::string addr,
+                                           Port default_port = 0);
 
         Address(IP ip, Port port);
 
@@ -208,7 +212,11 @@ namespace Pistache
         friend std::ostream& operator<<(std::ostream& os, const Address& address);
 
     private:
+        // For init, default_port of zero makes the default port 80, though the
+        // default can be overridden by addr
+        void init(const std::string& addr, Port default_port);
         void init(const std::string& addr);
+
         static bool isUnixDomain(const std::string& addr);
         IP ip_;
         Port port_;
@@ -219,10 +227,14 @@ namespace Pistache
 
     namespace helpers
     {
-        inline Address httpAddr(const std::string_view& view)
+        inline Address httpAddr(const std::string_view& view,
+                                Port default_port)
         {
-            return Address(std::string(view));
+            return Address::makeWithDefaultPort(std::string(view),
+                                                default_port);
         }
+
+        Address httpAddr(const std::string_view& view);
     } // namespace helpers
 
     class Error : public std::runtime_error
