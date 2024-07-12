@@ -23,6 +23,12 @@
 #include <pistache/pist_timelog.h>
 #include <pistache/pist_quote.h>
 
+#ifdef _IS_BSD
+// For pthread_set_name_np
+#include <pthread.h>
+#include <pthread_np.h>
+#endif
+
 using namespace std::string_literals;
 
 namespace Pistache::Aio
@@ -625,7 +631,11 @@ namespace Pistache::Aio
                 thread = std::thread([=]() {
                     if (!threadsName_.empty())
                     {
+#ifdef _IS_BSD
+                        pthread_set_name_np(
+#else
                         pthread_setname_np(
+#endif
 #ifndef __APPLE__
                             // Apple's macOS version of pthread_setname_np
                             // takes only "const char * name" as parm
