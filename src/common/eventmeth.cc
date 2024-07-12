@@ -11,6 +11,8 @@
 
 #ifdef _USE_LIBEVENT
 
+#include <event2/thread.h>
+
 /* ------------------------------------------------------------------------- */
 /*
  * Event classes - EmEvent, EmEventCtr, EmEventFd and EmEventTmrFd
@@ -1888,7 +1890,10 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
             break;
 
         case CLOCK_MONOTONIC:
+        #ifndef _IS_BSD
+        // CLOCK_MONOTONIC_RAW not defined on FreeBSD13.3 and OpenBSD 7.3
         case CLOCK_MONOTONIC_RAW:
+        #endif
         #ifdef __APPLE__
         case CLOCK_MONOTONIC_RAW_APPROX:
         case CLOCK_UPTIME_RAW:
