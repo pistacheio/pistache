@@ -19,8 +19,8 @@ project(
 
 #macOS host_machine.system() is 'darwin'
 
-if host_machine.system() != 'linux' and host_machine.system() != 'darwin'
-	error('Pistache currenly only supports Linux and macOS. See https://github.com/pistacheio/pistache/issues/6#issuecomment-242398225 for more information')
+if host_machine.system() != 'linux' and host_machine.system() != 'darwin' and host_machine.system() != 'freebsd' and host_machine.system() != 'openbsd' and host_machine.system() != 'netbsd'
+	error('Pistache currenly only supports Linux, macOS and Free/Open/NetBSD. See https://github.com/pistacheio/pistache/issues/6#issuecomment-242398225 for more information')
 endif
 
 compiler = meson.get_compiler('cpp')
@@ -130,7 +130,7 @@ if get_option('PISTACHE_USE_SSL')
 	deps_libpistache += dependency('openssl')
 endif
 
-if host_machine.system() == 'darwin' or get_option('PISTACHE_FORCE_LIBEVENT')
+if host_machine.system() == 'darwin' or host_machine.system() == 'openbsd' or host_machine.system() == 'netbsd' or get_option('PISTACHE_FORCE_LIBEVENT')
 	deps_libpistache += dependency('libevent')
         deps_libpistache += dependency('libevent_pthreads')
 endif
