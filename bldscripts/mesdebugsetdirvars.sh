@@ -10,22 +10,6 @@
 # Use by:
 #   source bldscripts/mesdebugsetdirvars.sh
 
-
-MY_ARCH_NM=x86
-if [ "$(uname -m)" == "arm64" ]; then
-    MY_ARCH_NM=a64
-else
-    if [ "$(uname -m)" == "aarch64" ]; then
-        MY_ARCH_NM=a64
-    fi
-fi
-    
-
-if [ "$(uname)" == "Darwin" ]; then
-    MESON_BUILD_DIR=build${MY_ARCH_NM}.mes.mac.debug
-    MESON_PREFIX_DIR=/usr/local
-else
-    MESON_BUILD_DIR=build${MY_ARCH_NM}.mes.debug
-    MESON_PREFIX_DIR=/usr/local
-fi
+PST_DIR_SUFFIX=".debug"
+source bldscripts/messetdirvarsfinish.sh
 
