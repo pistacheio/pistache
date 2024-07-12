@@ -25,6 +25,10 @@
 #include <sys/sendfile.h>
 #endif
 
+#ifdef _IS_BSD
+#include <unistd.h> // for lseek
+#endif
+
 #ifndef _USE_LIBEVENT_LIKE_APPLE
 // Note: sys/timerfd.h is linux-only (and certainly POSIX only)
 #include <sys/timerfd.h>
@@ -547,7 +551,7 @@ namespace Pistache::Tcp
         int tcp_no_push  = 0;
         socklen_t len    = sizeof(tcp_no_push);
         int sock_opt_res = getsockopt(GET_ACTUAL_FD(fd), tcp_prot_num_,
-#ifdef __APPLE__
+#if defined __APPLE__ || defined _IS_BSD
                                       TCP_NOPUSH,
 #else
                                       TCP_CORK,
@@ -562,7 +566,7 @@ namespace Pistache::Tcp
 
                 tcp_no_push  = msg_more_style ? 1 : 0;
                 sock_opt_res = setsockopt(GET_ACTUAL_FD(fd), tcp_prot_num_,
-#ifdef __APPLE__
+#if defined __APPLE__ || defined _IS_BSD
                                           TCP_NOPUSH,
 #else
                                           TCP_CORK,
@@ -582,8 +586,9 @@ namespace Pistache::Tcp
 #ifdef DEBUG
         else
         {
-            PS_LOG_DEBUG_ARGS("getsockopt failed for fd %p, actual fd %d",
-                              fd, GET_ACTUAL_FD(fd));
+            PS_LOG_DEBUG_ARGS("getsockopt failed for fd %p, actual fd %d, "
+                              "errno %d, err %s",
+                              fd, GET_ACTUAL_FD(fd), errno, strerror(errno));
             throw std::runtime_error("getsockopt failed");
         }
 #endif
@@ -648,6 +653,134 @@ namespace Pistache::Tcp
         return bytesWritten;
     }
 
+#ifdef _IS_BSD
+    // This is the sendfile function prototype found in Linux. However,
+    // sendfile does not exist in OpenBSD, so we make our own.
+    //
+    // https://www.man7.org/linux/man-pages/man2/sendfile.2.html
+    // Copies FROM "in_fd" TO "out_fd"
+    // Returns number of bytes written on success, -1 with errno set on error
+    // 
+    // If offset is not NULL, then sendfile() does not modify the file offset
+    // of in_fd; otherwise the file offset is adjusted to reflect the number of
+    // bytes read from in_fd.
+    ssize_t my_sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
+    {
+        char buff[65536+16];
+
+        int read_errors = 0;
+        int write_errors = 0;
+        ssize_t bytes_written_res = 0;
+
+        off_t in_fd_start_pos = -1;
+
+        if (offset)
+        {
+            in_fd_start_pos = lseek(in_fd, 0, SEEK_CUR);
+            if (in_fd_start_pos < 0)
+            {
+                PS_LOG_DEBUG("lseek error");
+                return(in_fd_start_pos);
+            }
+            
+
+            if (lseek(in_fd, *offset, SEEK_SET) < 0)
+            {
+                PS_LOG_DEBUG("lseek error");
+                return(-1);
+            }
+        }
+
+        for(;;)
+        {
+            size_t bytes_to_read = count ?
+                std::min(sizeof(buff)-16, count) : (sizeof(buff)-16);
+            
+            ssize_t bytes_read = read(in_fd, &(buff[0]), bytes_to_read);
+            if (bytes_read == 0) // End of file
+                break;
+    
+            if (bytes_read < 0)
+            {
+                if ((errno == EINTR) || (errno == EAGAIN))
+                {
+                    PS_LOG_DEBUG("read-interrupted error");
+                    
+                    read_errors++;
+                    if (read_errors < 256)
+                        continue;
+
+                    PS_LOG_DEBUG("read-interrupted repeatedly error");
+                    errno = EIO;
+                }
+
+                bytes_written_res = -1;
+                break;
+            }
+            read_errors = 0;
+
+            bool re_adjust_pos = false;
+            
+            if ((count) && (bytes_read > ((ssize_t)count)))
+            {
+                bytes_read = ((ssize_t)count);
+                re_adjust_pos = true;
+            }
+
+            if (offset)
+            {
+                *offset += bytes_read;
+                if (re_adjust_pos)
+                    lseek(in_fd, *offset, SEEK_SET);
+            }
+
+            auto p = &(buff[0]);
+            while (bytes_read > 0)
+            {
+                ssize_t bytes_written = write(out_fd, p, bytes_read);
+                if (bytes_written <= 0)
+                {
+                    if ((bytes_written == 0) || (errno == EINTR) ||
+                        (errno == EAGAIN))
+                    {
+                        PS_LOG_DEBUG("write-interrupted error");
+                        
+                        write_errors++;
+                        if (write_errors < 256)
+                            continue;
+
+                        PS_LOG_DEBUG("write-interrupted repeatedly error");
+                        errno = EIO;
+                    }
+
+                    bytes_written_res = -1;
+                    break;
+                }
+                write_errors = 0;
+                
+                bytes_read -= bytes_written;
+                p += bytes_written;
+                bytes_written_res += bytes_written;
+            }
+
+            if (count)
+                count -= bytes_read;
+        }
+
+        // if offset non null, set in_fd file pos to pos from start of this
+        // function
+        if ((offset) && (bytes_written_res >= 0) &&
+            (lseek(in_fd, in_fd_start_pos, SEEK_SET) < 0))
+        {
+            PS_LOG_DEBUG("lseek error");
+            bytes_written_res = -1;
+        }
+
+        return(bytes_written_res);
+    }
+    
+#endif // ifdef _IS_BSD
+
     ssize_t Transport::sendFile(Fd fd, int file, off_t offset, size_t len)
     {
         ssize_t bytesWritten = 0;
@@ -682,12 +815,23 @@ namespace Pistache::Tcp
 
         if (it_second_ssl_is_null)
         {
+#ifdef DEBUG
+            const char * sendfile_fn_name =
+#ifdef _IS_BSD
+                "my_sendfile";
+#else
+                "::sendfile";
+#endif
+#endif
+
 #endif /* PISTACHE_USE_SSL */
-            PS_LOG_DEBUG_ARGS("::sendfile fd %" PIST_QUOTE(PS_FD_PRNTFCD) " actual-fd %d, file fd, len %d",
+            PS_LOG_DEBUG_ARGS(
+                "%s fd %" PIST_QUOTE(PS_FD_PRNTFCD)
+                " actual-fd %d, file fd %d, len %d", sendfile_fn_name,
                               fd, GET_ACTUAL_FD(fd), file, len);
 
 #ifdef _USE_LIBEVENT_LIKE_APPLE
-            // !!!! Should we do configureMsgMoreStyle for SLL as well? And
+            // !!!! Should we do configureMsgMoreStyle for SSL as well? And
             // same question in sendRawBuffer
             configureMsgMoreStyle(fd, false /*msg_more_style*/);
 #endif
@@ -720,10 +864,16 @@ namespace Pistache::Tcp
             }
 
 #else
-        bytesWritten = ::sendfile(GET_ACTUAL_FD(fd), file, &offset, len);
+#ifdef _IS_BSD
+            bytesWritten = my_sendfile(GET_ACTUAL_FD(fd), file, &offset, len);
+#else
+            bytesWritten = ::sendfile(GET_ACTUAL_FD(fd), file, &offset, len);
+#endif
 #endif
 
-            PS_LOG_DEBUG_ARGS("::sendfile fd %" PIST_QUOTE(PS_FD_PRNTFCD) " , bytesWritten %d", fd, bytesWritten);
+            PS_LOG_DEBUG_ARGS(
+                "%s fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", bytesWritten %d",
+                sendfile_fn_name, fd, bytesWritten);
 
 #ifdef PISTACHE_USE_SSL
         }
