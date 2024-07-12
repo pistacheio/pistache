@@ -30,6 +30,7 @@
 
 // ---------------------------------------------------------------------------
 
+#include <pistache/emosandlibevdefs.h> // For _IS_BSD
 #include <pistache/pist_syslog.h>
 
 #ifdef DEBUG
@@ -194,7 +195,13 @@ private:
             {
                 for(unsigned int i=0; i<10; i++)
                     marker_chars[i] = the_marker;
+                #ifdef _IS_BSD
+                strlcpy(&(marker_chars[10]), "...", 4);
+                #elif defined(__linux__)
+                strncpy(&(marker_chars[10]), "...", 4);
+                #else
                 strcpy(&(marker_chars[10]), "...");
+                #endif
 
                 marker_chars += (10 + 3);
                 for(unsigned int i=0; i<10; i++)
@@ -269,7 +276,15 @@ public:
             va_end(ap);
 
             if (ln >= ((int) sizeof_buf))
+            {
+                #ifdef _IS_BSD
+                strlcat(buf_ptr, "...", 5);
+                #elif defined(__linux__)
+                strncat(buf_ptr, "...", 5);
+                #else
                 strcat(buf_ptr, "...");
+                #endif
+            }
 
             return(buf_ptr);
         }
