@@ -14,40 +14,7 @@
 
 /* ------------------------------------------------------------------------- */
 
-#ifdef PISTACHE_FORCE_LIBEVENT
-
-// Force libevent even for Linux
-#define _USE_LIBEVENT 1
-
-// _USE_LIBEVENT_LIKE_APPLE not only forces libevent, but even in Linux causes
-// the code to be as similar as possible to the way it is for __APPLE__
-// (e.g. wherever possible, even on Linux it uses solely OS calls that are
-// also available on macOS)
-//
-// Can comment out if not wanted
-#define _USE_LIBEVENT_LIKE_APPLE 1
-
-#endif // ifdef PISTACHE_FORCE_LIBEVENT
-
-#ifdef _USE_LIBEVENT_LIKE_APPLE
-  #ifndef _USE_LIBEVENT
-    #define _USE_LIBEVENT 1
-  #endif
-#endif
-
-#ifdef __APPLE__
-  #ifndef _USE_LIBEVENT
-    #define _USE_LIBEVENT 1
-  #endif
-  #ifndef _USE_LIBEVENT_LIKE_APPLE
-    #define _USE_LIBEVENT_LIKE_APPLE 1
-  #endif
-#elif defined(_IS_WINDOWS)
-  #define _USE_LIBEVENT 1
-  #ifndef _USE_LIBEVENT_LIKE_APPLE
-    #define _USE_LIBEVENT_LIKE_APPLE 1
-  #endif
-#endif
+#include <pistache/emosandlibevdefs.h>
 
 // Note: eventmeth wraps and abstracts capabilities of the libevent library,
 // providing interfaces to pistache that are similar to the epoll, eventfd and
@@ -207,8 +174,6 @@ namespace Pistache
 
 #include <pistache/common.h>
 #include <pistache/flags.h>
-
-#include <event2/thread.h>
 
 #include <mutex>
 #include <set>
@@ -432,4 +397,4 @@ namespace Pistache
 
 /* ------------------------------------------------------------------------- */
 
-#endif // ifdef _USE_LIBEVENT
+#endif // ifndef _EVENTMETH_H_
