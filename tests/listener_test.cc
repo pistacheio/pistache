@@ -21,6 +21,11 @@
 #include <pistache/endpoint.h>
 #include <pistache/http.h>
 #include <pistache/listener.h>
+
+#ifdef _IS_BSD
+#include <sys/wait.h> // for wait
+#endif
+
 class SocketWrapper
 {
 
