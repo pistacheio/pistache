@@ -14,7 +14,7 @@ project(
 		'b_lto=false',
 		'warning_level=3'
 	],
-	meson_version: '>=0.50.0'
+	meson_version: '>=0.53.2'
 )
 
 #macOS host_machine.system() is 'darwin'
