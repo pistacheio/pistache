@@ -14,8 +14,10 @@ project(
 		'b_lto=false',
 		'warning_level=3'
 	],
-	meson_version: '>=0.50.0'
+	meson_version: '>=0.53.2'
 )
+
+fs = import('fs')
 
 #macOS host_machine.system() is 'darwin'
 
@@ -137,7 +139,7 @@ endif
 
 version_array = []
 if meson.version().version_compare('>=0.57.0')
-	version_array = import('fs').read('version.txt').strip().split('.')
+	version_array = fs.read('version.txt').strip().split('.')
 else
 	# Ugly workaround for reading a file
 	version_array = run_command(
@@ -178,7 +180,7 @@ endif
 
 if not meson.is_subproject()
 	git = find_program('git', required: false)
-	if git.found()
+	if git.found() and fs.is_dir(meson.source_root()/'.git')
 		run_command(git, 'config', '--local', 'core.hooksPath', meson.source_root()/'.hooks', check: false)
 	endif
 endif
