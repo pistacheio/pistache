@@ -130,9 +130,15 @@ if get_option('PISTACHE_USE_SSL')
 	deps_libpistache += dependency('openssl')
 endif
 
-if host_machine.system() == 'darwin' or host_machine.system() == 'openbsd' or host_machine.system() == 'netbsd' or get_option('PISTACHE_FORCE_LIBEVENT')
+if host_machine.system() == 'darwin' or host_machine.system() == 'freebsd' or host_machine.system() == 'openbsd' or host_machine.system() == 'netbsd' or get_option('PISTACHE_FORCE_LIBEVENT')
 	deps_libpistache += dependency('libevent')
         deps_libpistache += dependency('libevent_pthreads')
+endif
+
+if host_machine.system() == 'freebsd'
+	# Does not appear to be necessary for OpenBSD
+        libexecinfo_dep = compiler.find_library('execinfo')
+        deps_libpistache += libexecinfo_dep
 endif
 
 version_array = []

@@ -48,6 +48,15 @@
     #include <sys/param.h>
     #if defined(BSD)
         // FreeBSD, NetBSD, OpenBSD, DragonFly BSD
+        //
+        // Note - FreeBSD may support epoll via FreeBSD's Linux emulation layer
+        // (see https://wiki.freebsd.org/Linuxulator). We can check for FreeBSD
+        // using "ifdef __FreeBSD__" and also check __FreeBSD_version (see
+        // https://docs.freebsd.org/en/books/porters-handbook/versions/).
+        // However, since FreeBSD's Linuxulator supports Linux binaries, a user
+        // might perhaps just as well run the Linux version of Pistache if
+        // using the Linuxulator. So we use libevent (which will likely use
+        // kqueue on FreeBSD) even in the FreeBSD case.
         #ifndef _USE_LIBEVENT
             #define _USE_LIBEVENT 1
         #endif
