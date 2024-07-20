@@ -1464,12 +1464,12 @@ namespace Pistache
                                 "EmEventCtr %p also being activated for write",
                                         this);
                         
-                                    flags |= EV_WRITE;
-                                }
-
-                                event_active(ev_, flags, 0 /* obsolete parm*/);
-                            }
+                            flags |= EV_WRITE;
                         }
+
+                        event_active(ev_, flags, 0 /* obsolete parm*/);
+                    }
+                }
                 
 
                 std::shared_ptr<std::condition_variable> tmp_cv_sptr(
