@@ -137,6 +137,7 @@ namespace Pistache::Http
             // isn't guaranteed to have a tm_zone field - it only does on
             // POSIX.1-2024 systems).
             time_t t = std::chrono::system_clock::to_time_t(date_);
+
             struct tm gmtm;
             PST_GMTIME_R(&t, &gmtm);
             os << std::put_time(&gmtm, "%a, %d %b %Y %T GMT");
