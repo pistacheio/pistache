@@ -202,12 +202,15 @@ namespace Pistache::Tcp
 
         if (options.hasFlag(Options::ReuseAddr))
         {
+            PS_LOG_DEBUG("Set SO_REUSEADDR");
+
             int one = 1;
             TRY(::setsockopt(actualFd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one)));
         }
 
         if (options.hasFlag(Options::ReusePort))
         {
+            PS_LOG_DEBUG("Set SO_REUSEPORT");
             int one = 1;
             TRY(::setsockopt(actualFd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(one)));
         }
