@@ -4239,7 +4239,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
 
     // To enable to_string of an Fd
     std::string to_string(const EmEvent * eme)
-                                {return(std::to_string((unsigned long) eme));};
+                                {return(std::to_string((unsigned long) eme));}
     
 /* ------------------------------------------------------------------------- */
     
