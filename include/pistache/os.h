@@ -97,7 +97,11 @@ namespace Pistache
 
             constexpr TagValue value() const { return value_; }
             uint64_t valueU64() const { return ((uint64_t)value_); }
-            constexpr uint64_t actualFdU64Value() const
+#ifndef _USE_LIBEVENT
+            constexpr
+#endif
+                uint64_t
+                actualFdU64Value() const
             {
 #ifdef _USE_LIBEVENT
                 if (value_ == NULL)
