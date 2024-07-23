@@ -550,13 +550,26 @@ namespace Pistache::Tcp
     {
         int tcp_no_push  = 0;
         socklen_t len    = sizeof(tcp_no_push);
-        int sock_opt_res = getsockopt(GET_ACTUAL_FD(fd), tcp_prot_num_,
-#if defined __APPLE__ || defined _IS_BSD
-                                      TCP_NOPUSH,
+        int sock_opt_res = -1;
+
+#ifdef __NetBSD__
+        { // encapsulate
+            int tcp_nodelay  = 0;
+            sock_opt_res = getsockopt(GET_ACTUAL_FD(fd), tcp_prot_num_,
+                                      TCP_NODELAY, &tcp_nodelay, &len);
+            if (sock_opt_res == 0)
+                tcp_no_push = !tcp_nodelay;
+        }
 #else
-                                      TCP_CORK,
+        sock_opt_res = getsockopt(GET_ACTUAL_FD(fd), tcp_prot_num_,
+#if defined __APPLE__ || defined _IS_BSD
+                                  TCP_NOPUSH,
+#else
+                                  TCP_CORK,
 #endif
-                                      &tcp_no_push, &len);
+                                  &tcp_no_push, &len);
+#endif // of ifdef __NetBSD__ ... else
+        
         if (sock_opt_res == 0)
         {
             if (((tcp_no_push == 0) && (msg_more_style)) || ((tcp_no_push != 0) && (!msg_more_style)))
@@ -564,14 +577,23 @@ namespace Pistache::Tcp
                 PS_LOG_DEBUG_ARGS("Setting MSG_MORE style to %s",
                                   (msg_more_style) ? "on" : "off");
 
+                int optval =
+#ifdef __NetBSD__
+                    msg_more_style ? 0 : 1;
+#else
+                    msg_more_style ? 1 : 0;
+#endif
+
                 tcp_no_push  = msg_more_style ? 1 : 0;
                 sock_opt_res = setsockopt(GET_ACTUAL_FD(fd), tcp_prot_num_,
-#if defined __APPLE__ || defined _IS_BSD
+#ifdef __NetBSD__
+                                          TCP_NODELAY,
+#elif defined __APPLE__ || defined _IS_BSD
                                           TCP_NOPUSH,
 #else
                                           TCP_CORK,
 #endif
-                                          &tcp_no_push, len);
+                                          &optval, len);
                 if (sock_opt_res < 0)
                     throw std::runtime_error("setsockopt failed");
             }
@@ -583,7 +605,6 @@ namespace Pistache::Tcp
             }
 #endif
         }
-#ifdef DEBUG
         else
         {
             PS_LOG_DEBUG_ARGS("getsockopt failed for fd %p, actual fd %d, "
@@ -591,7 +612,6 @@ namespace Pistache::Tcp
                               fd, GET_ACTUAL_FD(fd), errno, strerror(errno));
             throw std::runtime_error("getsockopt failed");
         }
-#endif
     }
 #endif // of ifdef _USE_LIBEVENT_LIKE_APPLE
 
