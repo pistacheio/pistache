@@ -142,7 +142,7 @@ if host_machine.system() == 'darwin' or host_machine.system() == 'freebsd' or ho
         endif
 endif
 
-if host_machine.system() == 'freebsd'
+if host_machine.system() == 'freebsd' or host_machine.system() == 'netbsd'
 	# Does not appear to be necessary for OpenBSD
         libexecinfo_dep = compiler.find_library('execinfo')
         deps_libpistache += libexecinfo_dep
