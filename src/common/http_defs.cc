@@ -131,7 +131,21 @@ namespace Pistache::Http
         case Type::RFC1123GMT: {
             // Requires GMT so we must use std::gmtime to convert to GMT
             time_t t = std::chrono::system_clock::to_time_t(date_);
-            os << std::put_time(std::gmtime(&t), "%a, %d %b %Y %T %Z");
+            
+            // July/2024. For a std::tm* that comes from std::gmtime,
+            // std::put_time %Z should always outout the std::tm locale namely
+            // "GMT" (or "UTC"). However, in NetBSD 10.0, std::put_time appears
+            // to output the locale of the machine it's running on ("PST") not
+            // the locale of the std::tm*. We workaround as per the following
+            // #defines. Since we know the locale of std::gmtime is GMT, the
+            // workaround is correct in general.
+            os << std::put_time(std::gmtime(&t), "%a, %d %b %Y %T "
+#ifdef __NetBSD__
+                                "GMT"
+#else                                
+                                "%Z"
+#endif
+                );
         }
         break;
         case Type::RFC850:
