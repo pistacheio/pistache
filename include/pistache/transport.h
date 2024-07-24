@@ -20,6 +20,8 @@
 #include <pistache/pist_quote.h>
 #include <pistache/async.h>
 #include <pistache/mailbox.h>
+#include <pistache/pist_quote.h>
+#include <pistache/pist_timelog.h>
 #include <pistache/reactor.h>
 #include <pistache/stream.h>
 
@@ -63,8 +65,11 @@ namespace Pistache::Tcp
 #endif
         )
         {
-            // Always enqueue reponses for sending. Giving preference to consumer
-            // context means chunked responses could be sent out of order.
+            // Always enqueue reponses for sending. Giving preference to
+            // consumer context means chunked responses could be sent out of
+            // order.
+            //
+            // Note: fd could be PS_FD_EMPTY
             return Async::Promise<PST_SSIZE_T>(
                 [=](Async::Deferred<PST_SSIZE_T> deferred) mutable {
                     BufferHolder holder { buffer };
@@ -113,6 +118,8 @@ namespace Pistache::Tcp
             return (epoll_fd);
         }
 #endif
+
+        void closeFd(Fd fd);
 
         // !!!! Make protected like removePeer
         void removeAllPeers(); // cleans up toWrite and does CLOSE_FD on each

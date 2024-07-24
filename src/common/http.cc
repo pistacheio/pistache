@@ -1190,7 +1190,7 @@ namespace Pistache::Http
 
         auto* transport = writer.transport_;
         auto peer       = writer.peer();
-        auto sockFd     = peer->fd();
+        auto sockFd     = peer->fd(); // may be PS_FD_EMPTY
 
         auto buffer = buf->buffer();
         return transport->asyncWrite(sockFd, buffer,
