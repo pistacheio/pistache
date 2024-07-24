@@ -127,11 +127,16 @@ namespace Pistache::Tcp
         {
             handlePeer(peer);
         }
+
+        Guard guard(toWriteLock);
         Fd fd = peer->fd();
+        if (fd == PS_FD_EMPTY)
         {
-            Guard guard(toWriteLock);
-            toWrite.emplace(fd, std::deque<WriteEntry> {});
+            PS_LOG_DEBUG("Empty Fd");
+            return;
         }
+
+        toWrite.emplace(fd, std::deque<WriteEntry> {});
     }
 
 #ifdef DEBUG
@@ -269,10 +274,21 @@ namespace Pistache::Tcp
 
     void Transport::handleIncoming(const std::shared_ptr<Peer>& peer)
     {
+        if (!peer)
+        {
+            PS_LOG_DEBUG("Null peer");
+            return;
+        }
+
         char buffer[Const::MaxBuffer] = { 0 };
 
         ssize_t totalBytes = 0;
-        int fdactual       = GET_ACTUAL_FD(peer->fd());
+        int fdactual       = peer->actualFd();
+        if (fdactual < 0)
+        {
+            PS_LOG_DEBUG_ARGS("Peer %p has no actual Fd", peer.get());
+            return;
+        }
 
         for (;;)
         {
@@ -341,7 +357,11 @@ namespace Pistache::Tcp
     void Transport::removePeer(const std::shared_ptr<Peer>& peer)
     {
         Fd fd = peer->fd();
-
+        if (fd == PS_FD_EMPTY)
+        {
+            PS_LOG_DEBUG("Empty Fd");
+            return;
+        }
         {
             // See comment in transport.h on why peers_ must be mutex-protected
             std::lock_guard<std::mutex> l_guard(peers_mutex_);
@@ -357,12 +377,6 @@ namespace Pistache::Tcp
             }
         }
 
-        {
-            // Clean up buffers
-            Guard guard(toWriteLock);
-            toWrite.erase(fd);
-        }
-
         // Don't rely on close deleting this FD from the epoll "interest" list.
         // This is needed in case the FD has been shared with another process.
         // Sharing should no longer happen by accident as SOCK_CLOEXEC is now set on
@@ -376,10 +390,24 @@ namespace Pistache::Tcp
         peer->closeFd();
     }
 
+    void Transport::closeFd(Fd fd)
+    {
+        if (fd == PS_FD_EMPTY)
+        {
+            PS_LOG_DEBUG("Trying to close empty Fd");
+            return;
+        }
+
+        Guard guard(toWriteLock);
+        toWrite.erase(fd); // Clean up write buffers
+
+        CLOSE_FD(fd);
+    }
+
     void Transport::removeAllPeers()
     {
         PS_TIMEDBG_START_THIS;
-        
+
         for (;;)
         {
             std::shared_ptr<Peer> peer;
@@ -399,7 +427,7 @@ namespace Pistache::Tcp
                 }
             }
 
-            removePeer(peer);// removePeer locks mutex, erases peer from peers_
+            removePeer(peer); // removePeer locks mutex, erases peer from peers_
         }
     }
 
@@ -554,9 +582,9 @@ namespace Pistache::Tcp
 
 #ifdef __NetBSD__
         { // encapsulate
-            int tcp_nodelay  = 0;
-            sock_opt_res = getsockopt(GET_ACTUAL_FD(fd), tcp_prot_num_,
-                                      TCP_NODELAY, &tcp_nodelay, &len);
+            int tcp_nodelay = 0;
+            sock_opt_res    = getsockopt(GET_ACTUAL_FD(fd), tcp_prot_num_,
+                                         TCP_NODELAY, &tcp_nodelay, &len);
             if (sock_opt_res == 0)
                 tcp_no_push = !tcp_nodelay;
         }
@@ -569,7 +597,7 @@ namespace Pistache::Tcp
 #endif
                                   &tcp_no_push, &len);
 #endif // of ifdef __NetBSD__ ... else
-        
+
         if (sock_opt_res == 0)
         {
             if (((tcp_no_push == 0) && (msg_more_style)) || ((tcp_no_push != 0) && (!msg_more_style)))
@@ -680,16 +708,16 @@ namespace Pistache::Tcp
     // https://www.man7.org/linux/man-pages/man2/sendfile.2.html
     // Copies FROM "in_fd" TO "out_fd"
     // Returns number of bytes written on success, -1 with errno set on error
-    // 
+    //
     // If offset is not NULL, then sendfile() does not modify the file offset
     // of in_fd; otherwise the file offset is adjusted to reflect the number of
     // bytes read from in_fd.
-    ssize_t my_sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
+    ssize_t my_sendfile(int out_fd, int in_fd, off_t* offset, size_t count)
     {
-        char buff[65536+16];
+        char buff[65536 + 16];
 
-        int read_errors = 0;
-        int write_errors = 0;
+        int read_errors           = 0;
+        int write_errors          = 0;
         ssize_t bytes_written_res = 0;
 
         off_t in_fd_start_pos = -1;
@@ -700,32 +728,30 @@ namespace Pistache::Tcp
             if (in_fd_start_pos < 0)
             {
                 PS_LOG_DEBUG("lseek error");
-                return(in_fd_start_pos);
+                return (in_fd_start_pos);
             }
-            
 
             if (lseek(in_fd, *offset, SEEK_SET) < 0)
             {
                 PS_LOG_DEBUG("lseek error");
-                return(-1);
+                return (-1);
             }
         }
 
-        for(;;)
+        for (;;)
         {
-            size_t bytes_to_read = count ?
-                std::min(sizeof(buff)-16, count) : (sizeof(buff)-16);
-            
+            size_t bytes_to_read = count ? std::min(sizeof(buff) - 16, count) : (sizeof(buff) - 16);
+
             ssize_t bytes_read = read(in_fd, &(buff[0]), bytes_to_read);
             if (bytes_read == 0) // End of file
                 break;
-    
+
             if (bytes_read < 0)
             {
                 if ((errno == EINTR) || (errno == EAGAIN))
                 {
                     PS_LOG_DEBUG("read-interrupted error");
-                    
+
                     read_errors++;
                     if (read_errors < 256)
                         continue;
@@ -740,10 +766,10 @@ namespace Pistache::Tcp
             read_errors = 0;
 
             bool re_adjust_pos = false;
-            
+
             if ((count) && (bytes_read > ((ssize_t)count)))
             {
-                bytes_read = ((ssize_t)count);
+                bytes_read    = ((ssize_t)count);
                 re_adjust_pos = true;
             }
 
@@ -760,11 +786,10 @@ namespace Pistache::Tcp
                 ssize_t bytes_written = write(out_fd, p, bytes_read);
                 if (bytes_written <= 0)
                 {
-                    if ((bytes_written == 0) || (errno == EINTR) ||
-                        (errno == EAGAIN))
+                    if ((bytes_written == 0) || (errno == EINTR) || (errno == EAGAIN))
                     {
                         PS_LOG_DEBUG("write-interrupted error");
-                        
+
                         write_errors++;
                         if (write_errors < 256)
                             continue;
@@ -777,7 +802,7 @@ namespace Pistache::Tcp
                     break;
                 }
                 write_errors = 0;
-                
+
                 bytes_read -= bytes_written;
                 p += bytes_written;
                 bytes_written_res += bytes_written;
@@ -789,16 +814,15 @@ namespace Pistache::Tcp
 
         // if offset non null, set in_fd file pos to pos from start of this
         // function
-        if ((offset) && (bytes_written_res >= 0) &&
-            (lseek(in_fd, in_fd_start_pos, SEEK_SET) < 0))
+        if ((offset) && (bytes_written_res >= 0) && (lseek(in_fd, in_fd_start_pos, SEEK_SET) < 0))
         {
             PS_LOG_DEBUG("lseek error");
             bytes_written_res = -1;
         }
 
-        return(bytes_written_res);
+        return (bytes_written_res);
     }
-    
+
 #endif // ifdef _IS_BSD
 
     ssize_t Transport::sendFile(Fd fd, int file, off_t offset, size_t len)
@@ -836,7 +860,7 @@ namespace Pistache::Tcp
         if (it_second_ssl_is_null)
         {
 #ifdef DEBUG
-            const char * sendfile_fn_name =
+            const char* sendfile_fn_name =
 #ifdef _IS_BSD
                 "my_sendfile";
 #else
@@ -846,9 +870,8 @@ namespace Pistache::Tcp
 
 #endif /* PISTACHE_USE_SSL */
             PS_LOG_DEBUG_ARGS(
-                "%s fd %" PIST_QUOTE(PS_FD_PRNTFCD)
-                " actual-fd %d, file fd %d, len %d", sendfile_fn_name,
-                              fd, GET_ACTUAL_FD(fd), file, len);
+                "%s fd %" PIST_QUOTE(PS_FD_PRNTFCD) " actual-fd %d, file fd %d, len %d", sendfile_fn_name,
+                fd, GET_ACTUAL_FD(fd), file, len);
 
 #ifdef _USE_LIBEVENT_LIKE_APPLE
             // !!!! Should we do configureMsgMoreStyle for SSL as well? And
@@ -885,9 +908,9 @@ namespace Pistache::Tcp
 
 #else
 #ifdef _IS_BSD
-            bytesWritten = my_sendfile(GET_ACTUAL_FD(fd), file, &offset, len);
+        bytesWritten = my_sendfile(GET_ACTUAL_FD(fd), file, &offset, len);
 #else
-            bytesWritten = ::sendfile(GET_ACTUAL_FD(fd), file, &offset, len);
+        bytesWritten = ::sendfile(GET_ACTUAL_FD(fd), file, &offset, len);
 #endif
 #endif
 
@@ -1002,6 +1025,8 @@ namespace Pistache::Tcp
                 break;
 
             auto fd = write->peerFd;
+            if (fd == PS_FD_EMPTY)
+                continue;
             if (!isPeerFd(fd))
                 continue;
 
@@ -1052,6 +1077,11 @@ namespace Pistache::Tcp
         PS_TIMEDBG_START_THIS;
 
         Fd fd = peer->fd();
+        if (fd == PS_FD_EMPTY)
+        {
+            PS_LOG_DEBUG("Empty Fd");
+            return;
+        }
 
         {
             // See comment in transport.h on why peers_ must be mutex-protected
