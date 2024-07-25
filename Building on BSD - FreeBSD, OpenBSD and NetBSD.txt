@@ -50,11 +50,8 @@ Do this for each Pistache dependency.
 There is no howard-hinnant-date package for FreeBSD, but it is
 straightforward to install manually:
   git clone https://github.com/HowardHinnant/date.git
-
   sudo mkdir /usr/local/include/date
-
   sudo cp -p date/include/date/date.h /usr/local/include/date/.
-
 
 
 OpenBSD
@@ -69,36 +66,22 @@ Do this for each Pistache dependency.
 There is no googletest package for OpenBSD, so please install it
 manually:
   git clone https://github.com/google/googletest.git
-
   cd googletest
-
   mkdir build
-
   cd build
-
   cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ..
-
   make
-
   sudo make install
-
 
 There is no rapidjson package on OpenBSD, so please install it
 manually:
   git clone https://github.com/Tencent/rapidjson/
-
   cd rapidjson/
-
   mkdir build
-
   cd build
-
   cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ..
-
   make
-
   sudo make install
-
 
 
 NetBSD
@@ -112,11 +95,8 @@ Do this for each Pistache dependency.
 There is no howard-hinnant-date package for FreeBSD, but it is
 straightforward to install manually:
   git clone https://github.com/HowardHinnant/date.git
-
   sudo mkdir /usr/local/include/date
-
   sudo cp -p date/include/date/date.h /usr/local/include/date/.
-
 
 Regarding NetBSD 9.4. NetBSD 9.4 uses gcc 7.5.0, while Pistache's
 build files require C++17 support, and Pistache's code uses
