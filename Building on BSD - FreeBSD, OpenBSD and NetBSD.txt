@@ -1,0 +1,138 @@
+# SPDX-FileCopyrightText: 2024 Duncan Greatwood
+#
+# SPDX-License-Identifier: Apache-2.0
+
+Making Pistache on *BSD
+=======================
+
+Pistache has been built and tested on FreeBSD, OpenBSD and NetBSD. As
+of July-2024, the versions used for testing were FreeBSD 13.3,
+OpenBSD 7.3 and NetBSD 10.0.
+
+You will need to configure BSD with a working compiler.
+
+We would recommend that you also have python installed, including pip
+(use "python -m ensure-pip" if needed, and add the directory where pip
+is installed to your path). Plus, we recommend installing sudo, if not
+preinstalled.
+
+You will need the following Pistache-dependencies installed:
+  git (and cofigure as needed)
+  llvm
+  meson
+  doxygen
+  googletest
+  openssl
+  rapidjson
+  howard-hinnant-date
+  libevent
+ See BSD-type-specific notes below regarding installing these
+ dependencies.
+
+Convenience shell scripts are provided to make the build. Once
+dependencies are installed, at the terminal, to build do:
+  bldscripts/mesbuild.sh
+To test:
+  bldscripts/mestest.sh
+To install:
+  bldscripts/mesinstall.sh
+
+
+FreeBSD
+=======
+
+Typically, required packages are installed using:
+  sudo pkg install <package-name>
+For instance:
+  sudo pkg install meson
+Do this for each Pistache dependency.
+
+There is no howard-hinnant-date package for FreeBSD, but it is
+straightforward to install manually:
+  git clone https://github.com/HowardHinnant/date.git
+
+  sudo mkdir /usr/local/include/date
+
+  sudo cp -p date/include/date/date.h /usr/local/include/date/.
+
+
+
+OpenBSD
+=======
+
+Typically, required packages are installed using:
+  sudo pkg_add <package-name>
+For instance:
+  sudo pkg_add meson
+Do this for each Pistache dependency.
+
+There is no googletest package for OpenBSD, so please install it
+manually:
+  git clone https://github.com/google/googletest.git
+
+  cd googletest
+
+  mkdir build
+
+  cd build
+
+  cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+
+  make
+
+  sudo make install
+
+
+There is no rapidjson package on OpenBSD, so please install it
+manually:
+  git clone https://github.com/Tencent/rapidjson/
+
+  cd rapidjson/
+
+  mkdir build
+
+  cd build
+
+  cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+
+  make
+
+  sudo make install
+
+
+
+NetBSD
+======
+Typically, required packages are installed using:
+  sudo pkg_in install <package-name>
+For instance:
+  sudo pkg_in install meson
+Do this for each Pistache dependency.
+
+There is no howard-hinnant-date package for FreeBSD, but it is
+straightforward to install manually:
+  git clone https://github.com/HowardHinnant/date.git
+
+  sudo mkdir /usr/local/include/date
+
+  sudo cp -p date/include/date/date.h /usr/local/include/date/.
+
+
+Regarding NetBSD 9.4. NetBSD 9.4 uses gcc 7.5.0, while Pistache's
+build files require C++17 support, and Pistache's code uses
+std::filesystem. However, gcc 7.5.0 does not work correctly with
+std::filesystem when C++17 is specified. Accordingly, we have tested
+with NetBSD 10.0, not 9.4. Nonetheless, it is possible that Pistache
+could be made to work on NetBSD 9.* with a different compiler or
+different compiler version.
+
+Regarding the test net_test.invalid_address, it may be slow to execute
+(about 2 minutes) in NetBSD. The cause is a long time out for the
+system function getaddrinfo; it doesn't appear to an issue in
+Pistache.
+
+
+How It Works
+============
+Pistache on BSD works very much as it does on macOS, i.e. by using the
+libevent library to provide the core event loop.
