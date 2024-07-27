@@ -859,6 +859,8 @@ namespace Pistache::Tcp
 
         if (it_second_ssl_is_null)
         {
+#endif /* PISTACHE_USE_SSL */
+
 #ifdef DEBUG
             const char* sendfile_fn_name =
 #ifdef _IS_BSD
@@ -867,8 +869,6 @@ namespace Pistache::Tcp
                 "::sendfile";
 #endif
 #endif
-
-#endif /* PISTACHE_USE_SSL */
             PS_LOG_DEBUG_ARGS(
                 "%s fd %" PIST_QUOTE(PS_FD_PRNTFCD) " actual-fd %d, file fd %d, len %d", sendfile_fn_name,
                 fd, GET_ACTUAL_FD(fd), file, len);
