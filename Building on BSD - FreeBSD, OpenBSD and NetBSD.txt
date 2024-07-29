@@ -17,14 +17,14 @@ is installed to your path). Plus, we recommend installing sudo, if not
 preinstalled.
 
 You will need the following Pistache-dependencies installed:
-  git (and cofigure as needed)
+  git (and configure as needed)
   llvm
   meson
   doxygen
-  googletest
+  googletest (*)
   openssl
-  rapidjson
-  howard-hinnant-date
+  rapidjson (*)
+  howard-hinnant-date (*)
   libevent
  See BSD-type-specific notes below regarding installing these
  dependencies.
@@ -45,43 +45,21 @@ Typically, required packages are installed using:
   sudo pkg install <package-name>
 For instance:
   sudo pkg install meson
-Do this for each Pistache dependency.
-
-There is no howard-hinnant-date package for FreeBSD, but it is
-straightforward to install manually:
-  git clone https://github.com/HowardHinnant/date.git
-  sudo mkdir /usr/local/include/date
-  sudo cp -p date/include/date/date.h /usr/local/include/date/.
+Do this for each Pistache dependency, excluding howard-hinnant-date.
 
 
 OpenBSD
 =======
 
 Typically, required packages are installed using:
-  sudo pkg_add <package-name>
+  doas pkg_add <package-name>
 For instance:
-  sudo pkg_add meson
-Do this for each Pistache dependency.
-
-There is no googletest package for OpenBSD, so please install it
-manually:
-  git clone https://github.com/google/googletest.git
-  cd googletest
-  mkdir build
-  cd build
-  cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ..
-  make
-  sudo make install
-
-There is no rapidjson package on OpenBSD, so please install it
-manually:
-  git clone https://github.com/Tencent/rapidjson/
-  cd rapidjson/
-  mkdir build
-  cd build
-  cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ..
-  make
-  sudo make install
+  doas pkg_add meson
+Do this for each Pistache dependency, excluding googletest and
+rapidjson.
+(Note: You may use sudo instead of doas if you have installed the sudo
+package and configured sudo; however, doas is often preferred on
+OpenBSD.)
 
 
 NetBSD
@@ -90,13 +68,7 @@ Typically, required packages are installed using:
   sudo pkg_in install <package-name>
 For instance:
   sudo pkg_in install meson
-Do this for each Pistache dependency.
-
-There is no howard-hinnant-date package for FreeBSD, but it is
-straightforward to install manually:
-  git clone https://github.com/HowardHinnant/date.git
-  sudo mkdir /usr/local/include/date
-  sudo cp -p date/include/date/date.h /usr/local/include/date/.
+Do this for each Pistache dependency, excluding howard-hinnant-date.
 
 Regarding NetBSD 9.4. NetBSD 9.4 uses gcc 7.5.0, while Pistache's
 build files require C++17 support, and Pistache's code uses
@@ -110,6 +82,43 @@ Regarding the test net_test.invalid_address, it may be slow to execute
 (about 2 minutes) in NetBSD. The cause is a long time out for the
 system function getaddrinfo; it doesn't appear to an issue in
 Pistache.
+
+
+(*) Googletest, Rapidjson and Howard-hinnant-date Packages
+==========================================================
+
+These packages are provided as Pistache subprojects, and so do not
+have to be installed seperately on the BSD system. Also, note that
+there is no howard-hinnant-date package supplied as part of the OS by
+FreeBSD 13 nor by NetBSD 10; and no googletest or rapidjson packages
+supplied by OpenBSD 7. Nonetheless, if you would like to install
+googletest, rapidjson and/or howard-hinnant-date manually on the BSD
+system, please proceed as follows:
+
+Googletest:
+  git clone https://github.com/google/googletest.git
+  cd googletest
+  mkdir build
+  cd build
+  cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+  make
+  sudo make install
+
+Rapidjson:
+  git clone https://github.com/Tencent/rapidjson/
+  cd rapidjson/
+  mkdir build
+  cd build
+  cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+  make
+  sudo make install
+
+Howard-hinnant-date:
+  git clone https://github.com/HowardHinnant/date.git
+  sudo mkdir /usr/local/include/date
+  sudo cp -p date/include/date/date.h /usr/local/include/date/.
+
+(Note: Typically, use doas instead of sudo on OpenBSD).
 
 
 How It Works

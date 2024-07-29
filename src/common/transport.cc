@@ -607,6 +607,12 @@ namespace Pistache::Tcp
 
                 int optval =
 #ifdef __NetBSD__
+                    // In NetBSD case we're getting/setting (or resetting) the
+                    // TCP_NODELAY socket option, which _stops_ data being held
+                    // prior to send, whereas in Linux, macOS, FreeBSD or
+                    // OpenBSD we're using TCP_CORK/TCP_NOPUSH which may
+                    // _cause_ data to be held prior to send. I.e. they're
+                    // opposites.
                     msg_more_style ? 0 : 1;
 #else
                     msg_more_style ? 1 : 0;
@@ -714,7 +720,10 @@ namespace Pistache::Tcp
     // bytes read from in_fd.
     ssize_t my_sendfile(int out_fd, int in_fd, off_t* offset, size_t count)
     {
-        char buff[65536 + 16];
+        char buff[65536 + 16]; // 64KB is an efficient size for read/write
+                               // blocks in most storage systems. The 16 bytes
+                               // is to reduce risk of buffer overflow in the
+                               // events of a bug.
 
         int read_errors           = 0;
         int write_errors          = 0;
@@ -823,6 +832,9 @@ namespace Pistache::Tcp
         return (bytes_written_res);
     }
 
+#define SENDFILE my_sendfile    
+#else
+#define SENDFILE ::sendfile
 #endif // ifdef _IS_BSD
 
     ssize_t Transport::sendFile(Fd fd, int file, off_t offset, size_t len)
@@ -860,12 +872,7 @@ namespace Pistache::Tcp
         if (it_second_ssl_is_null)
         {
 #ifdef DEBUG
-            const char* sendfile_fn_name =
-#ifdef _IS_BSD
-                "my_sendfile";
-#else
-                "::sendfile";
-#endif
+            const char* sendfile_fn_name = PIST_QUOTE(SENDFILE);
 #endif
 
 #endif /* PISTACHE_USE_SSL */
@@ -907,11 +914,7 @@ namespace Pistache::Tcp
             }
 
 #else
-#ifdef _IS_BSD
-        bytesWritten = my_sendfile(GET_ACTUAL_FD(fd), file, &offset, len);
-#else
-        bytesWritten = ::sendfile(GET_ACTUAL_FD(fd), file, &offset, len);
-#endif
+        bytesWritten = SENDFILE(GET_ACTUAL_FD(fd), file, &offset, len);
 #endif
 
             PS_LOG_DEBUG_ARGS(

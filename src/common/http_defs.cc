@@ -132,13 +132,19 @@ namespace Pistache::Http
             // Requires GMT so we must use std::gmtime to convert to GMT
             time_t t = std::chrono::system_clock::to_time_t(date_);
             
-            // July/2024. For a std::tm* that comes from std::gmtime,
-            // std::put_time %Z should always outout the std::tm locale namely
-            // "GMT" (or "UTC"). However, in NetBSD 10.0, std::put_time appears
-            // to output the locale of the machine it's running on ("PST") not
-            // the locale of the std::tm*. We workaround as per the following
-            // #defines. Since we know the locale of std::gmtime is GMT, the
-            // workaround is correct in general.
+            // July/2024. For a std::tm* that comes from std::gmtime, we have
+            // this: https://en.cppreference.com/w/cpp/chrono/c/gmtime
+            // which has an example very similar to our code here, and states:
+            //   BSD, GNU and musl C library support two additional members
+            //   [including tm_zone], which are standardized in POSIX.1 2024.
+            // Then std::put_time should rely on the tm_zone std::tm field.
+            // 
+            // However, in NetBSD 10.0 (or its version of gcc - nb3 20231008,
+            // 10.5.0), it appears that this tm_zone capability is not (fully)
+            // implemented, and so std::put_time instead outputs the local
+            // machine's timezone for "%Z". We work around that as
+            // follows. Since we know the locale of std::gmtime is always GMT,
+            // the workaround is correct in general.
             os << std::put_time(std::gmtime(&t), "%a, %d %b %Y %T "
 #ifdef __NetBSD__
                                 "GMT"

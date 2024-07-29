@@ -33,6 +33,20 @@
 #include <pistache/emosandlibevdefs.h> // For _IS_BSD
 #include <pistache/pist_syslog.h>
 
+#ifdef _IS_BSD
+#define PS_STRLCPY(__dest, __src, __n) strlcpy(__dest, __src, __n)
+#define PS_STRLCAT(__dest, __src, __size) strlcat(__dest, __src, __size)
+#elif defined(__linux__)
+#define PS_STRLCPY(__dest, __src, __n) strncpy(__dest, __src, __n)
+#define PS_STRLCAT(__dest, __src, __size) strncat(__dest, __src, __size)
+#elif defined(__APPLE__)
+#define PS_STRLCPY(__dest, __src, __n) strlcpy(__dest, __src, __n)
+#define PS_STRLCAT(__dest, __src, __size) strlcat(__dest, __src, __size)
+#else
+#define PS_STRLCPY(__dest, __src, __n) strcpy(__dest, __src)
+#define PS_STRLCAT(__dest, __src, __size) strcat(__dest, __src)
+#endif
+
 #ifdef DEBUG
 #define PS_TIMINGS_DBG 1
 #endif
@@ -153,13 +167,7 @@ private:
             {
                 for(unsigned int i=0; i<10; i++)
                     marker_chars[i] = the_marker;
-                #ifdef _IS_BSD
-                strlcpy(&(marker_chars[10]), "...", 4);
-                #elif defined(__linux__)
-                strncpy(&(marker_chars[10]), "...", 4);
-                #else
-                strcpy(&(marker_chars[10]), "...");
-                #endif
+                PS_STRLCPY(&(marker_chars[10]), "...", 4);
 
                 marker_chars += (10 + 3);
                 for(unsigned int i=0; i<10; i++)
@@ -234,15 +242,7 @@ public:
             va_end(ap);
 
             if (ln >= ((int) sizeof_buf))
-            {
-                #ifdef _IS_BSD
-                strlcat(buf_ptr, "...", 5);
-                #elif defined(__linux__)
-                strncat(buf_ptr, "...", 5);
-                #else
-                strcat(buf_ptr, "...");
-                #endif
-            }
+                PS_STRLCAT(buf_ptr, "...", 5);
 
             return(buf_ptr);
         }

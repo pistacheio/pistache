@@ -31,10 +31,16 @@ namespace filesystem = std::experimental::filesystem;
 //
 //   Return: if buffer non-null, number of proc_fdinfo written, -1 on fail
 
-#elif ! defined __linux__
-#include <unistd.h> // for sysconf and getdtablesize
-#endif 
+#elif !defined __linux__
+#include <unistd.h> // for sysconf
 
+// For getrlimit
+#include <sys/resource.h> // Required in FreeBSD+Open+NetBSD
+#include <sys/time.h> // recommended in FreeBSD, optional for Open+NetBSD
+#include <sys/types.h> // recommended in FreeBSD, optional for Open+NetBSD
+
+#include <string.h> // for memset
+#endif
 
 namespace Pistache
 {
@@ -83,28 +89,42 @@ namespace Pistache
                              directory_iterator {});
 #else // fallback case, e.g. *BSD
 #ifndef OPEN_MAX
-#define OPEN_MAX	4096
+#define OPEN_MAX 4096
 #endif
+        // Be careful with portability here. rl.rlim_cur, of type rlim_t, seems
+        // to be an int on FreeBSD, but a wider data type on OpenBSD ("long
+        // long" ?). It is signed on FreeBSD and NetBSD, but unsigned on
+        // OpenBSD.
         long maxfd;
 
-	maxfd = sysconf(_SC_OPEN_MAX);
+        maxfd = sysconf(_SC_OPEN_MAX);
         if (maxfd < 0) // or if sysconf not defined at all
-            maxfd = getdtablesize();
+        {
+            struct rlimit rl;
+            memset(&rl, 0, sizeof(rl));
+            int getrlimit_res = getrlimit(RLIMIT_NOFILE, &rl);
+            if (getrlimit_res == 0)
+            {
+                maxfd = (long)(rl.rlim_cur < 2 * OPEN_MAX) ? rl.rlim_cur : 2 * OPEN_MAX;
+                if (maxfd == 0)
+                    maxfd = -1;
+            }
+        }
 
-        if ((maxfd < 0) || (maxfd > 4*OPEN_MAX))
+        if ((maxfd < 0) || (maxfd > 4 * OPEN_MAX))
             maxfd = OPEN_MAX;
 
-        int j, n = 0;
-        for(j = 0;  j < maxfd;  j++)
+        long j, n = 0;
+        for (j = 0; j < maxfd; j++)
         {
-            int fd = dup(j);
+            int fd = dup((int)j);
             if (fd < 0)
                 continue;
             n++;
             close(fd);
         }
 
-        return(n);
+        return (n);
 #endif // of ifdef... elif... else...  __APPLE__
     }
 
