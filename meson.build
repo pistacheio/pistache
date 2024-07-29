@@ -21,8 +21,8 @@ fs = import('fs')
 
 #macOS host_machine.system() is 'darwin'
 
-if host_machine.system() != 'linux' and host_machine.system() != 'darwin' and host_machine.system() != 'freebsd' and host_machine.system() != 'openbsd' and host_machine.system() != 'netbsd'
-	error('Pistache currently only supports Linux, macOS and Free/Open/NetBSD. See https://github.com/pistacheio/pistache/issues/6#issuecomment-242398225 for more information')
+if host_machine.system() != 'linux' and host_machine.system() != 'darwin' and not host_machine.system().endswith('bsd')
+	error('Pistache currenly only supports Linux, macOS and Free/Open/NetBSD. See https://github.com/pistacheio/pistache/issues/6#issuecomment-242398225 for more information')
 endif
 
 compiler = meson.get_compiler('cpp')
@@ -132,7 +132,7 @@ if get_option('PISTACHE_USE_SSL')
 	deps_libpistache += dependency('openssl')
 endif
 
-if host_machine.system() == 'darwin' or host_machine.system() == 'freebsd' or host_machine.system() == 'openbsd' or host_machine.system() == 'netbsd' or get_option('PISTACHE_FORCE_LIBEVENT')
+if host_machine.system() == 'darwin' or host_machine.system().endswith('bsd') or get_option('PISTACHE_FORCE_LIBEVENT')
 	deps_libpistache += dependency('libevent')
         if (not (host_machine.system() == 'windows'))
                 # It looks like libevent assumes windows threads in
@@ -142,7 +142,8 @@ if host_machine.system() == 'darwin' or host_machine.system() == 'freebsd' or ho
         endif
 endif
 
-if host_machine.system() == 'freebsd' or host_machine.system() == 'openbsd' or host_machine.system() == 'netbsd'
+if host_machine.system().endswith('bsd')
+        # libexecinfo is included for the 'backtrace' function
         libexecinfo_dep = compiler.find_library('execinfo')
         deps_libpistache += libexecinfo_dep
 endif

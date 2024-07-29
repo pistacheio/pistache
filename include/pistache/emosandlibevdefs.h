@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+// EventMeth Operating System and libevent defines
+
 // Defines, or does not define, _USE_LIBEVENT, _USE_LIBEVENT_LIKE_APPLE and
 // _IS_BSD
 // 
