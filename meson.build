@@ -55,10 +55,6 @@ deps_libpistache = [
 	date_dep
 ]
 
-if get_option('PISTACHE_USE_RAPIDJSON')
-	deps_libpistache += dependency('RapidJSON', fallback: ['rapidjson', 'rapidjson_dep'])
-endif
-
 # Support Brotli compressed Content-Encoding responses...
 if get_option('PISTACHE_USE_CONTENT_ENCODING_BROTLI')
 
