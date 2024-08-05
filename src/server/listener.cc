@@ -202,12 +202,15 @@ namespace Pistache::Tcp
 
         if (options.hasFlag(Options::ReuseAddr))
         {
+            PS_LOG_DEBUG("Set SO_REUSEADDR");
+
             int one = 1;
             TRY(::setsockopt(actualFd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one)));
         }
 
         if (options.hasFlag(Options::ReusePort))
         {
+            PS_LOG_DEBUG("Set SO_REUSEPORT");
             int one = 1;
             TRY(::setsockopt(actualFd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(one)));
         }
@@ -875,8 +878,39 @@ namespace Pistache::Tcp
     {
         PS_TIMEDBG_START_THIS;
 
+        if (!peer)
+        {
+            PS_LOG_DEBUG("Null peer");
+            return;
+        }
+
+        // There is some risk that the Fd belonging to the peer could be closed
+        // in another thread before this dispatchPeer routine completes. In
+        // particular, that has been seen to happen occasionally in
+        // rest_server_test.response_status_code_test in OpenBSD.
+        //
+        // To guard against that, we simply need to check for an invalid Fd. We
+        // also check for an invalid actual-fd for safety's sake.
+
+        int actual_fd = -1;
+        try
+        {
+            actual_fd = peer->actualFd();
+        }
+        catch (...)
+        {
+            PS_LOG_INFO_ARGS("Failed to get actual fd from peer %p",
+                             peer.get());
+            return;
+        }
+        if (actual_fd == -1)
+        {
+            PS_LOG_INFO_ARGS("No actual fd for peer %p", peer.get());
+            return;
+        }
+
         auto handlers  = reactor_->handlers(transportKey);
-        auto idx       = (GET_ACTUAL_FD(peer->fd())) % handlers.size();
+        auto idx       = actual_fd % handlers.size();
         auto transport = std::static_pointer_cast<Transport>(handlers[idx]);
 
         transport->handleNewPeer(peer);

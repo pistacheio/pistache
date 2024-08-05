@@ -10,22 +10,5 @@
 # Use by:
 #   source bldscripts/messetdirvars.sh
 
-
-MY_ARCH_NM=x86
-if [ "$(uname -m)" == "arm64" ]; then
-    MY_ARCH_NM=a64
-else
-    if [ "$(uname -m)" == "aarch64" ]; then
-        MY_ARCH_NM=a64
-    fi
-fi
-    
-
-if [ "$(uname)" == "Darwin" ]; then
-    MESON_BUILD_DIR=build${MY_ARCH_NM}.mes.mac
-    MESON_PREFIX_DIR=/usr/local
-else
-    MESON_BUILD_DIR=build${MY_ARCH_NM}.mes
-    MESON_PREFIX_DIR=/usr/local
-fi
-
+PST_DIR_SUFFIX=
+source bldscripts/messetdirvarsfinish.sh

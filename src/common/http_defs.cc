@@ -129,11 +129,11 @@ namespace Pistache::Http
             date::to_stream(os, "%a, %d %b %Y %T %Z", date_);
             break;
         case Type::RFC1123GMT: {
-            // Requires GMT so we must use std::gmtime to convert to GMT.
-            // We cannot use "%Z" since that refers to the local time zone name,
+            // Requires GMT so we must use std::gmtime to convert to GMT.  We
+            // cannot use "%Z" since may refer to the local time zone name,
             // not the name associated with the std::tm object (since std::tm
             // isn't guaranteed to have a tm_zone field - it only does on
-            // POSIX.1-2024 systems).
+            // POSIX.1-2024 systems; this issue seen on NetBSD 10.0).
             time_t t = std::chrono::system_clock::to_time_t(date_);
             os << std::put_time(std::gmtime(&t), "%a, %d %b %Y %T GMT");
         }

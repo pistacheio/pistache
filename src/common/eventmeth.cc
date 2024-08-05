@@ -11,6 +11,8 @@
 
 #ifdef _USE_LIBEVENT
 
+#include <event2/thread.h>
+
 /* ------------------------------------------------------------------------- */
 /*
  * Event classes - EmEvent, EmEventCtr, EmEventFd and EmEventTmrFd
@@ -1462,12 +1464,12 @@ namespace Pistache
                                 "EmEventCtr %p also being activated for write",
                                         this);
                         
-                                    flags |= EV_WRITE;
-                                }
-
-                                event_active(ev_, flags, 0 /* obsolete parm*/);
-                            }
+                            flags |= EV_WRITE;
                         }
+
+                        event_active(ev_, flags, 0 /* obsolete parm*/);
+                    }
+                }
                 
 
                 std::shared_ptr<std::condition_variable> tmp_cv_sptr(
@@ -1888,7 +1890,10 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
             break;
 
         case CLOCK_MONOTONIC:
+        #ifndef _IS_BSD
+        // CLOCK_MONOTONIC_RAW not defined on FreeBSD13.3 and OpenBSD 7.3
         case CLOCK_MONOTONIC_RAW:
+        #endif
         #ifdef __APPLE__
         case CLOCK_MONOTONIC_RAW_APPROX:
         case CLOCK_UPTIME_RAW:
@@ -4234,7 +4239,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
 
     // To enable to_string of an Fd
     std::string to_string(const EmEvent * eme)
-                                {return(std::to_string((unsigned long) eme));};
+                                {return(std::to_string((unsigned long) eme));}
     
 /* ------------------------------------------------------------------------- */
     

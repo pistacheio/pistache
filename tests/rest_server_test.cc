@@ -110,10 +110,24 @@ TEST(rest_server_test, basic_test)
     {
         ASSERT_EQ(res->body, "ip6-localhost"); // count the passing test.
     }
-    else
+    else if (res->body == "localhost")
     {
         ASSERT_EQ(res->body, "localhost");
     }
+    else
+    {
+        const unsigned int my_max_hostname_len = 1024;
+        
+        // NetBSD showed this case, when hostname was not "localhost"
+        char name[my_max_hostname_len + 6];
+        name[0] = 0;
+
+        int ghn_res = gethostname(&(name[0]), my_max_hostname_len+2);
+        ASSERT_EQ(ghn_res, 0);
+
+        ASSERT_EQ(res->body, &(name[0]));
+    }
+    
     stats.shutdown();
 }
 
