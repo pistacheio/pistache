@@ -56,7 +56,8 @@ deps_libpistache = [
 ]
 
 if get_option('PISTACHE_USE_RAPIDJSON')
-	deps_libpistache += dependency('RapidJSON', fallback: ['rapidjson', 'rapidjson_dep'])
+	rapidjson_dep = dependency('RapidJSON', fallback: ['rapidjson', 'rapidjson_dep'])
+	deps_libpistache += rapidjson_dep
 endif
 
 # Support Brotli compressed Content-Encoding responses...

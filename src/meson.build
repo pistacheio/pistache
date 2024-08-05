@@ -76,7 +76,8 @@ libpistache = library(
 pistache_dep = declare_dependency(
 	compile_args: public_args,
 	include_directories: incl_pistache,
-	link_with: libpistache
+	link_with: libpistache,
+	dependencies: [ rapidjson_dep ]
 )
 
 if meson.version().version_compare('>=0.54.0')
