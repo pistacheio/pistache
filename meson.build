@@ -36,24 +36,41 @@ if get_option('b_coverage')
 	add_project_arguments(compiler.get_supported_arguments(['-fstack-protector-all', '--param=ssp-buffer-size=4']), language: 'cpp')
 endif
 
-# howardhinnant/date has several names - look for them, from the most
-# to the least explicit name.
-# In Meson 0.60.0, this can be replaced with a simpler:
-#
-#     dependency('howardhinnant-date', 'hinnant-date', 'date')
-#
-date_dep = dependency('howardhinnant-date', required: false)
-if not date_dep.found()
-	date_dep = dependency('hinnant-date', required: false)
-endif
-if not date_dep.found()
-	date_dep = dependency('date', fallback: ['hinnant-date', 'date_dep'])
-endif
-
 deps_libpistache = [
-	dependency('threads'),
-	date_dep
+	dependency('threads')
 ]
+
+#Check if compiler supports C++20 date
+
+cxx_chrono_date_check_code = '''
+#include <sstream>
+#include <chrono>
+int main() {
+    std::stringstream ss;
+	ss << std::format("%FT%T%z", std::chrono::system_clock::now());
+	std::chrono::system_clock::time_point tp;
+	ss >> std::chrono::parse("%FT%T%z", tp);
+	return 0;
+}
+'''
+has_working_cxx_chrono_date = compiler.links(cxx_chrono_date_check_code, name: 'C++20 std::chrono')
+
+if (not has_working_cxx_chrono_date)
+    # howardhinnant/date has several names - look for them, from the most
+    # to the least explicit name.
+    # In Meson 0.60.0, this can be replaced with a simpler:
+    #
+    #     dependency('howardhinnant-date', 'hinnant-date', 'date')
+    #
+    date_dep = dependency('howardhinnant-date', required: false)
+    if not date_dep.found()
+        date_dep = dependency('hinnant-date', required: false)
+    endif
+    if not date_dep.found()
+        date_dep = dependency('date', fallback: ['hinnant-date', 'date_dep'])
+    endif
+    deps_libpistache += date_dep
+endif
 
 if get_option('PISTACHE_USE_RAPIDJSON')
 	rapidjson_dep = dependency('RapidJSON', fallback: ['rapidjson', 'rapidjson_dep'])

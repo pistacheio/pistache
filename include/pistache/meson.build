@@ -11,6 +11,7 @@ install_headers(
 	'common.h',
 	'config.h',
 	'cookie.h',
+	'date_wrapper.h',
 	'description.h',
 	'endpoint.h',
         'eventmeth.h',
