@@ -62,7 +62,7 @@ namespace Pistache::Tcp
             // Always enqueue reponses for sending. Giving preference to consumer
             // context means chunked responses could be sent out of order.
             return Async::Promise<ssize_t>(
-                [fd, buffer, flags, this](Async::Deferred<ssize_t> deferred) mutable {
+                [&, this](Async::Deferred<ssize_t> deferred) mutable {
                     BufferHolder holder { buffer };
                     WriteEntry write(std::move(deferred), std::move(holder),
                                      fd, flags
