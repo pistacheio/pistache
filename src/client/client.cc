@@ -186,7 +186,7 @@ namespace Pistache::Http::Experimental
         void registerPoller(Polling::Epoll& poller) override;
         void unregisterPoller(Polling::Epoll& poller) override;
 
-        Async::Promise<void> asyncConnect(const std::shared_ptr<Connection>& connection,
+        Async::Promise<void> asyncConnect(std::shared_ptr<Connection> connection,
                                           const struct sockaddr* address,
                                           socklen_t addr_len);
 
@@ -349,7 +349,7 @@ namespace Pistache::Http::Experimental
     }
 
     Async::Promise<void>
-    Transport::asyncConnect(const std::shared_ptr<Connection>& connection,
+    Transport::asyncConnect(std::shared_ptr<Connection> connection,
                             const struct sockaddr* address, socklen_t addr_len)
     {
         PS_TIMEDBG_START_THIS;
