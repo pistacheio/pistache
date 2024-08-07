@@ -355,7 +355,7 @@ namespace Pistache::Http::Experimental
         PS_TIMEDBG_START_THIS;
 
         return Async::Promise<void>(
-            [=](Async::Resolver& resolve, Async::Rejection& reject) {
+            [connection, address, addr_len, this](Async::Resolver& resolve, Async::Rejection& reject) {
                 PS_TIMEDBG_START;
 
                 ConnectionEntry entry(std::move(resolve), std::move(reject), connection,
@@ -728,7 +728,7 @@ namespace Pistache::Http::Experimental
             transport_
                 ->asyncConnect(shared_from_this(), addr->ai_addr, addr->ai_addrlen)
                 .then(
-                    [=]() {
+                    [sfd, this]() {
                         socklen_t len = sizeof(saddr);
                         getsockname(sfd, reinterpret_cast<struct sockaddr*>(&saddr), &len);
                         connectionState_.store(Connected);
@@ -931,7 +931,7 @@ namespace Pistache::Http::Experimental
         PS_TIMEDBG_START_THIS;
 
         return Async::Promise<Response>(
-            [=](Async::Resolver& resolve, Async::Rejection& reject) {
+            [&, this](Async::Resolver& resolve, Async::Rejection& reject) {
                 PS_TIMEDBG_START;
                 performImpl(request, std::move(resolve), std::move(reject),
                             std::move(onDone));
@@ -944,7 +944,7 @@ namespace Pistache::Http::Experimental
         PS_TIMEDBG_START_THIS;
 
         return Async::Promise<Response>(
-            [=](Async::Resolver& resolve, Async::Rejection& reject) {
+            [&, this](Async::Resolver& resolve, Async::Rejection& reject) {
                 PS_TIMEDBG_START;
 
                 requestsQueue.push(RequestData(std::move(resolve), std::move(reject),

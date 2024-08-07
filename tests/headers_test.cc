@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <date/date.h>
+#include <pistache/date_wrapper.h>
 #include <pistache/http.h>
 
 #include <gmock/gmock-matchers.h>

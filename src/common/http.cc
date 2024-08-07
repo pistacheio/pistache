@@ -1055,11 +1055,11 @@ namespace Pistache::Http
             return transport_->asyncWrite(fd, buffer)
                 .then<std::function<Async::Promise<ssize_t>(ssize_t)>,
                       std::function<void(std::exception_ptr&)>>(
-                    [=](ssize_t data) {
+                    [](ssize_t data) {
                         return Async::Promise<ssize_t>::resolved(data);
                     },
 
-                    [=](std::exception_ptr& eptr) {
+                    [](std::exception_ptr& eptr) {
                         return Async::Promise<ssize_t>::rejected(eptr);
                     });
         }

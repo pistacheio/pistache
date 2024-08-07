@@ -559,7 +559,7 @@ namespace Pistache::Tcp
     void Listener::runThreaded()
     {
         shutdownFd.bind(poller);
-        acceptThread = std::thread([=]() { this->run(); });
+        acceptThread = std::thread([this]() { this->run(); });
     }
 
     void Listener::shutdown()
