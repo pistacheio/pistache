@@ -25,6 +25,10 @@
 #include <sys/sendfile.h>
 #endif
 
+#ifdef _IS_BSD
+#include <unistd.h> // for lseek
+#endif
+
 #ifndef _USE_LIBEVENT_LIKE_APPLE
 // Note: sys/timerfd.h is linux-only (and certainly POSIX only)
 #include <sys/timerfd.h>
@@ -123,11 +127,16 @@ namespace Pistache::Tcp
         {
             handlePeer(peer);
         }
+
+        Guard guard(toWriteLock);
         Fd fd = peer->fd();
+        if (fd == PS_FD_EMPTY)
         {
-            Guard guard(toWriteLock);
-            toWrite.emplace(fd, std::deque<WriteEntry> {});
+            PS_LOG_DEBUG("Empty Fd");
+            return;
         }
+
+        toWrite.emplace(fd, std::deque<WriteEntry> {});
     }
 
 #ifdef DEBUG
@@ -265,10 +274,21 @@ namespace Pistache::Tcp
 
     void Transport::handleIncoming(const std::shared_ptr<Peer>& peer)
     {
+        if (!peer)
+        {
+            PS_LOG_DEBUG("Null peer");
+            return;
+        }
+
         char buffer[Const::MaxBuffer] = { 0 };
 
         ssize_t totalBytes = 0;
-        int fdactual       = GET_ACTUAL_FD(peer->fd());
+        int fdactual       = peer->actualFd();
+        if (fdactual < 0)
+        {
+            PS_LOG_DEBUG_ARGS("Peer %p has no actual Fd", peer.get());
+            return;
+        }
 
         for (;;)
         {
@@ -337,7 +357,11 @@ namespace Pistache::Tcp
     void Transport::removePeer(const std::shared_ptr<Peer>& peer)
     {
         Fd fd = peer->fd();
-
+        if (fd == PS_FD_EMPTY)
+        {
+            PS_LOG_DEBUG("Empty Fd");
+            return;
+        }
         {
             // See comment in transport.h on why peers_ must be mutex-protected
             std::lock_guard<std::mutex> l_guard(peers_mutex_);
@@ -353,12 +377,6 @@ namespace Pistache::Tcp
             }
         }
 
-        {
-            // Clean up buffers
-            Guard guard(toWriteLock);
-            toWrite.erase(fd);
-        }
-
         // Don't rely on close deleting this FD from the epoll "interest" list.
         // This is needed in case the FD has been shared with another process.
         // Sharing should no longer happen by accident as SOCK_CLOEXEC is now set on
@@ -372,10 +390,24 @@ namespace Pistache::Tcp
         peer->closeFd();
     }
 
+    void Transport::closeFd(Fd fd)
+    {
+        if (fd == PS_FD_EMPTY)
+        {
+            PS_LOG_DEBUG("Trying to close empty Fd");
+            return;
+        }
+
+        Guard guard(toWriteLock);
+        toWrite.erase(fd); // Clean up write buffers
+
+        CLOSE_FD(fd);
+    }
+
     void Transport::removeAllPeers()
     {
         PS_TIMEDBG_START_THIS;
-        
+
         for (;;)
         {
             std::shared_ptr<Peer> peer;
@@ -395,7 +427,7 @@ namespace Pistache::Tcp
                 }
             }
 
-            removePeer(peer);// removePeer locks mutex, erases peer from peers_
+            removePeer(peer); // removePeer locks mutex, erases peer from peers_
         }
     }
 
@@ -546,13 +578,26 @@ namespace Pistache::Tcp
     {
         int tcp_no_push  = 0;
         socklen_t len    = sizeof(tcp_no_push);
-        int sock_opt_res = getsockopt(GET_ACTUAL_FD(fd), tcp_prot_num_,
-#ifdef __APPLE__
-                                      TCP_NOPUSH,
+        int sock_opt_res = -1;
+
+#ifdef __NetBSD__
+        { // encapsulate
+            int tcp_nodelay = 0;
+            sock_opt_res    = getsockopt(GET_ACTUAL_FD(fd), tcp_prot_num_,
+                                         TCP_NODELAY, &tcp_nodelay, &len);
+            if (sock_opt_res == 0)
+                tcp_no_push = !tcp_nodelay;
+        }
 #else
-                                      TCP_CORK,
+        sock_opt_res = getsockopt(GET_ACTUAL_FD(fd), tcp_prot_num_,
+#if defined __APPLE__ || defined _IS_BSD
+                                  TCP_NOPUSH,
+#else
+                                  TCP_CORK,
 #endif
-                                      &tcp_no_push, &len);
+                                  &tcp_no_push, &len);
+#endif // of ifdef __NetBSD__ ... else
+
         if (sock_opt_res == 0)
         {
             if (((tcp_no_push == 0) && (msg_more_style)) || ((tcp_no_push != 0) && (!msg_more_style)))
@@ -560,14 +605,29 @@ namespace Pistache::Tcp
                 PS_LOG_DEBUG_ARGS("Setting MSG_MORE style to %s",
                                   (msg_more_style) ? "on" : "off");
 
+                int optval =
+#ifdef __NetBSD__
+                    // In NetBSD case we're getting/setting (or resetting) the
+                    // TCP_NODELAY socket option, which _stops_ data being held
+                    // prior to send, whereas in Linux, macOS, FreeBSD or
+                    // OpenBSD we're using TCP_CORK/TCP_NOPUSH which may
+                    // _cause_ data to be held prior to send. I.e. they're
+                    // opposites.
+                    msg_more_style ? 0 : 1;
+#else
+                    msg_more_style ? 1 : 0;
+#endif
+
                 tcp_no_push  = msg_more_style ? 1 : 0;
                 sock_opt_res = setsockopt(GET_ACTUAL_FD(fd), tcp_prot_num_,
-#ifdef __APPLE__
+#ifdef __NetBSD__
+                                          TCP_NODELAY,
+#elif defined __APPLE__ || defined _IS_BSD
                                           TCP_NOPUSH,
 #else
                                           TCP_CORK,
 #endif
-                                          &tcp_no_push, len);
+                                          &optval, len);
                 if (sock_opt_res < 0)
                     throw std::runtime_error("setsockopt failed");
             }
@@ -579,14 +639,13 @@ namespace Pistache::Tcp
             }
 #endif
         }
-#ifdef DEBUG
         else
         {
-            PS_LOG_DEBUG_ARGS("getsockopt failed for fd %p, actual fd %d",
-                              fd, GET_ACTUAL_FD(fd));
+            PS_LOG_DEBUG_ARGS("getsockopt failed for fd %p, actual fd %d, "
+                              "errno %d, err %s",
+                              fd, GET_ACTUAL_FD(fd), errno, strerror(errno));
             throw std::runtime_error("getsockopt failed");
         }
-#endif
     }
 #endif // of ifdef _USE_LIBEVENT_LIKE_APPLE
 
@@ -648,6 +707,136 @@ namespace Pistache::Tcp
         return bytesWritten;
     }
 
+#ifdef _IS_BSD
+    // This is the sendfile function prototype found in Linux. However,
+    // sendfile does not exist in OpenBSD, so we make our own.
+    //
+    // https://www.man7.org/linux/man-pages/man2/sendfile.2.html
+    // Copies FROM "in_fd" TO "out_fd"
+    // Returns number of bytes written on success, -1 with errno set on error
+    //
+    // If offset is not NULL, then sendfile() does not modify the file offset
+    // of in_fd; otherwise the file offset is adjusted to reflect the number of
+    // bytes read from in_fd.
+    ssize_t my_sendfile(int out_fd, int in_fd, off_t* offset, size_t count)
+    {
+        char buff[65536 + 16]; // 64KB is an efficient size for read/write
+                               // blocks in most storage systems. The 16 bytes
+                               // is to reduce risk of buffer overflow in the
+                               // events of a bug.
+
+        int read_errors           = 0;
+        int write_errors          = 0;
+        ssize_t bytes_written_res = 0;
+
+        off_t in_fd_start_pos = -1;
+
+        if (offset)
+        {
+            in_fd_start_pos = lseek(in_fd, 0, SEEK_CUR);
+            if (in_fd_start_pos < 0)
+            {
+                PS_LOG_DEBUG("lseek error");
+                return (in_fd_start_pos);
+            }
+
+            if (lseek(in_fd, *offset, SEEK_SET) < 0)
+            {
+                PS_LOG_DEBUG("lseek error");
+                return (-1);
+            }
+        }
+
+        for (;;)
+        {
+            size_t bytes_to_read = count ? std::min(sizeof(buff) - 16, count) : (sizeof(buff) - 16);
+
+            ssize_t bytes_read = read(in_fd, &(buff[0]), bytes_to_read);
+            if (bytes_read == 0) // End of file
+                break;
+
+            if (bytes_read < 0)
+            {
+                if ((errno == EINTR) || (errno == EAGAIN))
+                {
+                    PS_LOG_DEBUG("read-interrupted error");
+
+                    read_errors++;
+                    if (read_errors < 256)
+                        continue;
+
+                    PS_LOG_DEBUG("read-interrupted repeatedly error");
+                    errno = EIO;
+                }
+
+                bytes_written_res = -1;
+                break;
+            }
+            read_errors = 0;
+
+            bool re_adjust_pos = false;
+
+            if ((count) && (bytes_read > ((ssize_t)count)))
+            {
+                bytes_read    = ((ssize_t)count);
+                re_adjust_pos = true;
+            }
+
+            if (offset)
+            {
+                *offset += bytes_read;
+                if (re_adjust_pos)
+                    lseek(in_fd, *offset, SEEK_SET);
+            }
+
+            auto p = &(buff[0]);
+            while (bytes_read > 0)
+            {
+                ssize_t bytes_written = write(out_fd, p, bytes_read);
+                if (bytes_written <= 0)
+                {
+                    if ((bytes_written == 0) || (errno == EINTR) || (errno == EAGAIN))
+                    {
+                        PS_LOG_DEBUG("write-interrupted error");
+
+                        write_errors++;
+                        if (write_errors < 256)
+                            continue;
+
+                        PS_LOG_DEBUG("write-interrupted repeatedly error");
+                        errno = EIO;
+                    }
+
+                    bytes_written_res = -1;
+                    break;
+                }
+                write_errors = 0;
+
+                bytes_read -= bytes_written;
+                p += bytes_written;
+                bytes_written_res += bytes_written;
+            }
+
+            if (count)
+                count -= bytes_read;
+        }
+
+        // if offset non null, set in_fd file pos to pos from start of this
+        // function
+        if ((offset) && (bytes_written_res >= 0) && (lseek(in_fd, in_fd_start_pos, SEEK_SET) < 0))
+        {
+            PS_LOG_DEBUG("lseek error");
+            bytes_written_res = -1;
+        }
+
+        return (bytes_written_res);
+    }
+
+#define SENDFILE my_sendfile    
+#else
+#define SENDFILE ::sendfile
+#endif // ifdef _IS_BSD
+
     ssize_t Transport::sendFile(Fd fd, int file, off_t offset, size_t len)
     {
         ssize_t bytesWritten = 0;
@@ -683,11 +872,16 @@ namespace Pistache::Tcp
         if (it_second_ssl_is_null)
         {
 #endif /* PISTACHE_USE_SSL */
-            PS_LOG_DEBUG_ARGS("::sendfile fd %" PIST_QUOTE(PS_FD_PRNTFCD) " actual-fd %d, file fd, len %d",
-                              fd, GET_ACTUAL_FD(fd), file, len);
+
+#ifdef DEBUG
+            const char* sendfile_fn_name = PIST_QUOTE(SENDFILE);
+#endif
+            PS_LOG_DEBUG_ARGS(
+                "%s fd %" PIST_QUOTE(PS_FD_PRNTFCD) " actual-fd %d, file fd %d, len %d", sendfile_fn_name,
+                fd, GET_ACTUAL_FD(fd), file, len);
 
 #ifdef _USE_LIBEVENT_LIKE_APPLE
-            // !!!! Should we do configureMsgMoreStyle for SLL as well? And
+            // !!!! Should we do configureMsgMoreStyle for SSL as well? And
             // same question in sendRawBuffer
             configureMsgMoreStyle(fd, false /*msg_more_style*/);
 #endif
@@ -720,10 +914,12 @@ namespace Pistache::Tcp
             }
 
 #else
-        bytesWritten = ::sendfile(GET_ACTUAL_FD(fd), file, &offset, len);
+        bytesWritten = SENDFILE(GET_ACTUAL_FD(fd), file, &offset, len);
 #endif
 
-            PS_LOG_DEBUG_ARGS("::sendfile fd %" PIST_QUOTE(PS_FD_PRNTFCD) " , bytesWritten %d", fd, bytesWritten);
+            PS_LOG_DEBUG_ARGS(
+                "%s fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", bytesWritten %d",
+                sendfile_fn_name, fd, bytesWritten);
 
 #ifdef PISTACHE_USE_SSL
         }
@@ -832,6 +1028,8 @@ namespace Pistache::Tcp
                 break;
 
             auto fd = write->peerFd;
+            if (fd == PS_FD_EMPTY)
+                continue;
             if (!isPeerFd(fd))
                 continue;
 
@@ -882,6 +1080,11 @@ namespace Pistache::Tcp
         PS_TIMEDBG_START_THIS;
 
         Fd fd = peer->fd();
+        if (fd == PS_FD_EMPTY)
+        {
+            PS_LOG_DEBUG("Empty Fd");
+            return;
+        }
 
         {
             // See comment in transport.h on why peers_ must be mutex-protected

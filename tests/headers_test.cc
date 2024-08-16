@@ -739,13 +739,23 @@ TEST(headers_test, access_control_allow_methods_test)
 
 TEST(headers_test, last_modified_test)
 {
-    const std::string ref = "Sun, 06 Nov 1994 08:49:37 GMT";
+    // const std::string ref = "Sun, 06 Nov 1994 08:49:37 GMT";
     using namespace std::chrono;
     Pistache::Http::FullDate::time_point expected_time_point = date::sys_days(date::year { 1994 } / 11 / 6) + hours(8) + minutes(49) + seconds(37);
     Pistache::Http::FullDate fd(expected_time_point);
     Pistache::Http::Header::LastModified l0(fd);
     std::ostringstream oss;
     l0.write(oss);
+
+    // As of July/2024, it seems that in macOS, Linux and OpenBSD this produces
+    // an OSS ending "GMT", while in FreeBSD it ends "UTC". Of course, they
+    // mean the same thing, and we allow either.
+    const bool oss_ends_utc =
+        ((oss.str().length() >= 3) &&
+         (oss.str().compare(oss.str().length() - 3, 3, "UTC") == 0));
+    const std::string ref(std::string("Sun, 06 Nov 1994 08:49:37 ") +
+                          (oss_ends_utc ? "UTC" : "GMT"));
+    
     ASSERT_EQ(ref, oss.str());
     Pistache::Http::Header::LastModified l1;
     l1.parse(ref);
