@@ -6,12 +6,16 @@
 
 #include <gtest/gtest.h>
 
-#include <arpa/inet.h>
+#include <pistache/winornix.h>
+#include PIST_QUOTE(PST_ARPA_INET_HDR)
+#include PIST_QUOTE(PST_NETDB_HDR)
+#include PIST_QUOTE(PST_NETINET_IN_HDR)
+
+
 #include <errno.h>
-#include <netdb.h>
-#include <netinet/in.h>
 #include <stdlib.h>
-#include <sys/socket.h>
+#include PIST_QUOTE(PST_SOCKET_HDR)
+
 #include <sys/types.h>
 #include <unistd.h>
 

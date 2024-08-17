@@ -13,7 +13,7 @@
 
 #include <mutex>
 
-
+#include <pistache/winornix.h>
 #include <pistache/pist_quote.h>
 
 #include <libgen.h> // for basename or basename_r
@@ -69,13 +69,12 @@
 
 #include <stdarg.h>
 #include <string.h> // for strcat
-#include <pthread.h> // for pthread_self (getting thread ID)
 
-#include <sys/param.h> // for MAXPATHLEN
-
+#include PIST_QUOTE(PST_THREAD_HDR) // for pthread_self (getting thread ID)
+#include PIST_QUOTE(PST_MAXPATH_HDR)
 
 #include <sys/types.h> // for getpid()
-#include <unistd.h>
+#include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h e.g. close
 
 #include "pistache/pist_syslog.h"
 #include <memory> // for std::shared_ptr
@@ -562,7 +561,7 @@ extern "C" void PSLogFn(int _pri, bool _andPrintf,
     // not preserve errno").
     int tmp_errno = errno;
 
-    char bname_buff[MAXPATHLEN+6];
+    char bname_buff[PST_MAXPATHLEN+6];
     if ((f) && (f[0]))
     {
         char * new_f = my_basename_r(f, &(bname_buff[0]));

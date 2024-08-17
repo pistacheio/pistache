@@ -10,6 +10,8 @@
 #ifndef _EVENTMETH_H_
 #define _EVENTMETH_H_
 
+#include <pistache/winornix.h>
+
 /* ------------------------------------------------------------------------- */
 
 #ifdef PISTACHE_FORCE_LIBEVENT
@@ -40,8 +42,11 @@
   #ifndef _USE_LIBEVENT_LIKE_APPLE
     #define _USE_LIBEVENT_LIKE_APPLE 1
   #endif
-#elif defined(_WIN32) // Defined for both 32-bit and 64-bit environments
+#elif defined(_IS_WINDOWS)
   #define _USE_LIBEVENT 1
+  #ifndef _USE_LIBEVENT_LIKE_APPLE
+    #define _USE_LIBEVENT_LIKE_APPLE 1
+  #endif
 #endif
 
 // Note: eventmeth wraps and abstracts capabilities of the libevent library,
@@ -53,8 +58,8 @@
 // A type wide enough to hold the output of "socket()" or "accept()".  On
 // Windows, this is an intptr_t; elsewhere, it is an int.
 // Note: Mapped directly from evutil_socket_t in libevent's event2/util.h
-#ifdef _WIN32
-#define em_socket_t SOCKET
+#ifdef _IS_WINDOWS
+#define em_socket_t intptr_t
 #else
 #define em_socket_t int
 #endif
@@ -210,7 +215,7 @@ namespace Pistache
 #include <map>
 #include <condition_variable>
 
-#include <fcntl.h> // For FD_CLOEXEC and O_NONBLOCK
+#include PIST_QUOTE(PST_FCNTL_HDR) // For FD_CLOEXEC and O_NONBLOCK
 
 /* ------------------------------------------------------------------------- */
 
@@ -273,7 +278,7 @@ namespace Pistache
 
         // If emee is NULL here, it will need to be supplied when settime is
         // called
-        Fd em_timer_new(clockid_t clock_id,
+        Fd em_timer_new(PST_CLOCK_ID_T clock_id,
                                // For setfd and setfl arg:
                                //   F_SETFDL_NOTHING - change nothing
                                //   Zero or pos number that is not
@@ -313,11 +318,11 @@ namespace Pistache
         int getActualFd(const EmEvent * em_event);
 
         // efd should be a pointer to EmEventFd - does dynamic cast
-        ssize_t writeEfd(EmEvent * efd, const uint64_t val);
-        ssize_t readEfd(EmEvent * efd, uint64_t * val_out_ptr);
+        PST_SSIZE_T writeEfd(EmEvent * efd, const uint64_t val);
+        PST_SSIZE_T readEfd(EmEvent * efd, uint64_t * val_out_ptr);
 
-        ssize_t read(EmEvent * fd, void * buf, size_t count);
-        ssize_t write(EmEvent * fd, const void * buf, size_t count);
+        PST_SSIZE_T read(EmEvent * fd, void * buf, size_t count);
+        PST_SSIZE_T write(EmEvent * fd, const void * buf, size_t count);
 
         EmEvent * getAsEmEvent(EmEventFd * efd);
 

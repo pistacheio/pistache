@@ -9,6 +9,8 @@
 
 */
 
+#include <pistache/winornix.h>
+
 #include <pistache/common.h>
 #include <pistache/errors.h>
 #include <pistache/listener.h>
@@ -17,27 +19,25 @@
 #include <pistache/ssl_wrappers.h>
 #include <pistache/transport.h>
 
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <netinet/in.h>
+#include PIST_QUOTE(PST_ARPA_INET_HDR)
+#include PIST_QUOTE(PST_NETDB_HDR)
+#include PIST_QUOTE(PST_NETINET_IN_HDR)
+
 #include <netinet/tcp.h>
 
 #include <pistache/eventmeth.h>
 
 #ifndef _USE_LIBEVENT_LIKE_APPLE
-#include <unistd.h>
+#include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h e.g. close
 #endif
-#include <fcntl.h>
+
+#include PIST_QUOTE(PST_FCNTL_HDR)
 
 #ifndef _USE_LIBEVENT
 #include <sys/epoll.h>
 #endif
 
-#ifdef _USE_LIBEVENT_LIKE_APPLE
-#include <netdb.h> // for getprotobyname
-#endif
-
-#include <sys/socket.h>
+#include PIST_QUOTE(PST_SOCKET_HDR)
 
 #ifndef _USE_LIBEVENT_LIKE_APPLE
 // Note: sys/timerfd.h is linux-only (and certainly POSIX only)
@@ -190,9 +190,9 @@ namespace Pistache::Tcp
         if (options.hasFlag(Options::CloseOnExec))
         {
             int f_setfd_flags = fcntl(actualFd, F_GETFD, (int)0);
-            if (!(f_setfd_flags & FD_CLOEXEC))
+            if (!(f_setfd_flags & PST_FD_CLOEXEC))
             {
-                f_setfd_flags |= FD_CLOEXEC;
+                f_setfd_flags |= PST_FD_CLOEXEC;
                 int fcntl_res = fcntl(actualFd, F_SETFD, f_setfd_flags);
                 if (fcntl_res == -1)
                     throw std::runtime_error("fcntl set failed");
@@ -458,7 +458,9 @@ namespace Pistache::Tcp
         //
         if (!found)
         {
-            throw std::runtime_error(strerror(errno));
+            char se_err[256+16];
+            PST_STRERROR_R(errno, &se_err[0], 256);
+            throw std::runtime_error(&se_err[0]);
         }
     }
 
@@ -675,10 +677,10 @@ namespace Pistache::Tcp
 
                 struct timeval timeout;
 
-                timeout.tv_sec = std::chrono::duration_cast<std::chrono::seconds>(sslHandshakeTimeout_).count();
+                timeout.tv_sec = (PST_TIMEVAL_S_T) std::chrono::duration_cast<std::chrono::seconds>(sslHandshakeTimeout_).count();
 
                 const auto residual_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(sslHandshakeTimeout_) - std::chrono::duration_cast<std::chrono::seconds>(sslHandshakeTimeout_);
-                timeout.tv_usec                  = (suseconds_t)(residual_microseconds.count());
+                timeout.tv_usec                  = (PST_SUSECONDS_T)(residual_microseconds.count());
 
                 TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)));
                 TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)));
@@ -829,10 +831,13 @@ namespace Pistache::Tcp
 
         if (client_actual_fd < 0)
         {
+            char se_err[256+16];
+            PST_STRERROR_R(errno, &se_err[0], 256);
+            
             if (errno == EBADF || errno == ENOTSOCK)
-                throw ServerError(strerror(errno));
+                throw ServerError(&se_err[0]);
             else
-                throw SocketError(strerror(errno));
+                throw SocketError(&se_err[0]);
         }
 
         LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(client_actual_fd);
@@ -844,8 +849,11 @@ namespace Pistache::Tcp
         int fcntl_res = fcntl(client_actual_fd, F_SETFD, FD_CLOEXEC);
         if (fcntl_res == -1)
         {
+            char se_err[256+16];
+            PST_STRERROR_R(errno, &se_err[0], 256);
+            
             PS_LOG_DEBUG_ARGS("fcntl F_SETFD fail for fd %d, errno %d %s",
-                              client_actual_fd, errno, strerror(errno));
+                              client_actual_fd, errno, &se_err[0]);
 
             ::close(client_actual_fd);
             PS_LOG_DEBUG_ARGS("::close actual_fd %d", client_actual_fd);
@@ -856,8 +864,11 @@ namespace Pistache::Tcp
         fcntl_res = fcntl(client_actual_fd, F_SETFL, 0 /*clear everything*/);
         if (fcntl_res == -1)
         {
+            char se_err[256+16];
+            PST_STRERROR_R(errno, &se_err[0], 256);
+            
             PS_LOG_DEBUG_ARGS("fcntl F_SETFL fail for fd %d, errno %d %s",
-                              client_actual_fd, errno, strerror(errno));
+                              client_actual_fd, errno, &se_err[0]);
 
             ::close(client_actual_fd);
             PS_LOG_DEBUG_ARGS("::close actual_fd %d", client_actual_fd);

@@ -35,7 +35,8 @@ namespace
 
             fd_ = Polling::Epoll::em_event_new(actual_fd,
                                                EVM_WRITE | EVM_PERSIST,
-                                               FD_CLOEXEC, F_SETFDL_NOTHING);
+                                               PST_FD_CLOEXEC,
+                                               F_SETFDL_NOTHING);
             if (fd_ == PS_FD_EMPTY)
                 throw std::runtime_error("Epoll::em_event_new failed");
 

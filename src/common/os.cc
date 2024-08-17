@@ -9,21 +9,24 @@
 
 */
 
+#include <pistache/winornix.h>
+#include <pistache/pist_quote.h>
+
 #include <pistache/common.h>
 #include <pistache/config.h>
 #include <pistache/os.h>
 
-#include <fcntl.h>
+#include PIST_QUOTE(PST_FCNTL_HDR)
 
 #include <pistache/pist_timelog.h>
 
 #include <pistache/eventmeth.h>
-#include <pistache/pist_quote.h>
+
 #ifndef _USE_LIBEVENT
 #include <sys/epoll.h>
 #endif
 
-#include <unistd.h>
+#include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h e.g. close
 
 #include <algorithm>
 #include <fstream>
@@ -32,21 +35,24 @@
 
 namespace Pistache
 {
-    uint hardware_concurrency() { return std::thread::hardware_concurrency(); }
+    unsigned int hardware_concurrency() { return std::thread::hardware_concurrency(); }
 
     bool make_non_blocking(int fd)
     {
         PS_TIMEDBG_START;
 
-        int flags = fcntl(fd, F_GETFL, 0);
+        int flags = PST_FCNTL(fd, PST_F_GETFL, 0);
         if (flags == -1)
         {
             PS_LOG_WARNING_ARGS("make_non_blocking fail for fd %" PIST_QUOTE(PS_FD_PRNTFCD), fd);
             return false;
         }
 
-        flags |= O_NONBLOCK;
-        int ret = fcntl(fd, F_SETFL, flags);
+        if (flags == PST_FCNTL_GETFL_UNKNOWN)
+            flags = PST_O_NONBLOCK;
+        else
+            flags |= PST_O_NONBLOCK;
+        int ret = PST_FCNTL(fd, PST_F_SETFL, flags);
 #ifdef DEBUG
         if (ret == -1)
         {
@@ -484,7 +490,7 @@ namespace Pistache
                                                       f_setfd_flags, f_setfl_flags));
         }
 
-        Fd Epoll::em_timer_new(clockid_t clock_id,
+        Fd Epoll::em_timer_new(PST_CLOCK_ID_T clock_id,
                                // For setfd and setfl arg:
                                //   F_SETFDL_NOTHING - change nothing
                                //   Zero or pos number that is not
@@ -574,7 +580,7 @@ namespace Pistache
     {
 #ifdef _USE_LIBEVENT
         FdEventFd emefd = TRY_NULL_RET(Polling::Epoll::em_eventfd_new(
-            0, FD_CLOEXEC, O_NONBLOCK));
+            0, PST_FD_CLOEXEC, PST_O_NONBLOCK));
 
         event_fd = EventMethFns::getAsEmEvent(emefd);
 #else

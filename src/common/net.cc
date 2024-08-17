@@ -9,6 +9,8 @@
  * Mathieu Stefani, 12 August 2015
  */
 
+#include <pistache/winornix.h>
+
 #include <pistache/common.h>
 #include <pistache/config.h>
 #include <pistache/net.h>
@@ -22,10 +24,13 @@
 #include <cstdlib>
 #include <cstring>
 
-#include <arpa/inet.h>
-#include <ifaddrs.h>
-#include <netdb.h>
-#include <sys/socket.h>
+#include PIST_QUOTE(PST_ARPA_INET_HDR)
+
+#include PIST_QUOTE(PST_IFADDRS_HDR)
+
+#include PIST_QUOTE(PST_NETDB_HDR)
+#include PIST_QUOTE(PST_SOCKET_HDR)
+
 #include <sys/types.h>
 
 namespace Pistache
@@ -58,7 +63,6 @@ namespace Pistache
     bool Port::isUsed() const
     {
         throw std::runtime_error("Unimplemented");
-        return false;
     }
 
     std::string Port::toString() const { return std::to_string(port); }
@@ -70,9 +74,14 @@ namespace Pistache
 
     IP::IP(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
     {
-        addr_.ss_family      = AF_INET;
-        const uint8_t buff[] = { a, b, c, d };
-        in_addr_t* in_addr   = &reinterpret_cast<struct sockaddr_in*>(&addr_)->sin_addr.s_addr;
+        addr_.ss_family          = AF_INET;
+        const uint8_t buff[]     = { a, b, c, d };
+        // Note that in Windows in_addr is a union - effectively a "u_long"
+        // that can be accessed as 4 u_char, 2 u_short, or 1 u_long.
+        // Meanwhile, s_addr on the right-hand side is type ULONG. So both
+        // sides are effectively "ulong *" and the cast is valid
+        PST_IN_ADDR_T* in_addr   = (PST_IN_ADDR_T*)
+            (&reinterpret_cast<struct sockaddr_in*>(&addr_)->sin_addr.s_addr);
 
         static_assert(sizeof(buff) == sizeof(*in_addr));
         memcpy(in_addr, buff, sizeof(*in_addr));
@@ -222,13 +231,19 @@ namespace Pistache
         return std::string(buff);
     }
 
-    void IP::toNetwork(in_addr_t* out) const
+    void IP::toNetwork(PST_IN_ADDR_T* out) const
     {
         if (addr_.ss_family != AF_INET)
         {
             throw std::invalid_argument("Inapplicable or invalid address family");
         }
-        *out = reinterpret_cast<const struct sockaddr_in*>(&addr_)->sin_addr.s_addr;
+        // Note that in Windows in_addr is a union - effectively a "u_long"
+        // that can be accessed as 4 u_char, 2 u_short, or 1 u_long.
+        // Meanwhile, s_addr on the right-hand side is type ULONG. So both
+        // sides are effectively "ulong *" and the cast is valid
+        PST_IN_ADDR_T* out_ptr   = (PST_IN_ADDR_T*)
+            (&reinterpret_cast<const struct sockaddr_in*>(&addr_)->sin_addr.s_addr);
+        *out = *out_ptr;
     }
 
     void IP::toNetwork(struct in6_addr* out) const
@@ -242,12 +257,12 @@ namespace Pistache
 
     bool IP::supported()
     {
-        struct ifaddrs* ifaddr = nullptr;
-        struct ifaddrs* ifa    = nullptr;
+        struct PST_IFADDRS* ifaddr = nullptr;
+        struct PST_IFADDRS* ifa    = nullptr;
         int addr_family, n;
         bool supportsIpv6 = false;
 
-        if (getifaddrs(&ifaddr) == -1)
+        if (PST_GETIFADDRS(&ifaddr) == -1)
         {
             throw std::runtime_error("Call to getifaddrs() failed");
         }
@@ -267,7 +282,7 @@ namespace Pistache
             }
         }
 
-        freeifaddrs(ifaddr);
+        PST_FREEIFADDRS(ifaddr);
         return supportsIpv6;
     }
 
@@ -326,9 +341,9 @@ namespace Pistache
             }
 
             // Check if port_ is a valid number
-            char* tmp;
-            std::strtol(port_.c_str(), &tmp, 10);
-            hasNumericPort_ = *tmp == '\0';
+            char* tmp2;
+            std::strtol(port_.c_str(), &tmp2, 10);
+            hasNumericPort_ = *tmp2 == '\0';
         }
     }
 
@@ -530,7 +545,10 @@ namespace Pistache
 
     Error Error::system(const char* message)
     {
-        const char* err = strerror(errno);
+        char se_err[256+16];
+        PST_STRERROR_R(errno, &se_err[0], 256);
+        
+        const char* err = &se_err[0];
 
         std::string str(message);
         str += ": ";

@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <pistache/winornix.h>
+
 #include <pistache/common.h>
 #include <pistache/config.h>
 #include <pistache/eventmeth.h>
@@ -23,13 +25,11 @@
 #include <mutex>
 #include <vector>
 
-#include <sched.h>
-
 namespace Pistache
 {
     // Note: Fd is defined in eventmeth.h
 
-    uint hardware_concurrency();
+    unsigned int hardware_concurrency();
     bool make_non_blocking(int fd);
 
     class CpuSet
@@ -167,7 +167,7 @@ namespace Pistache
                 int f_setfl_flags // e.g. O_NONBLOCK
             );
 
-            Fd em_timer_new(clockid_t clock_id,
+            Fd em_timer_new(PST_CLOCK_ID_T clock_id,
                             // For setfd and setfl arg:
                             //   F_SETFDL_NOTHING - change nothing
                             //   Zero or pos number that is not

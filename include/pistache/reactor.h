@@ -16,13 +16,15 @@
 
 #pragma once
 
+#include <pistache/winornix.h>
+
 #include <pistache/flags.h>
 #include <pistache/net.h>
 #include <pistache/os.h>
 #include <pistache/prototype.h>
 
-#include <sys/resource.h>
-#include <sys/time.h>
+// #include <sys/resource.h>
+// #include <sys/time.h>
 
 #include <memory>
 #include <thread>

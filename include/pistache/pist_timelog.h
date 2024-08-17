@@ -16,13 +16,13 @@
 #ifndef INCLUDED_PS_TIMELOG_H
 #define INCLUDED_PS_TIMELOG_H
 
-#include <time.h> // for clock_gettime and asctime
+#include <pistache/winornix.h>
+
+#include PIST_QUOTE(PST_CLOCK_GETTIME_HDR) // for clock_gettime and asctime
 #include <stdio.h> // snprintf
 #include <stdarg.h> // for vsnprintf
 
 #include <string.h> // strlen
-
-#include <cxxabi.h> // for abi::__cxa_demangle
 
 #include <map>
 #include <mutex>
@@ -35,6 +35,22 @@
 #ifdef DEBUG
 #define PS_TIMINGS_DBG 1
 #endif
+
+#ifdef PS_TIMINGS_DBG
+// For C++ name demangling:
+#ifdef _IS_WINDOWS
+// Do we need "#include <windows.h>" as well? !!!!!!!!
+#include "dbghelp.h"
+#pragma comment(lib, "dbghelp.lib")
+extern char *__unDName(char*, const char*, int, void*, void*, int);
+#else
+#include <cxxabi.h> // for abi::__cxa_demangle
+#endif
+
+#include PIST_QUOTE(PST_THREAD_HDR) //e.g. pthread.h
+#endif
+
+// ---------------------------------------------------------------------------
 
 // Pointy delimiters (<...>) are default, others can be used
 // Delimiters are repeated to indicate nesting (eg <<...>>)
@@ -63,12 +79,40 @@
     __PS_TIMEDBG                                                        \
     __ps_timedbg('<', __FILE__, __LINE__, __FUNCTION__, ps_timedbg_inf)
 
+#ifdef _IS_WINDOWS
+// Note on __unDName from Wine:
+//   Demangle a C++ identifier.
+//
+//   PARAMS
+//    buffer   [O] If not NULL, the place to put the demangled string
+//    mangled  [I] Mangled name of the function
+//    buflen   [I] Length of buffer
+//    memget   [I] Function to allocate memory with
+//    memfree  [I] Function to free memory with
+//    unknown  [?] Unknown, possibly a call back
+//    flags    [I] Flags determining demangled format
+//
+//   RETURNS
+//    Success: A string pointing to the unmangled name, allocated with memget.
+//    (Pistache note - memget used solely if buffer null or buflen zero)
+//    Failure: NULL.
+
+#define GET__PTST_DEMANGLED                                             \
+    char ptst_undecorated_name[2048+16];                                \
+    ptst_undecorated_name[0] = 0;                                       \
+                                                                        \
+    char * __ptst_demangled = __unDName(&(ptst_undecorated_name[0]),    \
+                   typeid(*this).name()+1, 2048, malloc, free, 0x2800); 
+#else
+#define GET__PTST_DEMANGLED                                             \
+    char * __ptst_demangled = abi::__cxa_demangle(                      \
+        typeid(*this).name(), NULL, NULL, &__ptst_dem_status);
+#endif // of ifdef _IS_WINDOWS ... else ...
+
 // Same as PS_TIMEDBG_START but logs class name and "this" value
 #define PS_TIMEDBG_START_THIS                                           \
     int __ptst_dem_status = 0;                                          \
-    char * __ptst_demangled = abi::__cxa_demangle(                      \
-        typeid(*this).name(), NULL, NULL, &__ptst_dem_status);          \
-                                                                        \
+    GET__PTST_DEMANGLED;                                                \
     char ps_timedbg_this_buff[2048];                                    \
     if ((__ptst_demangled) && (__ptst_dem_status == 0))                 \
         snprintf(&(ps_timedbg_this_buff[0]),                            \
@@ -100,27 +144,25 @@ private:
     int mLineNum;
     const char * mFnName;
     
-    struct timespec mPsTimedbg;
-    struct timespec mPsTimeCPUdbg;
+    struct PST_TIMESPEC mPsTimedbg;
+    struct PST_TIMESPEC mPsTimeCPUdbg;
 
     static unsigned mUniCounter; // universal (static) counter
     unsigned mCounter; // individual counter for this __PS_TIMEDBG
 
-    static std::map<pthread_t, unsigned> mThreadMap;
+    static std::map<PST_THREAD_ID, unsigned> mThreadMap;
     static std::mutex mThreadMapMutex;
-
-    
 
     unsigned getThreadNextDepth() // returns depth value after increment
         {
             std::lock_guard<std::mutex> l_guard(mThreadMapMutex);
-            pthread_t pthread_id = pthread_self();
+            PST_THREAD_ID pthread_id = PST_THREAD_ID_SELF();
             
-            std::map<pthread_t, unsigned>::iterator it =
+            std::map<PST_THREAD_ID, unsigned>::iterator it =
                 mThreadMap.find(pthread_id);
             if (it == mThreadMap.end())
             {
-                std::pair<pthread_t, unsigned> pr(pthread_id, 1);
+                std::pair<PST_THREAD_ID, unsigned> pr(pthread_id, 1);
                 mThreadMap.insert(pr);
                 return(1);
             }
@@ -130,9 +172,9 @@ private:
     unsigned decrementThreadDepth() // returns depth value before decrement
         {
             std::lock_guard<std::mutex> l_guard(mThreadMapMutex);
-            pthread_t pthread_id = pthread_self();
+            PST_THREAD_ID pthread_id = PST_THREAD_ID_SELF();
             
-            std::map<pthread_t, unsigned>::iterator it =
+            std::map<PST_THREAD_ID, unsigned>::iterator it =
                 mThreadMap.find(pthread_id);
 
             unsigned old_depth = 1;
@@ -241,16 +283,18 @@ public:
             const char * ps_time_str = "No-Time";
             char pschbuff[40];
 
-            int res = clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &mPsTimeCPUdbg);
+            int res = PST_CLOCK_GETTIME(PST_CLOCK_PROCESS_CPUTIME_ID,
+                                        &mPsTimeCPUdbg);
             if (res != 0)
                 memset(&mPsTimeCPUdbg, 0, sizeof(mPsTimeCPUdbg));
-            res = clock_gettime(CLOCK_REALTIME, &mPsTimedbg);
+            res = PST_CLOCK_GETTIME(PST_CLOCK_REALTIME, &mPsTimedbg);
             if (res == 0)
             {
                 struct tm pstm;
-                if (gmtime_r(&mPsTimedbg.tv_sec, &pstm) != NULL)
+                if (PST_GMTIME_R((const time_t *)(&mPsTimedbg.tv_sec),
+                                 &pstm)!= NULL)
                 {
-                    if (asctime_r(&pstm, pschbuff) != NULL)
+                    if (PST_ASCTIME_R(&pstm, pschbuff) != NULL)
                     {
                         size_t pschbuff_len = strlen(pschbuff);
                         while((pschbuff_len > 0) &&
@@ -287,22 +331,22 @@ public:
             const char * ps_diff_time_str = "No-Time";
             char pschbuff[40];
             char ps_diff_chbuff[40];
-            struct timespec latest_ps_timedbg;
-            struct timespec latest_ps_time_cpu_dbg;
-            int res = clock_gettime(CLOCK_PROCESS_CPUTIME_ID,
-                                    &latest_ps_time_cpu_dbg);
+            struct PST_TIMESPEC latest_ps_timedbg;
+            struct PST_TIMESPEC latest_ps_time_cpu_dbg;
+            int res = PST_CLOCK_GETTIME(PST_CLOCK_PROCESS_CPUTIME_ID,
+                                        &latest_ps_time_cpu_dbg);
             if (res != 0)
                 memset(&latest_ps_time_cpu_dbg, 0,
                        sizeof(latest_ps_time_cpu_dbg));
-            res = clock_gettime(CLOCK_REALTIME, &latest_ps_timedbg);
+            res = PST_CLOCK_GETTIME(PST_CLOCK_REALTIME, &latest_ps_timedbg);
 
             if (res == 0)
             {
                 struct tm pstm;
-                if (gmtime_r(&latest_ps_timedbg.tv_sec, &pstm) != NULL)
+                if (PST_GMTIME_R((const time_t *)(&latest_ps_timedbg.tv_sec),
+                                 &pstm) != NULL)
                 {
-
-                    if (asctime_r(&pstm, pschbuff) != NULL)
+                    if (PST_ASCTIME_R(&pstm, pschbuff) != NULL)
                     {
                         size_t pschbuff_len = strlen(pschbuff);
                         while((pschbuff_len > 0) &&

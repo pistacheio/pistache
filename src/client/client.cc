@@ -10,6 +10,8 @@
    Implementation of the Http client
 */
 
+#include <pistache/winornix.h>
+
 #include <pistache/client.h>
 #include <pistache/common.h>
 #include <pistache/eventmeth.h>
@@ -17,18 +19,17 @@
 #include <pistache/net.h>
 #include <pistache/stream.h>
 
-#include <netdb.h>
+#include PIST_QUOTE(PST_NETDB_HDR)
+#include PIST_QUOTE(PST_SOCKET_HDR)
 
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 // For sendfile(...) function
-#include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/uio.h>
 #else
 #include <sys/sendfile.h>
 #endif
 
-#include <sys/socket.h>
 #include <sys/types.h>
 
 #include <algorithm>
@@ -190,7 +191,7 @@ namespace Pistache::Http::Experimental
                                           const struct sockaddr* address,
                                           socklen_t addr_len);
 
-        Async::Promise<ssize_t>
+        Async::Promise<PST_SSIZE_T>
         asyncSendRequest(std::shared_ptr<Connection> connection,
                          std::shared_ptr<TimerPool::Entry> timer, std::string buffer);
 
@@ -364,14 +365,14 @@ namespace Pistache::Http::Experimental
             });
     }
 
-    Async::Promise<ssize_t>
+    Async::Promise<PST_SSIZE_T>
     Transport::asyncSendRequest(std::shared_ptr<Connection> connection,
                                 std::shared_ptr<TimerPool::Entry> timer,
                                 std::string buffer)
     {
         PS_TIMEDBG_START_THIS;
 
-        return Async::Promise<ssize_t>(
+        return Async::Promise<PST_SSIZE_T>(
             [&](Async::Resolver& resolve, Async::Rejection& reject) {
                 PS_TIMEDBG_START;
                 auto ctx = context();
@@ -407,12 +408,12 @@ namespace Pistache::Http::Experimental
             return;
         }
 
-        ssize_t totalWritten = 0;
+        PST_SSIZE_T totalWritten = 0;
         for (;;)
         {
             const char* data           = buffer.data() + totalWritten;
-            const ssize_t len          = buffer.size() - totalWritten;
-            const ssize_t bytesWritten = ::send(GET_ACTUAL_FD(fd), data,
+            const PST_SSIZE_T len          = buffer.size() - totalWritten;
+            const PST_SSIZE_T bytesWritten = ::send(GET_ACTUAL_FD(fd), data,
                                                 len, 0);
             if (bytesWritten < 0)
             {
@@ -633,7 +634,7 @@ namespace Pistache::Http::Experimental
     {
         PS_TIMEDBG_START_THIS;
 
-        ssize_t totalBytes = 0;
+        PST_SSIZE_T totalBytes = 0;
 
         for (;;)
         {
@@ -645,13 +646,15 @@ namespace Pistache::Http::Experimental
             if (conn_fd == PS_FD_EMPTY)
                 break; // can happen if fd was closed meanwhile
 
-            const ssize_t bytes = recv(GET_ACTUAL_FD(conn_fd),
+            const PST_SSIZE_T bytes = recv(GET_ACTUAL_FD(conn_fd),
                                        buffer, Const::MaxBuffer, 0);
             if (bytes == -1)
             {
                 if (errno != EAGAIN && errno != EWOULDBLOCK)
                 {
-                    connection->handleError(strerror(errno));
+                    char se_err[256+16];
+                    PST_STRERROR_R(errno, &se_err[0], 256);
+                    connection->handleError(&se_err[0]);
                 }
                 break;
             }
@@ -719,7 +722,7 @@ namespace Pistache::Http::Experimental
                     sfd, // pre-allocated file desc
                     EVM_READ | EVM_WRITE | EVM_PERSIST,
                     F_SETFDL_NOTHING, // setfd
-                    O_NONBLOCK // setfl
+                    PST_O_NONBLOCK // setfl
                     ));
 #else
             fd_ = sfd;

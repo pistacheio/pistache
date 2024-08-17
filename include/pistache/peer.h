@@ -62,7 +62,8 @@ namespace Pistache::Tcp
         std::shared_ptr<void> getData(std::string name) const;
         std::shared_ptr<void> tryGetData(std::string name) const;
 
-        Async::Promise<ssize_t> send(const RawBuffer& buffer, int flags = 0);
+        Async::Promise<PST_SSIZE_T> send(const RawBuffer& buffer,
+                                         int flags = 0);
         size_t getID() const;
 
     protected:

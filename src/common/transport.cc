@@ -267,13 +267,13 @@ namespace Pistache::Tcp
     {
         char buffer[Const::MaxBuffer] = { 0 };
 
-        ssize_t totalBytes = 0;
+        PST_SSIZE_T totalBytes = 0;
         int fdactual       = GET_ACTUAL_FD(peer->fd());
 
         for (;;)
         {
 
-            ssize_t bytes;
+            PST_SSIZE_T bytes;
 
 #ifdef PISTACHE_USE_SSL
             if (peer->ssl() != NULL)
@@ -292,12 +292,15 @@ namespace Pistache::Tcp
             }
 #endif /* PISTACHE_USE_SSL */
 
+            char se_err[256+16]; se_err[0] = 0;
+            if (bytes < 0)
+                PST_STRERROR_R(errno, &se_err[0], 256);
             PS_LOG_DEBUG_ARGS("Fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", "
                                                                "bytes read %d, totalBytes %d, "
                                                                "err %d %s",
                               peer->fd(), bytes, totalBytes,
                               (bytes < 0) ? errno : 0,
-                              (bytes < 0) ? strerror(errno) : "");
+                              (bytes < 0) ? (&se_err[0]) : "");
 
             if (bytes == -1)
             {
@@ -429,7 +432,7 @@ namespace Pistache::Tcp
             bool msg_more_style = entry.msg_more_style;
 #endif
             BufferHolder& buffer              = entry.buffer;
-            Async::Deferred<ssize_t> deferred = std::move(entry.deferred);
+            Async::Deferred<PST_SSIZE_T> deferred = std::move(entry.deferred);
 
             auto cleanUp = [&]() {
                 wq.pop_front();
@@ -446,7 +449,7 @@ namespace Pistache::Tcp
             size_t totalWritten = buffer.offset();
             for (;;)
             {
-                ssize_t bytesWritten = 0;
+                PST_SSIZE_T bytesWritten = 0;
                 auto len             = buffer.size() - totalWritten;
 
                 if (buffer.isRaw())
@@ -474,8 +477,10 @@ namespace Pistache::Tcp
                 }
                 if (bytesWritten < 0)
                 {
+                    char se_err[256+16];
+                    PST_STRERROR_R(errno, &se_err[0], 256);
                     PS_LOG_DEBUG_ARGS("fd %" PIST_QUOTE(PS_FD_PRNTFCD) " errno %d %s",
-                                      fd, errno, strerror(errno));
+                                      fd, errno, &se_err[0]);
 
                     if (errno == EAGAIN || errno == EWOULDBLOCK)
                     {
@@ -533,7 +538,7 @@ namespace Pistache::Tcp
 
                         // Cast to match the type of defered template
                         // to avoid a BadType exception
-                        deferred.resolve(static_cast<ssize_t>(totalWritten));
+                        deferred.resolve(static_cast<PST_SSIZE_T>(totalWritten));
                         break;
                     }
                 }
@@ -590,7 +595,7 @@ namespace Pistache::Tcp
     }
 #endif // of ifdef _USE_LIBEVENT_LIKE_APPLE
 
-    ssize_t Transport::sendRawBuffer(Fd fd, const char* buffer, size_t len,
+    PST_SSIZE_T Transport::sendRawBuffer(Fd fd, const char* buffer, size_t len,
                                      int flags
 #ifdef _USE_LIBEVENT_LIKE_APPLE
                                      ,
@@ -598,7 +603,7 @@ namespace Pistache::Tcp
 #endif
     )
     {
-        ssize_t bytesWritten = 0;
+        PST_SSIZE_T bytesWritten = 0;
 
 #ifdef PISTACHE_USE_SSL
         bool it_second_ssl_is_null = false;
@@ -648,9 +653,9 @@ namespace Pistache::Tcp
         return bytesWritten;
     }
 
-    ssize_t Transport::sendFile(Fd fd, int file, off_t offset, size_t len)
+    PST_SSIZE_T Transport::sendFile(Fd fd, int file, off_t offset, size_t len)
     {
-        ssize_t bytesWritten = 0;
+        PST_SSIZE_T bytesWritten = 0;
 
 #ifdef PISTACHE_USE_SSL
         bool it_second_ssl_is_null = false;
@@ -711,7 +716,7 @@ namespace Pistache::Tcp
 
             if (sendfile_res == 0)
             {
-                bytesWritten = (ssize_t)len_as_off_t;
+                bytesWritten = (PST_SSIZE_T)len_as_off_t;
                 offset += len_as_off_t; // to match what Linux sendfile does
             }
             else
@@ -808,8 +813,10 @@ namespace Pistache::Tcp
 #endif
         if (res == -1)
         {
+            char se_err[256+16];
+            PST_STRERROR_R(errno, &se_err[0], 256);
             PS_LOG_DEBUG_ARGS("Fd %" PIST_QUOTE(PS_FD_PRNTFCD) ",  ernno %d %s",
-                              entry.fd, errno, strerror(errno));
+                              entry.fd, errno, &se_err[0]);
 
             entry.deferred.reject(Pistache::Error::system("Could not set timer time"));
             return;

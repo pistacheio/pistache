@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <pistache/winornix.h>
+#include PIST_QUOTE(PST_ERRNO_HDR)
+
 #include <pistache/eventmeth.h>
 #include <pistache/pist_quote.h>
 
@@ -53,7 +56,7 @@ namespace Pistache
 
         // If emee is NULL here, it will need to be supplied when settime is
         // called
-        static Fd em_timer_new(clockid_t clock_id,
+        static Fd em_timer_new(PST_CLOCK_ID_T clock_id,
                                // For setfd and setfl arg:
                                //   F_SETFDL_NOTHING - change nothing
                                //   Zero or pos number that is not
@@ -131,11 +134,11 @@ namespace Pistache
         static int getActualFd(const EmEvent * em_event);
 
         // efd should be a pointer to EmEventFd - does dynamic cast
-        static ssize_t writeEfd(EmEvent * efd, const uint64_t val);
-        static ssize_t readEfd(EmEvent * efd, uint64_t * val_out_ptr);
+        static PST_SSIZE_T writeEfd(EmEvent * efd, const uint64_t val);
+        static PST_SSIZE_T readEfd(EmEvent * efd, uint64_t * val_out_ptr);
 
-        static ssize_t read(EmEvent * fd, void * buf, size_t count);
-        static ssize_t write(EmEvent * fd, const void * buf, size_t count);
+        static PST_SSIZE_T read(EmEvent * fd, void * buf, size_t count);
+        static PST_SSIZE_T write(EmEvent * fd, const void * buf, size_t count);
 
         static EmEvent * getAsEmEvent(EmEventFd * efd);
 
@@ -307,8 +310,8 @@ namespace Pistache
         static int getActualFd(const EmEvent * em_ev);
         virtual int getActualFd() const;
 
-        virtual ssize_t read(void * buf, size_t count);
-        virtual ssize_t write(const void * buf, size_t count);
+        virtual PST_SSIZE_T read(void * buf, size_t count);
+        virtual PST_SSIZE_T write(const void * buf, size_t count);
 
         virtual int ctl(
             EvCtlAction op, //add,mod,del
@@ -459,11 +462,11 @@ namespace Pistache
         // For read, write, poll rules, see definition of eventfd in Linux:
         //     e.g. https://www.man7.org/linux/man-pages/man2/eventfd.2.html
 
-        ssize_t read(uint64_t * val_out_ptr);
+        PST_SSIZE_T read(uint64_t * val_out_ptr);
 
         // buf must be at least 8 bytes long
         // read copies an 8-byte integer into buf
-        ssize_t read(void * buf, size_t count) override;
+        PST_SSIZE_T read(void * buf, size_t count) override;
 
         // Sets counter_val_ to zero. If counter_val_ already zero, does
         // nothing. Returns old counter_val.
@@ -483,10 +486,10 @@ namespace Pistache
         virtual EmEventType getEmEventType() const override {return(EmEvNone);}
 
     protected:
-        ssize_t writeProt(const uint64_t val);
+        PST_SSIZE_T writeProt(const uint64_t val);
 
         // write copies an integer of length up to 8 from buf
-        ssize_t writeProt(const void * buf, size_t count);
+        PST_SSIZE_T writeProt(const void * buf, size_t count);
 
     public:
         // renewEv is public solely so it can be a friend of
@@ -550,10 +553,10 @@ namespace Pistache
                               int f_setfd_flags,   // e.g. FD_CLOEXEC
                               int f_setfl_flags);  // e.g. O_NONBLOCK
 
-        ssize_t write(const uint64_t val) {return(writeProt(val));}
+        PST_SSIZE_T write(const uint64_t val) {return(writeProt(val));}
 
         // write copies an integer of length up to 8 from buf
-        ssize_t write(const void * buf, size_t count) override
+        PST_SSIZE_T write(const void * buf, size_t count) override
                                                {return(writeProt(buf, count));}
 
         EmEventType getEmEventType() const override { return(EmEvEventFd); }
@@ -603,7 +606,7 @@ namespace Pistache
         // changes in the clock value
         // If emee is NULL here, it will need to be supplied when settime is
         // called
-        static EmEventTmrFd * make_new(clockid_t clock_id,
+        static EmEventTmrFd * make_new(PST_CLOCK_ID_T clock_id,
                               // For setfd and setfl arg:
                               //   F_SETFDL_NOTHING - change nothing
                               //   Zero or pos number that is not
@@ -640,11 +643,11 @@ namespace Pistache
         void handleEventCallback(short & ev_flags_in_out) override;
 
     private:
-        // NO ssize_t write(const uint64_t val);
-        ssize_t write(const void * buf, size_t count) override;// always fails
+        // NO PST_SSIZE_T write(const uint64_t val);
+        PST_SSIZE_T write(const void * buf, size_t count) override;// always fails
 
     private:
-        EmEventTmrFd(clockid_t clock_id,
+        EmEventTmrFd(PST_CLOCK_ID_T clock_id,
                      EventMethEpollEquivImpl * emee/*may be NULL*/);
     };
 
@@ -718,8 +721,6 @@ namespace Pistache
 
 /* ------------------------------------------------------------------------- */
 
-#include <sys/errno.h>
-
 #include <chrono>
 #include <set>
 
@@ -727,13 +728,12 @@ namespace Pistache
 #include <pistache/pist_timelog.h>
 #include <pistache/os.h>
 
-#include <unistd.h> // for close
-#include <fcntl.h>  // for fcntl
+#include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h, for close
+#include PIST_QUOTE(PST_FCNTL_HDR)
+
 #include <assert.h>
 
 #ifdef DEBUG
-#include <libgen.h> // for basename_r
-#include <sys/param.h> // for MAXPATHLEN
 #include <atomic> // for std::atomic_int
 #endif
 
@@ -782,7 +782,7 @@ namespace Pistache
 
     // If emee is NULL here, it will need to be supplied when settime is
     // called
-    Fd EventMethFns::em_timer_new(clockid_t clock_id,
+    Fd EventMethFns::em_timer_new(PST_CLOCK_ID_T clock_id,
                                // For setfd and setfl arg:
                                //   F_SETFDL_NOTHING - change nothing
                                //   Zero or pos number that is not
@@ -840,23 +840,23 @@ namespace Pistache
     }
 
     // efd should be a pointer to EmEventFd - does dynamic cast
-    ssize_t EventMethFns::writeEfd(EmEvent * efd, const uint64_t val)
+    PST_SSIZE_T EventMethFns::writeEfd(EmEvent * efd, const uint64_t val)
     {
         return(EventMethEpollEquivImpl::writeEfd(efd, val));
     }
     
-    ssize_t EventMethFns::readEfd(EmEvent * efd, uint64_t * val_out_ptr)
+    PST_SSIZE_T EventMethFns::readEfd(EmEvent * efd, uint64_t * val_out_ptr)
     {
         return(EventMethEpollEquivImpl::readEfd(efd, val_out_ptr));
     }
     
 
-    ssize_t EventMethFns::read(EmEvent * fd, void * buf, size_t count)
+    PST_SSIZE_T EventMethFns::read(EmEvent * fd, void * buf, size_t count)
     {
         return(EventMethEpollEquivImpl::read(fd, buf, count));
     }
     
-    ssize_t EventMethFns::write(EmEvent * fd,
+    PST_SSIZE_T EventMethFns::write(EmEvent * fd,
                                        const void * buf, size_t count)
     {
         return(EventMethEpollEquivImpl::write(fd, buf, count));
@@ -1358,7 +1358,7 @@ namespace Pistache
         return(old_counter_val);
     }
     
-    ssize_t EmEventCtr::read(uint64_t * val_out_ptr)
+    PST_SSIZE_T EmEventCtr::read(uint64_t * val_out_ptr)
     {
         PS_TIMEDBG_START_ARGS("Read EmEventCtr %p", this);
 
@@ -1400,7 +1400,7 @@ namespace Pistache
         return(this->read(val_out_ptr));
     }
 
-    ssize_t EmEventCtr::writeProt(const uint64_t val)
+    PST_SSIZE_T EmEventCtr::writeProt(const uint64_t val)
     {
         PS_TIMEDBG_START_ARGS("Write EmEventCtr %p with val %u", this, val);
 
@@ -1500,7 +1500,7 @@ namespace Pistache
 
     // buf must be at least 8 bytes long
     // read copies an 8-byte integer into buf
-    ssize_t EmEventCtr::read(void * buf, size_t count)
+    PST_SSIZE_T EmEventCtr::read(void * buf, size_t count)
     {
         if (!buf)
         {
@@ -1527,7 +1527,7 @@ namespace Pistache
     }
 
     // write copies an integer of length up to 8 from buf
-    ssize_t EmEventCtr::writeProt(const void * buf, size_t count)
+    PST_SSIZE_T EmEventCtr::writeProt(const void * buf, size_t count)
     {
         if (!buf)
         {
@@ -1741,6 +1741,9 @@ namespace Pistache
         if (fdl_flags == F_SETFDL_NOTHING)
             return(std::string("set nothing"));
 
+        if (fdl_flags == PST_FCNTL_GETFL_UNKNOWN)
+            return(std::string("unknown"));
+
         std::string res("set 0x");
 
         std::stringstream ss;
@@ -1762,11 +1765,11 @@ namespace Pistache
             return(res);
     
         res += ", fd_flags ";
-        int getfd_flags = fcntl(actual_fd, F_GETFD, (int) 0);
+        int getfd_flags = PST_FCNTL(actual_fd, PST_F_GETFD, (int) 0);
         res += fdlFlagsToStr(getfd_flags);
 
         res += ", fl_flags ";
-        int getfl_flags = fcntl(actual_fd, F_GETFL, (int) 0);
+        int getfl_flags = PST_FCNTL(actual_fd, PST_F_GETFL, (int) 0);
         res += fdlFlagsToStr(getfl_flags);
 
         return(res);
@@ -1820,7 +1823,7 @@ namespace Pistache
             return(NULL);
         DBG_NEW_EMV(emefd);
 
-        if (!(f_setfl_flags & O_NONBLOCK))
+        if (!(f_setfl_flags & PST_O_NONBLOCK))
         {
             emefd->makeBlocking();
             PS_LOG_DEBUG_ARGS("EmEventFd %p blocking", emefd);
@@ -1869,13 +1872,13 @@ namespace Pistache
         return(res);
     }
 
-EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
+EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
                            EventMethEpollEquivImpl * emee/*may be NULL*/) :
     EmEventCtr(0 /*initval*/)
     {
         switch(clock_id)
         {
-        case CLOCK_REALTIME:
+        case PST_CLOCK_REALTIME:
         #ifdef __linux__
         case CLOCK_REALTIME_ALARM:
         case CLOCK_REALTIME_COARSE:
@@ -1887,8 +1890,8 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
                 "clock_id realtime clock not supported");
             break;
 
-        case CLOCK_MONOTONIC:
-        case CLOCK_MONOTONIC_RAW:
+        case PST_CLOCK_MONOTONIC:
+        case PST_CLOCK_MONOTONIC_RAW:
         #ifdef __APPLE__
         case CLOCK_MONOTONIC_RAW_APPROX:
         case CLOCK_UPTIME_RAW:
@@ -1902,13 +1905,13 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
             // We treat all these as CLOCK_MONOTONIC
             break;
 
-        case CLOCK_PROCESS_CPUTIME_ID:
+        case PST_CLOCK_PROCESS_CPUTIME_ID:
             PS_LOG_WARNING("CLOCK_PROCESS_CPUTIME_ID not supported");
             throw std::invalid_argument(
                 "clock_id = CLOCK_PROCESS_CPUTIME_ID not supported");
             break;
             
-        case CLOCK_THREAD_CPUTIME_ID:
+        case PST_CLOCK_THREAD_CPUTIME_ID:
             PS_LOG_WARNING("CLOCK_THREAD_CPUTIME_ID not supported");
             throw std::invalid_argument(
                 "clock_id = CLOCK_THREAD_CPUTIME_ID not supported");
@@ -1935,7 +1938,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
     //
     // If emee is NULL here, it will need to be supplied when settime is
     // called
-    EmEventTmrFd * EmEventTmrFd::make_new(clockid_t clock_id,// static function
+    EmEventTmrFd * EmEventTmrFd::make_new(PST_CLOCK_ID_T clock_id,// static function
                               // For setfd and setfl arg:
                               //   F_SETFDL_NOTHING - change nothing
                               //   Zero or pos number that is not
@@ -1958,7 +1961,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
             return(NULL);
         DBG_NEW_EMV(emefd);
 
-        if (!(f_setfl_flags & O_NONBLOCK))
+        if (!(f_setfl_flags & PST_O_NONBLOCK))
         {
             emefd->makeBlocking();
             PS_LOG_DEBUG_ARGS("EmEventTmrFd %p blocking", emefd);
@@ -2110,7 +2113,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
             ev_flags_in_out |= EV_READ;
     }
     
-    ssize_t EmEventTmrFd::write([[maybe_unused]] const void * buf,
+    PST_SSIZE_T EmEventTmrFd::write([[maybe_unused]] const void * buf,
                                 [[maybe_unused]] size_t count)
     {
         PS_LOG_DEBUG("Cannot write to an EmEventTmrFd");
@@ -2265,10 +2268,10 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         if (timeval_cptr)
         {
             if (timeval_cptr->count() < 1000)
-                prior_tv_.tv_usec = (suseconds_t) std::chrono::
+                prior_tv_.tv_usec = (PST_SUSECONDS_T) std::chrono::
                duration_cast<std::chrono::microseconds>(*timeval_cptr).count();
             else
-                prior_tv_.tv_sec = (time_t) (std::chrono::
+                prior_tv_.tv_sec = (PST_TIMEVAL_S_T) (std::chrono::
                    duration_cast<std::chrono::seconds>(*timeval_cptr).count());
             prior_tv_cptr_ = &prior_tv_;
         }
@@ -2420,7 +2423,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         if (actual_fd > 0)
         {
             PS_LOG_DEBUG_ARGS("::close actual_fd %d", actual_fd);
-            actual_fd_close_res = ::close(actual_fd);
+            actual_fd_close_res = ::PST_CLOSE(actual_fd);
         }
 
         if (finalize_res < 0)
@@ -2525,14 +2528,14 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         return(actual_fd);
     }
 
-    ssize_t EmEvent::read(void * buf, size_t count) // virtual
+    PST_SSIZE_T EmEvent::read(void * buf, size_t count) // virtual
     {
-        return(::read(getActualFd(), buf, count));
+        return(::PST_READ(getActualFd(), buf, count));
     }
     
-    ssize_t EmEvent::write(const void * buf, size_t count) // virtual
+    PST_SSIZE_T EmEvent::write(const void * buf, size_t count) // virtual
     {
-        return(::write(getActualFd(), buf, count));
+        return(::PST_WRITE(getActualFd(), buf, count));
     }
 
     int EmEvent::getActualFdPrv() const
@@ -2623,7 +2626,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
                     throw std::invalid_argument("actual_fd not set");
                 }
 
-                int fcntl_res = fcntl(actual_fd, set_cmd, f_setfdl_flags);
+                int fcntl_res = PST_FCNTL(actual_fd, set_cmd, f_setfdl_flags);
                 if (fcntl_res == -1)
                 {
                     PS_LOG_INFO("fcntl set failed");
@@ -2639,12 +2642,13 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
                 throw std::invalid_argument("actual_fd not set");
             }
 
-            int old_setfdl_flags = fcntl(actual_fd, get_cmd, (int) 0);
+            int old_setfdl_flags = PST_FCNTL(actual_fd, get_cmd, (int) 0);
             f_setfdl_flags = (0 - f_setfdl_flags);
             if (old_setfdl_flags != f_setfdl_flags)
             {
-                f_setfdl_flags |= old_setfdl_flags;
-                int fcntl_res = fcntl(actual_fd, set_cmd, f_setfdl_flags);
+                if (old_setfdl_flags != PST_FCNTL_GETFL_UNKNOWN)
+                    f_setfdl_flags |= old_setfdl_flags;
+                int fcntl_res = PST_FCNTL(actual_fd, set_cmd, f_setfdl_flags);
                 if (fcntl_res == -1)
                 {
                     PS_LOG_INFO("fcntl set failed");
@@ -2668,14 +2672,14 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
 
         if (requested_f_setfd_flags_ != F_SETFDL_NOTHING)
         {
-            setFdlFlagsHelper(actual_fd, F_GETFD, F_SETFD,
+            setFdlFlagsHelper(actual_fd, PST_F_GETFD, PST_F_SETFD,
                                  requested_f_setfd_flags_);
             requested_f_setfd_flags_ = F_SETFDL_NOTHING;
         }
 
         if (requested_f_setfl_flags_ != F_SETFDL_NOTHING)
         {
-            setFdlFlagsHelper(actual_fd, F_GETFL, F_SETFL,
+            setFdlFlagsHelper(actual_fd, PST_F_GETFL, PST_F_SETFL,
                                  requested_f_setfl_flags_);
             requested_f_setfl_flags_ = F_SETFDL_NOTHING;
         }
@@ -2792,10 +2796,10 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         if (timeval_cptr)
         {
             if (timeval_cptr->count() < 1000)
-                tv.tv_usec = (suseconds_t) std::chrono::
+                tv.tv_usec = (PST_SUSECONDS_T) std::chrono::
                duration_cast<std::chrono::microseconds>(*timeval_cptr).count();
             else
-                tv.tv_sec = (time_t) (std::chrono::
+                tv.tv_sec = (PST_TIMEVAL_S_T) (std::chrono::
                    duration_cast<std::chrono::seconds>(*timeval_cptr).count());
             tv_cptr = &tv;
         }
@@ -2993,7 +2997,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         return(EmEvent::getActualFd(em_event));
     }
 
-    ssize_t EventMethEpollEquivImpl::writeEfd(EmEvent* efd, const uint64_t val)
+    PST_SSIZE_T EventMethEpollEquivImpl::writeEfd(EmEvent* efd, const uint64_t val)
     { // static
         EmEventFd * this_efd = EmEventFd::getFromEmEventCPtrNoLogIfNull(efd);
         if (!this_efd)
@@ -3002,7 +3006,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         return(this_efd->write(val));
     }
 
-    ssize_t EventMethEpollEquivImpl::readEfd(EmEvent * efd,
+    PST_SSIZE_T EventMethEpollEquivImpl::readEfd(EmEvent * efd,
                                          uint64_t * val_out_ptr)
     { // static
         EmEventFd * this_efd = EmEventFd::getFromEmEventCPtrNoLogIfNull(efd);
@@ -3012,7 +3016,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         return(this_efd->read(val_out_ptr));
     }
 
-    ssize_t EventMethEpollEquivImpl::read(EmEvent* fd, void* buf, size_t count)
+    PST_SSIZE_T EventMethEpollEquivImpl::read(EmEvent* fd, void* buf, size_t count)
     { // static
         if (!fd)
         {
@@ -3024,7 +3028,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
         return(fd->read(buf, count));
     }
     
-    ssize_t EventMethEpollEquivImpl::write(EmEvent * fd,
+    PST_SSIZE_T EventMethEpollEquivImpl::write(EmEvent * fd,
                                        const void * buf, size_t count)
     { // static
         if (!fd)
@@ -3372,6 +3376,27 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
             flags.setFlag(Polling::NotifyOn::Hangup);
         if (evm_events & EVM_SIGNAL)
         {
+            // Signals in Windows vs. Linux:
+            // 
+            // In Linux, signal constants can be found, for instance, in
+            // include/asm-generic/signal.h. In Windows, e.g., in "C:\Program
+            // Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\signal.h"
+            // 
+            // SIGURG, SIGCONT, SIGCHLD, SIGIO, SIGWINCH are defined in the
+            // Linux signal.h (as you'd expect) but not in Windows. The only
+            // Windows signal not defined in Linux is SIGBREAK "Ctrl-Break
+            // sequence" which is generated when CTRL+BREAK is pressed on a
+            // console app. The signals that are defined in Windows (and in
+            // Linux) are SIGINT, SIGILL, SIGFPE, SIGSEGV, SIGTERM, and
+            // SIGABRT. All of these (and SIGBREAK) suggest or require a
+            // shutdown.
+            //
+            // Therefore, in the unlikely event we get a signal in Windows, we
+            // treat it as a shutdown.
+
+            #ifdef _IS_WINDOWS
+            flags.setFlag(Polling::NotifyOn::Shutdown);
+            #else
             // Since this is a signal event, it cannot be a FdEventFd or timer
             
             int actual_fd_num = fd->getActualFd();
@@ -3396,12 +3421,12 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
             #endif
                 // Above conditions should be ignored... we set no flag
                 break;
-                
+
             default:
                 flags.setFlag(Polling::NotifyOn::Shutdown);
                 break;
             }
-            
+            #endif // of ifdef _IS_WINDOWS... else...
         }
 
         return flags;
@@ -3910,7 +3935,7 @@ EmEventTmrFd::EmEventTmrFd(clockid_t clock_id,
                                  f_setfd_flags, f_setfl_flags));
     }
 
-    Fd EventMethEpollEquivImpl::em_timer_new(clockid_t clock_id,
+    Fd EventMethEpollEquivImpl::em_timer_new(PST_CLOCK_ID_T clock_id,
                               // For setfd and setfl arg:
                               //   F_SETFDL_NOTHING - change nothing
                               //   Zero or pos number that is not

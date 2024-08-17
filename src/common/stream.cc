@@ -9,6 +9,8 @@
 
 */
 
+#include <pistache/winornix.h>
+
 #include <pistache/stream.h>
 
 #include <algorithm>
@@ -16,10 +18,11 @@
 #include <iostream>
 #include <string>
 
-#include <fcntl.h>
+#include PIST_QUOTE(PST_FCNTL_HDR)
+
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>
+#include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h e.g. close
 
 namespace Pistache
 {
@@ -163,7 +166,7 @@ namespace Pistache
 
     bool StreamCursor::advance(size_t count)
     {
-        if (static_cast<ssize_t>(count) > buf->in_avail())
+        if (static_cast<PST_SSIZE_T>(count) > buf->in_avail())
             return false;
 
         for (size_t i = 0; i < count; ++i)

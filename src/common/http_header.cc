@@ -10,6 +10,8 @@
    Implementation of common HTTP headers described by the RFC
 */
 
+#include <pistache/winornix.h>
+
 #include <pistache/base64.h>
 #include <pistache/common.h>
 #include <pistache/config.h>
@@ -25,7 +27,8 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <sys/socket.h>
+
+#include PIST_QUOTE(PST_SOCKET_HDR)
 
 namespace Pistache::Http::Header
 {
@@ -73,27 +76,27 @@ namespace Pistache::Http::Header
             return Encoding::Unknown;
         }
 
-        if (!strncasecmp(str.data(), "gzip", str.length()))
+        if (!PST_STRNCASECMP(str.data(), "gzip", str.length()))
         {
             return Encoding::Gzip;
         }
-        else if (!strncasecmp(str.data(), "br", str.length()))
+        else if (!PST_STRNCASECMP(str.data(), "br", str.length()))
         {
             return Encoding::Br;
         }
-        else if (!strncasecmp(str.data(), "deflate", str.length()))
+        else if (!PST_STRNCASECMP(str.data(), "deflate", str.length()))
         {
             return Encoding::Deflate;
         }
-        else if (!strncasecmp(str.data(), "compress", str.length()))
+        else if (!PST_STRNCASECMP(str.data(), "compress", str.length()))
         {
             return Encoding::Compress;
         }
-        else if (!strncasecmp(str.data(), "identity", str.length()))
+        else if (!PST_STRNCASECMP(str.data(), "identity", str.length()))
         {
             return Encoding::Identity;
         }
-        else if (!strncasecmp(str.data(), "chunked", str.length()))
+        else if (!PST_STRNCASECMP(str.data(), "chunked", str.length()))
         {
             return Encoding::Chunked;
         }
@@ -288,7 +291,7 @@ namespace Pistache::Http::Header
             case CacheDirective::Ext:
                 return "";
             default:
-                return "";
+                break;
             }
             return "";
         };

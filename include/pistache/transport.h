@@ -12,6 +12,10 @@
 
 #pragma once
 
+#include <pistache/winornix.h>
+
+#include PIST_QUOTE(PST_SYS_RESOURCE_HDR) // for PST_RUSAGE + PST_GETRUSAGE
+
 #include <pistache/pist_timelog.h>
 #include <pistache/pist_quote.h>
 #include <pistache/async.h>
@@ -51,7 +55,7 @@ namespace Pistache::Tcp
         void onReady(const Aio::FdSet& fds) override;
 
         template <typename Buf>
-        Async::Promise<ssize_t> asyncWrite(Fd fd, const Buf& buffer,
+        Async::Promise<PST_SSIZE_T> asyncWrite(Fd fd, const Buf& buffer,
                                            int flags = 0
 #ifdef _USE_LIBEVENT_LIKE_APPLE
                                            ,
@@ -61,8 +65,8 @@ namespace Pistache::Tcp
         {
             // Always enqueue reponses for sending. Giving preference to consumer
             // context means chunked responses could be sent out of order.
-            return Async::Promise<ssize_t>(
-                [=](Async::Deferred<ssize_t> deferred) mutable {
+            return Async::Promise<PST_SSIZE_T>(
+                [=](Async::Deferred<PST_SSIZE_T> deferred) mutable {
                     BufferHolder holder { buffer };
                     WriteEntry write(std::move(deferred), std::move(holder),
                                      fd, flags
@@ -75,9 +79,9 @@ namespace Pistache::Tcp
                 });
         }
 
-        Async::Promise<rusage> load()
+        Async::Promise<PST_RUSAGE> load()
         {
-            return Async::Promise<rusage>([=](Async::Deferred<rusage> deferred) {
+            return Async::Promise<PST_RUSAGE>([=](Async::Deferred<PST_RUSAGE> deferred) {
                 PS_TIMEDBG_START_CURLY;
 
                 loadRequest_ = std::move(deferred);
@@ -183,7 +187,7 @@ namespace Pistache::Tcp
 
         struct WriteEntry
         {
-            WriteEntry(Async::Deferred<ssize_t> deferred_, BufferHolder buffer_,
+            WriteEntry(Async::Deferred<PST_SSIZE_T> deferred_, BufferHolder buffer_,
                        Fd peerFd_, int flags_ = 0
 #ifdef _USE_LIBEVENT_LIKE_APPLE
                        ,
@@ -199,7 +203,7 @@ namespace Pistache::Tcp
                 , peerFd(peerFd_)
             { }
 
-            Async::Deferred<ssize_t> deferred;
+            Async::Deferred<PST_SSIZE_T> deferred;
             BufferHolder buffer;
             int flags = 0;
 #ifdef _USE_LIBEVENT_LIKE_APPLE
@@ -261,7 +265,7 @@ namespace Pistache::Tcp
 
         PollableQueue<PeerEntry> peersQueue;
 
-        Async::Deferred<rusage> loadRequest_;
+        Async::Deferred<PST_RUSAGE> loadRequest_;
         NotifyFd notifier;
 
         std::shared_ptr<Tcp::Handler> handler_;
@@ -305,13 +309,13 @@ namespace Pistache::Tcp
         void configureMsgMoreStyle(Fd fd, bool msg_more_style);
 #endif
 
-        ssize_t sendRawBuffer(Fd fd, const char* buffer, size_t len, int flags
+        PST_SSIZE_T sendRawBuffer(Fd fd, const char* buffer, size_t len, int flags
 #ifdef _USE_LIBEVENT_LIKE_APPLE
                               ,
                               bool msg_more_style
 #endif
         );
-        ssize_t sendFile(Fd fd, int file, off_t offset, size_t len);
+        PST_SSIZE_T sendFile(Fd fd, int file, off_t offset, size_t len);
 
         void handlePeerDisconnection(const std::shared_ptr<Peer>& peer);
         void handleIncoming(const std::shared_ptr<Peer>& peer);

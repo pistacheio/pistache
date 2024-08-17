@@ -18,8 +18,13 @@
 
 #include <cstring>
 
-#include <netdb.h>
-#include <sys/socket.h>
+#include <pistache/winornix.h>
+
+#include PIST_QUOTE(PST_STRERROR_R_HDR)
+
+#include PIST_QUOTE(PST_NETDB_HDR)
+#include PIST_QUOTE(PST_SOCKET_HDR)
+
 #include <sys/types.h>
 
 #include <pistache/pist_check.h>
@@ -40,7 +45,9 @@
             }                                                  \
             else                                               \
             {                                                  \
-                oss << strerror(errno);                        \
+                char se_err[256+16];                           \
+                PST_STRERROR_R(errno, &se_err[0], 256);        \
+                oss << &se_err[0];                             \
             }                                                  \
             PS_LOG_INFO_ARGS("TRY ret %d  errno %d  throw %s", \
                              ret, errno, oss.str().c_str());   \
@@ -57,7 +64,9 @@
         {                                                      \
             const char* str = #__VA_ARGS__;                    \
             std::ostringstream oss;                            \
-            oss << str << ": " << strerror(errno);             \
+            char se_err[256+16];                               \
+            PST_STRERROR_R(errno, &se_err[0], 256);            \
+            oss << str << ": " << &se_err[0];                  \
             PS_LOG_INFO_ARGS("TRY ret %d  errno %d  throw %s", \
                              ret, errno, oss.str().c_str());   \
             PS_LOGDBG_STACK_TRACE;                             \
@@ -75,7 +84,9 @@
         {                                                      \
             const char* str = #__VA_ARGS__;                    \
             std::ostringstream oss;                            \
-            oss << str << ": " << strerror(errno);             \
+            char se_err[256+16];                               \
+            PST_STRERROR_R(errno, &se_err[0], 256);            \
+            oss << str << ": " << &se_err[0];                  \
             PS_LOG_INFO_ARGS("TRY_NULL_RET throw errno %d %s", \
                              errno, oss.str().c_str());        \
             PS_LOGDBG_STACK_TRACE;                             \
@@ -101,4 +112,3 @@ struct PrintException
     }
 };
 
-#define unreachable() __builtin_unreachable()

@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <pistache/winornix.h>
+
 #include <pistache/async.h>
 #include <pistache/config.h>
 #include <pistache/flags.h>
@@ -22,7 +24,7 @@
 #include <pistache/ssl_wrappers.h>
 #include <pistache/tcp.h>
 
-#include <sys/resource.h>
+#include PIST_QUOTE(PST_SYS_RESOURCE_HDR)
 
 #include <memory>
 #include <thread>

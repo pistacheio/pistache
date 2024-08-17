@@ -17,10 +17,16 @@
 #include <stdexcept>
 #include <string>
 
-#include <netdb.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <sys/un.h>
+#include <pistache/winornix.h>
+
+#include PIST_QUOTE(PST_NETDB_HDR)
+
+// netinet/in.h defines in_port_t, in_addr_t, in_addr, sockaddr_in,
+// sockaddr_in6, IPPROTO_IP, INADDR_ANY, etc.
+#include PIST_QUOTE(PST_NETINET_IN_HDR)
+
+#include PIST_QUOTE(PST_SOCKET_HDR)
+#include PIST_QUOTE(PST_SYS_UN_HDR)
 
 #ifndef _KERNEL_FASTOPEN
 #define _KERNEL_FASTOPEN
@@ -87,7 +93,8 @@ namespace Pistache
 
         static constexpr uint16_t min()
         {
-            return std::numeric_limits<uint16_t>::min();
+            // return std::numeric_limits<uint16_t>::min();
+            return std::numeric_limits<unsigned short>::min();
         }
         static constexpr uint16_t max()
         {
@@ -116,7 +123,7 @@ namespace Pistache
         int getFamily() const;
         uint16_t getPort() const;
         std::string toString() const;
-        void toNetwork(in_addr_t*) const;
+        void toNetwork(PST_IN_ADDR_T*) const;
         void toNetwork(struct in6_addr*) const;
         // Returns 'true' if the system has IPV6 support, false if not.
         static bool supported();

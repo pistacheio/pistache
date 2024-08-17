@@ -208,28 +208,28 @@ namespace Pistache::Http
         os << name << "=" << value;
         if (path.has_value())
         {
-            const std::string& value = *path;
+            const std::string& val = *path;
             os << "; ";
-            os << "Path=" << value;
+            os << "Path=" << val;
         }
         if (domain.has_value())
         {
-            const std::string& value = *domain;
+            const std::string& val = *domain;
             os << "; ";
-            os << "Domain=" << value;
+            os << "Domain=" << val;
         }
         if (maxAge.has_value())
         {
-            int value = *maxAge;
+            int val = *maxAge;
             os << "; ";
-            os << "Max-Age=" << value;
+            os << "Max-Age=" << val;
         }
         if (expires.has_value())
         {
-            const FullDate& value = *expires;
+            const FullDate& val = *expires;
             os << "; ";
             os << "Expires=";
-            value.write(os);
+            val.write(os);
         }
         if (secure)
             os << "; Secure";

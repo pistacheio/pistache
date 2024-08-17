@@ -10,16 +10,19 @@
    Utilities for pistache
 */
 
+#include <pistache/winornix.h>
+
 #include <pistache/peer.h>
-#include <unistd.h>
+
+#include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h e.g. close
 
 #ifdef PISTACHE_USE_SSL
 
-ssize_t SSL_sendfile(SSL* out, int in, off_t* offset, size_t count)
+PST_SSIZE_T SSL_sendfile(SSL* out, int in, off_t* offset, size_t count)
 {
     unsigned char buffer[4096] = { 0 };
-    ssize_t ret;
-    ssize_t written;
+    PST_SSIZE_T ret;
+    PST_SSIZE_T written;
     size_t to_read;
 
     if (in == -1)

@@ -10,15 +10,29 @@
  * Debugging breakpoints
  *
  */
+#include <pistache/winornix.h>
+
 #include <string.h> // memset
 #include <map>
 #include <mutex>
 #include <signal.h>
 #include <stdio.h>
-#include <unistd.h>
+
+#include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h e.g. close
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
+
+#ifdef _IS_WINDOWS
+// Do we need "#include <windows.h>" as well? !!!!!!!!
+#include "dbghelp.h"
+extern char *__unDName(char*, const char*, int, void*, void*, int);
+// See pist_timelog.h for usage
+#else
+#include <cxxabi.h> // for abi::__cxa_demangle
+#endif
+
 #include <cxxabi.h>
 #include <execinfo.h>
 
@@ -55,10 +69,21 @@ static void logStackTrace(int pri)
         if (dladdr(stack[i], &info) != 0) 
         {
             int status = 0;
-                
+
+            // See pist_timelog.h for usage
+
+            #ifdef _IS_WINDOWS
+            // See pist_timelog.h for__unDName usage
+            char undecorated_name[2048+16];
+            undecorated_name[0] = 0;
+            char* realname = __unDName(&(undecorated_name[0]),
+                                 info.dli_sname+1, 2048, malloc, free, 0x2800);
+            #else
             char* realname = abi::__cxa_demangle(info.dli_sname, NULL,
                                                  NULL, &status);
-            if (realname && status == 0)
+            #endif
+            
+            if (realname && (realname[0]) && status == 0)
             {
                 if (info.dli_saddr)
                 {

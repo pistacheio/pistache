@@ -77,7 +77,8 @@ namespace Pistache::Http
         timerFd =
 #ifdef _USE_LIBEVENT
             TRY_NULL_RET(poller.em_timer_new(CLOCK_MONOTONIC,
-                                             F_SETFDL_NOTHING, O_NONBLOCK));
+                                             F_SETFDL_NOTHING,
+                                             PST_O_NONBLOCK));
 #else
             TRY_RET(timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK));
 #endif
@@ -235,7 +236,7 @@ namespace Pistache::Http
         else
         {
             ResponseWriter response(Http::Version::Http11, this, static_cast<Http::Handler*>(handler_.get()), peer);
-            response.send(Http::Code::Request_Timeout).then([=](ssize_t) { removePeer(peer); }, [=](std::exception_ptr) { removePeer(peer); });
+            response.send(Http::Code::Request_Timeout).then([=](PST_SSIZE_T) { removePeer(peer); }, [=](std::exception_ptr) { removePeer(peer); });
         }
     }
 

@@ -17,9 +17,54 @@
 
 /*****************************************************************************/
 
+#include <ostream>
+
+/*****************************************************************************/
+
+#include <pistache/winornix.h>
+
+#ifndef _IS_WINDOWS
+
 #include <syslog.h>
 
-#include <ostream>
+#else // This is for Windows
+
+// As per /usr/include/sys/syslog.h
+
+#ifndef LOG_EMERG
+#define LOG_EMERG       0       /* system is unusable */
+#endif
+
+#ifndef LOG_ALERT
+#define LOG_ALERT       1       /* action must be taken immediately */
+#endif
+
+#ifndef LOG_CRIT
+#define LOG_CRIT        2       /* critical conditions */
+#endif
+
+#ifndef LOG_ERR
+#define LOG_ERR         3       /* error conditions */
+#endif
+
+#ifndef LOG_WARNING
+#define LOG_WARNING     4       /* warning conditions */
+#endif
+
+#ifndef LOG_NOTICE
+#define LOG_NOTICE      5       /* normal but significant condition */
+#endif
+
+#ifndef LOG_INFO
+#define LOG_INFO        6       /* informational */
+#endif
+
+#ifndef LOG_DEBUG
+#define LOG_DEBUG       7       /* debug-level messages */
+#endif
+
+
+#endif
 
 /*****************************************************************************/
 // Following macros do a log message with current file location. If you want to

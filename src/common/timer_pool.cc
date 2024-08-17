@@ -56,7 +56,7 @@ namespace Pistache
 #ifdef _USE_LIBEVENT
             fd_ = TRY_NULL_RET(EventMethFns::em_timer_new(
                 CLOCK_MONOTONIC,
-                F_SETFDL_NOTHING, O_NONBLOCK,
+                F_SETFDL_NOTHING, PST_O_NONBLOCK,
                 NULL /* EventMethEpollEquiv ptr */));
             // The EventMethEpollEquiv ptr gets set
             // later, when
