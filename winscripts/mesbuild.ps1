@@ -20,7 +20,7 @@ if (Test-Path -Path ".\$MESON_BUILD_DIR") {
 #     Write-Host "Using existing build dir $MESON_BUILD_DIR"
 }
 # else {
-    Write-Host "Would use build dir $MESON_BUILD_DIR"
+    Write-Host "Going to use build dir $MESON_BUILD_DIR"
     meson.exe setup "$MESON_BUILD_DIR" `
     --buildtype=release `
     -DPISTACHE_USE_SSL=true `
