@@ -514,6 +514,11 @@ namespace Pistache::Aio
             {
                 auto& wrk = workers_.at(i);
 
+                wrk->shutdown();
+
+                if (wrk->thread.joinable())
+                    wrk->thread.join();
+
                 wrk->sync->detachAndRemoveAllHandlers();
             }
         }

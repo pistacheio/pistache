@@ -13,6 +13,7 @@
 #include <poll.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 namespace Pistache
 {
@@ -32,6 +33,12 @@ namespace Pistache
     class TcpClient
     {
     public:
+        ~TcpClient()
+        {
+            if (fd_ != -1)
+                ::close(fd_);
+        }
+
         bool connect(const Pistache::Address& address)
         {
             struct addrinfo hints = {};
