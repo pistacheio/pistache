@@ -320,7 +320,7 @@ namespace Pistache::Tcp
                                                                "err %d %s",
                               peer->fd(), bytes, totalBytes,
                               (bytes < 0) ? errno : 0,
-                              (bytes < 0) ? (&se_err[0]) : "");
+                              (bytes < 0) ? (PST_STRERROR_R(errno, &se_err[0], 256)) : "");
 
             if (bytes == -1)
             {
@@ -512,7 +512,8 @@ namespace Pistache::Tcp
                     char se_err[256+16];
                     PST_STRERROR_R(errno, &se_err[0], 256);
                     PS_LOG_DEBUG_ARGS("fd %" PIST_QUOTE(PS_FD_PRNTFCD) " errno %d %s",
-                                      fd, errno, &se_err[0]);
+                                      fd, errno, PST_STRERROR_R(errno, &se_err[0], 256));
+                    
 
                     if (errno == EAGAIN || errno == EWOULDBLOCK)
                     {
@@ -1011,7 +1012,7 @@ namespace Pistache::Tcp
             char se_err[256+16];
             PST_STRERROR_R(errno, &se_err[0], 256);
             PS_LOG_DEBUG_ARGS("Fd %" PIST_QUOTE(PS_FD_PRNTFCD) ",  ernno %d %s",
-                              entry.fd, errno, &se_err[0]);
+                              entry.fd, errno, PST_STRERROR_R(errno, &se_err[0], 256));
 
             entry.deferred.reject(Pistache::Error::system("Could not set timer time"));
             return;

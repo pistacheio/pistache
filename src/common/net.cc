@@ -546,13 +546,10 @@ namespace Pistache
     Error Error::system(const char* message)
     {
         char se_err[256+16];
-        PST_STRERROR_R(errno, &se_err[0], 256);
-        
-        const char* err = &se_err[0];
 
         std::string str(message);
         str += ": ";
-        str += err;
+        str += PST_STRERROR_R(errno, &se_err[0], 256);
 
         return Error(std::move(str));
     }

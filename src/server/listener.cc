@@ -838,9 +838,9 @@ namespace Pistache::Tcp
             PST_STRERROR_R(errno, &se_err[0], 256);
             
             if (errno == EBADF || errno == ENOTSOCK)
-                throw ServerError(&se_err[0]);
+                throw ServerError(PST_STRERROR_R(errno, &se_err[0], 256));
             else
-                throw SocketError(&se_err[0]);
+                throw SocketError(PST_STRERROR_R(errno, &se_err[0], 256));
         }
 
         LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(client_actual_fd);
@@ -854,9 +854,10 @@ namespace Pistache::Tcp
         {
             char se_err[256+16];
             PST_STRERROR_R(errno, &se_err[0], 256);
-            
+
             PS_LOG_DEBUG_ARGS("fcntl F_SETFD fail for fd %d, errno %d %s",
-                              client_actual_fd, errno, &se_err[0]);
+                              client_actual_fd, errno,
+                              PST_STRERROR_R(errno, &se_err[0], 256));
 
             ::close(client_actual_fd);
             PS_LOG_DEBUG_ARGS("::close actual_fd %d", client_actual_fd);
@@ -867,11 +868,17 @@ namespace Pistache::Tcp
         fcntl_res = fcntl(client_actual_fd, F_SETFL, 0 /*clear everything*/);
         if (fcntl_res == -1)
         {
+<<<<<<< HEAD
             char se_err[256+16];
             PST_STRERROR_R(errno, &se_err[0], 256);
             
+=======
+            char se_err[256 + 16];
+
+>>>>>>> 3dfa981 (Conform PST_STRERROR_R to GNUC-style strerror_r)
             PS_LOG_DEBUG_ARGS("fcntl F_SETFL fail for fd %d, errno %d %s",
-                              client_actual_fd, errno, &se_err[0]);
+                              client_actual_fd, errno,
+                              PST_STRERROR_R(errno, &se_err[0], 256));
 
             ::close(client_actual_fd);
             PS_LOG_DEBUG_ARGS("::close actual_fd %d", client_actual_fd);

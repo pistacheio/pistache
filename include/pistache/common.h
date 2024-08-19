@@ -46,8 +46,7 @@
             else                                               \
             {                                                  \
                 char se_err[256+16];                           \
-                PST_STRERROR_R(errno, &se_err[0], 256);        \
-                oss << &se_err[0];                             \
+                oss << PST_STRERROR_R(errno, &se_err[0], 256); \
             }                                                  \
             PS_LOG_INFO_ARGS("TRY ret %d  errno %d  throw %s", \
                              ret, errno, oss.str().c_str());   \
@@ -65,8 +64,7 @@
             const char* str = #__VA_ARGS__;                    \
             std::ostringstream oss;                            \
             char se_err[256+16];                               \
-            PST_STRERROR_R(errno, &se_err[0], 256);            \
-            oss << str << ": " << &se_err[0];                  \
+            oss << str << ": " << PST_STRERROR_R(errno, &se_err[0], 256); \
             PS_LOG_INFO_ARGS("TRY ret %d  errno %d  throw %s", \
                              ret, errno, oss.str().c_str());   \
             PS_LOGDBG_STACK_TRACE;                             \
@@ -85,8 +83,7 @@
             const char* str = #__VA_ARGS__;                    \
             std::ostringstream oss;                            \
             char se_err[256+16];                               \
-            PST_STRERROR_R(errno, &se_err[0], 256);            \
-            oss << str << ": " << &se_err[0];                  \
+            oss << str << ": " << PST_STRERROR_R(errno, &se_err[0], 256); \
             PS_LOG_INFO_ARGS("TRY_NULL_RET throw errno %d %s", \
                              errno, oss.str().c_str());        \
             PS_LOGDBG_STACK_TRACE;                             \

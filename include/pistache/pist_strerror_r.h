@@ -18,8 +18,10 @@
 #ifdef _IS_WINDOWS
 
 /* ------------------------------------------------------------------------- */
+// Note: We use the GNU-specific definition (which returns char *), not the
+// XSI-compliant definition (which returns int) even in the non-GNU case.
 
-extern "C" int pist_strerror_r(int errnum, char *buf, size_t buflen);
+extern "C" char * pist_strerror_r(int errnum, char *buf, size_t buflen);
 
 /* ------------------------------------------------------------------------- */
 

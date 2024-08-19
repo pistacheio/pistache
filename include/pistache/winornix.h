@@ -154,12 +154,12 @@ struct pst_timespec { long tv_sec; long tv_nsec; };
 #endif
 
 // Use #include PIST_QUOTE(PST_STRERROR_R_HDR)
-#ifdef _IS_WINDOWS
-#define PST_STRERROR_R_HDR pistache/pist_strerror_r.h
-#define PST_STRERROR_R pist_strerror_r
-#else
+#ifdef __GNUC__
 #define PST_STRERROR_R_HDR string.h
-#define PST_STRERROR_R strerror_r
+#define PST_STRERROR_R strerror_r // returns char *
+#else
+#define PST_STRERROR_R_HDR pistache/pist_strerror_r.h
+#define PST_STRERROR_R pist_strerror_r // returns char *
 #endif
 
 // Use #include PIST_QUOTE(PST_FCNTL_HDR)

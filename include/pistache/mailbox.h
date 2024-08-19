@@ -419,7 +419,8 @@ namespace Pistache
                             char se_err[256+16];
                             PST_STRERROR_R(errno, &se_err[0], 256);
                             PS_LOG_DEBUG_ARGS("Unimplemented errno %d %s",
-                                              errno, &se_err[0]);
+                                              errno,
+                                              PST_STRERROR_R(errno, &se_err[0], 256));
                             // TODO
                         }
                     }
