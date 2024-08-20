@@ -341,27 +341,13 @@ namespace Pistache::Aio
             HandlerList(const HandlerList& other)            = delete;
             HandlerList& operator=(const HandlerList& other) = delete;
 
-            HandlerList(HandlerList&& other)            = default;
-            HandlerList& operator=(HandlerList&& other) = default;
-
-            HandlerList clone() const
-            {
-                HandlerList list;
-
-                for (size_t i = 0; i < index_; ++i)
-                {
-                    list.handlers.at(i) = handlers.at(i)->clone();
-                }
-                list.index_ = index_;
-
-                return list;
-            }
-
             Reactor::Key add(const std::shared_ptr<Handler>& handler)
             {
                 if (index_ == MaxHandlers)
                     throw std::runtime_error("Maximum handlers reached");
 
+                GUARD_AND_DBG_LOG(handlers_arr_mutex_);
+                
                 Reactor::Key key(index_);
                 handlers.at(index_++) = handler;
 
@@ -370,21 +356,35 @@ namespace Pistache::Aio
 
             void removeAll()
             {
+                GUARD_AND_DBG_LOG(handlers_arr_mutex_);
+                
                 index_ = 0;
                 handlers.fill(NULL);
             }
 
             std::shared_ptr<Handler> operator[](size_t index) const
             {
+                return handlers.at(index); // calls const "at"
+            }
+
+            std::shared_ptr<Handler> at(size_t index)
+            { // It's const, except that the mutex is locked and unlocked
+                if (index >= index_)
+                    throw std::runtime_error("Attempting to retrieve invalid handler");
+                GUARD_AND_DBG_LOG(handlers_arr_mutex_);
+                
                 return handlers.at(index);
             }
 
             std::shared_ptr<Handler> at(size_t index) const
             {
-                if (index >= index_)
-                    throw std::runtime_error("Attempting to retrieve invalid handler");
-
-                return handlers.at(index);
+                // We cast away the "const" of "this" before calling the
+                //  non-const version of "at". The non-const "at" is not
+                //  declared const because it locks and unlocks a mutex; but it
+                //  is const in that the class instance is in the same state
+                //  after the call vs. before (mutex is unlocked again before
+                //  non-const "at" exits) - so this is OK.
+                return(((HandlerList *)this)->at(index));
             }
 
             bool empty() const { return index_ == 0; }
@@ -422,8 +422,10 @@ namespace Pistache::Aio
             }
 
             template <typename Func>
-            void forEachHandler(Func func) const
-            {
+            void forEachHandler(Func func)
+            { // It's const, except that the mutex is locked and unlocked
+                GUARD_AND_DBG_LOG(handlers_arr_mutex_);
+                
                 for (size_t i = 0; i < index_; ++i)
                     func(handlers.at(i));
             }
@@ -431,6 +433,7 @@ namespace Pistache::Aio
         private:
             std::array<std::shared_ptr<Handler>, MaxHandlers> handlers;
             size_t index_;
+            std::mutex handlers_arr_mutex_;
         };
 
         HandlerList handlers_;
