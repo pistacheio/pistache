@@ -33,7 +33,8 @@
 #include <fcntl.h> // for file-constants (_O_RDONLY etc.) in Windows
 #include PIST_QUOTE(PST_FCNTL_HDR) // for function fcntl()
 
-#include PIST_QUOTE(PST_MISC_IO_HDR) // for _open (io.h / unistd.h)
+#include PIST_QUOTE(PST_MISC_IO_HDR) // for _close (io.h / unistd.h)
+#include PIST_QUOTE(PIST_FILEFNS_HDR) // for "open"
 
 #include <sys/stat.h>
 #include <sys/types.h>

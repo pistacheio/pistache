@@ -24,6 +24,8 @@
 #include <cstdlib>
 #include <cstring>
 
+#include <pistache/ps_strl.h>
+
 #include PIST_QUOTE(PST_ARPA_INET_HDR)
 
 #include PIST_QUOTE(PST_IFADDRS_HDR)
@@ -445,7 +447,7 @@ namespace Pistache
             {
                 addrLen_ = static_cast<socklen_t>(
                     offsetof(struct sockaddr_un, sun_path) + size);
-                std::strncpy(unAddr.sun_path, addr.c_str(), size);
+                PS_STRLCPY(unAddr.sun_path, addr.c_str(), size);
                 if (size == sizeof unAddr.sun_path)
                 {
                     unAddr.sun_path[size - 1] = '\0';

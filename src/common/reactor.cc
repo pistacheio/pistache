@@ -140,7 +140,7 @@ namespace Pistache::Aio
 
         std::shared_ptr<Handler> handler(const Reactor::Key& key) const
         {
-            return handlers_.at(key.data());
+            return handlers_.at((size_t) key.data());
         }
 
         std::vector<std::shared_ptr<Handler>>
@@ -633,7 +633,18 @@ namespace Pistache::Aio
                 thread = std::thread([=]() {
                     if (!threadsName_.empty())
                     {
-#if defined _IS_BSD && ! defined __NetBSD__
+#ifdef _IS_WINDOWS
+                        std::string threads_name(threadsName_.substr(0, 15));
+                        std::wstring temp(threads_name.begin(),
+                                          threads_name.end());
+                        LPCWSTR wide_threads_name = temp.c_str();
+
+                        HRESULT hr = SetThreadDescription(GetCurrentThread(),
+                                                          wide_threads_name);
+                        if (FAILED(hr))
+                            PS_LOG_INFO("SetThreadDescription failed");
+#else
+#if defined _IS_BSD && !defined __NetBSD__
                         pthread_set_name_np(
 #else
                         pthread_setname_np(
@@ -655,6 +666,7 @@ namespace Pistache::Aio
                             (void *) /*cast away const for NetBSD*/
 #endif
                             threadsName_.substr(0, 15).c_str());
+#endif // of ifdef _IS_WINDOWS... else...
                     }
                     sync->run();
                 });

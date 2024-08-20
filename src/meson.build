@@ -15,16 +15,25 @@ pistache_common_src = [
 	'common'/'net.cc',
 	'common'/'os.cc',
 	'common'/'peer.cc',
-        'common'/'pist_check.cc',
-        'common'/'pist_syslog.cc',
-        'common'/'pist_timelog.cc',
+	'common'/'pist_clock_gettime.cc',
+        'common'/'pist_fcntl.cc',
+        'common'/'pist_filefns.cc',
+        'common'/'pist_ifaddrs.cc',
+        'common'/'pist_resource.cc',
+        'common'/'pist_strerror_r.cc',
+        'common'/'ps_basename.cc',
+        'common'/'ps_sendfile.cc',
+        'common'/'ps_strl.cc',
 	'common'/'reactor.cc',
 	'common'/'stream.cc',
 	'common'/'string_logger.cc',
 	'common'/'tcp.cc',
 	'common'/'timer_pool.cc',
 	'common'/'transport.cc',
-	'common'/'utils.cc'
+	'common'/'utils.cc',
+        'common'/'pist_check.cc',   # Put back in correct order !!!!!!!!
+        'common'/'pist_timelog.cc', # Put back in correct order        
+        'common'/'pist_syslog.cc'   # Put back in correct order
 ]
 pistache_server_src = [
 	'server'/'endpoint.cc',

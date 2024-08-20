@@ -15,7 +15,7 @@
 
 /* ------------------------------------------------------------------------- */
 
-#ifdef _IS_WINDOWS
+#if defined _IS_WINDOWS || !defined(__GNUC__) || defined(__clang__)
 
 /* ------------------------------------------------------------------------- */
 // Note: We use the GNU-specific definition (which returns char *), not the

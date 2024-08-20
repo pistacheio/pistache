@@ -16,16 +16,16 @@
 #include <pistache/winornix.h>
 #include <pistache/pist_quote.h>
 
-#include <libgen.h> // for basename or basename_r
+#include <pistache/ps_basename.h> // for PS_BASENAME_R
 
 #include <stdio.h> // snprintf
 #include <stdlib.h> // malloc
 #include <time.h>
 #include <string.h>
 
-#include <libgen.h> // basename
 #include <cctype> // std::ispunct
 #include <algorithm> // std::remove_copy_if
+#include <vector>
 #include <limits.h> // PATH_MAX
 
 #ifdef __APPLE__
@@ -70,7 +70,11 @@
 #include <stdarg.h>
 #include <string.h> // for strcat
 
+#ifdef _IS_WINDOWS
+#include <windows.h> // appears needed for PST_THREAD_HDR (processthreadsapi.h)
+#endif
 #include PIST_QUOTE(PST_THREAD_HDR) // for pthread_self (getting thread ID)
+
 #include PIST_QUOTE(PST_MAXPATH_HDR)
 
 #include <sys/types.h> // for getpid()
@@ -145,10 +149,15 @@ static std::string getLogIdent()
         return(std::string());   
     #endif
 
-    if (!strlen(&(prog_path[0])))
+    size_t prog_path_len = strlen(&(prog_path[0]));
+    if (!prog_path_len)
         return(std::string());
 
-    char * prog_name = basename(&(prog_path[0]));
+    std::vector<char> bname_buff(
+        std::max<size_t>(PST_MAXPATHLEN+16, prog_path_len+16));
+    bname_buff[0] = 0;
+
+    char * prog_name = PS_BASENAME_R(&(prog_path[0]), bname_buff.data());
     if ((!prog_name) || (!strlen(prog_name)))
         prog_name = &(prog_path[0]);
 
@@ -564,7 +573,7 @@ extern "C" void PSLogFn(int _pri, bool _andPrintf,
     char bname_buff[PST_MAXPATHLEN+6];
     if ((f) && (f[0]))
     {
-        char * new_f = my_basename_r(f, &(bname_buff[0]));
+        char * new_f = PS_BASENAME_R(f, &(bname_buff[0]));
         if ((new_f) && (new_f[0]))
             f = new_f;
     }
@@ -662,33 +671,6 @@ extern "C" void setPsLogCategory(const char * _category)
     gSetPsLogCategoryCalledWithNull = false;
     strcpy(&(gIdentBuff[0]), _category);
 }
-
-// ---------------------------------------------------------------------------
-
-#ifndef __APPLE__
-static std::mutex ps_basename_r_mutex;
-extern "C" char * ps_basename_r(const char * path, char * bname)
-{
-    if (!bname)
-        return(NULL);
-        
-    bname[0] = 0;
-    
-    std::lock_guard<std::mutex> l_guard(ps_basename_r_mutex);
-
-    char * path_copy = (char *) malloc((path ? strlen(path) : 0) + 6);
-    strcpy(path_copy, path); // since basename may change path contents
-
-    char * bname_res = basename(path_copy);
-
-    if (bname_res)
-       strcpy(&(bname[0]), bname_res);
-
-    free(path_copy);
-    return(bname);
-}
-#endif // ifndef __APPLE__
-
 
 // ---------------------------------------------------------------------------
 

@@ -152,16 +152,6 @@ extern "C" void setPsLogCategory(const char * _category);
 
 // ---------------------------------------------------------------------------
 
-#ifdef __APPLE__
-#define my_basename_r basename_r
-#include <libgen.h> // for basename_r
-#else
-#define my_basename_r ps_basename_r
-extern "C" char * ps_basename_r(const char * path, char * bname);
-#endif
-
-// ---------------------------------------------------------------------------
-
 // You can use these PSLG_... just like std::cout, except they go to the log
 // E.g.:
 //   PSLG_DEBUG_OS << "fd_actual value: " << fd_actual;

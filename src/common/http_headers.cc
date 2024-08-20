@@ -113,9 +113,14 @@ namespace Pistache::Http::Header
         return true;
     }
 
+    // We use toLowercaseChar in the following std::transform, otherwise Visual
+    // Studio compiler complains about a int->char loss-of-precision (since
+    // ::tolower returns an int, but the elements of std::string are chars)
+    char toLowercaseChar(int c) {return((char) (::tolower(c)));}
+
     std::string toLowercase(std::string str)
     {
-        std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+        std::transform(str.begin(), str.end(), str.begin(), toLowercaseChar);
         return str;
     }
 

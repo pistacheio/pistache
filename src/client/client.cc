@@ -22,13 +22,10 @@
 #include PIST_QUOTE(PST_NETDB_HDR)
 #include PIST_QUOTE(PST_SOCKET_HDR)
 
-#ifdef _USE_LIBEVENT_LIKE_APPLE
-// For sendfile(...) function
-#include <sys/types.h>
-#include <sys/uio.h>
-#else
-#include <sys/sendfile.h>
-#endif
+// ps_sendfile.h includes sys/uio.h in macOS, and sys/sendfile.h in Linux
+#include <pistache/ps_sendfile.h>
+
+#include PIST_QUOTE(PST_STRERROR_R_HDR)
 
 #include <sys/types.h>
 
@@ -492,9 +489,12 @@ namespace Pistache::Http::Experimental
             PS_LOG_DEBUG_ARGS("Calling ::connect fs %d", GET_ACTUAL_FD(fd));
 
             int res = ::connect(GET_ACTUAL_FD(fd), data->getAddr(), data->addr_len);
+            char se_err[256 + 16];
             PS_LOG_DEBUG_ARGS("::connect res %d, errno on fail %d (%s)",
                               res, (res < 0) ? errno : 0,
-                              (res < 0) ? strerror(errno) : "success");
+                              (res < 0) ?
+                              PST_STRERROR_R(errno, &se_err[0], 256) :
+                              "success");
 
             if ((res == 0) || ((res == -1) && (errno == EINPROGRESS)))
             {
@@ -704,9 +704,11 @@ namespace Pistache::Http::Experimental
 
         int sfd = -1;
 
-        for (const addrinfo* addr = addrs; addr; addr = addr->ai_next)
+        for (const addrinfo* an_addr = addrs; an_addr;
+             an_addr = an_addr->ai_next)
         {
-            sfd = ::socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
+            sfd = ::socket(an_addr->ai_family, an_addr->ai_socktype,
+                           an_addr->ai_protocol);
             PS_LOG_DEBUG_ARGS("::socket actual_fd %d", sfd);
             if (sfd < 0)
                 continue;
@@ -730,7 +732,8 @@ namespace Pistache::Http::Experimental
 #endif
 
             transport_
-                ->asyncConnect(shared_from_this(), addr->ai_addr, addr->ai_addrlen)
+                ->asyncConnect(shared_from_this(), an_addr->ai_addr,
+                               an_addr->ai_addrlen)
                 .then(
                     [=]() {
                         socklen_t len = sizeof(saddr);
@@ -996,11 +999,11 @@ namespace Pistache::Http::Experimental
         }
     }
 
-    void ConnectionPool::init(size_t maxConnectionsPerHost,
-                              size_t maxResponseSize)
+    void ConnectionPool::init(size_t maxConnectionsPerHostParm,
+                              size_t maxResponseSizeParm)
     {
-        this->maxConnectionsPerHost = maxConnectionsPerHost;
-        this->maxResponseSize       = maxResponseSize;
+        this->maxConnectionsPerHost = maxConnectionsPerHostParm;
+        this->maxResponseSize       = maxResponseSizeParm;
     }
 
     std::shared_ptr<Connection>
@@ -1358,9 +1361,9 @@ namespace Pistache::Http::Experimental
                 PS_LOG_DEBUG("No transport yet on connection");
 
                 auto transports = reactor_->handlers(transportKey);
-                auto index      = ioIndex.fetch_add(1) % transports.size();
+                auto index  = ioIndex.fetch_add(1) % transports.size();
 
-                auto transport = std::static_pointer_cast<Transport>(transports[index]);
+                auto transport = std::static_pointer_cast<Transport>(transports[(unsigned int)index]);
                 PS_LOG_DEBUG_ARGS("Associating transport %p on connection %p",
                                   transport.get(), conn.get());
                 conn->associateTransport(transport);

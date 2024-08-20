@@ -51,7 +51,7 @@ namespace Pistache::Tcp
             double global;
             std::vector<double> workers;
 
-            std::vector<rusage> raw;
+            std::vector<PST_RUSAGE> raw;
             TimePoint tick;
         };
 

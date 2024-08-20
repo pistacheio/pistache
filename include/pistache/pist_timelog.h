@@ -17,6 +17,7 @@
 #define INCLUDED_PS_TIMELOG_H
 
 #include <pistache/winornix.h>
+#include <pistache/emosandlibevdefs.h> // For _IS_BSD
 
 #include PIST_QUOTE(PST_CLOCK_GETTIME_HDR) // for clock_gettime and asctime
 #include <stdio.h> // snprintf
@@ -30,7 +31,6 @@
 
 // ---------------------------------------------------------------------------
 
-#include <pistache/emosandlibevdefs.h> // For _IS_BSD
 #include <pistache/pist_syslog.h>
 
 #ifdef _IS_BSD
@@ -54,15 +54,13 @@
 #ifdef PS_TIMINGS_DBG
 // For C++ name demangling:
 #ifdef _IS_WINDOWS
-// Do we need "#include <windows.h>" as well? !!!!!!!!
-#include "dbghelp.h"
 #pragma comment(lib, "dbghelp.lib")
 extern char *__unDName(char*, const char*, int, void*, void*, int);
 #else
 #include <cxxabi.h> // for abi::__cxa_demangle
 #endif
 
-#include PIST_QUOTE(PST_THREAD_HDR) //e.g. pthread.h
+
 #endif
 
 // ---------------------------------------------------------------------------
@@ -115,7 +113,6 @@ extern char *__unDName(char*, const char*, int, void*, void*, int);
 #define GET__PTST_DEMANGLED                                             \
     char ptst_undecorated_name[2048+16];                                \
     ptst_undecorated_name[0] = 0;                                       \
-                                                                        \
     char * __ptst_demangled = __unDName(&(ptst_undecorated_name[0]),    \
                    typeid(*this).name()+1, 2048, malloc, free, 0x2800); 
 #else
@@ -168,40 +165,9 @@ private:
     static std::map<PST_THREAD_ID, unsigned> mThreadMap;
     static std::mutex mThreadMapMutex;
 
-    unsigned getThreadNextDepth() // returns depth value after increment
-        {
-            std::lock_guard<std::mutex> l_guard(mThreadMapMutex);
-            PST_THREAD_ID pthread_id = PST_THREAD_ID_SELF();
-            
-            std::map<PST_THREAD_ID, unsigned>::iterator it =
-                mThreadMap.find(pthread_id);
-            if (it == mThreadMap.end())
-            {
-                std::pair<PST_THREAD_ID, unsigned> pr(pthread_id, 1);
-                mThreadMap.insert(pr);
-                return(1);
-            }
-
-            return(++(it->second));
-        }
-    unsigned decrementThreadDepth() // returns depth value before decrement
-        {
-            std::lock_guard<std::mutex> l_guard(mThreadMapMutex);
-            PST_THREAD_ID pthread_id = PST_THREAD_ID_SELF();
-            
-            std::map<PST_THREAD_ID, unsigned>::iterator it =
-                mThreadMap.find(pthread_id);
-
-            unsigned old_depth = 1;
-            if (it->second) // else something went wrong
-                old_depth = ((it->second)--);
-
-            if (old_depth <= 1)
-                mThreadMap.erase(it); // arguably optional, but avoids any risk
-                                      // of leaks
-            return(old_depth);
-        }
-
+    unsigned getThreadNextDepth(); // returns depth value after increment
+    unsigned decrementThreadDepth(); // returns depth value before decrement
+    
     void setMarkerChars(char * marker_chars, char the_marker,
                         unsigned call_depth)
         {

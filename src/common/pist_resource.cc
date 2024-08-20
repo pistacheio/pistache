@@ -6,11 +6,12 @@
 
 // Defines a getrusage in Windows
 
-#include <pistache/pist_resource.h>
 
 /* ------------------------------------------------------------------------- */
 
 #ifdef _IS_WINDOWS
+
+#include <pistache/pist_resource.h>
 
 #include <minwinbase.h> // for FILETIME
 #include <winnt.h> // for ULARGE_INTEGER
@@ -29,19 +30,19 @@ extern "C" int pist_getrusage(int who, struct PST_RUSAGE * rusage)
     FILETIME    usertime;
     ULARGE_INTEGER li;
 
-    if (who != RUSAGE_SELF)
+    if (who != PST_RUSAGE_SELF)
     {
         /* Only RUSAGE_SELF is supported in this implementation for now */
         errno = EINVAL;
         return -1;
     }
 
-    if (rusage == (struct rusage *) NULL)
+    if (rusage == (struct PST_RUSAGE *) NULL)
     {
         errno = EFAULT;
         return -1;
     }
-    memset(rusage, 0, sizeof(struct rusage));
+    memset(rusage, 0, sizeof(struct PST_RUSAGE));
     if (GetProcessTimes(GetCurrentProcess(),
                         &starttime, &exittime, &kerneltime, &usertime) == 0)
     {

@@ -14,20 +14,16 @@
 #include <pistache/eventmeth.h>
 
 #ifdef _USE_LIBEVENT_LIKE_APPLE
-// For sendfile(...) function
-#include <sys/types.h>
-#include <sys/uio.h>
-
+#if !defined(_IS_WINDOWS) && !defined(__NetBSD__)
+// There is no TCP_NOPUSH/TCP_CORK in Windows or NetBSD
 #include <netinet/tcp.h> // for TCP_NOPUSH
 #endif
+#endif // of ifdef _USE_LIBEVENT_LIKE_APPLE
 
-#ifdef __linux__
-#include <sys/sendfile.h>
-#endif
+// ps_sendfile.h includes sys/uio.h in macOS, and sys/sendfile.h in Linux
+#include <pistache/ps_sendfile.h>
 
-#ifdef _IS_BSD
-#include <unistd.h> // for lseek
-#endif
+#include PIST_QUOTE(PST_MISC_IO_HDR)// unistd.h/lseek in BSD. _close in Windows
 
 #ifndef _USE_LIBEVENT_LIKE_APPLE
 // Note: sys/timerfd.h is linux-only (and certainly POSIX only)
@@ -564,7 +560,7 @@ namespace Pistache::Tcp
                             // done with the file buffer, nothing else knows
                             // whether to close it with the way the code is
                             // written.
-                            ::close(buffer.fd());
+                            PST_CLOSE(buffer.fd());
                         }
 
                         cleanUp();
@@ -586,9 +582,9 @@ namespace Pistache::Tcp
         socklen_t len    = sizeof(tcp_no_push);
         int sock_opt_res = -1;
 
-#ifdef __NetBSD__
+#if defined(__NetBSD__) || defined(_IS_WINDOWS)
         { // encapsulate
-            int tcp_nodelay = 0;
+            PST_SOCK_OPT_VAL_T tcp_nodelay = 0;
             sock_opt_res    = getsockopt(GET_ACTUAL_FD(fd), tcp_prot_num_,
                                          TCP_NODELAY, &tcp_nodelay, &len);
             if (sock_opt_res == 0)
@@ -602,7 +598,7 @@ namespace Pistache::Tcp
                                   TCP_CORK,
 #endif
                                   &tcp_no_push, &len);
-#endif // of ifdef __NetBSD__ ... else
+#endif // of if defined(__NetBSD__) || defined(_IS_WINDOWS) ... else
 
         if (sock_opt_res == 0)
         {
@@ -611,8 +607,8 @@ namespace Pistache::Tcp
                 PS_LOG_DEBUG_ARGS("Setting MSG_MORE style to %s",
                                   (msg_more_style) ? "on" : "off");
 
-                int optval =
-#ifdef __NetBSD__
+                PST_SOCK_OPT_VAL_T optval =
+#if defined(__NetBSD__) || defined(_IS_WINDOWS)
                     // In NetBSD case we're getting/setting (or resetting) the
                     // TCP_NODELAY socket option, which _stops_ data being held
                     // prior to send, whereas in Linux, macOS, FreeBSD or
@@ -626,7 +622,7 @@ namespace Pistache::Tcp
 
                 tcp_no_push  = msg_more_style ? 1 : 0;
                 sock_opt_res = setsockopt(GET_ACTUAL_FD(fd), tcp_prot_num_,
-#ifdef __NetBSD__
+#if defined(__NetBSD__) || defined(_IS_WINDOWS)
                                           TCP_NODELAY,
 #elif defined __APPLE__ || defined _IS_BSD
                                           TCP_NOPUSH,
@@ -647,9 +643,12 @@ namespace Pistache::Tcp
         }
         else
         {
+            char se_err[256 + 16];
             PS_LOG_DEBUG_ARGS("getsockopt failed for fd %p, actual fd %d, "
                               "errno %d, err %s",
-                              fd, GET_ACTUAL_FD(fd), errno, strerror(errno));
+                              fd, GET_ACTUAL_FD(fd), errno,
+                              PST_STRERROR_R(errno, &se_err[0], 256));
+
             throw std::runtime_error("getsockopt failed");
         }
     }
@@ -702,7 +701,13 @@ namespace Pistache::Tcp
                               fd, GET_ACTUAL_FD(fd), (int)len);
 
             bytesWritten = ::send(GET_ACTUAL_FD(fd), buffer, len,
-                                  flags | MSG_NOSIGNAL);
+                                  flags
+#ifndef _IS_WINDOWS
+                                  // There's no SIGPIPE in Windows and
+                                  // MSG_NOSIGNAL is not defined
+                                  | MSG_NOSIGNAL
+#endif
+                );
 
             PS_LOG_DEBUG_ARGS("bytesWritten = %d", bytesWritten);
 
@@ -714,131 +719,7 @@ namespace Pistache::Tcp
     }
 
 #ifdef _IS_BSD
-    // This is the sendfile function prototype found in Linux. However,
-    // sendfile does not exist in OpenBSD, so we make our own.
-    //
-    // https://www.man7.org/linux/man-pages/man2/sendfile.2.html
-    // Copies FROM "in_fd" TO "out_fd"
-    // Returns number of bytes written on success, -1 with errno set on error
-    //
-    // If offset is not NULL, then sendfile() does not modify the file offset
-    // of in_fd; otherwise the file offset is adjusted to reflect the number of
-    // bytes read from in_fd.
-    ssize_t my_sendfile(int out_fd, int in_fd, off_t* offset, size_t count)
-    {
-        char buff[65536 + 16]; // 64KB is an efficient size for read/write
-                               // blocks in most storage systems. The 16 bytes
-                               // is to reduce risk of buffer overflow in the
-                               // events of a bug.
-
-        int read_errors           = 0;
-        int write_errors          = 0;
-        ssize_t bytes_written_res = 0;
-
-        off_t in_fd_start_pos = -1;
-
-        if (offset)
-        {
-            in_fd_start_pos = lseek(in_fd, 0, SEEK_CUR);
-            if (in_fd_start_pos < 0)
-            {
-                PS_LOG_DEBUG("lseek error");
-                return (in_fd_start_pos);
-            }
-
-            if (lseek(in_fd, *offset, SEEK_SET) < 0)
-            {
-                PS_LOG_DEBUG("lseek error");
-                return (-1);
-            }
-        }
-
-        for (;;)
-        {
-            size_t bytes_to_read = count ? std::min(sizeof(buff) - 16, count) : (sizeof(buff) - 16);
-
-            ssize_t bytes_read = read(in_fd, &(buff[0]), bytes_to_read);
-            if (bytes_read == 0) // End of file
-                break;
-
-            if (bytes_read < 0)
-            {
-                if ((errno == EINTR) || (errno == EAGAIN))
-                {
-                    PS_LOG_DEBUG("read-interrupted error");
-
-                    read_errors++;
-                    if (read_errors < 256)
-                        continue;
-
-                    PS_LOG_DEBUG("read-interrupted repeatedly error");
-                    errno = EIO;
-                }
-
-                bytes_written_res = -1;
-                break;
-            }
-            read_errors = 0;
-
-            bool re_adjust_pos = false;
-
-            if ((count) && (bytes_read > ((ssize_t)count)))
-            {
-                bytes_read    = ((ssize_t)count);
-                re_adjust_pos = true;
-            }
-
-            if (offset)
-            {
-                *offset += bytes_read;
-                if (re_adjust_pos)
-                    lseek(in_fd, *offset, SEEK_SET);
-            }
-
-            auto p = &(buff[0]);
-            while (bytes_read > 0)
-            {
-                ssize_t bytes_written = write(out_fd, p, bytes_read);
-                if (bytes_written <= 0)
-                {
-                    if ((bytes_written == 0) || (errno == EINTR) || (errno == EAGAIN))
-                    {
-                        PS_LOG_DEBUG("write-interrupted error");
-
-                        write_errors++;
-                        if (write_errors < 256)
-                            continue;
-
-                        PS_LOG_DEBUG("write-interrupted repeatedly error");
-                        errno = EIO;
-                    }
-
-                    bytes_written_res = -1;
-                    break;
-                }
-                write_errors = 0;
-
-                bytes_read -= bytes_written;
-                p += bytes_written;
-                bytes_written_res += bytes_written;
-            }
-
-            if (count)
-                count -= bytes_read;
-        }
-
-        // if offset non null, set in_fd file pos to pos from start of this
-        // function
-        if ((offset) && (bytes_written_res >= 0) && (lseek(in_fd, in_fd_start_pos, SEEK_SET) < 0))
-        {
-            PS_LOG_DEBUG("lseek error");
-            bytes_written_res = -1;
-        }
-
-        return (bytes_written_res);
-    }
-
-#define SENDFILE my_sendfile    
+#define SENDFILE my_sendfile
 #else
 #define SENDFILE ::sendfile
 #endif // ifdef _IS_BSD
@@ -879,7 +760,7 @@ namespace Pistache::Tcp
 #endif /* PISTACHE_USE_SSL */
 
 #ifdef DEBUG
-            const char* sendfile_fn_name = PIST_QUOTE(SENDFILE);
+            const char* sendfile_fn_name = PIST_QUOTE(PS_SENDFILE);
 #endif
             PS_LOG_DEBUG_ARGS(
                 "%s fd %" PIST_QUOTE(PS_FD_PRNTFCD) " actual-fd %d, file fd %d, len %d", sendfile_fn_name,
@@ -903,7 +784,7 @@ namespace Pistache::Tcp
             // experimentation it appears sendfile does not advance the file
             // position of "file", which is the same as the behavior described
             // in Linux sendfile man page
-            int sendfile_res = ::sendfile(file, GET_ACTUAL_FD(fd),
+            int sendfile_res = PS_SENDFILE(file, GET_ACTUAL_FD(fd),
                                           offset, &len_as_off_t,
                                           NULL, // no new prefix/suffix content
                                           0 /*reserved, must be zero*/);
@@ -919,7 +800,7 @@ namespace Pistache::Tcp
             }
 
 #else
-        bytesWritten = SENDFILE(GET_ACTUAL_FD(fd), file, &offset, len);
+        bytesWritten = PS_SENDFILE(GET_ACTUAL_FD(fd), file, &offset, len);
 #endif
 
             PS_LOG_DEBUG_ARGS(
@@ -1116,12 +997,13 @@ namespace Pistache::Tcp
         while (this->notifier.tryRead())
             ;
 
-        rusage now;
+        PST_RUSAGE now;
 
-        auto res = getrusage(
+        auto res = PST_GETRUSAGE(
 #ifdef _USE_LIBEVENT_LIKE_APPLE
-            RUSAGE_SELF, // usage for whole process, not just current thread
-                         // (macOS getrusage doesn't support RUSAGE_THREAD)
+            PST_RUSAGE_SELF, // usage for whole process, not just current
+                             // thread (macOS getrusage doesn't support
+                             // RUSAGE_THREAD)
 #else
             RUSAGE_THREAD,
 #endif

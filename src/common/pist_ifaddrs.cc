@@ -7,16 +7,16 @@
 // Defines "struct pist_ifaddrs", and the functions pist_getifaddrs and
 // pist_freeifaddrs for Windows
 //
-#include <pistache/pist_ifaddrs.h>
 
 /* ------------------------------------------------------------------------- */
 
 #ifdef _IS_WINDOWS
 
-/* ------------------------------------------------------------------------- */
+#include <pistache/pist_ifaddrs.h>
 
-// !!!!!!!!
-// See https://stackoverflow.com/questions/41139561/find-ip-address-of-the-machine-in-c
+#include <netioapi.h> // for ConvertLengthToIpv4Mask
+
+/* ------------------------------------------------------------------------- */
 
 extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
 {
@@ -30,10 +30,12 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
 
     ULONG buff_len = sizeof(IP_ADAPTER_ADDRESSES);
     u_char buff_try1[buff_len+16];
-    PIP_ADAPTER_ADDRESSES fst_adap_addr = (PIP_ADAPTER_ADDRESSES)(&buff_try1[0]);
+    PIP_ADAPTER_ADDRESSES fst_adap_addr =
+        (PIP_ADAPTER_ADDRESSES)(&buff_try1[0]);
 
     // First try for GetAdaptersAddresses, allowing space for just one address
-    // Presuming that's not enough, it will tell us how much buffer space we need
+    // Probably that's not enough, but it will tell us how much buffer space we
+    // need
     ULONG gaa_res1 = GetAdaptersAddresses(
         AF_UNSPEC, // IP4 and IP6
         GAA_FLAG_INCLUDE_ALL_INTERFACES | GAA_FLAG_INCLUDE_TUNNEL_BINDINGORDER,
@@ -50,7 +52,8 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
         
         gaa_res = GetAdaptersAddresses(
             AF_UNSPEC, // IP4 and IP6
-            GAA_FLAG_INCLUDE_ALL_INTERFACES | GAA_FLAG_INCLUDE_TUNNEL_BINDINGORDER,
+            GAA_FLAG_INCLUDE_ALL_INTERFACES |
+                GAA_FLAG_INCLUDE_TUNNEL_BINDINGORDER,
             NULL, // reserved
             fst_adap_addr,
             &buff_len);
@@ -101,26 +104,19 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
     for (PIP_ADAPTER_ADDRESSES adap_addr = fst_adap_addr; adap_addr;
          adap_addr = adap_addr->Next)
     {
-        bool is_loopback = (adap_addr->IfType != IF_TYPE_SOFTWARE_LOOPBACK);
-        PIP_ADAPTER_UNICAST_ADDRESS unicast_addr = adap_addr->FirstUnicastAddress;
-        if ((!unicast_addr) && (!is_loopback))
-            continue;
-
-        if (!unicast_addr)
+        PIP_ADAPTER_UNICAST_ADDRESS unicast_addr =
+                                                adap_addr->FirstUnicastAddress;
+        while(unicast_addr)
         {
             num_adap_addr++;
-            continue;
-        }
-
-        do {
-            num_adap_addr++;
             unicast_addr = unicast_addr->Next;
-        } while(unicast_addr);
+        };
     }
 
     if (!num_adap_addr)
     {
-        PS_LOG_DEBUG("No unicast addresses found, ret success with empty list");
+        PS_LOG_DEBUG(
+            "No unicast addresses found, ret success with empty list");
         return(0);
     }
 
@@ -128,7 +124,7 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
     struct PST_IFADDRS * pst_ifaddrs = new PST_IFADDRS[num_adap_addr+1];
     if (!pst_ifaddrs)
     {
-        PS_LOG_DEBUG("new failed");
+        PS_LOG_WARNING("new failed");
         errno = ENOMEM;
         return(-1);
     }
@@ -140,30 +136,10 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
     for (PIP_ADAPTER_ADDRESSES adap_addr = fst_adap_addr; adap_addr;
          adap_addr = adap_addr->Next)
     {
-        bool is_loopback = (adap_addr->IfType != IF_TYPE_SOFTWARE_LOOPBACK);
-        PIP_ADAPTER_UNICAST_ADDRESS unicast_addr = adap_addr->FirstUnicastAddress;
-        if ((!unicast_addr) && (!is_loopback))
+        PIP_ADAPTER_UNICAST_ADDRESS unicast_addr =
+            adap_addr->FirstUnicastAddress;
+        if (!unicast_addr)
             continue;
-
-        
-
-        PST_IFADDRS base_ifaddrs;
-        memset(&base_ifaddrs, 0, sizeof(base_ifaddrs));
-
-        if (adap_addr->AdapterName)
-        {
-            size_t name_len = strlen(adap_addr->AdapterName);
-            base_ifaddrs.ifa_name = MALLOC(name_len+1);
-            if (!base_ifaddrs.ifa_name)
-            {
-                PS_LOG_DEBUG("Name MALLOC failed");
-            }
-            else
-            {
-                strncpy(base_ifaddrs.ifa_name, adap_addr->AdapterName, name_len);
-                base_ifaddrs.ifa_name[name_len] = 0;
-            }
-        }
 
         /*
          SIOCGIFFLAGS
@@ -192,72 +168,112 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
               IFF_DORMANT       Driver signals dormant (since Linux 2.6.17)
               IFF_ECHO          Echo sent packets (since Linux 2.6.25)
         */
-        unsigned int flags = 0;
-        flags |= ((adap_addr->OperStatus == IfOperStatusUp) ? PST_IFF_UP : 0);
-        flags |= ((adap_addr->FirstMulticastAddress) ? PST_IFF_BROADCAST : 0);
-        flags |=
-            ((adap_addr->IfType == IF_TYPE_SOFTWARE_LOOPBACK) ? PST_IFF_LOOPBACK:0);
+        unsigned int adap_flags = 0;
+        adap_flags |= ((adap_addr->OperStatus == IfOperStatusUp) ?
+                       PST_IFF_UP : 0);
+        adap_flags |= ((adap_addr->FirstMulticastAddress) ?
+                       PST_IFF_BROADCAST : 0);
+        adap_flags |= ((adap_addr->IfType == IF_TYPE_SOFTWARE_LOOPBACK) ?
+                       PST_IFF_LOOPBACK:0);
         
         // "Point-to-point link" usually maeans two machines linked with a
-        // single wire andnno other devices on the wire. GetAdaptersAddresses
+        // single wire and no other devices on the wire. GetAdaptersAddresses
         // doesn't seem to distinguish that from unicast
         
-        flags |= ((adap_addr->OperStatus == IfOperStatusUp) ? PST_IFF_RUNNING : 0);
+        adap_flags |= ((adap_addr->OperStatus == IfOperStatusUp) ?
+                  PST_IFF_RUNNING : 0);
 
-        flags |=
-            ((adap_addr->Flags & IP_ADAPTER_NO_MULTICAST) ? 0 : PST_IFF_MULTICAST);
+        adap_flags |= ((adap_addr->Flags & IP_ADAPTER_NO_MULTICAST) ?
+                  0 : PST_IFF_MULTICAST);
         
-        flags |= ((adap_addr->ConnectionType == NET_IF_CONNECTION_DEDICATED) ?
-                  PST_IFF_AUTOMEDIA : 0);
+        adap_flags |=
+            ((adap_addr->ConnectionType == NET_IF_CONNECTION_DEDICATED) ?
+             PST_IFF_AUTOMEDIA : 0);
         
         // IFF_NOARP, IFF_PROMISC, IFF_NOTRAILERS, IFF_ALLMULTI, IFF_MASTER,
         // IFF_SLAVE, IFF_PORTSEL, IFF_DYNAMIC, IFF_LOWER_UP, IFF_DORMANT and
         // IFF_ECHO don't seem supported in GetAdaptersAddresses
 
-        base_ifaddrs.ifa_flags = flags;
+        // We already checked that first unicast_addr is non null
+        do {
+            LPSOCKADDR win_sock_addr = unicast_addr->Address.lpSockaddr;
+            int win_sock_addr_len = unicast_addr->Address.iSockaddrLength;
+            if ((!win_sock_addr) || (!win_sock_addr_len))
+                continue;
 
-        
-        if (!unicast_addr)
-        {
             PST_IFADDRS & this_ifaddrs(pst_ifaddrs[i]);
             memset(&this_ifaddrs, 0, sizeof(this_ifaddrs));
-            
-            this_ifaddrs = base_ifaddrs;
 
-            // It's a loopback interface but not specifying a unicast address
-            // !!!!!!!! - fill in based on 127.0.0.1
+            if (adap_addr->AdapterName)
+            {
+                size_t name_len = strlen(adap_addr->AdapterName);
+                this_ifaddrs.ifa_name = MALLOC(name_len+1);
+                if (!this_ifaddrs.ifa_name)
+                {
+                    PS_LOG_WARNING("Name MALLOC failed");
+                    delete pst_ifaddrs;
+                    errno = ENOMEM;
+                    return(-1);
+                }
+
+                strncpy(this_ifaddrs.ifa_name,
+                        adap_addr->AdapterName, name_len);
+                this_ifaddrs.ifa_name[name_len] = 0;
+            }
+
+            this_ifaddrs.ifa_flags = adap_flags;
+
+            LPSOCKADDR sock_addr = MALLOC(sizeof(SOCKADDR));
+            if (!sock_addr)
+            {
+                PS_LOG_WARNING("MALLOC failed");
+                delete pst_ifaddrs;
+                errno = ENOMEM;
+                return(-1);
+            }
+
+            *sock_addr = *win_sock_addr;
+            this_ifaddrs.ifa_addr = sock_addr;
+                
+            if (unicast_addr->OnLinkPrefixLength)
+            {
+                if (win_sock_addr->sa_family == AF_INET)
+                { // IPv4 
+                    ULONG mask = 0;
+                    if ((ConvertLengthToIpv4Mask(
+                             unicast_addr->OnLinkPrefixLength,
+                             &mask) == NO_ERROR) && (mask != 0))
+                    {
+                        LPSOCKADDR mask_sock_addr =
+                            MALLOC(sizeof(SOCKADDR));
+                        if (!mask_sock_addr)
+                        {
+                            PS_LOG_WARNING("MALLOC failed");
+                            delete pst_ifaddrs;
+                            errno = ENOMEM;
+                            return(-1);
+                        }
+                        memset(mask_sock_addr, 0, sizeof(*mask_sock_addr));
+                        mask_sock_addr->sa_family =
+                            win_sock_addr->sa_family;
+                        ((sockaddr_in *)mask_sock_addr)->
+                            sin_addr.S_un.S_addr = mask;
+
+                        this_ifaddrs.ifa_netmask = mask_sock_addr;
+                    }
+                }
+            }
 
             i++;
             if (i >= num_adap_addr)
                 break;
 
-            base_ifaddrs.ifa_next = &(pst_ifaddrs[i]);
-        }
-        else
-        {
-            do {
-                
-                PST_IFADDRS & this_ifaddrs(pst_ifaddrs[i]);
-                memset(&this_ifaddrs, 0, sizeof(this_ifaddrs));
+            this_ifaddrs.ifa_next = &(pst_ifaddrs[i]);
 
-                this_ifaddrs = base_ifaddrs;
-
-                // !!!!!!!!
-                // Fill in ifa_addr based on unicast_addr
-                
-
-                i++;
-                if (i >= num_adap_addr)
-                    break;
-
-                base_ifaddrs.ifa_next = &(pst_ifaddrs[i]);
-
-                unicast_addr = unicast_addr->Next;
-            } while(unicast_addr);
-        }
+            unicast_addr = unicast_addr->Next;
+        } while(unicast_addr);
     }
 
-    
     *ifap = fst_adap_addr;
     return(0);
 }
@@ -267,6 +283,26 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
 
 extern "C" void PST_FREEIFADDRS(struct PST_IFADDRS *ifa)
 {
+    if (!ifa)
+    {
+        PS_LOG_DEBUG("ifa is NULL");
+        return;
+    }
+
+    for (PST_IFADDRS * this_ifaddrs = ifa; this_ifaddrs;
+         this_ifaddrs = this_ifaddrs->Next)
+    {
+        if (this_ifaddrs->name)
+            FREE(this_ifaddrs->name);
+
+        if (this_ifaddrs.ifa_addr)
+            FREE(this_ifaddrs.ifa_addr);
+
+        if (this_ifaddrs.ifa_netmask)
+            FREE(this_ifaddrs.ifa_netmask);
+    }
+
+    delete ifa;
 }
 
 /* ------------------------------------------------------------------------- */

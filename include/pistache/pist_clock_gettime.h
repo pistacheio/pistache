@@ -20,6 +20,9 @@
 
 // PST_CLOCK_REALTIME, PST_CLOCK_MONOTONIC etc. defined in winornix.h
 
+#include <time.h> // for time_t
+#include <ctime> // for struct tm
+
 /* ------------------------------------------------------------------------- */
 
 extern "C" int PST_CLOCK_GETTIME(PST_CLOCK_ID_T clockid,

@@ -2428,7 +2428,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
         if (actual_fd > 0)
         {
             PS_LOG_DEBUG_ARGS("::close actual_fd %d", actual_fd);
-            actual_fd_close_res = ::PST_CLOSE(actual_fd);
+            actual_fd_close_res = PST_CLOSE(actual_fd);
         }
 
         if (finalize_res < 0)
@@ -2535,12 +2535,12 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
 
     PST_SSIZE_T EmEvent::read(void * buf, size_t count) // virtual
     {
-        return(::PST_READ(getActualFd(), buf, count));
+        return(PST_READ(getActualFd(), buf, count));
     }
     
     PST_SSIZE_T EmEvent::write(const void * buf, size_t count) // virtual
     {
-        return(::PST_WRITE(getActualFd(), buf, count));
+        return(PST_WRITE(getActualFd(), buf, count));
     }
 
     int EmEvent::getActualFdPrv() const

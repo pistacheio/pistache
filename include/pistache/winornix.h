@@ -30,7 +30,7 @@
 
 #ifdef _IS_WINDOWS
 // Need to do this FIRST before including any windows headers, otherwise those
-// haders may redefine min/max such that valid expressions like
+// headers may redefine min/max such that valid expressions like
 // "std::numeric_limits<int>::max()" no longer work
 #define NOMINMAX
 #endif
@@ -101,6 +101,13 @@ struct pst_timespec { long tv_sec; long tv_nsec; };
 #endif
 
 #ifdef _IS_WINDOWS
+typedef char PST_SOCK_OPT_VAL_T;
+#else
+typedef int PST_SOCK_OPT_VAL_T;
+#endif
+
+
+#ifdef _IS_WINDOWS
 // As per /usr/include/linux/time.h
 
 // If additional PST_CLOCK_... constants are defined (commented in), then they
@@ -154,7 +161,7 @@ struct pst_timespec { long tv_sec; long tv_nsec; };
 #endif
 
 // Use #include PIST_QUOTE(PST_STRERROR_R_HDR)
-#ifdef __GNUC__
+#if defined(__GNUC__) && !defined(__clang__)
 #define PST_STRERROR_R_HDR string.h
 #define PST_STRERROR_R strerror_r // returns char *
 #else
@@ -215,6 +222,14 @@ struct pst_timespec { long tv_sec; long tv_nsec; };
 #define PST_NETINET_IN_HDR netinet/in.h
 #endif
 
+// Use #include PIST_QUOTE(PST_NETINET_TCP_HDR)
+#ifdef _IS_WINDOWS
+#define PST_NETINET_TCP_HDR winsock2.h
+#else
+#define PST_NETINET_TCP_HDR netinet/tcp.h
+#endif
+
+
 // Use #include PIST_QUOTE(PST_IFADDRS_HDR)
 #ifdef _IS_WINDOWS
 #define PST_IFADDRS_HDR pistache/pist_ifaddrs.h
@@ -248,8 +263,15 @@ typedef struct in_addr PST_IN_ADDR_T;
 #define PST_IN_ADDR_T in_addr_t
 #endif
 
+
+
 // Use #include PIST_QUOTE(PST_THREAD_HDR)
 #ifdef _IS_WINDOWS
+// Note: processthreadsapi.h appears to require the prior inclusion of
+// windows.h as well.
+// So make sure to include PST_THREAD_HDR only in C/C++ files, not in a header
+// file where it could end up including the massive windows.h all over the
+// place.
 #define PST_THREAD_HDR processthreadsapi.h
 #else
 #define PST_THREAD_HDR pthread.h
@@ -265,25 +287,38 @@ typedef struct in_addr PST_IN_ADDR_T;
 // Use #include PIST_QUOTE(PST_MISC_IO_HDR)
 #ifdef _IS_WINDOWS
 #define PST_MISC_IO_HDR io.h
+// For _close etc.
 #else
 #define PST_MISC_IO_HDR unistd.h
+#endif
+
+// Use #include PIST_QUOTE(PIST_FILEFNS_HDR)
+#ifdef _IS_WINDOWS
+#define PIST_FILEFNS_HDR pistache/pist_filefns.h
+#else
+// unistd.h defines pread
+#define PIST_FILEFNS_HDR unistd.h
 #endif
 
 #ifdef _IS_WINDOWS
 // See:
 //   https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/close
-//
-// !!!!!!!! Should we be using something else to close a socket (as opposed to
-// a windows file descriptor)
-#define PST_CLOSE _close
-#define PST_OPEN _open
-#define PST_READ _read
-#define PST_WRITE _write
+#define PST_CLOSE ::_close
+#define PST_OPEN pist_open
+#define PST_READ ::_read
+#define PST_WRITE ::_write
+#define PST_PREAD pist_pread
+
+typedef int pst_mode_t;
+#define PST_MODE_T pst_mode_t
 #else
-#define PST_CLOSE close
-#define PST_OPEN open
-#define PST_READ read
-#define PST_WRITE write
+#define PST_CLOSE ::close
+#define PST_OPEN ::open
+#define PST_READ ::read
+#define PST_WRITE ::write
+#define PST_PREAD ::pread
+
+#define PST_MODE_T mode_t
 #endif
 
 // Open flags
@@ -294,6 +329,8 @@ typedef struct in_addr PST_IN_ADDR_T;
 // Following flags are defined in Linux
 // If commented out, it means there is no equivalent flag in Windows (though
 // sometimes a similar effect can be achieved in Windows by different means)
+// Note: File constants are declared in fcntl.h in Windows
+// (https://learn.microsoft.com/en-us/cpp/c-runtime-library/file-constants)
 #define PST_O_RDONLY _O_RDONLY
 #define PST_O_WRONLY _O_WRONLY
 #define PST_O_RDWR _O_RDWR
@@ -357,6 +394,7 @@ typedef uint32_t pst_thread_id; // DWORD := uint32_t
 
 #define PST_THREAD_ID_SELF GetCurrentThreadId
 #else
+#include <sys/types.h> // to define pthread_t even without PST_THREAD_HDR
 #define PST_THREAD_ID pthread_t
 
 #define PST_THREAD_ID_SELF pthread_self

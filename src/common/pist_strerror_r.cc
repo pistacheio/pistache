@@ -15,6 +15,8 @@
 
 #ifdef _IS_WINDOWS
 
+#include <pistache/ps_strl.h>
+
 /* ------------------------------------------------------------------------- */
 
 // Note: We use the GNU-specific definition (which returns char *), not the
@@ -23,14 +25,15 @@
 // strerror_s in Windows is the XSI form (returns int)
 
 static const char * const_bad_strerror_parms = "{Invalid strerror_r parms}";
-static char bad_strerror_parms_buff[128];
+static char bad_strerror_parms_buff[128+16];
 
 extern "C" char * pist_strerror_r(int errnum, char *buf, size_t buflen)
 {
     if ((!buf) || (buflen <= 1))
     {
         if (strcmp(&(bad_strerror_parms_buff[0]), const_bad_strerror_parms))
-            strcpy(&(bad_strerror_parms_buff[0]), const_bad_strerror_parms);
+            PS_STRLCPY(&(bad_strerror_parms_buff[0]),
+                    const_bad_strerror_parms, 128);
 
         return(&(bad_strerror_parms_buff[0]));
     }
@@ -46,9 +49,7 @@ extern "C" char * pist_strerror_r(int errnum, char *buf, size_t buflen)
         else if (res_strerror_s == ERANGE)
             dumb_err = "{small buf - srterror}";
 
-        size_t ncpy = std::min(buflen-1, strlen(dumb_err));
-        strncpy(buf, dumb_err, buflen-1);
-        buf[ncpy] = 0;
+        PS_STRLCPY(buf, dumb_err, buflen);
     }
 
     return(buf);
@@ -56,14 +57,16 @@ extern "C" char * pist_strerror_r(int errnum, char *buf, size_t buflen)
 
 /* ------------------------------------------------------------------------- */
 
-#elsif ! defined(__GNUC__)
+#elif !defined(__GNUC__) || defined(__clang__)
+
+#include <pistache/ps_strl.h>
 
 /* ------------------------------------------------------------------------- */
 
 // Note: We use the GNU-specific definition (which returns char *), not the
 // XSI-compliant definition (which returns int) even in the non-GNU case.
 
-// Since __GNUC__ is not defined, we assume native strerror_r is the XSI form
+// Since this is not GNUC, we assume native strerror_r is the XSI form
 // (returns int)
 
 static const char * const_bad_strerror_parms = "{Invalid strerror_r parms}";
@@ -81,7 +84,9 @@ extern "C" char * pist_strerror_r(int errnum, char *buf, size_t buflen)
 
     buf[0] = 0;
 
-    int res_strerror_r = strerror_r(buf, buflen, errnum);
+    // Since it's not GNUC, we assume native strerror_r is the XSI form
+    // (returns int)
+    int res_strerror_r = strerror_r(errnum, buf, buflen);
     if (res_strerror_r != 0)
     {
         const char * dumb_err = "{unknown err - srterror}";
@@ -90,9 +95,7 @@ extern "C" char * pist_strerror_r(int errnum, char *buf, size_t buflen)
         else if (res_strerror_r == ERANGE)
             dumb_err = "{small buf - srterror}";
 
-        size_t ncpy = std::min(buflen-1, strlen(dumb_err));
-        strncpy(buf, dumb_err, buflen-1);
-        buf[ncpy] = 0;
+        PS_STRLCPY(buf, dumb_err, buflen);
     }
 
     return(buf);

@@ -76,7 +76,7 @@ namespace Pistache::Http
 
         timerFd =
 #ifdef _USE_LIBEVENT
-            TRY_NULL_RET(poller.em_timer_new(CLOCK_MONOTONIC,
+            TRY_NULL_RET(poller.em_timer_new(PST_CLOCK_MONOTONIC,
                                              F_SETFDL_NOTHING,
                                              PST_O_NONBLOCK));
 #else

@@ -22,15 +22,11 @@
 #include PIST_QUOTE(PST_ARPA_INET_HDR)
 #include PIST_QUOTE(PST_NETDB_HDR)
 #include PIST_QUOTE(PST_NETINET_IN_HDR)
-
-#include <netinet/tcp.h>
+#include PIST_QUOTE(PST_NETINET_TCP_HDR)
 
 #include <pistache/eventmeth.h>
 
-#ifndef _USE_LIBEVENT_LIKE_APPLE
 #include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h e.g. close
-#endif
-
 #include PIST_QUOTE(PST_FCNTL_HDR)
 
 #ifndef _USE_LIBEVENT
@@ -189,11 +185,11 @@ namespace Pistache::Tcp
 #ifdef _USE_LIBEVENT_LIKE_APPLE
         if (options.hasFlag(Options::CloseOnExec))
         {
-            int f_setfd_flags = fcntl(actualFd, F_GETFD, (int)0);
+            int f_setfd_flags = PST_FCNTL(actualFd, PST_F_GETFD, (int)0);
             if (!(f_setfd_flags & PST_FD_CLOEXEC))
             {
                 f_setfd_flags |= PST_FD_CLOEXEC;
-                int fcntl_res = fcntl(actualFd, F_SETFD, f_setfd_flags);
+                int fcntl_res = PST_FCNTL(actualFd, PST_F_SETFD, f_setfd_flags);
                 if (fcntl_res == -1)
                     throw std::runtime_error("fcntl set failed");
             }
@@ -204,15 +200,26 @@ namespace Pistache::Tcp
         {
             PS_LOG_DEBUG("Set SO_REUSEADDR");
 
-            int one = 1;
+            PST_SOCK_OPT_VAL_T one = 1;
             TRY(::setsockopt(actualFd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one)));
         }
 
         if (options.hasFlag(Options::ReusePort))
         {
             PS_LOG_DEBUG("Set SO_REUSEPORT");
-            int one = 1;
+            PST_SOCK_OPT_VAL_T one = 1;
+#ifdef _IS_WINDOWS
+            // Note: Windows doesn't have SO_REUSEPORT, but if caller has
+            // requested Options::ReusePort, but not Options::ReuseAddr, then
+            // in Windows we set SO_REUSEADDR here
+            if (!(options.hasFlag(Options::ReuseAddr)))
+            {
+                TRY(::setsockopt(actualFd, SOL_SOCKET,
+                             SO_REUSEADDR, &one, sizeof(one)));
+            }
+#else
             TRY(::setsockopt(actualFd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(one)));
+#endif
         }
 
         if (options.hasFlag(Options::Linger))
@@ -220,7 +227,8 @@ namespace Pistache::Tcp
             struct linger opt;
             opt.l_onoff  = 1;
             opt.l_linger = 1;
-            TRY(::setsockopt(actualFd, SOL_SOCKET, SO_LINGER, &opt, sizeof(opt)));
+            TRY(::setsockopt(actualFd, SOL_SOCKET, SO_LINGER,
+                             (PST_SOCK_OPT_VAL_T *)&opt, sizeof(opt)));
         }
 
 #ifdef _USE_LIBEVENT_LIKE_APPLE
@@ -238,13 +246,13 @@ namespace Pistache::Tcp
 
         if (options.hasFlag(Options::FastOpen))
         {
-            int hint = 5;
+            PST_SOCK_OPT_VAL_T hint = 5;
             TRY(::setsockopt(actualFd, tcp_prot_num,
                              TCP_FASTOPEN, &hint, sizeof(hint)));
         }
         if (options.hasFlag(Options::NoDelay))
         {
-            int one = 1;
+            PST_SOCK_OPT_VAL_T one = 1;
             TRY(::setsockopt(actualFd, tcp_prot_num,
                              TCP_NODELAY, &one, sizeof(one)));
         }
@@ -331,6 +339,7 @@ namespace Pistache::Tcp
 // SOCK_CLOEXEC not defined in macOS Nov 2023
 // In the _USE_LIBEVENT_LIKE_APPLE case, we set FD_CLOEXEC using fcntl
 // in the setSocketOptions function that is invoked below
+// It also doesn't exist for Windows (Windows sets _USE_LIBEVENT_LIKE_APPLE)
 #ifndef _USE_LIBEVENT_LIKE_APPLE
         if (options_.hasFlag(Options::CloseOnExec))
             socktype |= SOCK_CLOEXEC;
@@ -354,7 +363,7 @@ namespace Pistache::Tcp
         if (::bind(actual_fd, addr->ai_addr, addr->ai_addrlen) < 0)
         {
             PS_LOG_DEBUG_ARGS("::bind failed, actual_fd %d", actual_fd);
-            close(actual_fd);
+            PST_CLOSE(actual_fd);
             return false;
         }
 
@@ -461,9 +470,8 @@ namespace Pistache::Tcp
         //
         if (!found)
         {
-            char se_err[256+16];
-            PST_STRERROR_R(errno, &se_err[0], 256);
-            throw std::runtime_error(&se_err[0]);
+            char se_err[256 + 16];
+            throw std::runtime_error(PST_STRERROR_R(errno, &se_err[0], 256));
         }
     }
 
@@ -587,7 +595,7 @@ namespace Pistache::Tcp
 
         auto handlers = reactor_->handlers(transportKey);
 
-        std::vector<Async::Promise<rusage>> loads;
+        std::vector<Async::Promise<PST_RUSAGE>> loads;
         for (const auto& handler : handlers)
         {
             auto transport = std::static_pointer_cast<Transport>(handler);
@@ -596,7 +604,7 @@ namespace Pistache::Tcp
 
         return Async::whenAll(std::begin(loads), std::end(loads))
             .then(
-                [=](const std::vector<rusage>& usages) {
+                [=](const std::vector<PST_RUSAGE>& usages) {
                     PS_TIMEDBG_START;
                     Load res;
                     res.raw = usages;
@@ -610,7 +618,7 @@ namespace Pistache::Tcp
                     else
                     {
 
-                        auto totalElapsed = [](rusage usage) {
+                        auto totalElapsed = [](PST_RUSAGE usage) {
                             return static_cast<double>((usage.ru_stime.tv_sec * 1000000 + usage.ru_stime.tv_usec) + (usage.ru_utime.tv_sec * 1000000 + usage.ru_utime.tv_usec));
                         };
 
@@ -663,7 +671,7 @@ namespace Pistache::Tcp
             {
                 PS_LOG_DEBUG("SSL_new failed");
 
-                close(actual_cli_fd);
+                PST_CLOSE(actual_cli_fd);
                 std::string err = "SSL error - cannot create SSL connection: "
                     + ssl_print_errors_to_string();
                 throw ServerError(err.c_str());
@@ -685,8 +693,10 @@ namespace Pistache::Tcp
                 const auto residual_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(sslHandshakeTimeout_) - std::chrono::duration_cast<std::chrono::seconds>(sslHandshakeTimeout_);
                 timeout.tv_usec                  = (PST_SUSECONDS_T)(residual_microseconds.count());
 
-                TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)));
-                TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)));
+                TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_RCVTIMEO,
+                                 (PST_SOCK_OPT_VAL_T *)&timeout, sizeof(timeout)));
+                TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_SNDTIMEO,
+                                 (PST_SOCK_OPT_VAL_T *)&timeout, sizeof(timeout)));
             }
 
             SSL_set_fd(ssl_data, actual_cli_fd);
@@ -717,7 +727,7 @@ namespace Pistache::Tcp
 
                 PISTACHE_LOG_STRING_INFO(logger_, err);
                 SSL_free(ssl_data);
-                close(actual_cli_fd);
+                PST_CLOSE(actual_cli_fd);
                 return;
             }
 
@@ -733,8 +743,10 @@ namespace Pistache::Tcp
                 timeout.tv_sec  = 0;
                 timeout.tv_usec = 0;
 
-                TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)));
-                TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)));
+                TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_RCVTIMEO,
+                                 (PST_SOCK_OPT_VAL_T *)&timeout, sizeof(timeout)));
+                TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_SNDTIMEO,
+                                 (PST_SOCK_OPT_VAL_T *)&timeout, sizeof(timeout)));
             }
 
             ssl = static_cast<void*>(ssl_data);
@@ -849,7 +861,7 @@ namespace Pistache::Tcp
         // We set CLOEXEC and unset all other flags to exactly match what
         // happens in Linux with accept4 (see comment to "::accept" above)
 
-        int fcntl_res = fcntl(client_actual_fd, F_SETFD, FD_CLOEXEC);
+        int fcntl_res = PST_FCNTL(client_actual_fd, PST_F_SETFD, PST_FD_CLOEXEC);
         if (fcntl_res == -1)
         {
             char se_err[256+16];
@@ -859,28 +871,21 @@ namespace Pistache::Tcp
                               client_actual_fd, errno,
                               PST_STRERROR_R(errno, &se_err[0], 256));
 
-            ::close(client_actual_fd);
+            PST_CLOSE(client_actual_fd);
             PS_LOG_DEBUG_ARGS("::close actual_fd %d", client_actual_fd);
 
             return (fcntl_res);
         }
 
-        fcntl_res = fcntl(client_actual_fd, F_SETFL, 0 /*clear everything*/);
+        fcntl_res = PST_FCNTL(client_actual_fd, PST_F_SETFL, 0 /*clear everything*/);
         if (fcntl_res == -1)
         {
-<<<<<<< HEAD
-            char se_err[256+16];
-            PST_STRERROR_R(errno, &se_err[0], 256);
-            
-=======
             char se_err[256 + 16];
-
->>>>>>> 3dfa981 (Conform PST_STRERROR_R to GNUC-style strerror_r)
             PS_LOG_DEBUG_ARGS("fcntl F_SETFL fail for fd %d, errno %d %s",
                               client_actual_fd, errno,
                               PST_STRERROR_R(errno, &se_err[0], 256));
 
-            ::close(client_actual_fd);
+            PST_CLOSE(client_actual_fd);
             PS_LOG_DEBUG_ARGS("::close actual_fd %d", client_actual_fd);
 
             return (fcntl_res);

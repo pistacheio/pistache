@@ -25,29 +25,105 @@
 #include <stdlib.h>
 
 #ifdef _IS_WINDOWS
-// Do we need "#include <windows.h>" as well? !!!!!!!!
-#include "dbghelp.h"
-extern char *__unDName(char*, const char*, int, void*, void*, int);
+#include <windows.h> // required for dbghelp.h
+#include <dbghelp.h>
 // See pist_timelog.h for usage
 #else
 #include <cxxabi.h> // for abi::__cxa_demangle
+#include <execinfo.h>
+#include <dlfcn.h> // Dl_info
 #endif
 
-#include <cxxabi.h>
-#include <execinfo.h>
+#include PIST_QUOTE(PST_MAXPATH_HDR) // for PST_MAXPATHLEN
 
-#include <limits.h> // PATH_MAX
+#include <pistache/ps_basename.h> // for PS_BASENAME_R
 
-#include <dlfcn.h>
 #include "pistache/pist_syslog.h"
 #include "pistache/pist_check.h"
 
 /*****************************************************************************/
 
+#ifdef _IS_WINDOWS
+
+#include <mutex>
+
+static bool sym_system_inited = false;
+static std::mutex sym_system_inited_mutex;
+
 static void logStackTrace(int pri)
 {
     PSLogNoLocFn(pri, PS_LOG_AND_STDOUT,
-                 "%s", "PS Check failed. Stack trace follows...");
+                 "%s", "Stack trace follows...");
+    
+    HANDLE process = GetCurrentProcess(); // never fails, apparently
+
+    if (!sym_system_inited)
+    {
+        std::lock_guard<std::mutex> lock(sym_system_inited_mutex);
+        
+        if (!sym_system_inited)
+        {
+            BOOL syn_init_res = SymInitialize(process,
+                                  NULL, // symbol search path. Use CWD,
+                                        // _NT_SYMBOL_PATH environment
+                                        // variable, and then
+                                        // _NT_ALTERNATE_SYMBOL_PATH
+                                  TRUE  // Enumerates the loaded modules for
+                                        // the process, calling SymLoadModule64
+                                        // on each
+                );
+            if (!syn_init_res)
+            {
+                DWORD last_err = GetLastError();
+        
+                PS_LOG_DEBUG_ARGS(
+                    "SymInitialize fail, system error code (WinError.h) 0x%x",
+                    (unsigned int) last_err);
+                return;
+            }
+
+        sym_system_inited = true;
+        }
+    }
+
+    SymSetOptions(SYMOPT_UNDNAME); // undecorated names. We call this each
+                                   // time, in case some other part of the
+                                   // process outside Pistache resets it
+    
+    void         * stack[1024+16];
+    unsigned short frames = CaptureStackBackTrace(0, 1024, stack, NULL);
+
+    if (frames  == 0)
+    {
+        PS_LOG_DEBUG("Zero frames returned in backtrace");
+        return;
+    }
+    if (frames > 1024)
+    {
+        PS_LOG_DEBUG("Too many frames?");
+        frames = 1024;
+    }
+
+    for(unsigned int i = 0; i < frames; i++ )
+    {
+        SYMBOL_INFO    symbol;
+        memset(&symbol, 0, sizeof(symbol));
+
+        SymFromAddr(process, (DWORD64)(stack[i]), 0, &symbol);
+
+        const char * name = "{Unknown symbol name}";
+        if ((symbol.NameLen) && (symbol.MaxNameLen))
+            name = &(symbol.Name[0]);
+        
+        PSLogNoLocFn(pri, "  ST- %s", name);
+    }
+}
+
+#else
+static void logStackTrace(int pri)
+{
+    PSLogNoLocFn(pri, PS_LOG_AND_STDOUT,
+                 "%s", "Stack trace follows...");
 
     // write the stack trace to the logging facility
 
@@ -72,17 +148,9 @@ static void logStackTrace(int pri)
 
             // See pist_timelog.h for usage
 
-            #ifdef _IS_WINDOWS
-            // See pist_timelog.h for__unDName usage
-            char undecorated_name[2048+16];
-            undecorated_name[0] = 0;
-            char* realname = __unDName(&(undecorated_name[0]),
-                                 info.dli_sname+1, 2048, malloc, free, 0x2800);
-            #else
             char* realname = abi::__cxa_demangle(info.dli_sname, NULL,
                                                  NULL, &status);
-            #endif
-            
+
             if (realname && (realname[0]) && status == 0)
             {
                 if (info.dli_saddr)
@@ -120,7 +188,7 @@ static void logStackTrace(int pri)
                 // http://bit.ly/1KvWpPs (stackoverflow)
             }
 
-            // -1: A memory allocation failiure occurred.
+            // -1: A memory allocation failure occurred.
             if (realname && status != -1)
                 free(realname);
         } 
@@ -131,6 +199,7 @@ static void logStackTrace(int pri)
         }
     }
 }
+#endif // of ifdef _IS_WINDOWS... else...
 
 
 int PS_LogWoBreak(int pri, const char *p,
@@ -182,9 +251,9 @@ GuardAndDbgLog::GuardAndDbgLog(const char * mtx_name,
                    std::mutex * mutex_ptr) :
     mtx_name_(mtx_name), locked_ln_(ln), mutex_ptr_(mutex_ptr)
 {
-    char buff[PATH_MAX+6];
+    char buff[PST_MAXPATHLEN+6];
     buff[0] = 0;
-    locked_fn_ = std::string(my_basename_r(fn, &(buff[0])));
+    locked_fn_ = std::string(PS_BASENAME_R(fn, &(buff[0])));
 }
 
 GuardAndDbgLog::~GuardAndDbgLog()

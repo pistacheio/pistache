@@ -17,7 +17,7 @@
 
 #ifdef _IS_WINDOWS
 
-#include <time.h>			/* for struct timeval */
+#include <winsock2.h> // for struct timeval
 
 /* ------------------------------------------------------------------------- */
 

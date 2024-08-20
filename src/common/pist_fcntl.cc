@@ -15,6 +15,9 @@
 #include <stdarg.h>
 #include <winsock.h>
 
+#include <pistache/pist_timelog.h>
+#include <pistache/pist_check.h> // for stack trace
+
 /* ------------------------------------------------------------------------- */
 
 /*
@@ -43,10 +46,7 @@ static int fcntl_setfd(int fd, int arg)
     if ((arg != 0) && (arg != PST_O_CLOEXEC))
     {
         PS_LOG_WARNING_ARGS("Unsupported fcntl F_SETFD arg %d", arg);
-        #ifdef DEBUG
-        throw std::system_error(EINVAL, std::generic_category(),
-                                "Unsupported fcntl F_SETFD arg");
-        #endif
+        PS_LOGDBG_STACK_TRACE;
         errno = EINVAL;
         return(-1);
     }
@@ -72,10 +72,7 @@ static int fcntl_setfl(int fd, int arg)
     if ((arg != 0) && (arg != PST_O_NONBLOCK))
     {
         PS_LOG_WARNING_ARGS("Unsupported fcntl F_SETFL arg %d", arg);
-        #ifdef DEBUG
-        throw std::system_error(EINVAL, std::generic_category(),
-                                "Unsupported fcntl F_SETFL arg");
-        #endif
+        PS_LOGDBG_STACK_TRACE;
         errno = EINVAL;
         return(-1);
     }
@@ -120,25 +117,26 @@ extern "C" int PST_FCNTL(int fd, int cmd, ... /* arg */ )
         break;
 
     case PST_F_SETFD:
-        int arg_val = va_arg(valist, int);
+    {
+        int arg_val = va_arg(ptr, int);
         res = fcntl_setfd(fd, arg_val);
         break;
+    }
 
     case PST_F_GETFL:
         res = fcntl_getfl(fd);
         break;
 
     case PST_F_SETFL:
-        int arg_val = va_arg(valist, int);
+    {
+        int arg_val = va_arg(ptr, int);
         res = fcntl_setfl(fd, arg_val);
         break;
+    }
 
     default:
         PS_LOG_WARNING_ARGS("Unsupported fcntl cmd %d", cmd);
-        #ifdef DEBUG
-        throw std::system_error(EINVAL, std::generic_category(),
-                                "Unsupported fcntl cmd");
-        #endif
+        PS_LOGDBG_STACK_TRACE;
         
         errno = EINVAL;
         // Per Linux manpage, one meaning of EINVAL in fcntl is "The value

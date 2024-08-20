@@ -536,10 +536,10 @@ namespace Pistache::Rest
 
         for (const auto& handler : customHandlers)
         {
-            auto resp     = response.clone();
+            auto cloned_resp     = response.clone();
             auto handler1 = handler(
                 Request(req, std::vector<TypedParam>(), std::vector<TypedParam>()),
-                std::move(resp));
+                std::move(cloned_resp));
             if (handler1 == Route::Result::Ok)
                 return Route::Status::Match;
         }

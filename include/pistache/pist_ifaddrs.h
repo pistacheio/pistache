@@ -18,7 +18,7 @@
 
 #ifdef _IS_WINDOWS
 
-#include <Ws2def.h> // for sockaddr
+// #include <Ws2def.h> // for sockaddr
 
 /* ------------------------------------------------------------------------- */
 

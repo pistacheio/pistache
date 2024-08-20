@@ -15,9 +15,16 @@
 
 #include <ctime>
 
+// Note - Certain Windows header files are "not self contained" and require you
+// to include the big windows.h file, or else you get a compile time error
+// 'fatal error C1189: #error: "No Target Architecture"'. Apparently
+// sysinfoapi.h is one such.
+#include <windows.h>
 #include <sysinfoapi.h> // for GetSystemTimeAsFileTime
 
 #include <mutex>
+
+#include <pistache/pist_check.h>
 
 /* ------------------------------------------------------------------------- */
 
@@ -43,7 +50,7 @@ static int initInitialMonoValsIfNotInited()
     // format. GetSystemTimeAsFileTime is void / cannot fail.
 
     wintime      -=116444736000000000i64;           //1jan1601 to 1jan1970
-    lInitialTimespec.tv_sec  =wintime / 10000000i64;           //seconds
+    lInitialTimespec.tv_sec  =(long)(wintime / 10000000i64);   //seconds
     lInitialTimespec.tv_nsec =wintime % 10000000i64 *100;      //nano-seconds
 
     lInitialMsSinceSystemStart = GetTickCount64();
@@ -95,10 +102,12 @@ extern "C" int PST_CLOCK_GETTIME(PST_CLOCK_ID_T clockid,
         ULONGLONG remainder_ms_since_mono_vals_inited =
                                               (ms_since_mono_vals_inited%1000);
 
-        spec->tv_sec= lInitialTimespec.tv_sec + whole_s_since_mono_vals_inited;
+        spec->tv_sec= (long)
+            (lInitialTimespec.tv_sec + whole_s_since_mono_vals_inited);
 
-        long new_tv_nsec = ((1000000l * remainder_ms_since_mono_vals_inited) +
-                            lInitialTimespec.tv_nsec);
+        long new_tv_nsec = (long)
+            ((1000000l * remainder_ms_since_mono_vals_inited) +
+                                                     lInitialTimespec.tv_nsec);
         if (new_tv_nsec >= 1000000000l)
         {
             new_tv_nsec -= 1000000000l;
@@ -119,7 +128,7 @@ extern "C" int PST_CLOCK_GETTIME(PST_CLOCK_ID_T clockid,
         }
 
         spec->tv_sec  = (sct_time / CLOCKS_PER_SEC);
-        spec->tv_nsec = ((1000000.0 * sct_time) % CLOCKS_PER_SEC) * 1000i64;
+        spec->tv_nsec = ((1000000i64 * sct_time) % CLOCKS_PER_SEC) * 1000i64;
         // Note: POSIX defines CLOCKS_PER_SEC as one million, regardless of the
         // actual precision of clock
 
@@ -150,7 +159,7 @@ extern "C" int PST_CLOCK_GETTIME(PST_CLOCK_ID_T clockid,
         __int64 wintime = win_kernel_time + win_user_time;
         
         wintime      -=116444736000000000i64;           //1jan1601 to 1jan1970
-        spec->tv_sec  =wintime / 10000000i64;           //seconds
+        spec->tv_sec  =(long)(wintime / 10000000i64);   //seconds
         spec->tv_nsec =wintime % 10000000i64 *100;      //nano-seconds
         
         break;
@@ -169,17 +178,16 @@ extern "C" int PST_CLOCK_GETTIME(PST_CLOCK_ID_T clockid,
         //   https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/
 
         wintime      -=116444736000000000i64;           //1jan1601 to 1jan1970
-        spec->tv_sec  =wintime / 10000000i64;           //seconds
+        spec->tv_sec  =(long)(wintime / 10000000i64);   //seconds
         spec->tv_nsec =wintime % 10000000i64 *100;      //nano-seconds
         
         break;
     }
 
     default:
-        #ifdef DEBUG
-        throw std::runtime_error("Unimplemented clockid");
-        #endif
-    
+        PS_LOG_WARNING("Unimplemented clockid");
+        PS_LOGDBG_STACK_TRACE;
+
         errno = ENOTSUP;
         return(-1);
     }
