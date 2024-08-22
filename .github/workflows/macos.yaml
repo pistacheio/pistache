@@ -9,7 +9,6 @@
 # From jobs: macos: strategy: matrix:
         # os: [ 'macos-12', 'macos-13', 'macos-latest' ]
         # compiler: [ 'gcc', 'clang' ]
-        # tls: [ 'false', 'true' ]
 
 name: macOS libevent
 
@@ -39,7 +38,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ 'macos-latest' ]
+        os: [ 'macos-12', 'macos-13', 'macos-latest' ]
         compiler: [ 'clang' ]
         sanitizer: [ 'none' ]
         tls: [ 'true', 'false' ]
@@ -58,11 +57,11 @@ jobs:
 
         brew install meson
         brew install lcov
-        brew install doxygen
+        brew install --cask doxygen
         brew install googletest
-        brew install openssl
+        # brew install openssl # Already installed in base image
         brew install rapidjson
-        brew install libevent
+        # brew install libevent # Already installed in base image
         brew install howard-hinnant-date
 
     - uses: actions/checkout@v4
