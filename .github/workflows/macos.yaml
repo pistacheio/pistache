@@ -28,9 +28,8 @@ concurrency:
 
 jobs:
   macos:
-    name: test macos with libevent
-    runs-on: macos-latest
-    
+    name: macOS with Libevent
+
     strategy:
       fail-fast: false
       matrix:
@@ -39,6 +38,8 @@ jobs:
         sanitizer: [ 'address', 'undefined', 'none' ]
         tls: [ 'true', 'false' ]
         def_debug: [ 'true', 'false' ]
+
+    runs-on: ${{ matrix.os }}
 
     steps:
     - name: Install dependencies (macOS)
