@@ -2,13 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-# https://docs.github.com/en/actions/writing-workflows/choosing-where-your-workflow-runs/choosing-the-runner-for-a-job
-
-# https://github.com/actions/runner-images/blob/main/images/macos/macos-14-Readme.md
-
-# From jobs: macos: strategy: matrix:
-        # os: [ 'macos-12', 'macos-13', 'macos-latest' ]
-        # compiler: [ 'gcc', 'clang' ]
+# See:
+#   https://docs.github.com/en/actions/writing-workflows/choosing-where-your-workflow-runs/choosing-the-runner-for-a-job
+#   https://github.com/actions/runner-images/blob/main/images/macos/macos-14-Readme.md
 
 name: macOS libevent
 
@@ -39,14 +35,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [ 'macos-12', 'macos-13', 'macos-latest' ]
-        compiler: [ 'gcc' ]
-        sanitizer: [ 'none' ]
+        compiler: [ 'gcc', 'clang' ]
+        sanitizer: [ 'address', 'undefined', 'none' ]
         tls: [ 'true', 'false' ]
-        def_debug: [ 'true' ]
-
-#        sanitizer: [ 'address', 'undefined', 'none' ]
-#        tls: [ 'true', 'false' ]
-#        def_debug: [ 'true', 'false' ]
+        def_debug: [ 'true', 'false' ]
 
     steps:
     - name: Install dependencies (macOS)
