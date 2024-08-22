@@ -54,28 +54,30 @@ deps_libpistache = [
 	dependency('threads'),
 	date_dep
 ]
+public_deps = []
 
 if get_option('PISTACHE_USE_RAPIDJSON')
 	rapidjson_dep = dependency('RapidJSON', fallback: ['rapidjson', 'rapidjson_dep'])
 	deps_libpistache += rapidjson_dep
+	public_deps += rapidjson_dep
 endif
 
 # Support Brotli compressed Content-Encoding responses...
 if get_option('PISTACHE_USE_CONTENT_ENCODING_BROTLI')
 
-    # Need Brotli encoder for library...
-    brotli = dependency('libbrotlienc')
-    deps_libpistache += brotli
-
+	# Need Brotli encoder for library...
+	brotli_dep = dependency('libbrotlienc')
+	deps_libpistache += brotli_dep
+	public_deps += brotli_dep
 endif
 
 # Support deflate compressed Content-Encoding responses...
 if get_option('PISTACHE_USE_CONTENT_ENCODING_DEFLATE')
 
-    # Need zlib...
-    zlib = dependency('zlib')
-    deps_libpistache += zlib
-
+	# Need zlib...
+	zlib_dep = dependency('zlib')
+	deps_libpistache += zlib_dep
+	public_deps += zlib_dep
 endif
 
 # Check if -latomic is needed - https://github.com/llvm/llvm-project/blob/main/llvm/cmake/modules/CheckAtomic.cmake
@@ -130,7 +132,9 @@ if compiler_id == 'gcc' and compiler.version().version_compare('<9.1') or compil
 endif
 
 if get_option('PISTACHE_USE_SSL')
-	deps_libpistache += dependency('openssl')
+	openssl_dep = dependency('openssl')
+	deps_libpistache += openssl_dep
+	public_deps += openssl_dep
 endif
 
 if host_machine.system() == 'darwin' or host_machine.system().endswith('bsd') or get_option('PISTACHE_FORCE_LIBEVENT')
