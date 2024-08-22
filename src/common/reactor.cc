@@ -20,8 +20,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include <pistache/pist_timelog.h>
 #include <pistache/pist_quote.h>
+#include <pistache/pist_timelog.h>
 
 #ifdef _IS_BSD
 // For pthread_set_name_np
@@ -119,7 +119,8 @@ namespace Pistache::Aio
             PS_TIMEDBG_START_THIS;
 
             // See comment in class Epoll regarding reg_unreg_mutex_
-            std::lock_guard<std::mutex> l_guard(poller.reg_unreg_mutex_);
+            std::mutex& poller_reg_unreg_mutex(poller.reg_unreg_mutex_);
+            GUARD_AND_DBG_LOG(poller_reg_unreg_mutex);
 
             PS_LOG_DEBUG_ARGS("Reactor (this) %p detach passed lock", this);
 
@@ -229,8 +230,9 @@ namespace Pistache::Aio
                 { // encapsulate l_guard(poller.reg_unreg_mutex_)
                   // See comment in class Epoll regarding reg_unreg_mutex_
 
-                    std::lock_guard<std::mutex> l_guard(
-                        poller.reg_unreg_mutex_);
+                    std::mutex&
+                        poller_reg_unreg_mutex(poller.reg_unreg_mutex_);
+                    GUARD_AND_DBG_LOG(poller_reg_unreg_mutex);
 
                     std::vector<Polling::Event> events;
                     int ready_fds = poller.poll(events);
@@ -347,7 +349,7 @@ namespace Pistache::Aio
                     throw std::runtime_error("Maximum handlers reached");
 
                 GUARD_AND_DBG_LOG(handlers_arr_mutex_);
-                
+
                 Reactor::Key key(index_);
                 handlers.at(index_++) = handler;
 
@@ -357,7 +359,7 @@ namespace Pistache::Aio
             void removeAll()
             {
                 GUARD_AND_DBG_LOG(handlers_arr_mutex_);
-                
+
                 index_ = 0;
                 handlers.fill(NULL);
             }
@@ -367,24 +369,13 @@ namespace Pistache::Aio
                 return handlers.at(index); // calls const "at"
             }
 
-            std::shared_ptr<Handler> at(size_t index)
+            std::shared_ptr<Handler> at(size_t index) const
             { // It's const, except that the mutex is locked and unlocked
                 if (index >= index_)
                     throw std::runtime_error("Attempting to retrieve invalid handler");
                 GUARD_AND_DBG_LOG(handlers_arr_mutex_);
-                
-                return handlers.at(index);
-            }
 
-            std::shared_ptr<Handler> at(size_t index) const
-            {
-                // We cast away the "const" of "this" before calling the
-                //  non-const version of "at". The non-const "at" is not
-                //  declared const because it locks and unlocks a mutex; but it
-                //  is const in that the class instance is in the same state
-                //  after the call vs. before (mutex is unlocked again before
-                //  non-const "at" exits) - so this is OK.
-                return(((HandlerList *)this)->at(index));
+                return handlers.at(index);
             }
 
             bool empty() const { return index_ == 0; }
@@ -422,10 +413,10 @@ namespace Pistache::Aio
             }
 
             template <typename Func>
-            void forEachHandler(Func func)
+            void forEachHandler(Func func) const
             { // It's const, except that the mutex is locked and unlocked
                 GUARD_AND_DBG_LOG(handlers_arr_mutex_);
-                
+
                 for (size_t i = 0; i < index_; ++i)
                     func(handlers.at(i));
             }
@@ -433,7 +424,9 @@ namespace Pistache::Aio
         private:
             std::array<std::shared_ptr<Handler>, MaxHandlers> handlers;
             size_t index_;
-            std::mutex handlers_arr_mutex_;
+
+            // handlers_arr_mutex_ is mutable: allow lock/unlock in const fns
+            mutable std::mutex handlers_arr_mutex_;
         };
 
         HandlerList handlers_;
@@ -672,18 +665,6 @@ namespace Pistache::Aio
                     
                     if (!threadsName_.empty())
                     {
-                        PS_LOG_DEBUG("Setting thread name/description");
-#ifdef _IS_WINDOWS
-                        std::string threads_name(threadsName_.substr(0, 15));
-                        std::wstring temp(threads_name.begin(),
-                                          threads_name.end());
-                        LPCWSTR wide_threads_name = temp.c_str();
-
-                        HRESULT hr = SetThreadDescription(GetCurrentThread(),
-                                                          wide_threads_name);
-                        if (FAILED(hr))
-                            PS_LOG_INFO("SetThreadDescription failed");
-#else
 #if defined _IS_BSD && !defined __NetBSD__
                         pthread_set_name_np(
 #else
@@ -702,11 +683,11 @@ namespace Pistache::Aio
                             pthread_self(),
 #endif
 #ifdef __NetBSD__
-                            "%s", //NetBSD has 3 parms for pthread_setname_np
-                            (void *) /*cast away const for NetBSD*/
+                            "%s", // NetBSD has 3 parms for pthread_setname_np
+                            (void*)/*cast away const for NetBSD*/
 #endif
-                            threadsName_.substr(0, 15).c_str());
-#endif // of ifdef _IS_WINDOWS... else...
+                            threadsName_.substr(0, 15)
+                                .c_str());
                     }
                     PS_LOG_DEBUG("Calling sync->run()");
                     sync->run();
