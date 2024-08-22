@@ -42,7 +42,7 @@ jobs:
         os: [ 'macos-latest' ]
         compiler: [ 'clang' ]
         sanitizer: [ 'none' ]
-        tls: [ 'false' ]
+        tls: [ 'true', 'false' ]
         def_debug: [ 'true' ]
 
 #        sanitizer: [ 'address', 'undefined', 'none' ]
