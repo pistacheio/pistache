@@ -39,7 +39,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ 'macos-12', 'macos-13', 'macos-latest' ]
-        compiler: [ 'clang' ]
+        compiler: [ 'gcc' ]
         sanitizer: [ 'none' ]
         tls: [ 'true', 'false' ]
         def_debug: [ 'true' ]
@@ -57,7 +57,7 @@ jobs:
 
         brew install meson
         brew install lcov
-        brew install --cask doxygen
+        brew install --quiet --cask doxygen
         brew install googletest
         # brew install openssl # Already installed in base image
         brew install rapidjson
