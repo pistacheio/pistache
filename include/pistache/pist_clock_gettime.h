@@ -32,6 +32,8 @@ extern "C" struct tm *PST_GMTIME_R(const time_t *timep, struct tm *result);
 
 extern "C" char *PST_ASCTIME_R(const struct tm *tm, char *buf);
 
+extern "C" struct tm *PST_LOCALTIME_R(const time_t *timep, struct tm *result);
+
 /* ------------------------------------------------------------------------- */
 
 #endif // of ifdef _IS_WINDOWS

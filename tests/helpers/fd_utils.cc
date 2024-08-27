@@ -30,7 +30,9 @@ namespace filesystem = std::experimental::filesystem;
 //     buffersize - size of buffer
 //
 //   Return: if buffer non-null, number of proc_fdinfo written, -1 on fail
-
+#elif defined _WIN32
+#include <windows.h>
+#include <processthreadsapi.h> // for GetProcessHandleCount
 #elif !defined __linux__
 #include <unistd.h> // for sysconf
 
@@ -87,6 +89,15 @@ namespace Pistache
 
         return std::distance(directory_iterator(fds_dir),
                              directory_iterator {});
+#elif defined _WIN32
+        DWORD dw_handle_count = 0;
+        BOOL gphc_res = GetProcessHandleCount(GetCurrentProcess(),
+                                              &dw_handle_count);
+        if (!gphc_res)
+            throw std::runtime_error("GetProcessHandleCount failed");
+
+        return((std::size_t)dw_handle_count);
+
 #else // fallback case, e.g. *BSD
 #ifndef OPEN_MAX
 #define OPEN_MAX 4096

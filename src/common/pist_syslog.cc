@@ -15,18 +15,29 @@
 
 #include <pistache/winornix.h>
 #include <pistache/pist_quote.h>
+#include <pistache/ps_strl.h>
 
 #include <pistache/ps_basename.h> // for PS_BASENAME_R
 
 #include <stdio.h> // snprintf
 #include <stdlib.h> // malloc
+
+#include PIST_QUOTE(PST_CLOCK_GETTIME_HDR)
+
 #include <time.h>
 #include <string.h>
+
+#ifdef _IS_WINDOWS
+#include <string>
+#include <codecvt>
+#include <locale>
+#endif
 
 #include <cctype> // std::ispunct
 #include <algorithm> // std::remove_copy_if
 #include <vector>
-#include <limits.h> // PATH_MAX
+// #include <limits.h> // PATH_MAX
+#include PIST_QUOTE(PST_MAXPATH_HDR)
 
 #ifdef __APPLE__
 #include <mach-o/dyld.h> // _NSGetExecutablePath
@@ -63,6 +74,9 @@
 
 #ifdef PIST_USE_OS_LOG
   #include <os/log.h>
+#elif defined _IS_WINDOWS
+  #include <windows.h> // needed for PST_THREAD_HDR (processthreadsapi.h)
+  #include <pistache/pist_winlog.h>
 #else
   #include <syslog.h>
 #endif
@@ -70,9 +84,6 @@
 #include <stdarg.h>
 #include <string.h> // for strcat
 
-#ifdef _IS_WINDOWS
-#include <windows.h> // appears needed for PST_THREAD_HDR (processthreadsapi.h)
-#endif
 #include PIST_QUOTE(PST_THREAD_HDR) // for pthread_self (getting thread ID)
 
 #include PIST_QUOTE(PST_MAXPATH_HDR)
@@ -126,7 +137,7 @@ static os_log_t pist_os_log_ref = OS_LOG_DEFAULT;
 #endif
 
 static const char * gLogEntryPrefix = "PSTCH";
-static char gIdentBuff[PATH_MAX + 6] = {0};
+static char gIdentBuff[PST_MAXPATHLEN + 6] = {0};
 static bool gSetPsLogCategoryCalledWithNull = false;
 
 static bool my_is_punct(std::string::value_type & ch)
@@ -137,15 +148,19 @@ static bool my_is_punct(std::string::value_type & ch)
 
 static std::string getLogIdent()
 {
-    char prog_path[PATH_MAX+6];
+    char prog_path[PST_MAXPATHLEN+6];
     prog_path[0] = 0;
     
     #ifdef __APPLE__
-    uint32_t bufsize = PATH_MAX;
+    uint32_t bufsize = PST_MAXPATHLEN;
     if (_NSGetExecutablePath(&(prog_path[0]), &bufsize) != 0)
-        return(std::string());        
+        return(std::string());
+    #elif defined _IS_WINDOWS
+    if (GetModuleFileNameA(NULL, // NULL->executable file of current process
+                           &(prog_path[0]), PST_MAXPATHLEN) == 0)
+        return(std::string()); // GetModuleFileNameA returns strlen on success
     #else
-    if (readlink("/proc/self/exe", &(prog_path[0]), PATH_MAX) == -1)
+    if (readlink("/proc/self/exe", &(prog_path[0]), PST_MAXPATHLEN) == -1)
         return(std::string());   
     #endif
 
@@ -191,8 +206,9 @@ PSLogging::PSLogging()
     if (!gIdentBuff[0])
     {
         std::string log_ident(getLogIdent());
-        strcpy(&(gIdentBuff[0]), log_ident.empty() ?
-                                          gLogEntryPrefix : log_ident.c_str());
+        PS_STRLCPY(&(gIdentBuff[0]), log_ident.empty() ?
+                                           gLogEntryPrefix : log_ident.c_str(),
+                   PST_MAXPATHLEN);
     }
     
     #ifdef PIST_USE_OS_LOG
@@ -203,6 +219,17 @@ PSLogging::PSLogging()
 
     pist_os_log_ref = os_log_create("com.github.pistacheio.pistache",
                                     &(gIdentBuff[0]));
+    #elif defined _IS_WINDOWS
+
+    #ifdef DEBUG
+    ULONG reg_res =
+    #endif
+        EventRegisterPistache_Provider(); // macro calls EventRegister
+    #ifdef DEBUG
+    if (reg_res != ERROR_SUCCESS)
+        throw std::runtime_error("Windows logging EventRegister failed");
+    #endif
+
     #else
     
     if (!gSetPsLogCategoryCalledWithNull)
@@ -222,8 +249,12 @@ PSLogging::PSLogging()
 
 PSLogging::~PSLogging()
 {
+    #ifdef _IS_WINDOWS
+    EventUnregisterPistache_Provider(); // macro calls EventUnregister
+    #else
     if (!gSetPsLogCategoryCalledWithNull)
         closelog();
+    #endif
 }
 
 // ---------------------------------------------------------------------------
@@ -236,7 +267,7 @@ static int snprintProcessAndThread(char * _buff, size_t _buffSize)
     if (!_buffSize)
         return(-1);
     
-    pthread_t pt = pthread_self(); // This function always succeeds
+    PST_THREAD_ID pt = PST_THREAD_ID_SELF(); // This function always succeeds
     
     unsigned char *ptc = (unsigned char*)(void*)(&pt);
     int buff_would_have_been_len = 0;
@@ -313,6 +344,80 @@ static int snprintProcessAndThread(char * _buff, size_t _buffSize)
     }
 
 #define OS_LOG_BY_PRIORITY OS_LOG_BY_PRIORITY_FORMAT_ARG("%s", &(buff[0]))
+
+#elif defined _IS_WINDOWS
+
+// POL_FORM is const wchar_t *, while POL_ARG is const char *
+#define WIN_LOG_BY_PRIORITY_FORMAT_ARG(POL_FORM, POL_ARG)               \
+{                                                                       \
+    std::wstring dummy_buff_as_wstr(L"MultiByteToWideChar Fail");       \
+    std::wstring buff_as_wstr;                                          \
+    const wchar_t * buff_as_wstr_data = NULL;                           \
+                                                                        \
+    int convert_result = MultiByteToWideChar(CP_UTF8, 0, POL_ARG,       \
+                                        (int)strlen(POL_ARG), NULL, 0); \
+    if (convert_result <= 0)                                            \
+    {                                                                   \
+        buff_as_wstr_data = dummy_buff_as_wstr.data();                  \
+    }                                                                   \
+    else                                                                \
+    {                                                                   \
+        buff_as_wstr.resize(convert_result+10);                         \
+        convert_result = MultiByteToWideChar(CP_UTF8, 0, POL_ARG,       \
+                                (int)strlen(POL_ARG), &buff_as_wstr[0], \
+                                (int)buff_as_wstr.size());              \
+        buff_as_wstr_data = (convert_result <= 0) ?                     \
+            dummy_buff_as_wstr.data() : buff_as_wstr.data();            \
+    }                                                                   \
+                                                                        \
+    switch(_priority)                                                   \
+    {                                                                   \
+    case LOG_EMERG:                                                     \
+        EventWritePSTCH_EMERG_NL(POL_FORM, buff_as_wstr_data);          \
+        break;                                                          \
+                                                                        \
+    case LOG_ALERT:                                                     \
+        EventWritePSTCH_ALERT_NL(POL_FORM, buff_as_wstr_data);          \
+        break;                                                          \
+                                                                        \
+    case LOG_CRIT:                                                      \
+        EventWritePSTCH_CRIT_NL(POL_FORM, buff_as_wstr_data);           \
+        break;                                                          \
+                                                                        \
+    case LOG_ERR:                                                       \
+        EventWritePSTCH_ERR_NL(POL_FORM, buff_as_wstr_data);            \
+        break;                                                          \
+                                                                        \
+    case LOG_WARNING:                                                   \
+        EventWritePSTCH_WARNING_NL(POL_FORM, buff_as_wstr_data);        \
+        break;                                                          \
+                                                                        \
+    case LOG_NOTICE:                                                    \
+        EventWritePSTCH_NOTICE_NL(POL_FORM, buff_as_wstr_data);         \
+        break;                                                          \
+                                                                        \
+    case LOG_INFO:                                                      \
+        EventWritePSTCH_INFO_NL(POL_FORM, buff_as_wstr_data);           \
+        break;                                                          \
+                                                                        \
+    case LOG_DEBUG:                                                     \
+        EventWritePSTCH_DEBUG_NL(POL_FORM, buff_as_wstr_data);          \
+        break;                                                          \
+                                                                        \
+    default:                                                            \
+    {                                                                   \
+        std::wstring _priority_as_wstr(std::to_wstring(_priority));     \
+        EventWritePSTCH_EMERG_NL(L"Bad log priority %s",                \
+                                 _priority_as_wstr.data());             \
+        EventWritePSTCH_EMERG_NL(POL_FORM, buff_as_wstr_data);          \
+        break;                                                          \
+    }                                                                   \
+    }                                                                   \
+}
+
+#define WIN_LOG_BY_PRIORITY                                             \
+    WIN_LOG_BY_PRIORITY_FORMAT_ARG(L"%s", &(buff[0]))
+
 #endif
 
 // ---------------------------------------------------------------------------
@@ -364,12 +469,15 @@ static int logToStdOutMaybeErr(int _priority, bool _andPrintf,
         #endif
         )
     {
-        strcpy(&(dAndT[0]), "<No Timestamp>");
+        PS_STRLCPY(&(dAndT[0]), "<No Timestamp>", sizeof(dAndT));
 
         time_t t = time(NULL);
         if (t >= 0)
         {
-            struct tm * tm_ptr = localtime(&t);
+            struct tm this_tm;
+            memset(&this_tm, 0, sizeof(this_tm));
+            
+            struct tm * tm_ptr = PST_LOCALTIME_R(&t, &this_tm);
             if (tm_ptr)
             {
                 snprintf(&(dAndT[0]), sizeof(dAndT)-9, "%d %02d:%02d:%02d",
@@ -410,9 +518,9 @@ void PSLogging::log(int _priority, bool _andPrintf,
     buff[0] = '(';
     if (snprintProcessAndThread(&(buff[1]),
                                 sizeof(buff)-3-strlen(gLogEntryPrefix)) >= 0)
-        strcat(&(buff[0]), " ");
-    strcat(&(buff[0]), gLogEntryPrefix);
-    strcat(&(buff[0]), ") ");
+        PS_STRLCAT(&(buff[0]), " ", sizeof(buff)-8);
+    PS_STRLCAT(&(buff[0]), gLogEntryPrefix, sizeof(buff)-8);
+    PS_STRLCAT(&(buff[0]), ") ", sizeof(buff)-8);
 
     char * remaining_buff = &(buff[0]) + strlen(buff);
     size_t remaining_buff_size = sizeof(buff) - strlen(buff);
@@ -450,6 +558,12 @@ void PSLogging::log(int _priority, bool _andPrintf,
           if (_format)
               OS_LOG_BY_PRIORITY_FORMAT_ARG(
                   "Failing log vsnprintf format: %s", _format);
+        #elif defined _IS_WINDOWS
+          WIN_LOG_BY_PRIORITY_FORMAT_ARG(L"%s",
+                                         "Unable to log, vsnprintf failed");
+          if (_format)
+              WIN_LOG_BY_PRIORITY_FORMAT_ARG(
+                  L"Failing log vsnprintf format: %s", _format);
 
         #else
           vsyslog(_priority, _format, _ap);
@@ -462,6 +576,8 @@ void PSLogging::log(int _priority, bool _andPrintf,
     {
         #ifdef PIST_USE_OS_LOG
         OS_LOG_BY_PRIORITY;
+        #elif defined _IS_WINDOWS
+        WIN_LOG_BY_PRIORITY;
         #else
         syslog(_priority, "%s", &(buff[0]));
         #endif
@@ -479,9 +595,9 @@ void PSLogging::log(int _priority, bool _andPrintf, const char * _str)
     buff[0] = '(';
     if (snprintProcessAndThread(&(buff[1]),
                                 sizeof(buff)-3-strlen(gLogEntryPrefix)) >= 0)
-        strcat(&(buff[0]), " ");
-    strcat(&(buff[0]), gLogEntryPrefix);
-    strcat(&(buff[0]), ") ");
+        PS_STRLCAT(&(buff[0]), " ", sizeof(buff)-8);
+    PS_STRLCAT(&(buff[0]), gLogEntryPrefix, sizeof(buff)-8);
+    PS_STRLCAT(&(buff[0]), ") ", sizeof(buff)-8);
     
     char * remaining_buff = &(buff[0]) + strlen(buff);
     size_t remaining_buff_size = sizeof(buff) - strlen(buff);
@@ -494,6 +610,8 @@ void PSLogging::log(int _priority, bool _andPrintf, const char * _str)
         
         #ifdef PIST_USE_OS_LOG
           OS_LOG_BY_PRIORITY_FORMAT_ARG("%s", _str);
+        #elif defined _IS_WINDOWS
+          WIN_LOG_BY_PRIORITY_FORMAT_ARG(L"%s", _str);
         #else
           syslog(_priority, "%s", _str);
         #endif
@@ -504,6 +622,8 @@ void PSLogging::log(int _priority, bool _andPrintf, const char * _str)
     {
         #ifdef PIST_USE_OS_LOG
         OS_LOG_BY_PRIORITY;
+        #elif defined _IS_WINDOWS
+        WIN_LOG_BY_PRIORITY;
         #else
         syslog(_priority, "%s", &(buff[0]));
         #endif
@@ -598,7 +718,7 @@ extern "C" void PSLogFn(int _pri, bool _andPrintf,
         
         va_end(ap);
         if (pos >= (int) form_and_args_buf_size)
-            strcat(&(form_and_args_buf[0]), "...");
+            PS_STRLCAT(&(form_and_args_buf[0]), "...", form_and_args_buf_size);
     }
 
     const unsigned int sizeof_buf = 4096;
@@ -621,13 +741,13 @@ extern "C" void PSLogFn(int _pri, bool _andPrintf,
                          "line %d in %s()",l, m);
 
         if (ln >= (int) sizeof_buf_ex_form_and_args)
-            strcat(buf_ptr, "...");
+            PS_STRLCAT(buf_ptr, "...", sizeof_buf);
     }
 
     if (form_and_args_buf[0])
     { // Not empty string
-        strcat(buf_ptr, ": ");
-        strcat(buf_ptr, &(form_and_args_buf[0]));
+        PS_STRLCAT(buf_ptr, ": ", sizeof_buf);
+        PS_STRLCAT(buf_ptr, &(form_and_args_buf[0]), sizeof_buf);
     }
 
     PSLogStrPrv(_pri, _andPrintf, buf);
@@ -665,11 +785,11 @@ extern "C" void setPsLogCategory(const char * _category)
         return;
     }
 
-    if (strlen(_category) >= PATH_MAX)
+    if (strlen(_category) >= PST_MAXPATHLEN)
         return;
 
     gSetPsLogCategoryCalledWithNull = false;
-    strcpy(&(gIdentBuff[0]), _category);
+    PS_STRLCPY(&(gIdentBuff[0]), _category, PST_MAXPATHLEN);
 }
 
 // ---------------------------------------------------------------------------

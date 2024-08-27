@@ -223,4 +223,24 @@ extern "C" char *PST_ASCTIME_R(const struct tm *tm, char *buf)
 
 /* ------------------------------------------------------------------------- */
 
+extern "C" struct tm *PST_LOCALTIME_R(const time_t *timep, struct tm *result)
+{
+    if (!result)
+    {
+        errno = EINVAL;
+        return(NULL);
+    }
+
+    memset(result, 0, sizeof(*result));
+    
+    errno_t res = localtime_s(result, timep);
+    if (res == 0)
+        return(result); // success
+
+    errno = res;
+    return(NULL);
+}
+
+/* ------------------------------------------------------------------------- */
+
 #endif // of ifdef _IS_WINDOWS

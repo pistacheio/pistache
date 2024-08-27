@@ -1,0 +1,157 @@
+<instrumentationManifest
+    xmlns="http://schemas.microsoft.com/win/2004/08/events" 
+    xmlns:win="http://manifests.microsoft.com/win/2004/08/windows/events"
+    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    >
+
+    <instrumentation>
+        <events>
+            <provider name="Pistache Provider"
+                guid="{cb8de796-f9ba-4712-a13f-99bdf30e06aa}"
+                symbol="PISTACHE_GUID"
+                resourceFileName="C:\Program Files\pistache_distribution\pistachelog.dll"
+                messageFileName="C:\Program Files\pistache_distribution\pistachelog.dll"
+                message="$(string.Provider.Name)">
+                <channels>
+                    <channel chid="cadmin"
+                             name="Pistache-BaseProvider/Admin"
+                             symbol="CHAN_PSTCHPROVIDER_ADMIN"
+                             type="Admin"/>
+                    <channel chid="coperl"
+                             name="Pistache-BaseProvider/Operational"
+                             symbol="CHAN_PSTCHPROVIDER_OPERATIONAL"
+                             type="Operational"/>
+                    <channel chid="canalc"
+                             name="Pistache-BaseProvider/Analytic"
+                             symbol="CHAN_PSTCHPROVIDER_ANALYTIC"
+                             type="Analytic"/>
+                    <channel chid="cdebug"
+                             name="Pistache-BaseProvider/Debug"
+                             symbol="CHAN_PSTCHPROVIDER_DEBUG"
+                             type="Debug"/>
+                </channels>
+                <tasks>
+                    <task name="PSTCH" 
+                          symbol="TASK_PSTCH"
+                          value="1"
+                          message="$(string.Task.PSTCH)"/>
+                </tasks>
+                <maps>
+                    <valueMap name="PistLogLevel">
+                        <map value="0" message="$(string.PistLogLevel.EMERG)"/>
+                        <map value="1" message="$(string.PistLogLevel.ALERT)"/>
+                        <map value="2" message="$(string.PistLogLevel.CRIT)"/>
+                        <map value="3" message="$(string.PistLogLevel.ERR)"/>
+                        <map value="4" message="$(string.PistLogLevel.WARNING)"/>
+                        <map value="5" message="$(string.PistLogLevel.NOTICE)"/>
+                        <map value="6" message="$(string.PistLogLevel.INFO)"/>
+                        <map value="7" message="$(string.PistLogLevel.DEBUG)"/>
+                    </valueMap>
+                </maps>                
+                <templates>
+                    <template tid="t2">
+                        <data name="PistLogLevel" inType="win:UnicodeString"/>
+                        <data name="Msg" inType="win:UnicodeString"/>
+                    </template>
+                    <template tid="t3">
+                        <data name="PistLogLevel" inType="win:UnicodeString"/>
+                        <data name="File" inType="win:UnicodeString"/>
+                        <data name="Line" inType="win:Int32"/>
+                        <data name="Function" inType="win:UnicodeString"/>
+                        <data name="Msg" inType="win:UnicodeString"/>
+                    </template>
+                </templates>
+                <events>
+                    <event value="1"
+                        level="win:Verbose"
+                        task="PSTCH"
+                        template="t2"
+                        channel="cdebug"
+                        symbol="PSTCH_DEBUG_NL"
+                        message ="$(string.Event.PstchDebug)"/>
+
+                    <event value="2"
+                        level="win:Informational"
+                        task="PSTCH"
+                        template="t2"
+                        channel="canalc"
+                        symbol="PSTCH_INFO_NL"
+                        message ="$(string.Event.PstchInfo)"/>
+
+                    <event value="3"
+                        level="win:Informational"
+                        task="PSTCH"
+                        template="t2"
+                        channel="canalc"
+                        symbol="PSTCH_NOTICE_NL"
+                        message ="$(string.Event.PstchNotice)"/>
+
+                    <event value="4"
+                        level="win:Warning"
+                        task="PSTCH"
+                        template="t2"
+                        channel="coperl"
+                        symbol="PSTCH_WARNING_NL"
+                        message ="$(string.Event.PstchWarning)"/>
+
+                    <event value="5"
+                        level="win:Error"
+                        task="PSTCH"
+                        template="t2"
+                        channel="coperl"
+                        symbol="PSTCH_ERR_NL"
+                        message ="$(string.Event.PstchErr)"/>
+
+                    <event value="6"
+                        level="win:Critical"
+                        task="PSTCH"
+                        template="t2"
+                        channel="cadmin"
+                        symbol="PSTCH_CRIT_NL"
+                        message ="$(string.Event.PstchCrit)"/>
+
+                    <event value="7"
+                        level="win:Critical"
+                        task="PSTCH"
+                        template="t2"
+                        channel="cadmin"
+                        symbol="PSTCH_ALERT_NL"
+                        message ="$(string.Event.PstchAlert)"/>
+
+                    <event value="8"
+                        level="win:Critical"
+                        task="PSTCH"
+                        template="t2"
+                        channel="cadmin"
+                        symbol="PSTCH_EMERG_NL"
+                        message ="$(string.Event.PstchEmerg)"/>
+                </events>
+            </provider>
+        </events>
+    </instrumentation>
+
+    <localization>
+        <resources culture="en-US">
+            <stringTable>
+                <string id="Provider.Name" value="Pistache"/>
+                <string id="Task.PSTCH" value="PSTCH"/>
+                <string id="PistLogLevel.EMERG" value="EMERG"/>
+                <string id="PistLogLevel.ALERT" value="ALERT"/>
+                <string id="PistLogLevel.CRIT" value="CRIT"/>
+                <string id="PistLogLevel.ERR" value="ERR"/>
+                <string id="PistLogLevel.WARNING" value="WARNING"/>
+                <string id="PistLogLevel.NOTICE" value="NOTICE"/>
+                <string id="PistLogLevel.INFO" value="INFO"/>
+                <string id="PistLogLevel.DEBUG" value="DEBUG"/>
+                <string id="Event.PstchDebug" value="DEBUG %1"/>
+                <string id="Event.PstchInfo" value="INFO %1"/>
+                <string id="Event.PstchNotice" value="NOTICE %1"/>
+                <string id="Event.PstchWarning" value="WARNING %1"/>
+                <string id="Event.PstchErr" value="ERR %1"/>
+                <string id="Event.PstchCrit" value="CRIT %1"/>
+                <string id="Event.PstchAlert" value="ALERT %1"/>
+                <string id="Event.PstchEmerg" value="EMERG %1"/>
+            </stringTable>
+        </resources>
+    </localization>
+</instrumentationManifest>

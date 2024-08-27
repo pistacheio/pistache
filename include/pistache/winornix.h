@@ -88,6 +88,8 @@ struct pst_timespec { long tv_sec; long tv_nsec; };
 
 #define PST_ASCTIME_R pist_asctime_r
 
+#define PST_LOCALTIME_R pist_localtime_r
+
 // Note: clock_gettime doesn't exist on Windows, we'll implement our own
 // version. See pist_clock_gettime.h/.cc
 #else
@@ -98,6 +100,7 @@ struct pst_timespec { long tv_sec; long tv_nsec; };
 #define PST_CLOCK_GETTIME clock_gettime
 #define PST_GMTIME_R gmtime_r
 #define PST_ASCTIME_R asctime_r
+#define PST_LOCALTIME_R localtime_r
 #endif
 
 #ifdef _IS_WINDOWS
