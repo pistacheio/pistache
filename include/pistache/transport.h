@@ -166,7 +166,7 @@ namespace Pistache::Tcp
                 return _raw;
             }
 
-            BufferHolder detach(size_t offset = 0)
+            BufferHolder detach(off_t offset = 0)
             {
                 if (!isRaw())
                     return BufferHolder(_fd, size_, offset);

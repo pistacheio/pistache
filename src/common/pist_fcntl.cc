@@ -31,7 +31,7 @@ calls CreateProcess, it doesn't replace the parent program.
 So - FD_CLOEXEC is moot in Windows, and hence F_GETFD/SETFD is moot too
 */
 
-static int fcntl_getfd(int fd) 
+static int fcntl_getfd(em_socket_t fd) 
 {
     PS_TIMEDBG_START_ARGS("noop function, fd %d", fd);
     
@@ -39,7 +39,7 @@ static int fcntl_getfd(int fd)
     return(0);
 }
 
-static int fcntl_setfd(int fd, int arg) 
+static int fcntl_setfd(em_socket_t fd, int arg) 
 {
     PS_TIMEDBG_START_ARGS("fd %d, arg %d", fd, arg);
     
@@ -56,7 +56,7 @@ static int fcntl_setfd(int fd, int arg)
 
 /* ------------------------------------------------------------------------- */
 
-static int fcntl_getfl(int fd) 
+static int fcntl_getfl(em_socket_t fd) 
 {
     PS_TIMEDBG_START_ARGS("noop function, returns UNKNOWN, fd %d", fd);
     
@@ -65,7 +65,7 @@ static int fcntl_getfl(int fd)
     return(PST_FCNTL_GETFL_UNKNOWN);
 }
 
-static int fcntl_setfl(int fd, int arg) 
+static int fcntl_setfl(em_socket_t fd, int arg) 
 {
     PS_TIMEDBG_START_ARGS("fd %d, arg %d", fd, arg);
     
@@ -103,7 +103,7 @@ static int fcntl_setfl(int fd, int arg)
 
 /* ------------------------------------------------------------------------- */
 
-extern "C" int PST_FCNTL(int fd, int cmd, ... /* arg */ )
+extern "C" int PST_FCNTL(em_socket_t fd, int cmd, ... /* arg */ )
 {
     int res = 0;
     

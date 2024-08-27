@@ -10,11 +10,20 @@
 
 /* ------------------------------------------------------------------------- */
 
+#include <pistache/winornix.h>
+
 #ifdef _IS_WINDOWS
 
-#include <pistache/pist_ifaddrs.h>
+#include <vector>
 
+#include <pistache/pist_syslog.h>
+#include <pistache/pist_ifaddrs.h>
+#include <pistache/ps_strl.h>
+
+#include <winsock2.h>
+#include <iphlpapi.h> // Required for netioapi.h
 #include <netioapi.h> // for ConvertLengthToIpv4Mask
+#include <iptypes.h> // For IP_ADAPTER_ADDRESSES
 
 /* ------------------------------------------------------------------------- */
 
@@ -29,13 +38,13 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
     *ifap = NULL;
 
     ULONG buff_len = sizeof(IP_ADAPTER_ADDRESSES);
-    u_char buff_try1[buff_len+16];
+    std::vector<unsigned char> buff_try1_vec(buff_len+16);
     PIP_ADAPTER_ADDRESSES fst_adap_addr =
-        (PIP_ADAPTER_ADDRESSES)(&buff_try1[0]);
+        (PIP_ADAPTER_ADDRESSES)(buff_try1_vec.data());
 
     // First try for GetAdaptersAddresses, allowing space for just one address
     // Probably that's not enough, but it will tell us how much buffer space we
-    // need
+    // need (buff_len is written to, telling us)
     ULONG gaa_res1 = GetAdaptersAddresses(
         AF_UNSPEC, // IP4 and IP6
         GAA_FLAG_INCLUDE_ALL_INTERFACES | GAA_FLAG_INCLUDE_TUNNEL_BINDINGORDER,
@@ -44,11 +53,11 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
         &buff_len);
     ULONG gaa_res = gaa_res1;
 
-    u_char buff_try2[buff_len+16];
+    std::vector<unsigned char> buff_try2_vec(buff_len+16);
 
     if (gaa_res == ERROR_BUFFER_OVERFLOW)
     {
-        fst_adap_addr = (PIP_ADAPTER_ADDRESSES)(&buff_try2[0]);
+        fst_adap_addr = (PIP_ADAPTER_ADDRESSES)(buff_try2_vec.data());
         
         gaa_res = GetAdaptersAddresses(
             AF_UNSPEC, // IP4 and IP6
@@ -207,7 +216,7 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
             if (adap_addr->AdapterName)
             {
                 size_t name_len = strlen(adap_addr->AdapterName);
-                this_ifaddrs.ifa_name = MALLOC(name_len+1);
+                this_ifaddrs.ifa_name = (char *) MALLOC(name_len+1);
                 if (!this_ifaddrs.ifa_name)
                 {
                     PS_LOG_WARNING("Name MALLOC failed");
@@ -216,14 +225,14 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
                     return(-1);
                 }
 
-                strncpy(this_ifaddrs.ifa_name,
-                        adap_addr->AdapterName, name_len);
+                PS_STRLCPY(this_ifaddrs.ifa_name,
+                           adap_addr->AdapterName, name_len);
                 this_ifaddrs.ifa_name[name_len] = 0;
             }
 
             this_ifaddrs.ifa_flags = adap_flags;
 
-            LPSOCKADDR sock_addr = MALLOC(sizeof(SOCKADDR));
+            LPSOCKADDR sock_addr = (LPSOCKADDR) MALLOC(sizeof(SOCKADDR));
             if (!sock_addr)
             {
                 PS_LOG_WARNING("MALLOC failed");
@@ -244,7 +253,7 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
                              unicast_addr->OnLinkPrefixLength,
                              &mask) == NO_ERROR) && (mask != 0))
                     {
-                        LPSOCKADDR mask_sock_addr =
+                        LPSOCKADDR mask_sock_addr = (LPSOCKADDR)
                             MALLOC(sizeof(SOCKADDR));
                         if (!mask_sock_addr)
                         {
@@ -274,7 +283,7 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
         } while(unicast_addr);
     }
 
-    *ifap = fst_adap_addr;
+    *ifap = pst_ifaddrs;
     return(0);
 }
 
@@ -290,16 +299,16 @@ extern "C" void PST_FREEIFADDRS(struct PST_IFADDRS *ifa)
     }
 
     for (PST_IFADDRS * this_ifaddrs = ifa; this_ifaddrs;
-         this_ifaddrs = this_ifaddrs->Next)
+         this_ifaddrs = this_ifaddrs->ifa_next)
     {
-        if (this_ifaddrs->name)
-            FREE(this_ifaddrs->name);
+        if (this_ifaddrs->ifa_name)
+            FREE(this_ifaddrs->ifa_name);
 
-        if (this_ifaddrs.ifa_addr)
-            FREE(this_ifaddrs.ifa_addr);
+        if (this_ifaddrs->ifa_addr)
+            FREE(this_ifaddrs->ifa_addr);
 
-        if (this_ifaddrs.ifa_netmask)
-            FREE(this_ifaddrs.ifa_netmask);
+        if (this_ifaddrs->ifa_netmask)
+            FREE(this_ifaddrs->ifa_netmask);
     }
 
     delete ifa;

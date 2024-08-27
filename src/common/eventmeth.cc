@@ -15,6 +15,8 @@
 #ifdef _USE_LIBEVENT
 
 #include <event2/thread.h>
+#include <event2/util.h> // for evutil_socket_t
+
 
 /* ------------------------------------------------------------------------- */
 /*
@@ -42,7 +44,7 @@ namespace Pistache
                 std::chrono::milliseconds * timeval_cptr);
 
         #define F_SETFDL_NOTHING ((int)((unsigned) 0x8A82))
-        static Fd em_event_new(em_socket_t actual_fd,//file desc, signal, or -1
+        static Fd em_event_new(evutil_socket_t actual_fd,//file desc, signal, or -1
                         short flags, // EVM_... flags
                         // For setfd and setfl arg:
                         //   F_SETFDL_NOTHING - change nothing
@@ -129,11 +131,11 @@ namespace Pistache
         static int getTcpProtNum(); // As per getprotobyname("tcp")
 
         void handleEventCallback(void * cb_arg,
-                                 em_socket_t cb_actual_fd,
+                                 evutil_socket_t cb_actual_fd,
                                  short ev_flags); // One or more EVM_* flags
 
     public:
-        static int getActualFd(const EmEvent * em_event);
+        static evutil_socket_t getActualFd(const EmEvent * em_event);
 
         // efd should be a pointer to EmEventFd - does dynamic cast
         static PST_SSIZE_T writeEfd(EmEvent * efd, const uint64_t val);
@@ -269,7 +271,7 @@ namespace Pistache
     {
     public:
         
-        static EmEvent * make_new(int actual_fd, short flags,
+        static EmEvent * make_new(evutil_socket_t actual_fd, short flags,
                                   // For setfd and setfl arg:
                                   //   F_SETFDL_NOTHING - change nothing
                                   //   Zero or pos number that is not
@@ -309,8 +311,8 @@ namespace Pistache
         int close(); // disarms and closes
 
         // Return -1 if there is no actual file descriptor
-        static int getActualFd(const EmEvent * em_ev);
-        virtual int getActualFd() const;
+        static evutil_socket_t getActualFd(const EmEvent * em_ev);
+        virtual evutil_socket_t getActualFd() const;
 
         virtual PST_SSIZE_T read(void * buf, size_t count);
         virtual PST_SSIZE_T write(const void * buf, size_t count);
@@ -382,18 +384,18 @@ namespace Pistache
 
         // init is clled from make_new, or from a construction function of a
         // derived class
-        EmEvent * init(int actual_fd,
-                              short flags,
-                              // For setfd and setfl arg:
-                              //   F_SETFDL_NOTHING - change nothing
-                              //   Zero or pos number that is not
-                              //   F_SETFDL_NOTHING - set flags to value of
-                              //   arg, and clear any other flags
-                              //   Neg number that is not F_SETFDL_NOTHING
-                              //   - set flags that are set in (0 - arg),
-                              //   but don't clear any flags
-                              int f_setfd_flags,   // e.g. FD_CLOEXEC
-                              int f_setfl_flags);  // e.g. O_NONBLOCK
+        EmEvent * init(evutil_socket_t actual_fd,
+                       short flags,
+                       // For setfd and setfl arg:
+                       //   F_SETFDL_NOTHING - change nothing
+                       //   Zero or pos number that is not
+                       //   F_SETFDL_NOTHING - set flags to value of
+                       //   arg, and clear any other flags
+                       //   Neg number that is not F_SETFDL_NOTHING
+                       //   - set flags that are set in (0 - arg),
+                       //   but don't clear any flags
+                       int f_setfd_flags,   // e.g. FD_CLOEXEC
+                       int f_setfl_flags);  // e.g. O_NONBLOCK
 
         void setPriorTv(const std::chrono::milliseconds * timeval_cptr);
 
@@ -422,16 +424,16 @@ namespace Pistache
 
         int requested_f_setfd_flags_;
         int requested_f_setfl_flags_;
-        int requested_actual_fd_;
+        evutil_socket_t requested_actual_fd_;
 
         struct timeval * prior_tv_cptr_;//either points to prior_tv_ or is null
         struct timeval prior_tv_; // for timeout
 
-        static void setFdlFlagsHelper(int actual_fd,
+        static void setFdlFlagsHelper(evutil_socket_t actual_fd,
                                       int get_cmd, // F_GETFD or F_GETFL
                                       int set_cmd, // F_SETFD or F_SETFL
                                       int f_setfdl_flags);
-        void setFdlFlagsIfNeededAndActualFd(int actual_fd);
+        void setFdlFlagsIfNeededAndActualFd(evutil_socket_t actual_fd);
 
         // The main getActualFd() will throw rather than return an actual-fd
         // value for the derived class EmEventFd, whereas getActualFdPrv will
@@ -442,12 +444,12 @@ namespace Pistache
         #ifdef DEBUG
         public:// getActualFdPrv public so debug fn logPendingOrNot can call it
         #endif
-        int getActualFdPrv() const;
+        evutil_socket_t getActualFdPrv() const;
         #ifdef DEBUG
         private:
         #endif
         // Make eventCallbackFn a friend so it can call getActualFdPrv
-        friend void eventCallbackFn(em_socket_t, short, void *);
+        friend void eventCallbackFn(evutil_socket_t, short, void *);
     };
 
 
@@ -459,7 +461,7 @@ namespace Pistache
         Fd getAsFd() {return(getAsFd(this));}
 
         // getActualFd must not be called for a EmEventFd
-        int getActualFd() const override; // overriding EmEvent version
+        evutil_socket_t getActualFd() const override;//override EmEvent version
 
         // For read, write, poll rules, see definition of eventfd in Linux:
         //     e.g. https://www.man7.org/linux/man-pages/man2/eventfd.2.html
@@ -763,7 +765,7 @@ namespace Pistache
     
     #define F_SETFDL_NOTHING ((int)((unsigned) 0x8A82))
     Fd EventMethFns::em_event_new(
-                        em_socket_t actual_fd,//file desc, signal, or -1
+                        evutil_socket_t actual_fd,//file desc, signal, or -1
                         short flags, // EVM_... flags
                         // For setfd and setfl arg:
                         //   F_SETFDL_NOTHING - change nothing
@@ -836,7 +838,7 @@ namespace Pistache
     }
     // See also CLOSE_FD macro
 
-    int EventMethFns::getActualFd(const EmEvent * em_event)
+    evutil_socket_t EventMethFns::getActualFd(const EmEvent * em_event)
     {
         return(EventMethEpollEquivImpl::getActualFd(em_event));
     }
@@ -1105,7 +1107,7 @@ static std::atomic_int wait_then_get_count__ = 0; // by EventMethEpollEquiv
 /* ------------------------------------------------------------------------- */
 
 
-extern "C" void eventCallbackFn(em_socket_t cb_actual_fd,
+extern "C" void eventCallbackFn(evutil_socket_t cb_actual_fd,
                                 short ev_flags, // One or more EV_* flags
                                 void * cb_arg) // caller-supplied arg
 {
@@ -1249,6 +1251,7 @@ namespace Pistache
         
         event_meth_base_inited_previously = true;
         #ifdef _WIN32 // Defined for both 32-bit and 64-bit environments
+        
         evthread_use_windows_threads();
         #else
         evthread_use_pthreads();
@@ -1284,7 +1287,7 @@ namespace Pistache
 
 /* ------------------------------------------------------------------------- */
 
-    int EmEventCtr::getActualFd() const // overridden from EmEvent
+    evutil_socket_t EmEventCtr::getActualFd() const // overridden from EmEvent
     {
         PS_LOG_WARNING_ARGS("EmEventCtr (EmEvent) %p has no actual-fd", this);
         PS_LOGDBG_STACK_TRACE;
@@ -2154,18 +2157,18 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
     }
 
 
-    EmEvent * EmEvent::make_new(int actual_fd,
-                                  short flags,
-                                  // For setfd and setfl arg:
-                                  //   F_SETFDL_NOTHING - change nothing
-                                  //   Zero or pos number that is not
-                                  //   F_SETFDL_NOTHING - set flags to value of
-                                  //   arg, and clear any other flags
-                                  //   Neg number that is not F_SETFDL_NOTHING
-                                  //   - set flags that are set in (0 - arg),
-                                  //   but don't clear any flags
-                                  int f_setfd_flags, // e.g. FD_CLOEXEC
-                                  int f_setfl_flags  // e.g. O_NONBLOCK
+    EmEvent * EmEvent::make_new(evutil_socket_t actual_fd,
+                                short flags,
+                                // For setfd and setfl arg:
+                                //   F_SETFDL_NOTHING - change nothing
+                                //   Zero or pos number that is not
+                                //   F_SETFDL_NOTHING - set flags to value of
+                                //   arg, and clear any other flags
+                                //   Neg number that is not F_SETFDL_NOTHING
+                                //   - set flags that are set in (0 - arg),
+                                //   but don't clear any flags
+                                int f_setfd_flags, // e.g. FD_CLOEXEC
+                                int f_setfl_flags  // e.g. O_NONBLOCK
         )
     { // static method
         PS_TIMEDBG_START_ARGS("actual_fd %d, evm_flags %s, "
@@ -2189,18 +2192,18 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
     }
     
         
-    EmEvent * EmEvent::init(int actual_fd,
-                                  short flags,
-                                  // For setfd and setfl arg:
-                                  //   F_SETFDL_NOTHING - change nothing
-                                  //   Zero or pos number that is not
-                                  //   F_SETFDL_NOTHING - set flags to value of
-                                  //   arg, and clear any other flags
-                                  //   Neg number that is not F_SETFDL_NOTHING
-                                  //   - set flags that are set in (0 - arg),
-                                  //   but don't clear any flags
-                                  int f_setfd_flags, // e.g. FD_CLOEXEC
-                                  int f_setfl_flags  // e.g. O_NONBLOCK
+    EmEvent * EmEvent::init(evutil_socket_t actual_fd,
+                            short flags,
+                            // For setfd and setfl arg:
+                            //   F_SETFDL_NOTHING - change nothing
+                            //   Zero or pos number that is not
+                            //   F_SETFDL_NOTHING - set flags to value of
+                            //   arg, and clear any other flags
+                            //   Neg number that is not F_SETFDL_NOTHING
+                            //   - set flags that are set in (0 - arg),
+                            //   but don't clear any flags
+                            int f_setfd_flags, // e.g. FD_CLOEXEC
+                            int f_setfl_flags  // e.g. O_NONBLOCK
         )
     {
         PS_TIMEDBG_START;
@@ -2393,7 +2396,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
     {
         PS_TIMEDBG_START_THIS;
 
-        em_socket_t actual_fd = -1; // em_socket_t is type int
+        evutil_socket_t actual_fd = -1;
         int finalize_res = 0;
 
         if (ev_ == NULL)
@@ -2402,7 +2405,8 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
         }
         else
         {
-            actual_fd = event_get_fd(ev_);
+            evutil_socket_t ev_fd = event_get_fd(ev_);
+            actual_fd = (ev_fd < 0) ? (-1) : ((int)ev_fd);
 
             // See earlier comment: Why and how we use libevent's finalize
             PS_LOG_DEBUG_ARGS("About to finalize+free ev_ %p of EmEvent %p",
@@ -2519,9 +2523,9 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
         close();
     }
 
-    int EmEvent::getActualFd() const // virtual
+    evutil_socket_t EmEvent::getActualFd() const // virtual
     {
-        int actual_fd = getActualFdPrv();
+        evutil_socket_t actual_fd = getActualFdPrv();
         #ifdef DEBUG
         if (actual_fd < 0)
         {
@@ -2543,9 +2547,14 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
         return(PST_WRITE(getActualFd(), buf, count));
     }
 
-    int EmEvent::getActualFdPrv() const
+    evutil_socket_t EmEvent::getActualFdPrv() const
     {
-        int actual_fd = ((ev_) ? event_get_fd(ev_) : requested_actual_fd_);
+        evutil_socket_t actual_fd = requested_actual_fd_;
+        if (ev_)
+        {
+            evutil_socket_t ev_fd = event_get_fd(ev_);
+            actual_fd = (ev_fd < 0) ? (-1) : ((int)ev_fd);
+        }
 
         #ifdef DEBUG
         if (actual_fd >= 0)
@@ -2569,8 +2578,9 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
 
         return(actual_fd);
     }
-    
-    int EmEvent::getActualFd(const EmEvent * em_ev) // static version
+
+    // static version
+    evutil_socket_t EmEvent::getActualFd(const EmEvent * em_ev) 
     {
         if (em_ev == NULL)
             return(-1);
@@ -2607,7 +2617,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
     }
     #endif // of ifdef DEBUG
 
-    void EmEvent::setFdlFlagsHelper(int actual_fd,
+    void EmEvent::setFdlFlagsHelper(evutil_socket_t actual_fd,
                                     int get_cmd, // F_GETFD or F_GETFL
                                     int set_cmd, // F_SETFD or F_SETFL
                                     int f_setfdl_flags)
@@ -2664,7 +2674,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
     }
 
 
-    void EmEvent::setFdlFlagsIfNeededAndActualFd(int actual_fd)
+    void EmEvent::setFdlFlagsIfNeededAndActualFd(evutil_socket_t actual_fd)
     {
         if (actual_fd < 0)
             return;
@@ -2793,7 +2803,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
             event_meth_epoll_equiv_impl_ = emee;
         }
         
-        int actual_fd = getActualFdPrv();
+        evutil_socket_t actual_fd = getActualFdPrv();
 
         struct timeval tv;
         memset(&tv, 0, sizeof(tv));
@@ -2996,7 +3006,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
     int EventMethEpollEquivImpl::tcp_prot_num = -1;
     std::mutex EventMethEpollEquivImpl::tcp_prot_num_mutex;
 
-    int EventMethEpollEquivImpl::getActualFd(const EmEvent * em_event)
+    evutil_socket_t EventMethEpollEquivImpl::getActualFd(const EmEvent * em_event)
     { // static
         // Returns -1 if no actual Fd
         return(EmEvent::getActualFd(em_event));
@@ -3404,7 +3414,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
             #else
             // Since this is a signal event, it cannot be a FdEventFd or timer
             
-            int actual_fd_num = fd->getActualFd();
+            int actual_fd_num = (int) fd->getActualFd();
             // Per libevent documentation, this is the signal number being
             // monitored by the libevent event.
             // Most, but not all, signals require shutdown. Do "man signal" to
@@ -3456,7 +3466,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
                                      #ifndef DEBUG
                                      [[maybe_unused]]
                                      #endif
-                                                      em_socket_t cb_actual_fd,
+                                                      evutil_socket_t cb_actual_fd,
                                                       short ev_flags)
     {
         PS_TIMEDBG_START_SQUARE;
@@ -3479,7 +3489,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
 
         #ifdef DEBUG
         // There is no actual-fd for EmEventFd or EmEventTmrFd
-        em_socket_t em_events_actual_fd = -1;
+        evutil_socket_t em_events_actual_fd = -1;
         if (em_event->getEmEventType() == Pistache::EmEvReg)
             em_events_actual_fd = em_event->getActualFdPrv();
 
@@ -3661,7 +3671,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
                 if (readys.empty())
                     readys += " none";
 
-                int actual_fd = -1;
+                evutil_socket_t actual_fd = -1;
                 if (fd->getEmEventType() == EmEvReg)
                     actual_fd = fd->getActualFdPrv();
                 
@@ -3922,7 +3932,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
     }
 
     Fd EventMethEpollEquivImpl::em_event_new( // static method
-                             em_socket_t actual_fd, // file desc, signal, or -1
+                             evutil_socket_t actual_fd,//fl desc, signal, or -1
                              short flags, // EVM_... flags
                              // For setfd and setfl arg:
                              //   F_SETFDL_NOTHING - change nothing
@@ -4264,7 +4274,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
 
     // To enable to_string of an Fd
     std::string to_string(const EmEvent * eme)
-                                {return(std::to_string((unsigned long) eme));}
+                                {return(std::to_string((intptr_t) eme));}
     
 /* ------------------------------------------------------------------------- */
     

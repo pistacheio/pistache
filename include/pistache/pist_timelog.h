@@ -55,7 +55,7 @@
 // For C++ name demangling:
 #ifdef _IS_WINDOWS
 #pragma comment(lib, "dbghelp.lib")
-extern char *__unDName(char*, const char*, int, void*, void*, int);
+extern "C" char *__unDName(char*, const char*, int, void*, void*, int);
 #else
 #include <cxxabi.h> // for abi::__cxa_demangle
 #endif

@@ -9,6 +9,8 @@
 
 /* ------------------------------------------------------------------------- */
 
+#include <pistache/winornix.h>
+
 #ifdef _IS_WINDOWS
 
 #include <pistache/pist_resource.h>
@@ -53,13 +55,15 @@ extern "C" int pist_getrusage(int who, struct PST_RUSAGE * rusage)
     /* Convert FILETIMEs (0.1 us) to struct timeval */
     memcpy(&li, &kerneltime, sizeof(FILETIME));
     li.QuadPart /= 10L;            /* Convert to microseconds */
-    rusage->ru_stime.tv_sec = li.QuadPart / 1000000L;
+    rusage->ru_stime.tv_sec = (long) (li.QuadPart / 1000000L);
     rusage->ru_stime.tv_usec = li.QuadPart % 1000000L;
 
     memcpy(&li, &usertime, sizeof(FILETIME));
     li.QuadPart /= 10L;            /* Convert to microseconds */
-    rusage->ru_utime.tv_sec = li.QuadPart / 1000000L;
+    rusage->ru_utime.tv_sec = (long) (li.QuadPart / 1000000L);
     rusage->ru_utime.tv_usec = li.QuadPart % 1000000L;
+
+    return(0); // success
 }
 
 

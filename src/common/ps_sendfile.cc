@@ -53,7 +53,7 @@ extern "C" PST_SSIZE_T ps_sendfile(int out_fd, int in_fd,
     }
 
     BOOL res = TransmitFile(out_fd, in_fd_handle,
-                            count, // 0 => transmit whole file
+                            (DWORD) count, // 0 => transmit whole file
                             0, // nNumberOfBytesPerSend => use default
                             &overlapped,
                             NULL, // lpTransmitBuffers => no pre/suffix buffs

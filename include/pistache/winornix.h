@@ -306,10 +306,17 @@ typedef struct in_addr PST_IN_ADDR_T;
 #ifdef _IS_WINDOWS
 // See:
 //   https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/close
-#define PST_CLOSE ::_close
+
+// _close takes an int, but we may want to pass an evutil_socket_t (an
+// intptr_t), hence this cast
+#define PST_CLOSE(__fd) ::_close((int)__fd)
 #define PST_OPEN pist_open
-#define PST_READ ::_read
-#define PST_WRITE ::_write
+// Note - Windows use "unsigned int" for count, whereas Linux uses size_t. In
+// general we use size_t for count in Pistache, hence why we cast here
+#define PST_READ(__fd, __buf, __count)                  \
+    ::_read(__fd, __buf, (unsigned const) __count)
+#define PST_WRITE(__fd, __buf, __count)         \
+    ::_write(__fd, __buf, (unsigned int) __count)
 #define PST_PREAD pist_pread
 
 typedef int pst_mode_t;

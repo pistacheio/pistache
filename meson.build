@@ -78,6 +78,32 @@ if get_option('PISTACHE_USE_CONTENT_ENCODING_DEFLATE')
 
 endif
 
+if host_machine.system() == 'windows'
+
+    # We have to use find_library unless the library is one of the
+    # special ones documented here:
+    # https://mesonbuild.com/Dependencies.html#dependencies-with-custom-lookup-functionality
+    # If the library is one of the "special ones", we can simply do
+    # deps_libpistache += <library-name> as we do for zlib above for
+    # instance
+    
+    ws2_32_dep = compiler.find_library('Ws2_32', required: true)
+    deps_libpistache += ws2_32_dep
+
+    dbghelp_dep = compiler.find_library('dbghelp', required: true)
+    deps_libpistache += dbghelp_dep # for __unDName
+
+    iphlpapi_dep = compiler.find_library('Iphlpapi', required: true)
+    deps_libpistache += iphlpapi_dep # for GetAdaptersAddresses
+
+    mswsock_dep = compiler.find_library('Mswsock', required: true)
+    deps_libpistache += mswsock_dep # for TransmitFile
+
+#    libevent_dep = compiler.find_library('libevent', required: true)
+#    deps_libpistache += libevent_dep # for __unDName
+   
+endif   
+
 # Check if -latomic is needed - https://github.com/llvm/llvm-project/blob/main/llvm/cmake/modules/CheckAtomic.cmake
 compiler_id = compiler.get_id()
 

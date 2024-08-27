@@ -22,14 +22,7 @@
 
 /* ------------------------------------------------------------------------- */
 
-// A type wide enough to hold the output of "socket()" or "accept()".  On
-// Windows, this is an intptr_t; elsewhere, it is an int.
-// Note: Mapped directly from evutil_socket_t in libevent's event2/util.h
-#ifdef _IS_WINDOWS
-#define em_socket_t intptr_t
-#else
-#define em_socket_t int
-#endif
+#include <pistache/em_socket_t.h>
 
 #ifndef _USE_LIBEVENT
 #include <sys/eventfd.h>
@@ -280,7 +273,7 @@ namespace Pistache
         EventMethEpollEquiv * getEventMethEpollEquivFromEmeeSet(
                                                    EventMethEpollEquiv * emee);
         
-        int getActualFd(const EmEvent * em_event);
+        em_socket_t getActualFd(const EmEvent * em_event);
 
         // efd should be a pointer to EmEventFd - does dynamic cast
         PST_SSIZE_T writeEfd(EmEvent * efd, const uint64_t val);

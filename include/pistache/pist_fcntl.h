@@ -17,9 +17,11 @@
 
 #ifdef _IS_WINDOWS
 
+#include <pistache/em_socket_t.h>
+
 /* ------------------------------------------------------------------------- */
 
-extern "C" int PST_FCNTL(int fd, int cmd, ... /* arg */ );
+extern "C" int PST_FCNTL(em_socket_t fd, int cmd, ... /* arg */ );
 
 /* ------------------------------------------------------------------------- */
 
