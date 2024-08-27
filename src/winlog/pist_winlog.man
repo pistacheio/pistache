@@ -1,3 +1,9 @@
+<!--SPDX-FileCopyrightText: 2024 Duncan Greatwood-->
+<!--SPDX-License-Identifier: Apache-2.0-->
+<!-- -->
+<!--XML file to define Pistache Windows logging events-->
+<!--https://learn.microsoft.com/en-us/windows/win32/wes/writing-an-instrumentation-manifest?source=recommendations-->
+<!--https://kallanreed.com/2016/05/28/creating-an-etw-provider-step-by-step/-->
 <instrumentationManifest
     xmlns="http://schemas.microsoft.com/win/2004/08/events" 
     xmlns:win="http://manifests.microsoft.com/win/2004/08/windows/events"
@@ -30,12 +36,18 @@
                              symbol="CHAN_PSTCHPROVIDER_DEBUG"
                              type="Debug"/>
                 </channels>
+                <!--We don't define new levels but use the predefined ones-->
+                <!--win:Critical, win:Error, win:Warning-->
+                <!--win:Informational, win:Verbose-->
                 <tasks>
                     <task name="PSTCH" 
                           symbol="TASK_PSTCH"
                           value="1"
                           message="$(string.Task.PSTCH)"/>
                 </tasks>
+                <!--Winmeta.xml has predefined opcodes, including win:Info"-->
+                <!--Winmeta.xml has predefined keywords e.g. win:AnyKeyword"-->
+                <!--Filters are optional-->
                 <maps>
                     <valueMap name="PistLogLevel">
                         <map value="0" message="$(string.PistLogLevel.EMERG)"/>
