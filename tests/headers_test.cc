@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <chrono>
 #include <iostream>
+#include <sstream>
 
 using testing::ElementsAre;
 using testing::SizeIs;
@@ -30,6 +31,10 @@ TEST(headers_test, accept)
         const auto& mime = media[0];
         ASSERT_EQ(mime, MIME(Audio, Star));
         ASSERT_EQ(mime.q().value_or(Pistache::Http::Mime::Q(0)), Pistache::Http::Mime::Q(20));
+
+        std::ostringstream oss;
+        a1.write(oss);
+        ASSERT_EQ(oss.str(), "audio/*; q=0.2");
     }
 
     Pistache::Http::Header::Accept a2;
@@ -49,6 +54,10 @@ TEST(headers_test, accept)
         ASSERT_EQ(level.value_or(""), "1");
         const auto& m4 = media[3];
         ASSERT_EQ(m4, MIME(Star, Star));
+
+        std::ostringstream oss;
+        a2.write(oss);
+        ASSERT_EQ(oss.str(), "text/*, text/html, text/html;level=1, */*");
     }
 
     Pistache::Http::Header::Accept a3;
@@ -67,6 +76,10 @@ TEST(headers_test, accept)
         ASSERT_EQ(media[3], MIME(Text, Html));
         ASSERT_EQ(media[4], MIME(Star, Star));
         ASSERT_EQ(media[4].q().value_or(Pistache::Http::Mime::Q(0)), Pistache::Http::Mime::Q::fromFloat(0.5));
+
+        std::ostringstream oss;
+        a3.write(oss);
+        ASSERT_EQ(oss.str(), "text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, */*;q=0.5");
     }
 
     Pistache::Http::Header::Accept a4;
