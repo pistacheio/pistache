@@ -174,6 +174,14 @@ namespace Pistache::Http::Header
             : mediaRange_()
         { }
 
+        explicit Accept(const std::vector<Mime::MediaType>& mediaRange)
+            : mediaRange_(mediaRange)
+        { }
+
+        explicit Accept(std::initializer_list<Mime::MediaType> mediaRange)
+            : mediaRange_(mediaRange)
+        { }
+
         void parseRaw(const char* str, size_t len) override;
         void write(std::ostream& os) const override;
 
