@@ -750,12 +750,9 @@ TEST(headers_test, last_modified_test)
     // As of July/2024, it seems that in macOS, Linux and OpenBSD this produces
     // an OSS ending "GMT", while in FreeBSD it ends "UTC". Of course, they
     // mean the same thing, and we allow either.
-    const bool oss_ends_utc =
-        ((oss.str().length() >= 3) &&
-         (oss.str().compare(oss.str().length() - 3, 3, "UTC") == 0));
-    const std::string ref(std::string("Sun, 06 Nov 1994 08:49:37 ") +
-                          (oss_ends_utc ? "UTC" : "GMT"));
-    
+    const bool oss_ends_utc = ((oss.str().length() >= 3) && (oss.str().compare(oss.str().length() - 3, 3, "UTC") == 0));
+    const std::string ref(std::string("Sun, 06 Nov 1994 08:49:37 ") + (oss_ends_utc ? "UTC" : "GMT"));
+
     ASSERT_EQ(ref, oss.str());
     Pistache::Http::Header::LastModified l1;
     l1.parse(ref);
