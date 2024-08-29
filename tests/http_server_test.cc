@@ -38,6 +38,11 @@
 #include <string>
 #include <thread>
 
+#ifdef _IS_WINDOWS
+#include <Windows.h>
+#include <fileapi.h> // for GetTempPathW
+#endif
+
 #include "helpers/fd_utils.h"
 #include "tcp_client.h"
 
@@ -176,7 +181,7 @@ struct FileHandler : public Http::Handler
 
         Http::serveFile(writer, fileName_)
             .then(
-                [this](ssize_t bytes) {
+                [this](PST_SSIZE_T bytes) {
                     LOGGER("server", "Sent " << bytes << " bytes from " << fileName_ << " file");
                 },
                 Async::IgnoreException);
@@ -584,18 +589,50 @@ TEST(http_server_test, server_with_static_file)
 
     { // encapsulate
 
-    const std::string data("Hello, World!");
-    char fileName[PATH_MAX] = "/tmp/pistacheioXXXXXX";
-    if (!mkstemp(fileName))
-    {
-        std::cerr << "No suitable filename can be generated!" << std::endl;
-    }
-    LOGGER("test", "Creating temporary file: " << fileName);
+#ifdef _IS_WINDOWS
+        // Note there is no mkstemp on Windows
 
-    std::ofstream tmpFile;
-    tmpFile.open(fileName);
-    tmpFile << data;
-    tmpFile.close();
+        const char * fileName = 0;
+        std::string fn_buf_sstr("C:\\temp\\pistacheio76191");
+
+        { // encapsulate
+            TCHAR tmp_path[PST_MAXPATHLEN+16];
+            tmp_path[0] = 0;
+            DWORD gtp_res = GetTempPathA(PST_MAXPATHLEN, &(tmp_path[0]));
+            if ((!gtp_res) || (gtp_res > PST_MAXPATHLEN))
+            {
+                std::cerr << "No temp path found!" << std::endl;
+            }
+            else
+            {
+                TCHAR tmp_fn_buf[PST_MAXPATHLEN+16];
+                tmp_fn_buf[0] = 0;
+                UINT gtfn_res = GetTempFileNameA(&(tmp_path[0]),
+                                                 "PST", // prefix
+                                                 0, // Windows chooses the name
+                                                 &(tmp_fn_buf[0]));
+                if (!gtfn_res)
+                    std::cerr << "No temp path found!" << std::endl;
+                else
+                    fn_buf_sstr = std::string(&(tmp_fn_buf[0]));
+            }
+        }
+        fileName = fn_buf_sstr.c_str();
+        
+#else
+        char fileName[PST_MAXPATHLEN] = "/tmp/pistacheioXXXXXX";
+        if (!mkstemp(fileName))
+        {
+            std::cerr << "No suitable filename can be generated!" << std::endl;
+        }
+#endif
+        LOGGER("test", "Creating temporary file: " << fileName);
+
+        const std::string data("Hello, World!");
+        std::ofstream tmpFile;
+        tmpFile.open(fileName);
+        tmpFile << data;
+        tmpFile.close();
 
     const Pistache::Address address("localhost", Pistache::Port(0));
 
@@ -1326,21 +1363,29 @@ TEST(http_server_test, server_with_content_encoding_brotli)
 
     { // encapsulate
 
-    // Data to send to server to expect it to return compressed...
+      // Data to send to server to expect it to return compressed...
 
-    // Allocate storage...
-    std::vector<std::byte> originalUncompressedData(1024);
+        // Allocate storage...
+        std::vector<unsigned short> originalUncompressedData(1024);
 
-    // Random bytes engine...
-    using random_bytes_engine_type = std::independent_bits_engine<
-        std::default_random_engine, CHAR_BIT, unsigned char>;
-    random_bytes_engine_type randomEngine;
+        // Previously, randomEngine was using a std::vector<std::byte> and an
+        // UIntType of "char". However, only one of unsigned short, unsigned
+        // int, unsigned long, or unsigned long long are permitted - and Visual
+        // Studio generates an error otherwise. So switched to using one of the
+        // permitted types. (@Aug/2024).
 
-    // Fill with random bytes...
-    std::generate(
-        std::begin(originalUncompressedData),
-        std::end(originalUncompressedData),
-        [&randomEngine]() { return static_cast<std::byte>(randomEngine()); });
+        // Random engine...
+        using random_us_engine_type = std::independent_bits_engine<
+            std::default_random_engine,
+            8*sizeof(unsigned short),
+            unsigned short>;
+        random_us_engine_type randomEngine;
+
+        // Fill with random unsigned shorts...
+        std::generate(
+            std::begin(originalUncompressedData),
+            std::end(originalUncompressedData),
+            [&randomEngine]() { return static_cast<unsigned short>(randomEngine()); });
 
     // Bind server to localhost on a random port...
     const Pistache::Address address("localhost", Pistache::Port(0));
@@ -1372,10 +1417,9 @@ TEST(http_server_test, server_with_content_encoding_brotli)
     auto rb = client.get(server_address);
 
     // Set data to send as body...
-    rb.body(
-        std::string(
-            reinterpret_cast<const char*>(originalUncompressedData.data()),
-            originalUncompressedData.size()));
+    rb.body(std::string(
+                reinterpret_cast<const unsigned short*>(originalUncompressedData.data()),
+                originalUncompressedData.size()));
 
     // Request server send back response Brotli compressed...
     rb.header<Http::Header::AcceptEncoding>(Http::Header::Encoding::Br);
@@ -1426,12 +1470,12 @@ TEST(http_server_test, server_with_content_encoding_brotli)
     server.shutdown();
 
     // Get server response body in vector...
-    std::vector<std::byte> newlyCompressedResponse(resultStringData.size());
+    std::vector<unsigned short> newlyCompressedResponse(resultStringData.size());
     std::transform(
         std::cbegin(resultStringData),
         std::cend(resultStringData),
         std::begin(newlyCompressedResponse),
-        [](const char character) { return static_cast<std::byte>(character); });
+        [](const unsigned short unss) { return static_cast<unsigned short>(unss); });
 
     // The data the server responded with should be compressed, and therefore
     //  different from the original uncompressed sent during the request...
@@ -1440,7 +1484,7 @@ TEST(http_server_test, server_with_content_encoding_brotli)
     // Decompress response body...
 
     // Storage for decompressed data...
-    std::vector<std::byte> newlyDecompressedData(
+    std::vector<unsigned short> newlyDecompressedData(
         originalUncompressedData.size());
 
     // Size of destination buffer, but will be updated by uncompress() to
@@ -1495,18 +1539,20 @@ TEST(http_server_test, server_with_content_encoding_deflate)
     // Data to send to server to expect it to return compressed...
 
     // Allocate storage...
-    std::vector<std::byte> originalUncompressedData(1024);
+    std::vector<unsigned short> originalUncompressedData(512);
 
-    // Random bytes engine...
-    using random_bytes_engine_type = std::independent_bits_engine<
-        std::default_random_engine, CHAR_BIT, unsigned char>;
-    random_bytes_engine_type randomEngine;
+    // Random engine...
+    using random_us_engine_type = std::independent_bits_engine<
+        std::default_random_engine,
+        8*sizeof(unsigned short),
+        unsigned short>;
+    random_us_engine_type randomEngine;
 
-    // Fill with random bytes...
+    // Fill with random unsigned short
     std::generate(
         std::begin(originalUncompressedData),
         std::end(originalUncompressedData),
-        [&randomEngine]() { return static_cast<std::byte>(randomEngine()); });
+        [&randomEngine]() { return static_cast<unsigned short>(randomEngine()); });
 
     // Bind server to localhost on a random port...
     const Pistache::Address address("localhost", Pistache::Port(0));
@@ -1541,7 +1587,7 @@ TEST(http_server_test, server_with_content_encoding_deflate)
     rb.body(
         std::string(
             reinterpret_cast<const char*>(originalUncompressedData.data()),
-            originalUncompressedData.size()));
+            originalUncompressedData.size()*sizeof(unsigned short)));
 
     // Request server send back response deflate compressed...
     rb.header<Http::Header::AcceptEncoding>(Http::Header::Encoding::Deflate);
@@ -1592,12 +1638,12 @@ TEST(http_server_test, server_with_content_encoding_deflate)
     server.shutdown();
 
     // Get server response body in vector...
-    std::vector<std::byte> newlyCompressedResponse(resultStringData.size());
+    std::vector<unsigned short> newlyCompressedResponse(resultStringData.size());
     std::transform(
         std::cbegin(resultStringData),
         std::cend(resultStringData),
         std::begin(newlyCompressedResponse),
-        [](const char character) { return static_cast<std::byte>(character); });
+        [](const unsigned short unss) { return static_cast<unsigned short>(unss); });
 
     // The data the server responded with should be compressed, and therefore
     //  different from the original uncompressed sent during the request...
@@ -1606,26 +1652,27 @@ TEST(http_server_test, server_with_content_encoding_deflate)
     // Decompress response body...
 
     // Storage for decompressed data...
-    std::vector<std::byte> newlyDecompressedData(
+    std::vector<unsigned short> newlyDecompressedData(
         originalUncompressedData.size());
 
     // Size of destination buffer, but will be updated by uncompress() to
     //  actual size used...
-    unsigned long destinationLength = originalUncompressedData.size();
+    uLongf destinationLength =
+        (uLongf) originalUncompressedData.size() * sizeof(unsigned short);
 
     // Decompress...
     const auto compressionStatus = ::uncompress(
-        reinterpret_cast<unsigned char*>(newlyDecompressedData.data()),
+        reinterpret_cast<Bytef*>(newlyDecompressedData.data()),
         &destinationLength,
-        reinterpret_cast<const unsigned char*>(resultStringData.data()),
-        resultStringData.size());
+        reinterpret_cast<const Bytef*>(resultStringData.data()),
+        (uLong) (resultStringData.size() * sizeof(unsigned short)));
 
     // Check for failure...
     ASSERT_EQ(compressionStatus, Z_OK);
 
     // The sizes of both the original uncompressed data we sent the server
     //  and the result of decompressing what it sent back should match...
-    ASSERT_EQ(originalUncompressedData.size(), destinationLength);
+    ASSERT_EQ(originalUncompressedData.size() * sizeof(unsigned short), destinationLength);
 
     // Check to ensure the compressed data received back from server after
     //  decompression matches exactly what we originally sent it...

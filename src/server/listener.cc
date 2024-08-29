@@ -28,6 +28,7 @@
 
 #include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h e.g. close
 #include PIST_QUOTE(PST_FCNTL_HDR)
+#include PIST_QUOTE(PIST_SOCKFNS_HDR) // socket read, write and close
 
 #ifndef _USE_LIBEVENT
 #include <sys/epoll.h>
@@ -178,7 +179,7 @@ namespace Pistache::Tcp
     }
 #endif /* PISTACHE_USE_SSL */
 
-    void setSocketOptions(int actualFd, Flags<Options> options)
+    void setSocketOptions(em_socket_t actualFd, Flags<Options> options)
     {
         PS_TIMEDBG_START;
 
@@ -345,7 +346,8 @@ namespace Pistache::Tcp
             socktype |= SOCK_CLOEXEC;
 #endif
 
-        int actual_fd = ::socket(addr->ai_family, socktype, addr->ai_protocol);
+        em_socket_t actual_fd = PST_SOCK_SOCKET(addr->ai_family, socktype,
+                                                addr->ai_protocol);
         PS_LOG_DEBUG_ARGS("::socket actual_fd %d", actual_fd);
 
         if (actual_fd < 0)
@@ -360,10 +362,10 @@ namespace Pistache::Tcp
 
         LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(actual_fd);
 
-        if (::bind(actual_fd, addr->ai_addr, addr->ai_addrlen) < 0)
+        if (PST_SOCK_BIND(actual_fd, addr->ai_addr, addr->ai_addrlen) < 0)
         {
             PS_LOG_DEBUG_ARGS("::bind failed, actual_fd %d", actual_fd);
-            PST_CLOSE(actual_fd);
+            PST_SOCK_CLOSE(actual_fd);
             return false;
         }
 
@@ -657,7 +659,7 @@ namespace Pistache::Tcp
         PS_TIMEDBG_START_THIS;
 
         struct sockaddr_storage peer_addr;
-        int actual_cli_fd = acceptConnection(peer_addr);
+        em_socket_t actual_cli_fd = acceptConnection(peer_addr);
 
         void* ssl = nullptr;
 
@@ -671,7 +673,7 @@ namespace Pistache::Tcp
             {
                 PS_LOG_DEBUG("SSL_new failed");
 
-                PST_CLOSE(actual_cli_fd);
+                PST_SOCK_CLOSE(actual_cli_fd);
                 std::string err = "SSL error - cannot create SSL connection: "
                     + ssl_print_errors_to_string();
                 throw ServerError(err.c_str());
@@ -699,7 +701,17 @@ namespace Pistache::Tcp
                                  (PST_SOCK_OPT_VAL_T *)&timeout, sizeof(timeout)));
             }
 
-            SSL_set_fd(ssl_data, actual_cli_fd);
+            SSL_set_fd(ssl_data,
+#ifdef _IS_WINDOWS
+                       // SSL_set_fd takes type int for the FD parm, resulting
+                       // in a compiler warning since em_socket_t (and Windows'
+                       // SOCKET) may be wider than "int". However, according
+                       // to the SLL documentation, the warning can be
+                       // suppressed / ignored. @Aug/2024, see 'NOTES' in:
+                       // https://docs.openssl.org/3.1/man3/SSL_set_fd/
+                       (int)
+#endif
+                       actual_cli_fd);
             SSL_set_accept_state(ssl_data);
 
             int ssl_accept_res = SSL_accept(ssl_data);
@@ -727,7 +739,7 @@ namespace Pistache::Tcp
 
                 PISTACHE_LOG_STRING_INFO(logger_, err);
                 SSL_free(ssl_data);
-                PST_CLOSE(actual_cli_fd);
+                PST_SOCK_CLOSE(actual_cli_fd);
                 return;
             }
 
@@ -795,13 +807,13 @@ namespace Pistache::Tcp
         dispatchPeer(peer);
     }
 
-    int Listener::acceptConnection(struct sockaddr_storage& peer_addr) const
+    em_socket_t Listener::acceptConnection(struct sockaddr_storage& peer_addr) const
     {
         PS_TIMEDBG_START_THIS;
 
         socklen_t peer_addr_len = sizeof(peer_addr);
 
-        int listen_fd_actual = GET_ACTUAL_FD(listen_fd);
+        em_socket_t listen_fd_actual = GET_ACTUAL_FD(listen_fd);
 
         PS_LOG_DEBUG_ARGS("listen_fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", "
                                                                   "listen_fd_actual %d",
@@ -810,11 +822,11 @@ namespace Pistache::Tcp
         LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(listen_fd_actual);
 
         // Do not share open FD with forked processes
-        int client_actual_fd =
+        em_socket_t client_actual_fd =
 #ifdef _USE_LIBEVENT_LIKE_APPLE
-            ::accept(listen_fd_actual,
-                     reinterpret_cast<struct sockaddr*>(&peer_addr),
-                     &peer_addr_len);
+            PST_SOCK_ACCEPT(listen_fd_actual,
+                            reinterpret_cast<struct sockaddr*>(&peer_addr),
+                            &peer_addr_len);
 // Note: macOS doesn't support accept4 nor SOCK_CLOEXEC as of Nov-2023
 // accept4 is an extended form of "accept" with additional flags
 
@@ -871,7 +883,7 @@ namespace Pistache::Tcp
                               client_actual_fd, errno,
                               PST_STRERROR_R(errno, &se_err[0], 256));
 
-            PST_CLOSE(client_actual_fd);
+            PST_SOCK_CLOSE(client_actual_fd);
             PS_LOG_DEBUG_ARGS("::close actual_fd %d", client_actual_fd);
 
             return (fcntl_res);
@@ -885,7 +897,7 @@ namespace Pistache::Tcp
                               client_actual_fd, errno,
                               PST_STRERROR_R(errno, &se_err[0], 256));
 
-            PST_CLOSE(client_actual_fd);
+            PST_SOCK_CLOSE(client_actual_fd);
             PS_LOG_DEBUG_ARGS("::close actual_fd %d", client_actual_fd);
 
             return (fcntl_res);
@@ -915,7 +927,7 @@ namespace Pistache::Tcp
         // To guard against that, we simply need to check for an invalid Fd. We
         // also check for an invalid actual-fd for safety's sake.
 
-        int actual_fd = -1;
+        em_socket_t actual_fd = -1;
         try
         {
             actual_fd = peer->actualFd();

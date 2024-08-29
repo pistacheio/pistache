@@ -98,11 +98,7 @@ if host_machine.system() == 'windows'
 
     mswsock_dep = compiler.find_library('Mswsock', required: true)
     deps_libpistache += mswsock_dep # for TransmitFile
-
-#    libevent_dep = compiler.find_library('libevent', required: true)
-#    deps_libpistache += libevent_dep # for __unDName
-   
-endif   
+endif
 
 # Check if -latomic is needed - https://github.com/llvm/llvm-project/blob/main/llvm/cmake/modules/CheckAtomic.cmake
 compiler_id = compiler.get_id()

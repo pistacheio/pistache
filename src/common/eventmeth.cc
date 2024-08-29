@@ -187,7 +187,7 @@ namespace Pistache
 
     #ifdef DEBUG
     public:
-        static std::string getActFdAndFdlFlagsAsStr(int actual_fd);
+        static std::string getActFdAndFdlFlagsAsStr(em_socket_t actual_fd);
         // See also macro LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(__ACTUAL_FD__)
     #endif
 
@@ -734,6 +734,7 @@ namespace Pistache
 
 #include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h, for close
 #include PIST_QUOTE(PST_FCNTL_HDR)
+#include PIST_QUOTE(PIST_SOCKFNS_HDR) // socket read, write and close
 
 #include <assert.h>
 
@@ -934,7 +935,7 @@ namespace Pistache
     }
     
     #ifdef DEBUG
-    std::string EventMethFns::getActFdAndFdlFlagsAsStr(int actual_fd)
+    std::string EventMethFns::getActFdAndFdlFlagsAsStr(em_socket_t actual_fd)
     {
         return(EventMethEpollEquivImpl::getActFdAndFdlFlagsAsStr(actual_fd));
     }
@@ -1762,7 +1763,7 @@ namespace Pistache
     }
 
     std::string EventMethEpollEquivImpl::getActFdAndFdlFlagsAsStr(
-                                                                 int actual_fd)
+                                                         em_socket_t actual_fd)
     { // static method
         std::string res("actual-fd ");
         res += std::to_string(actual_fd);
@@ -2432,7 +2433,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
         if (actual_fd > 0)
         {
             PS_LOG_DEBUG_ARGS("::close actual_fd %d", actual_fd);
-            actual_fd_close_res = PST_CLOSE(actual_fd);
+            actual_fd_close_res = PST_SOCK_CLOSE(actual_fd);
         }
 
         if (finalize_res < 0)
@@ -2539,12 +2540,12 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
 
     PST_SSIZE_T EmEvent::read(void * buf, size_t count) // virtual
     {
-        return(PST_READ(getActualFd(), buf, count));
+        return(PST_SOCK_READ(getActualFd(), buf, count));
     }
     
     PST_SSIZE_T EmEvent::write(const void * buf, size_t count) // virtual
     {
-        return(PST_WRITE(getActualFd(), buf, count));
+        return(PST_SOCK_WRITE(getActualFd(), buf, count));
     }
 
     evutil_socket_t EmEvent::getActualFdPrv() const

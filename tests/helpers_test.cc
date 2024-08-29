@@ -7,11 +7,13 @@
 #include "helpers/fd_utils.h"
 #include <gtest/gtest.h>
 
+#include <pistache/winornix.h>
+
 #include <pistache/common.h>
 #include <pistache/eventmeth.h>
 #include <pistache/os.h>
 
-#include <unistd.h>
+#include PIST_QUOTE(PIST_SOCKFNS_HDR) // e.g. unistd.h
 
 using namespace Pistache;
 
@@ -28,7 +30,7 @@ namespace
 
             // em_event_new does not allocate an actual fd, so we provide
             // one to achieve the same effect
-            int actual_fd = ::socket(AF_INET, SOCK_STREAM, 0);
+            int actual_fd = PST_SOCK_SOCKET(AF_INET, SOCK_STREAM, 0);
 
             if (actual_fd < 0)
                 throw std::runtime_error("::socket failed");

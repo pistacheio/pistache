@@ -18,6 +18,7 @@ pistache_common_src = [
 	'common'/'pist_clock_gettime.cc',
         'common'/'pist_fcntl.cc',
         'common'/'pist_filefns.cc',
+        'common'/'pist_sockfns.cc',
         'common'/'pist_ifaddrs.cc',
         'common'/'pist_resource.cc',
         'common'/'pist_strerror_r.cc',

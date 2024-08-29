@@ -47,7 +47,7 @@ public:
         Rest::Swagger swagger(desc);
         swagger
             .uiPath("/doc")
-            .uiDirectory(filesystem::current_path() / "assets")
+            .uiDirectory((filesystem::current_path() / "assets").string())
             .apiPath("/banker-api.json")
             .serializer(&Rest::Serializer::rapidJson)
             .install(router);

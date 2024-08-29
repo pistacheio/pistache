@@ -15,12 +15,19 @@
 #include <errno.h>
 #include <stdlib.h>
 #include PIST_QUOTE(PST_SOCKET_HDR)
+#include PIST_QUOTE(PIST_SOCKFNS_HDR)
 
 #include <sys/types.h>
-#include <unistd.h>
+#include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h
 
 #include <array>
 #include <sstream>
+
+#include <chrono>
+#include <thread> // provides "sleep_for"
+using namespace std::chrono_literals;
+
+#include <pistache/ps_strl.h>
 
 #include <pistache/endpoint.h>
 #include <pistache/http.h>
@@ -30,17 +37,25 @@
 #include <sys/wait.h> // for wait
 #endif
 
+#ifdef _IS_WINDOWS
+#include <Windows.h> // for fileapi.h
+#include <fileapi.h> // for GetTempPathA
+#include <random>
+
+#include "helpers/win_fork_ish.h"
+#endif
+
 class SocketWrapper
 {
 
 public:
-    explicit SocketWrapper(int fd)
+    explicit SocketWrapper(em_socket_t fd)
         : fd_(fd)
     { }
     ~SocketWrapper()
     {
         PS_TIMEDBG_START;
-        close(fd_);
+        PST_SOCK_CLOSE(fd_);
     }
 
     uint16_t port()
@@ -65,7 +80,7 @@ public:
     }
 
 private:
-    int fd_;
+    em_socket_t fd_;
 };
 
 // Just there for show.
@@ -90,10 +105,10 @@ SocketWrapper bind_free_port_helper(int ai_family)
 {
     PS_TIMEDBG_START;
 
-    int sockfd = -1; // listen on sock_fd, new connection on new_fd
+    em_socket_t sockfd    = -1; // listen on sock_fd, new connection on new_fd
     struct addrinfo hints = {}, *servinfo, *p;
 
-    int yes = 1;
+    PST_SOCK_OPT_VAL_T yes = 1;
     int rv;
 
     hints.ai_family   = ai_family;
@@ -112,7 +127,7 @@ SocketWrapper bind_free_port_helper(int ai_family)
 
     for (p = servinfo; p != nullptr; p = p->ai_next)
     {
-        if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1)
+        if ((sockfd = PST_SOCK_SOCKET(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1)
         {
             PS_LOG_DEBUG("server: socket");
             if (ai_family == AF_UNSPEC)
@@ -120,7 +135,7 @@ SocketWrapper bind_free_port_helper(int ai_family)
             continue;
         }
 
-        if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1)
+        if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1)
         {
             PS_LOG_DEBUG("setsockopt");
             if (ai_family == AF_UNSPEC)
@@ -131,10 +146,10 @@ SocketWrapper bind_free_port_helper(int ai_family)
             throw std::runtime_error("setsockopt fail");
         }
 
-        if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1)
+        if (PST_SOCK_BIND(sockfd, p->ai_addr, p->ai_addrlen) == -1)
         {
             PS_LOG_DEBUG_ARGS("server: bind failed, sockfd %d", sockfd);
-            close(sockfd);
+            PST_SOCK_CLOSE(sockfd);
             if (ai_family == AF_UNSPEC)
                 perror("server: bind");
             continue;
@@ -332,9 +347,37 @@ TEST(listener_test, listener_bind_unix_domain)
     PS_TIMEDBG_START;
 
     // Avoid name conflict by binding within a fresh temporary directory.
+#ifdef _IS_WINDOWS
+    // No mkdtemp or equivalent in Windows
+    
+    const char * tmpDir = 0;
+    std::string td_buf_sstr("C:\\temp\\bind_test_852823");
+
+    { // encapsulate
+        TCHAR tmp_path[PST_MAXPATHLEN+16];
+        tmp_path[0] = 0;
+        DWORD gtp_res = GetTempPathA(PST_MAXPATHLEN, &(tmp_path[0]));
+        if ((!gtp_res) || (gtp_res > PST_MAXPATHLEN))
+        {
+            std::cerr << "No temp path found!" << std::endl;
+        }
+        else
+        {
+            std::random_device rd;  // a seed source for the engine
+            std::mt19937 gen(rd()); // mersenne_twister_engine
+            std::uniform_int_distribution<> distrib(100000, 999999);
+            auto rnd_6_digits = distrib(gen);
+            
+            td_buf_sstr = std::string(&(tmp_path[0])) + "bind_test_" +
+                std::to_string(rnd_6_digits);
+        }
+    }
+    tmpDir = td_buf_sstr.c_str();
+#else
 #define DIR_TEMPLATE "/tmp/bind_test_XXXXXX"
     auto dirTemplate  = std::array<char, sizeof DIR_TEMPLATE> { DIR_TEMPLATE };
     const auto tmpDir = ::mkdtemp(dirTemplate.data());
+#endif
     ASSERT_TRUE(tmpDir != nullptr);
     auto ss = std::stringstream();
     ss << tmpDir << "/unix_socket";
@@ -342,9 +385,7 @@ TEST(listener_test, listener_bind_unix_domain)
 
     struct sockaddr_un sa = {};
     sa.sun_family         = AF_UNIX;
-    std::strncpy(sa.sun_path, sockName.c_str(), sizeof sa.sun_path - 1);
-    // Belt and suspenders...
-    sa.sun_path[sizeof sa.sun_path - 1] = '\0';
+    PS_STRLCPY(sa.sun_path, sockName.c_str(), sizeof sa.sun_path);
 
     auto address = Pistache::Address::fromUnix(reinterpret_cast<struct sockaddr*>(&sa));
     auto opts    = Pistache::Http::Endpoint::options().threads(2);
@@ -357,8 +398,8 @@ TEST(listener_test, listener_bind_unix_domain)
     endpoint.shutdown();
 
     // Clean up.
-    (void)::unlink(sockName.c_str());
-    (void)::rmdir(tmpDir);
+    (void)PST_UNLINK(sockName.c_str());
+    (void)PST_RMDIR(tmpDir);
 }
 
 class CloseOnExecTest : public testing::Test
@@ -379,10 +420,20 @@ public:
         return listener;
     }
 
-    bool is_child_process(pid_t id)
+    bool is_child_process(
+#ifdef _WIN32
+        int win_fork_res
+#else
+        pid_t id
+#endif
+        )
     {
+#ifdef _WIN32
+        return(win_fork_res == 1);
+#else
         constexpr auto fork_child_pid = 0;
         return id == fork_child_pid;
+#endif
     }
 
     /*
@@ -393,8 +444,20 @@ public:
     {
         PS_TIMEDBG_START;
 
-        pid_t id = fork();
-        if (is_child_process(id))
+#ifdef _IS_WINDOWS
+        HANDLE process_handle;
+        HANDLE thread_handle;
+        int fork_res = pist_simple_create_user_process(
+            &process_handle, &thread_handle);
+        if (fork_res < 0)
+        {
+            std::cerr << "pist_simple_create_user_process failed";
+            return;
+        }
+#else
+        pid_t fork_res = fork();
+#endif
+        if (is_child_process(fork_res))
         {
             PS_TIMEDBG_START;
 
@@ -411,10 +474,16 @@ public:
             exit(0);
         }
 
+#ifdef _IS_WINDOWS
+        DWORD wait_res = WaitForSingleObject(process_handle, INFINITE);
+        ASSERT_NE(WAIT_FAILED, wait_res);
+#else
         int status = 0;
         wait(&status);
         ASSERT_EQ(0, status);
-        usleep(100000); // wait 100 ms, so socket gets a chance to be closed
+#endif
+        // wait 100 ms, so socket gets a chance to be closed
+        std::this_thread::sleep_for(100ms);
     }
 
     uint16_t port = get_free_port();

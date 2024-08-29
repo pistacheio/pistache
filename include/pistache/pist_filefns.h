@@ -27,7 +27,7 @@ extern "C" PST_SSIZE_T pist_pread(int fd, void *buf,
 
 int pist_open(const char *pathname, int flags);
 
-int pist_open(const char *pathname, int flags, PST_MODE_T mode);
+int pist_open(const char *pathname, int flags, PST_FILE_MODE_T mode);
 
 /* ------------------------------------------------------------------------- */
 

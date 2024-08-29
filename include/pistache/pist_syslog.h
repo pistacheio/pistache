@@ -5,10 +5,12 @@
  */
 
 /******************************************************************************
- * PistSysLog.h
+ * pist_syslog.h
  *
  * Logging Facilities
  *
+ * #include <pistache/pist_syslog.h>
+ * 
  */
 
 

@@ -22,11 +22,12 @@
 #if defined(_IS_WINDOWS) || defined(_IS_BSD)
 
 #include <sys/types.h> // off_t, size_t
+#include <pistache/em_socket_t.h>
 
 /* ------------------------------------------------------------------------- */
 
 // Linux style sendfile
-extern "C" PST_SSIZE_T ps_sendfile(int out_fd, int in_fd,
+extern "C" PST_SSIZE_T ps_sendfile(em_socket_t out_fd, int in_fd,
                                    off_t *offset, size_t count);
 
 #define PS_SENDFILE ps_sendfile

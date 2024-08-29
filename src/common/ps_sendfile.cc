@@ -22,8 +22,8 @@
 #include <pistache/pist_syslog.h>
 /* ------------------------------------------------------------------------- */
 
-extern "C" PST_SSIZE_T ps_sendfile(int out_fd, int in_fd,
-                                     off_t *offset, size_t count)
+extern "C" PST_SSIZE_T ps_sendfile(em_socket_t out_fd, int in_fd,
+                                   off_t *offset, size_t count)
 {
     __int64 in_fd_start_pos = -1;
     if (offset)

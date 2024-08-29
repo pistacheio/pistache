@@ -314,7 +314,7 @@ namespace Pistache
                                     EventMethEpollEquiv * emee/*may be NULL*/);
 
     #ifdef DEBUG
-        std::string getActFdAndFdlFlagsAsStr(int actual_fd);
+        std::string getActFdAndFdlFlagsAsStr(em_socket_t actual_fd);
         // See also macro LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(__ACTUAL_FD__)
     #endif
 

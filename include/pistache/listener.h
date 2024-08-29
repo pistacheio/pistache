@@ -119,7 +119,7 @@ namespace Pistache::Tcp
         bool bindListener(const struct addrinfo* addr);
 
         void handleNewConnection();
-        int acceptConnection(struct sockaddr_storage& peer_addr) const;
+        em_socket_t acceptConnection(struct sockaddr_storage& peer_addr) const;
         void dispatchPeer(const std::shared_ptr<Peer>& peer);
 
         bool useSSL_            = false;

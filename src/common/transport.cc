@@ -23,7 +23,9 @@
 // ps_sendfile.h includes sys/uio.h in macOS, and sys/sendfile.h in Linux
 #include <pistache/ps_sendfile.h>
 
-#include PIST_QUOTE(PST_MISC_IO_HDR)// unistd.h/lseek in BSD. _close in Windows
+#include PIST_QUOTE(PST_MISC_IO_HDR)// unistd.h/lseek in BSD.
+
+#include PIST_QUOTE(PIST_SOCKFNS_HDR) // socket read, write and close
 
 #ifndef _USE_LIBEVENT_LIKE_APPLE
 // Note: sys/timerfd.h is linux-only (and certainly POSIX only)
@@ -279,7 +281,7 @@ namespace Pistache::Tcp
         char buffer[Const::MaxBuffer] = { 0 };
 
         PST_SSIZE_T totalBytes = 0;
-        int fdactual       = GET_ACTUAL_FD(peer->fd());
+        em_socket_t fdactual   = peer->actualFd();
         if (fdactual < 0)
         {
             PS_LOG_DEBUG_ARGS("Peer %p has no actual Fd", peer.get());
@@ -303,7 +305,8 @@ namespace Pistache::Tcp
             {
 #endif /* PISTACHE_USE_SSL */
                 PS_LOG_DEBUG("recv (read)");
-                bytes = recv(fdactual, buffer + totalBytes, Const::MaxBuffer - totalBytes, 0);
+                bytes = PST_SOCK_READ(fdactual, buffer + totalBytes,
+                                      Const::MaxBuffer - totalBytes);
 #ifdef PISTACHE_USE_SSL
             }
 #endif /* PISTACHE_USE_SSL */
@@ -500,7 +503,7 @@ namespace Pistache::Tcp
                                       fd, len);
 
                     auto file    = buffer.fd();
-                    off_t offset = totalWritten;
+                    off_t offset = (off_t) totalWritten;
                     bytesWritten = sendFile(fd, file, offset, len);
                 }
                 if (bytesWritten < 0)
@@ -513,7 +516,7 @@ namespace Pistache::Tcp
 
                     if (errno == EAGAIN || errno == EWOULDBLOCK)
                     {
-                        auto bufferHolder = buffer.detach(totalWritten);
+                        auto bufferHolder = buffer.detach((off_t)totalWritten);
 
                         // pop_front kills buffer - so we cannot continue loop or use buffer
                         // after this point
@@ -560,7 +563,7 @@ namespace Pistache::Tcp
                             // done with the file buffer, nothing else knows
                             // whether to close it with the way the code is
                             // written.
-                            PST_CLOSE(buffer.fd());
+                            PST_FILE_CLOSE(buffer.fd());
                         }
 
                         cleanUp();
@@ -700,14 +703,16 @@ namespace Pistache::Tcp
             PS_LOG_DEBUG_ARGS("::send, fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", actual_fd %d, len %d",
                               fd, GET_ACTUAL_FD(fd), (int)len);
 
-            bytesWritten = ::send(GET_ACTUAL_FD(fd), buffer, len,
-                                  flags
-#ifndef _IS_WINDOWS
-                                  // There's no SIGPIPE in Windows and
-                                  // MSG_NOSIGNAL is not defined
-                                  | MSG_NOSIGNAL
-#endif
-                );
+            bytesWritten =
+#ifdef _IS_WINDOWS
+                // Comparing with PST_SOCK_SEND below, there's no SIGPIPE in
+                // Windows and MSG_NOSIGNAL is not defined in Windows
+                PST_SOCK_SEND(GET_ACTUAL_FD(fd), buffer, len, flags);
+#else
+
+                PST_SOCK_SEND(GET_ACTUAL_FD(fd), buffer, len,
+                              flags | MSG_NOSIGNAL);
+#endif                
 
             PS_LOG_DEBUG_ARGS("bytesWritten = %d", bytesWritten);
 

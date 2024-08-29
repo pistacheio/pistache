@@ -129,7 +129,7 @@ namespace Pistache::Tcp
         return res_fd;
     }
 
-    int Peer::actualFd() const // can return -1
+    em_socket_t Peer::actualFd() const // can return -1
     {
         Fd this_fd(fd_);
 

@@ -1117,7 +1117,7 @@ namespace Pistache::Http
     {
         struct stat sb;
 
-        int fd = PST_OPEN(fileName.c_str(), PST_O_RDONLY);
+        int fd = PST_FILE_OPEN(fileName.c_str(), PST_O_RDONLY);
         if (fd == -1)
         {
             char se_err[256+16];
@@ -1139,7 +1139,7 @@ namespace Pistache::Http
 
         int res = ::fstat(fd, &sb);
 
-        PST_CLOSE(fd); // Done with fd, close before error can be thrown
+        PST_FILE_CLOSE(fd); // Done with fd, close before error can be thrown
         if (res == -1)
         {
             throw HttpError(Code::Internal_Server_Error, "");

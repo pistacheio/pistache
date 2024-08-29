@@ -119,7 +119,7 @@ int pist_open(const char *pathname, int flags)
     return(pist_open(pathname, flags, 0 /* mode */));
 }
 
-int pist_open(const char *pathname, int flags, PST_MODE_T mode)
+int pist_open(const char *pathname, int flags, PST_FILE_MODE_T mode)
 {
     int fh = -1;
 

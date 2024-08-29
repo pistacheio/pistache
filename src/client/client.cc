@@ -21,6 +21,7 @@
 
 #include PIST_QUOTE(PST_NETDB_HDR)
 #include PIST_QUOTE(PST_SOCKET_HDR)
+#include PIST_QUOTE(PIST_SOCKFNS_HDR)
 
 // ps_sendfile.h includes sys/uio.h in macOS, and sys/sendfile.h in Linux
 #include <pistache/ps_sendfile.h>
@@ -186,7 +187,7 @@ namespace Pistache::Http::Experimental
 
         Async::Promise<void> asyncConnect(std::shared_ptr<Connection> connection,
                                           const struct sockaddr* address,
-                                          socklen_t addr_len);
+                                          PST_SOCKLEN_T addr_len);
 
         Async::Promise<PST_SSIZE_T>
         asyncSendRequest(std::shared_ptr<Connection> connection,
@@ -348,7 +349,8 @@ namespace Pistache::Http::Experimental
 
     Async::Promise<void>
     Transport::asyncConnect(std::shared_ptr<Connection> connection,
-                            const struct sockaddr* address, socklen_t addr_len)
+                            const struct sockaddr* address,
+                            PST_SOCKLEN_T addr_len)
     {
         PS_TIMEDBG_START_THIS;
 
@@ -410,8 +412,8 @@ namespace Pistache::Http::Experimental
         {
             const char* data           = buffer.data() + totalWritten;
             const PST_SSIZE_T len          = buffer.size() - totalWritten;
-            const PST_SSIZE_T bytesWritten = ::send(GET_ACTUAL_FD(fd), data,
-                                                len, 0);
+            const PST_SSIZE_T bytesWritten = PST_SOCK_SEND(GET_ACTUAL_FD(fd),
+                                                           data, len, 0);
             if (bytesWritten < 0)
             {
                 if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -488,7 +490,7 @@ namespace Pistache::Http::Experimental
 
             PS_LOG_DEBUG_ARGS("Calling ::connect fs %d", GET_ACTUAL_FD(fd));
 
-            int res = ::connect(GET_ACTUAL_FD(fd), data->getAddr(), data->addr_len);
+            int res = PST_SOCK_CONNECT(GET_ACTUAL_FD(fd), data->getAddr(), data->addr_len);
             char se_err[256 + 16];
             PS_LOG_DEBUG_ARGS("::connect res %d, errno on fail %d (%s)",
                               res, (res < 0) ? errno : 0,
@@ -702,12 +704,12 @@ namespace Pistache::Http::Experimental
         TRY(addressInfo.invoke(host.c_str(), port.c_str(), &hints));
         const addrinfo* addrs = addressInfo.get_info_ptr();
 
-        int sfd = -1;
+        em_socket_t sfd = -1;
 
         for (const addrinfo* an_addr = addrs; an_addr;
              an_addr = an_addr->ai_next)
         {
-            sfd = ::socket(an_addr->ai_family, an_addr->ai_socktype,
+            sfd = PST_SOCK_SOCKET(an_addr->ai_family, an_addr->ai_socktype,
                            an_addr->ai_protocol);
             PS_LOG_DEBUG_ARGS("::socket actual_fd %d", sfd);
             if (sfd < 0)
@@ -733,7 +735,12 @@ namespace Pistache::Http::Experimental
 
             transport_
                 ->asyncConnect(shared_from_this(), an_addr->ai_addr,
-                               an_addr->ai_addrlen)
+                               (PST_SOCKLEN_T) an_addr->ai_addrlen)
+                // Note: We cast to PST_SOCKLEN_T for Windows because Windows
+                // uses "int" for PST_SOCKLEN_T, whereas Linux uses size_t. In
+                // general, even for Windows we use size_t for addresses'
+                // lengths in Pistache (e.g. in struct ifaddr), hence why we
+                // cast here
                 .then(
                     [=]() {
                         socklen_t len = sizeof(saddr);

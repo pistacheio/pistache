@@ -37,7 +37,7 @@ namespace Pistache
 {
     unsigned int hardware_concurrency() { return std::thread::hardware_concurrency(); }
 
-    bool make_non_blocking(int fd)
+    bool make_non_blocking(em_socket_t fd)
     {
         PS_TIMEDBG_START;
 

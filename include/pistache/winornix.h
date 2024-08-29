@@ -105,8 +105,13 @@ struct pst_timespec { long tv_sec; long tv_nsec; };
 
 #ifdef _IS_WINDOWS
 typedef char PST_SOCK_OPT_VAL_T;
+
+// defined in ws2tcpip.h; defined here to avoid need to include big header
+// files (winsock2.h and ws2tcpip.h) in our headers just for this type
+typedef int PST_SOCKLEN_T;
 #else
 typedef int PST_SOCK_OPT_VAL_T;
+#define PST_SOCKLEN_T socklen_t
 #endif
 
 
@@ -303,32 +308,93 @@ typedef struct in_addr PST_IN_ADDR_T;
 #define PIST_FILEFNS_HDR unistd.h
 #endif
 
+// Use #include PIST_QUOTE(PIST_POLL_HDR)
+#ifdef _IS_WINDOWS
+#define PIST_POLL_HDR pistache/pist_sockfns.h
+#else
+#define PIST_POLL_HDR poll.h
+#endif
+
+// Use #include PIST_QUOTE(PIST_SOCKFNS_HDR)
+#ifdef _IS_WINDOWS
+#define PIST_SOCKFNS_HDR pistache/pist_sockfns.h
+#else
+// unistd.h defines pread
+#define PIST_SOCKFNS_HDR unistd.h // has close, read and write in Linux
+#endif
+
+// PST_SOCK_xxx macros are for sockets. For files, use PST_FILE_xxx
+#ifdef _IS_WINDOWS
+#define PST_SOCK_CLOSE pist_sock_close
+// Note - Windows use "unsigned int" for count, whereas Linux uses size_t. In
+// general we use size_t for count in Pistache, hence why we cast here
+#define PST_SOCK_READ(__fd, __buf, __count)                     \
+    pist_sock_read(__fd, __buf, (unsigned const) __count)
+#define PST_SOCK_WRITE(__fd, __buf, __count)                    \
+    pist_sock_write(__fd, __buf, (unsigned int) __count)
+#define PST_SOCK_SOCKET pist_sock_socket
+// Note - Windows uses "int" for socklen_t, whereas Linux uses size_t. In
+// general we use size_t for addresses' lengths in Pistache (e.g. in struct
+// ifaddr), hence why we cast here
+#define PST_SOCK_BIND(__sockfd, __addr, __addrlen)      \
+    pist_sock_bind(__sockfd, __addr, (PST_SOCKLEN_T) __addrlen)
+#define PST_SOCK_ACCEPT pist_sock_accept
+#define PST_SOCK_CONNECT pist_sock_connect
+#define PST_SOCK_SEND pist_sock_send
+
+// PST_POLLFD, PST_POLLFD_T + PST_NFDS_T defined in pist_sockfns.h for Windows
+#define PST_SOCK_POLL pist_sock_poll
+
+#else
+#define PST_SOCK_CLOSE ::close
+#define PST_SOCK_READ ::read
+#define PST_SOCK_WRITE ::write
+#define PST_SOCK_SOCKET ::socket
+#define PST_SOCK_BIND ::bind
+#define PST_SOCK_ACCEPT ::accept
+#define PST_SOCK_CONNECT ::connect
+#define PST_SOCK_SEND ::send
+
+#define PST_SOCK_POLL ::poll
+#define PST_POLLFD pollfd
+typedef struct PST_POLLFD PST_POLLFD_T;
+#define PST_NFDS_T nfds_t
+#endif
+
+
+// PST_FILE_CLOSE, PST_FILE_OPEN, PST_FILE_READ, PST_FILE_WRITE and
+// PST_FILE_PREAD are for *files*
+// For sockets, make sure to use PST_SOCK_xxx macros (above)
 #ifdef _IS_WINDOWS
 // See:
 //   https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/close
 
-// _close takes an int, but we may want to pass an evutil_socket_t (an
-// intptr_t), hence this cast
-#define PST_CLOSE(__fd) ::_close((int)__fd)
-#define PST_OPEN pist_open
+#define PST_FILE_CLOSE ::_close
+#define PST_FILE_OPEN pist_open
+
 // Note - Windows use "unsigned int" for count, whereas Linux uses size_t. In
 // general we use size_t for count in Pistache, hence why we cast here
-#define PST_READ(__fd, __buf, __count)                  \
+#define PST_FILE_READ(__fd, __buf, __count)                  \
     ::_read(__fd, __buf, (unsigned const) __count)
-#define PST_WRITE(__fd, __buf, __count)         \
+#define PST_FILE_WRITE(__fd, __buf, __count)         \
     ::_write(__fd, __buf, (unsigned int) __count)
-#define PST_PREAD pist_pread
+#define PST_FILE_PREAD pist_pread
+
+#define PST_UNLINK ::_unlink
+#define PST_RMDIR ::_rmdir
 
 typedef int pst_mode_t;
-#define PST_MODE_T pst_mode_t
+#define PST_FILE_MODE_T pst_mode_t
 #else
-#define PST_CLOSE ::close
-#define PST_OPEN ::open
-#define PST_READ ::read
-#define PST_WRITE ::write
-#define PST_PREAD ::pread
+#define PST_FILE_CLOSE ::close
+#define PST_FILE_OPEN ::open
+#define PST_FILE_READ ::read
+#define PST_FILE_WRITE ::write
+#define PST_FILE_PREAD ::pread
+#define PST_UNLINK ::unlink
+#define PST_RMDIR ::rmdir
 
-#define PST_MODE_T mode_t
+#define PST_FILE_MODE_T mode_t
 #endif
 
 // Open flags

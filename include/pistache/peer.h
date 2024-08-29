@@ -53,7 +53,7 @@ namespace Pistache::Tcp
         const Address& address() const;
         const std::string& hostname();
         Fd fd() const; // can return PS_FD_EMPTY
-        int actualFd() const; // can return -1
+        em_socket_t actualFd() const; // can return -1
 
         void closeFd();
 

@@ -30,7 +30,7 @@ namespace Pistache
     // Note: Fd is defined in eventmeth.h
 
     unsigned int hardware_concurrency();
-    bool make_non_blocking(int fd);
+    bool make_non_blocking(em_socket_t fd);
 
     class CpuSet
     {

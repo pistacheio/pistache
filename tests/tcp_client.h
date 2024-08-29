@@ -6,27 +6,32 @@
 
 #pragma once
 
+#include <pistache/winornix.h>
 #include <pistache/net.h>
 #include <pistache/os.h>
 
-#include <netdb.h>
-#include <poll.h>
-#include <sys/socket.h>
+#include PIST_QUOTE(PST_NETDB_HDR)
+#include PIST_QUOTE(PIST_POLL_HDR)
+#include PIST_QUOTE(PST_SOCKET_HDR) // best in C/C++, not .h, for non-test code
+
 #include <sys/types.h>
 
 namespace Pistache
 {
 
-#define CLIENT_TRY(...)                   \
-    do                                    \
-    {                                     \
-        auto ret = __VA_ARGS__;           \
-        if (ret == -1)                    \
-        {                                 \
-            lastError_ = strerror(errno); \
-            lastErrno_ = errno;           \
-            return false;                 \
-        }                                 \
+    #define CLIENT_TRY(...)                                             \
+    do                                                                  \
+    {                                                                   \
+    auto ret = __VA_ARGS__;                                             \
+        if (ret == -1)                                                  \
+        {                                                               \
+            char se_err[256 + 16];                                      \
+            const char * se = PST_STRERROR_R(errno, &se_err[0], 256);   \
+            if (se)                                                     \
+                lastError_ = std::string(se);                           \
+            lastErrno_ = errno;                                         \
+            return false;                                               \
+        }                                                               \
     } while (0)
 
     class TcpClient
@@ -45,12 +50,12 @@ namespace Pistache
             CLIENT_TRY(addrInfo.invoke(host.c_str(), port.c_str(), &hints));
 
             const auto* addrs = addrInfo.get_info_ptr();
-            int sfd           = -1;
+            em_socket_t sfd   = -1;
 
             auto* addr = addrs;
             for (; addr; addr = addr->ai_next)
             {
-                sfd = ::socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
+                sfd = PST_SOCK_SOCKET(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
                 PS_LOG_DEBUG_ARGS("::socket actual_fd %d", sfd);
 
                 if (sfd < 0)
@@ -60,7 +65,8 @@ namespace Pistache
             }
 
             CLIENT_TRY(sfd);
-            CLIENT_TRY(::connect(sfd, addr->ai_addr, addr->ai_addrlen));
+            CLIENT_TRY(PST_SOCK_CONNECT(sfd, addr->ai_addr,
+                                        (PST_SOCKLEN_T) addr->ai_addrlen));
             make_non_blocking(sfd);
 
             fd_ = sfd;
@@ -77,7 +83,13 @@ namespace Pistache
             size_t total = 0;
             while (total < len)
             {
-                ssize_t n = ::send(fd_, data + total, len - total, MSG_NOSIGNAL);
+                int send_flags =
+#ifdef _IS_WINDOWS
+                    0;
+#else
+                MSG_NOSIGNAL; // Doesn't exist in Windows
+#endif                
+                PST_SSIZE_T n = PST_SOCK_SEND(fd_, data + total, len - total, send_flags);
                 if (n == -1)
                 {
                     if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -100,16 +112,19 @@ namespace Pistache
         template <typename Duration>
         bool receive(void* buffer, size_t size, size_t* bytes, Duration timeout)
         {
-            struct pollfd fds[1];
+            struct PST_POLLFD fds[1];
             fds[0].fd     = fd_;
             fds[0].events = POLLIN;
 
             auto timeoutMs = std::chrono::duration_cast<std::chrono::milliseconds>(timeout);
-            auto ret       = ::poll(fds, 1, static_cast<int>(timeoutMs.count()));
+            auto ret       = PST_SOCK_POLL(fds, 1, static_cast<int>(timeoutMs.count()));
 
             if (ret < 0)
             {
-                lastError_ = strerror(errno);
+                char se_err[256 + 16];
+                const char * se = PST_STRERROR_R(errno, &se_err[0], 256);
+                if (se)
+                    lastError_ = std::string(se);
                 return false;
             }
             if (ret == 0)
@@ -124,10 +139,13 @@ namespace Pistache
                 return false;
             }
 
-            auto res = ::recv(fd_, buffer, size, 0);
+            auto res = PST_SOCK_READ(fd_, buffer, size);
             if (res < 0)
             {
-                lastError_ = strerror(errno);
+                char se_err[256 + 16];
+                const char * se = PST_STRERROR_R(errno, &se_err[0], 256);
+                if (se)
+                    lastError_ = std::string(se);
                 return false;
             }
 
@@ -146,7 +164,7 @@ namespace Pistache
         }
 
     private:
-        int fd_ = -1;
+        em_socket_t fd_ = -1;
         std::string lastError_;
         int lastErrno_ = 0;
     };
