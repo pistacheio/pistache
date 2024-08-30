@@ -154,7 +154,7 @@ namespace Pistache
             // prevent this poller being unregistered while the handling is
             // going on (see also unregisterPoller, plus the long comment for
             // reactor_ in class Handler)
-            std::mutex reg_unreg_mutex_;
+            mutable std::mutex reg_unreg_mutex_;
 
 #ifdef _USE_LIBEVENT
             static Fd em_event_new(
