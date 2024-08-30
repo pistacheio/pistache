@@ -4073,6 +4073,8 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
 
         if (ctl_res == 0)
         {
+            GUARD_AND_DBG_LOG(interest_mutex_);
+            
             switch(op)
             {
             case EvCtlAction::Add:
