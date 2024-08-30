@@ -106,6 +106,8 @@ namespace Pistache::Aio
 
             handler->reactor_ = reactor_;
 
+            std::mutex& poller_reg_unreg_mutex(poller.reg_unreg_mutex_);
+            GUARD_AND_DBG_LOG(poller_reg_unreg_mutex);
             auto key = handlers_.add(handler);
             if (setKey)
                 handler->key_ = key;
@@ -113,24 +115,21 @@ namespace Pistache::Aio
             return key;
         }
 
+        // poller.reg_unreg_mutex_ must be locked before calling
         void detachFromReactor(const std::shared_ptr<Handler>& handler)
             override
         {
             PS_TIMEDBG_START_THIS;
 
-            // See comment in class Epoll regarding reg_unreg_mutex_
-            std::mutex& poller_reg_unreg_mutex(poller.reg_unreg_mutex_);
-            GUARD_AND_DBG_LOG(poller_reg_unreg_mutex);
-
-            PS_LOG_DEBUG_ARGS("Reactor (this) %p detach passed lock", this);
-
             handler->unregisterPoller(poller);
-
             handler->reactor_ = NULL;
         }
 
         void detachAndRemoveAllHandlers() override
         {
+            std::mutex& poller_reg_unreg_mutex(poller.reg_unreg_mutex_);
+            GUARD_AND_DBG_LOG(poller_reg_unreg_mutex);
+            
             handlers_.forEachHandler([this](
                                          const std::shared_ptr<Handler> handler) {
                 detachFromReactor(handler);
@@ -252,6 +251,10 @@ namespace Pistache::Aio
 
         void run() override
         {
+            // Note: poller_reg_unreg_mutex is already locked (by
+            // Listener::run()) before calling here, so it is safe to call
+            // handlers_.forEachHandler here
+                
             handlers_.forEachHandler([](const std::shared_ptr<Handler> handler) {
                 handler->context_.tid = std::this_thread::get_id();
             });
@@ -333,12 +336,11 @@ namespace Pistache::Aio
             HandlerList(const HandlerList& other)            = delete;
             HandlerList& operator=(const HandlerList& other) = delete;
 
+            // poller.reg_unreg_mutex_ must be locked before calling
             Reactor::Key add(const std::shared_ptr<Handler>& handler)
             {
                 if (index_ == MaxHandlers)
                     throw std::runtime_error("Maximum handlers reached");
-
-                GUARD_AND_DBG_LOG(handlers_arr_mutex_);
 
                 Reactor::Key key(index_);
                 handlers.at(index_++) = handler;
@@ -346,25 +348,18 @@ namespace Pistache::Aio
                 return key;
             }
 
+            // poller.reg_unreg_mutex_ must be locked before calling
             void removeAll()
             {
-                GUARD_AND_DBG_LOG(handlers_arr_mutex_);
-
                 index_ = 0;
                 handlers.fill(NULL);
             }
 
-            std::shared_ptr<Handler> operator[](size_t index) const
-            {
-                return handlers.at(index); // calls const "at"
-            }
-
+            // poller.reg_unreg_mutex_ must be locked before calling
             std::shared_ptr<Handler> at(size_t index) const
-            { // It's const, except that the mutex is locked and unlocked
+            {
                 if (index >= index_)
                     throw std::runtime_error("Attempting to retrieve invalid handler");
-                GUARD_AND_DBG_LOG(handlers_arr_mutex_);
-
                 return handlers.at(index);
             }
 
@@ -402,11 +397,10 @@ namespace Pistache::Aio
                 return std::make_pair(index, maskedValueTV);
             }
 
+            // poller.reg_unreg_mutex_ must be locked before calling
             template <typename Func>
             void forEachHandler(Func func) const
-            { // It's const, except that the mutex is locked and unlocked
-                GUARD_AND_DBG_LOG(handlers_arr_mutex_);
-
+            {
                 for (size_t i = 0; i < index_; ++i)
                     func(handlers.at(i));
             }
@@ -414,9 +408,6 @@ namespace Pistache::Aio
         private:
             std::array<std::shared_ptr<Handler>, MaxHandlers> handlers;
             size_t index_;
-
-            // handlers_arr_mutex_ is mutable: allow lock/unlock in const fns
-            mutable std::mutex handlers_arr_mutex_;
         };
 
         HandlerList handlers_;
