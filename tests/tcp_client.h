@@ -16,20 +16,43 @@
 
 #include <sys/types.h>
 
+// In CLIENT_TRY, note that strerror is allowed to change errno in certain
+// circumstances, so we must save errno in lastErrno_ BEFORE we call strerror
+// 
+// Secondly, if errno has not been set at all then we set lastErrno_ =
+// ECANCELED; the ECANCELED errno is not used in Pistache code as of Aug/2024.
+static const char * strerror_errstr = "<no strerror>";
 namespace Pistache
 {
 
-    #define CLIENT_TRY(...)                                             \
+#define CLIENT_TRY(...)                                                 \
     do                                                                  \
     {                                                                   \
-    auto ret = __VA_ARGS__;                                             \
+        auto ret = __VA_ARGS__;                                         \
         if (ret == -1)                                                  \
         {                                                               \
-            char se_err[256 + 16];                                      \
-            const char * se = PST_STRERROR_R(errno, &se_err[0], 256);   \
-            if (se)                                                     \
-                lastError_ = std::string(se);                           \
-            lastErrno_ = errno;                                         \
+            if (errno)                                                  \
+            {                                                           \
+                lastErrno_ = errno;                                     \
+                lastError_ = strerror(errno);                           \
+                if (errno != lastErrno_)                                \
+                    std::cout << "strerror changed errno (was " <<      \
+                        lastErrno_ << ", now " << errno << " )" << std::endl; \
+                                                                        \
+                if (lastError_.empty())                                 \
+                    lastError_ = strerror_errstr;                       \
+            }                                                           \
+            else                                                        \
+            {                                                           \
+                std::cout << "ret is -1, but errno not set" << std::endl; \
+                if (!lastErrno_)                                        \
+                {                                                       \
+                    std::cout << "Setting lastErrno_ to ECANCELED" <<   \
+                        std::endl;                                      \
+                    lastError_ = strerror_errstr;                       \
+                    lastErrno_ = ECANCELED;                             \
+                }                                                       \
+            }                                                           \
             return false;                                               \
         }                                                               \
     } while (0)
