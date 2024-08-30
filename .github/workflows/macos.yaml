@@ -1,0 +1,106 @@
+# SPDX-FileCopyrightText: 2022 Andrea Pappacoda
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# See:
+#   https://docs.github.com/en/actions/writing-workflows/choosing-where-your-workflow-runs/choosing-the-runner-for-a-job
+#   https://github.com/actions/runner-images/blob/main/images/macos/macos-14-Readme.md
+
+name: macOS libevent
+
+on:
+  push:
+    branches:
+    - master
+    - macOSRunner
+  pull_request:
+    branches:
+    - master
+    - macOSRunner
+
+defaults:
+  run:
+    shell: sh
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    name: macOS with Libevent
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ 'macos-12', 'macos-13', 'macos-latest' ]
+        compiler: [ 'gcc', 'clang' ]
+        sanitizer: [ 'address', 'undefined', 'none' ]
+        tls: [ 'true', 'false' ]
+        def_debug: [ 'true', 'false' ]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Install dependencies (macOS)
+      if: contains(matrix.os, 'macos')
+      run: |
+        if [ ${{ matrix.compiler }} = gcc ]; then compiler=g++; else compiler="clang lld ?exact-name(libclang-rt-dev)"; fi
+        brew update
+
+        brew install meson
+        brew install lcov
+        brew install --quiet --cask doxygen
+        brew install googletest
+        # brew install openssl # Already installed in base image
+        brew install rapidjson
+        # brew install libevent # Already installed in base image
+        brew install howard-hinnant-date
+
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Configure Meson
+      run: |
+        if [ ${{ matrix.compiler }} = gcc ]; then CXX=g++; else CXX=clang++; fi
+        export CXX
+        meson setup build \
+          -DPISTACHE_BUILD_TESTS=true -DPISTACHE_DEBUG=${{ matrix.def_debug }} -DPISTACHE_USE_SSL=${{ matrix.tls }} -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_DOCS=false -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true \
+          --buildtype=debug -Db_coverage=true -Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false \
+          || (cat build/meson-logs/meson-log.txt ; false)
+      env:
+        CC: ${{ matrix.compiler }}
+
+    - name: Build
+      run: ninja -C build
+
+    - name: Test
+      run: meson test -C build --verbose
+      # Use the following to run just a single test (e.g. http_server_test)
+      # run: build/tests/run_http_server_test
+
+    - name: Coverage
+      if: ${{ !contains(matrix.os, 'macos') }}  # Remove this if to do coverage test
+      run: |
+        xcspath=$(xcode-select -p)
+        llvmcovpath=$(find $xcspath -name llvm-cov)
+        llvmcovpathparent=$( dirname "$llvmcovpath" )
+        echo "For llvm-cov, using path $llvmcovpathparent"
+        export PATH=$PATH:$llvmcovpathparent
+        llvm-cov --version
+        mkdir -p $HOME/.local/bin
+        if [ "${{ matrix.compiler }}" = 'clang' ]; then printf 'llvm-cov gcov "$@"' > $HOME/.local/bin/cov.sh; else printf 'gcov "$@"' > $HOME/.local/bin/cov.sh; fi && chmod +x $HOME/.local/bin/cov.sh
+        lcov --capture --ignore-errors unused --ignore-errors inconsistent --ignore-errors unused,unused --ignore-errors inconsistent,inconsistent --ignore-errors usage,usage --ignore-errors gcov,gcov --output-file coverage.info --directory . --gcov-tool $HOME/.local/bin/cov.sh --exclude '/usr/*' --exclude "${HOME}"'/.cache/*' --exclude '*/tests/*' --exclude '*/subprojects/*'
+        # Possible add: --exclude "$xcspath/*"  --exclude "$HOMEBREW_PREFIX/*"
+        lcov --list coverage.info
+        brew install gnupg # for gpgv
+        curl https://keybase.io/codecovsecurity/pgp_keys.asc | gpg --no-default-keyring --keyring trustedkeys.gpg --import
+        curl --silent --remote-name https://uploader.codecov.io/latest/macos/codecov
+        curl --silent --remote-name https://uploader.codecov.io/latest/macos/codecov.SHA256SUM
+        curl --silent --remote-name https://uploader.codecov.io/latest/macos/codecov.SHA256SUM.sig
+        gpgv codecov.SHA256SUM.sig codecov.SHA256SUM
+        sha256sum --check codecov.SHA256SUM
+        chmod +x codecov
+        ./codecov
+
