@@ -499,7 +499,7 @@ namespace Pistache::Rest
     }
 
     Route::Status Router::route(const Http::Request& request,
-                                Http::ResponseWriter response)
+                                Http::ResponseWriter response) const
     {
         PS_TIMEDBG_START_THIS;
 
@@ -519,10 +519,16 @@ namespace Pistache::Rest
                 return Route::Status::Match;
         }
 
-        auto& r              = routes[req.method()];
+        std::tuple<std::shared_ptr<Route>, std::vector<TypedParam>,
+                   std::vector<TypedParam>>
+            result;
+
         const auto sanitized = SegmentTreeNode::sanitizeResource(resource);
         const std::string_view path { sanitized.data(), sanitized.size() };
-        auto result = r.findRoute(path);
+
+        const auto routesIt = routes.find(req.method());
+        if (routesIt != routes.end())
+            result = routesIt->second.findRoute(path);
 
         auto route = std::get<0>(result);
         if (route != nullptr)
