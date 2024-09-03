@@ -156,12 +156,12 @@ if meson.version().version_compare('>=0.54.0')
 	meson.override_dependency('libpistache', pistache_dep)
 endif
 
-# import('pkgconfig').generate(
-# 	libpistache,
-# 	name: 'Pistache',
-# 	description: 'An elegant C++ REST framework',
-# 	url: 'https://pistacheio.github.io/pistache/',
-# 	version: '@0@-git@1@'.format(version_str, version_git_date),
-# 	filebase: 'libpistache',
-# 	extra_cflags: public_args
-# )
+import('pkgconfig').generate(
+	libpistache,
+	name: 'Pistache',
+	description: 'An elegant C++ REST framework',
+	url: 'https://pistacheio.github.io/pistache/',
+	version: '@0@-git@1@'.format(version_str, version_git_date),
+	filebase: 'libpistache',
+	extra_cflags: public_args
+)
