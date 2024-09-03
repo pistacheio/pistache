@@ -32,10 +32,21 @@ if host_machine.system() == 'windows'
     helpers_src += 'win_fork_ish.cc'
 endif
 
-tests_helpers = library(
-        'tests_helpers',
-        sources: helpers_src,
-        dependencies: deps_tests_helpers
-)
+# It is easier to link with a static test-helpers library in the
+# Windows case (no need to create an "import library" matching the
+# DLL).
+if host_machine.system() == 'windows'
+    tests_helpers = static_library(
+            'tests_helpers',
+            sources: helpers_src,
+            dependencies: deps_tests_helpers
+    )
+else
+    tests_helpers = library(
+            'tests_helpers',
+            sources: helpers_src,
+            dependencies: deps_tests_helpers
+    )
+endif
 
 tests_helpers_dep = declare_dependency(link_with: tests_helpers)

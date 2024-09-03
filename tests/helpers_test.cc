@@ -30,7 +30,7 @@ namespace
 
             // em_event_new does not allocate an actual fd, so we provide
             // one to achieve the same effect
-            int actual_fd = PST_SOCK_SOCKET(AF_INET, SOCK_STREAM, 0);
+            em_socket_t actual_fd = PST_SOCK_SOCKET(AF_INET, SOCK_STREAM, 0);
 
             if (actual_fd < 0)
                 throw std::runtime_error("::socket failed");

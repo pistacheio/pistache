@@ -159,7 +159,7 @@ class MyHandler : public Http::Handler
         {
             if (req.method() == Http::Method::Get)
             {
-                Http::serveFile(response, "README.md").then([](ssize_t bytes) {
+                Http::serveFile(response, "README.md").then([](PST_SSIZE_T bytes) {
                     std::cout << "Sent " << bytes << " bytes" << std::endl;
                 },
                                                             Async::NoExcept);
@@ -177,7 +177,7 @@ class MyHandler : public Http::Handler
     {
         response
             .send(Http::Code::Request_Timeout, "Timeout")
-            .then([=](ssize_t) {}, PrintException());
+            .then([=](PST_SSIZE_T) {}, PrintException());
     }
 };
 

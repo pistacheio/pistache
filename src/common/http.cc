@@ -937,7 +937,8 @@ namespace Pistache::Http
 
             // Compute upper bound on size of expected compressed data. This
             //  will be updated by compress2()...
-            uLongf compressedSize = ::compressBound(size);
+            uLongf compressedSize = static_cast<uLongf>
+                (::compressBound(static_cast<uLong>(size)));
 
             // Allocate a smart buffer to contain compressed data...
             std::unique_ptr compressedData = std::make_unique<std::byte[]>(compressedSize);
@@ -947,7 +948,7 @@ namespace Pistache::Http
                 reinterpret_cast<unsigned char*>(compressedData.get()),
                 &compressedSize,
                 reinterpret_cast<const unsigned char*>(data),
-                size,
+                static_cast<uLong> (size),
                 contentEncodingDeflateLevel_);
 
             // Failed...

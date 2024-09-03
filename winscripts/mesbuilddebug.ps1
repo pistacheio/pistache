@@ -32,5 +32,5 @@ else {
 
 }
 
-meson compile -C ${MESON_BUILD_DIR}
+meson compile -v -C ${MESON_BUILD_DIR}
 

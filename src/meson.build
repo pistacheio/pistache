@@ -71,6 +71,66 @@ if get_option('PISTACHE_FORCE_LIBEVENT')
         add_project_arguments('-DPISTACHE_FORCE_LIBEVENT', language: 'cpp')
 endif
 
+# generate Windows import library (.lib)
+
+# implib: true is not accepted by "library" or "shared_library",
+# though it is accepted by "executable"
+
+# Useful info here:
+# https://stackoverflow.com/questions/225432/export-all-symbols-when-creating-a-dll
+
+libpistache_gen_cts = [] # generated targets, e.g. pistache.lib in Windows
+libpistache_links_args = []
+
+if host_machine.system() == 'windows'
+    libpistache_static = static_library(
+	'pistache',
+	sources: pistache_common_src + pistache_server_src + pistache_client_src,
+	cpp_args: public_args,
+	include_directories: incl_pistache,
+	dependencies: deps_libpistache,
+	install: false, # Could do get_option('PISTACHE_INSTALL') if preferred
+	pic: get_option('b_staticpic')
+)
+
+    dumpbin_prog = find_program('dumpbin.exe')
+    dump2def_prog = find_program('dump2def.exe')
+    lib_prog = find_program('lib.exe')
+    ls_prog = find_program('ls')
+
+    gen_src_dump = custom_target('gen-pistachedump',
+                             # input: ['libpistache.a'],
+                             output: ['pistache.dump'],
+                             command: [dumpbin_prog, '/LINKERMEMBER', 'src/libpistache.a', '/OUT:@OUTPUT0@'],
+                             depends: [libpistache_static])
+
+    gen_src_def = custom_target('gen-pistachedef',
+                             # input: ['pistache.dump'],
+                             output: ['pistache.def'],
+                             command: [dump2def_prog, 'src/pistache.dump', '@OUTPUT0@'],
+                             depends: [gen_src_dump])
+
+    # It is possible to invoke lib.exe to explicitly create the import
+    # library, pistache.lib, as per below. However, this is
+    # unnecessary - linking the DLL actually generates pistache.lib
+    # as a side effect, and meson adds 'src/pistache.lib' to the list
+    # of libs linked with test and example programs without us
+    # explicitly defining a dependency for pistache.lib.
+    #
+    # pistache_dll_import_lib_ct = custom_target('gen-pistachelib',
+    #                          # input: ['pistache.def'],
+    #                          output: ['pistache.lib'],
+    #                          command: [lib_prog, '/IGNORE:4102', '/DEF:src/pistache.def', '/OUT:@OUTPUT0@'],
+    #                          depends: [gen_src_def])
+    # import_lib_dep = declare_dependency(sources: [pistache_dll_import_lib_ct])
+    # libpistache_gen_cts += pistache_dll_import_lib_ct
+
+    gen_src_def_dep = declare_dependency(sources: [gen_src_def])
+    deps_libpistache += gen_src_def_dep # DLL is dependent on .def file
+    
+    libpistache_links_args += '/DEF:src/pistache.def'
+    libpistache_links_args += '/IGNORE:4102'
+endif
 
 libpistache = library(
 	'pistache',
@@ -78,6 +138,7 @@ libpistache = library(
 	cpp_args: public_args,
 	include_directories: incl_pistache,
 	dependencies: deps_libpistache,
+	link_args: libpistache_links_args,
 	install: get_option('PISTACHE_INSTALL'),
 	version: version_str,
 	pic: get_option('b_staticpic')
@@ -86,6 +147,7 @@ libpistache = library(
 pistache_dep = declare_dependency(
 	compile_args: public_args,
 	include_directories: incl_pistache,
+        sources: libpistache_gen_cts,
 	link_with: libpistache,
 	dependencies: public_deps
 )
@@ -94,12 +156,12 @@ if meson.version().version_compare('>=0.54.0')
 	meson.override_dependency('libpistache', pistache_dep)
 endif
 
-import('pkgconfig').generate(
-	libpistache,
-	name: 'Pistache',
-	description: 'An elegant C++ REST framework',
-	url: 'https://pistacheio.github.io/pistache/',
-	version: '@0@-git@1@'.format(version_str, version_git_date),
-	filebase: 'libpistache',
-	extra_cflags: public_args
-)
+# import('pkgconfig').generate(
+# 	libpistache,
+# 	name: 'Pistache',
+# 	description: 'An elegant C++ REST framework',
+# 	url: 'https://pistacheio.github.io/pistache/',
+# 	version: '@0@-git@1@'.format(version_str, version_git_date),
+# 	filebase: 'libpistache',
+# 	extra_cflags: public_args
+# )
