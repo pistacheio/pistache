@@ -56,6 +56,31 @@ if get_option('PISTACHE_USE_CONTENT_ENCODING_BROTLI')
     brotli_dep = dependency('libbrotlidec')
 endif
 
+# In Windows, when one of the test programs runs, it looks for
+# "pistache.dll". If pistache.dll has not been installed in the
+# system, then we can make the test program work by having a soft link
+# to the DLL (aka "symbolic link") in the directory containing the
+# test program. That makes the test program pick up the DLL from the DLL's
+# own build directory, which is typically what we want when we're
+# testing.
+unversioned_dll_cts = []
+if host_machine.system() == 'windows'
+    powershell_prog = find_program('powershell.exe')
+    libpistache_filename = libpistache.full_path()
+
+    unversioned_dll_ct = custom_target('unversioned_dll',
+                             # input: [libpistache_filename]
+                             output: ['pistache.dll'],
+                             command: [powershell_prog, '-NoProfile',
+                             '-NonInteractive', '-WindowStyle', 'Hidden',
+                             '-NoLogo',
+                             '-Command',
+                             'if (!(Test-Path -Path "@OUTPUT0@")) { New-Item -ItemType SymbolicLink -Path "@OUTPUT0@" -Target "'+libpistache_filename+'" }'],
+                             depends: [libpistache])
+
+    unversioned_dll_cts += unversioned_dll_ct
+endif
+
 foreach test_name : pistache_test_files
 	suite = {}
 	if test_name in network_tests
@@ -80,11 +105,13 @@ foreach test_name : pistache_test_files
 				brotli_dep
 			]
 		),
+                depends: unversioned_dll_cts,
 		timeout: 600,
 		workdir: meson.current_build_dir(),
 		is_parallel: false,
 		kwargs: suite
 	)
+
 endforeach
 
 cppcheck = find_program('cppcheck', required: false)

@@ -96,7 +96,6 @@ if host_machine.system() == 'windows'
     dumpbin_prog = find_program('dumpbin.exe')
     dump2def_prog = find_program('dump2def.exe')
     lib_prog = find_program('lib.exe')
-    ls_prog = find_program('ls')
 
     gen_src_dump = custom_target('gen-pistachedump',
                              # input: ['libpistache.a'],
@@ -143,6 +142,8 @@ libpistache = library(
 	version: version_str,
 	pic: get_option('b_staticpic')
 )
+
+
 
 pistache_dep = declare_dependency(
 	compile_args: public_args,
