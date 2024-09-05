@@ -1252,7 +1252,9 @@ namespace Pistache
         
         event_meth_base_inited_previously = true;
         #ifdef _WIN32 // Defined for both 32-bit and 64-bit environments
-        
+
+        PST_SOCK_STARTUP_CHECK;
+
         evthread_use_windows_threads();
         #else
         evthread_use_pthreads();

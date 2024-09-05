@@ -19,6 +19,8 @@
 #include <pistache/eventmeth.h>
 #include <pistache/pist_quote.h>
 
+#include PIST_QUOTE(PIST_SOCKFNS_HDR)
+
 #include <pistache/common.h>
 #include <pistache/os.h>
 

@@ -23,6 +23,17 @@
 
 /* ------------------------------------------------------------------------- */
 
+// pist_sock_startup_check must be called before any winsock2 function. It can
+// be called as many times as you like, it does nothing after the first time it
+// is called, and it is threadsafe. All the pist_sock_xxx functions in this
+// file call it themselves, so you don't need to call pist_sock_startup_check
+// before calling pist_sock_socket for instance. However, if code outside of
+// this file is calling winsock functions, that code must call
+// pist_sock_startup_check, using the macro provided in winornix.h.
+//
+// Returns 0 on success, or -1 on failure with errno set.
+int pist_sock_startup_check();
+
 // pist_sock_close fns ret 0 for success. On fail, ret -1, and errno is set
 int pist_sock_close(em_socket_t em_sock);
 
@@ -67,7 +78,7 @@ typedef unsigned long PST_NFDS_T;
 // On success, returns a nonnegative value which is the number of elements in
 // the pollfds whose revents fields have been set to a non‐ zero value
 // (indicating an event or an error).  A return value of zero indicates that
-// the system call timed out before any file descriptors became read.
+// the system call timed out before any file descriptors became readable.
 // On error, -1 is returned, and errno is set.
 int pist_sock_poll(PST_POLLFD_T * fds, PST_NFDS_T nfds, int timeout);
 

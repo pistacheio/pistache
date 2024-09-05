@@ -33,6 +33,7 @@
 #define TRY(...)                                               \
     do                                                         \
     {                                                          \
+        PST_SOCK_STARTUP_CHECK;                                \
         auto ret = __VA_ARGS__;                                \
         if (ret < 0)                                           \
         {                                                      \
@@ -58,6 +59,7 @@
 
 #define TRY_RET(...)                                           \
     [&]() {                                                    \
+        PST_SOCK_STARTUP_CHECK;                                \
         auto ret = __VA_ARGS__;                                \
         if (ret < 0)                                           \
         {                                                      \
@@ -77,6 +79,7 @@
 
 #define TRY_NULL_RET(...)                                      \
     [&]() {                                                    \
+        PST_SOCK_STARTUP_CHECK;                                \
         auto ret = __VA_ARGS__;                                \
         if (ret == NULL)                                       \
         {                                                      \

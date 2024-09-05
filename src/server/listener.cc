@@ -202,6 +202,7 @@ namespace Pistache::Tcp
             PS_LOG_DEBUG("Set SO_REUSEADDR");
 
             PST_SOCK_OPT_VAL_T one = 1;
+            // Note: TRY also invokes PST_SOCK_STARTUP_CHECK
             TRY(::setsockopt(actualFd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one)));
         }
 

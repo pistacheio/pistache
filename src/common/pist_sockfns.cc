@@ -16,10 +16,13 @@
 
 #include <errno.h>
 #include <vector>
+#include <atomic>
+#include <mutex>
 
 #include <winsock2.h>
 
 #include <pistache/pist_syslog.h>
+#include <pistache/pist_check.h>
 
 /* ------------------------------------------------------------------------- */
 
@@ -199,6 +202,112 @@ static int WSAGetLastErrorSetErrno()
     return(-1);
 }
 
+/* ------------------------------------------------------------------------- */
+
+std::atomic_bool lWsaStartupDone = false;
+std::mutex lWsaStartupDoneMutex;
+
+// WsaStartupAndCleanup exists solely so it's destructor can be called on
+// program shutdown, allowing us to free winsock resources
+class WsaStartupAndCleanup
+{
+public:
+    WsaStartupAndCleanup() : inited(true) {};
+    ~WsaStartupAndCleanup();
+    
+private:
+    bool inited;
+};
+static WsaStartupAndCleanup lWsaStartupAndCleanup;
+
+// pist_sock_startup_check must be called before any winsock2 function. It can
+// be called as many times as you like, it does nothing after the first time it
+// is called, and it is threadsafe. All the pist_sock_xxx functions in this
+// file call it themselves, so you don't need to call pist_sock_startup_check
+// before calling pist_sock_socket for instance. However, if code outside of
+// this file is calling winsock functions, that code must call
+// pist_sock_startup_check, using the macro provided in winornix.h.
+//
+// Returns 0 on success, or -1 on failure with errno set.
+int pist_sock_startup_check()
+{
+    if (lWsaStartupDone)
+        return(0);
+    
+    GUARD_AND_DBG_LOG(lWsaStartupDoneMutex);
+    if (lWsaStartupDone)
+        return(0);
+    
+    const WORD version_required = (2 * 0x100) + 2; // version 2.2
+    WSADATA wsadata;
+    memset(&wsadata, 0, sizeof(wsadata));
+
+    int wsastartup_res = WSAStartup(version_required, &wsadata);
+    if (wsastartup_res == 0)
+    {
+        lWsaStartupDone = true;
+        return(0); // success
+    }
+
+    switch(wsastartup_res)
+    {
+    case WSASYSNOTREADY:
+        PS_LOG_DEBUG("WSAStartup WSASYSNOTREADY");
+        errno = ENETUNREACH;
+        break;
+        
+    case WSAVERNOTSUPPORTED:
+        PS_LOG_DEBUG("WSAStartup WSAVERNOTSUPPORTED");
+        errno = EOPNOTSUPP;
+        break;
+        
+    case WSAEINPROGRESS:
+        PS_LOG_DEBUG("WSAStartup WSAEINPROGRESS");
+        errno = EINPROGRESS;
+        break;
+        
+    case WSAEPROCLIM:
+        PS_LOG_DEBUG("WSAStartup WSAEPROCLIM");
+        errno = EMFILE; // too many files
+        break;
+        
+    case WSAEFAULT:
+        PS_LOG_DEBUG("WSAStartup WSAEFAULT");
+        errno = EFAULT;
+        break;
+        
+    default:
+        PS_LOG_DEBUG_ARGS("Unexpected WSAStartup error %d:", wsastartup_res);
+        errno = EIO;
+        break;
+    }
+    
+    return(-1);
+}
+
+WsaStartupAndCleanup::~WsaStartupAndCleanup()
+{
+    if (!lWsaStartupDone)
+        return;
+    
+    GUARD_AND_DBG_LOG(lWsaStartupDoneMutex);
+    if (!lWsaStartupDone)
+        return;
+
+    int wsa_cleanupres = WSACleanup();
+
+    if (wsa_cleanupres == 0)
+    {
+        PS_LOG_DEBUG("WSACleanup success");
+        lWsaStartupDone = false;
+        return;
+    }
+
+    PS_LOG_INFO_ARGS("WSACleanup failed, returned %d", wsa_cleanupres);
+}
+
+
+    
 
 
 /* ------------------------------------------------------------------------- */

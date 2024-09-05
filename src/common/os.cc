@@ -17,6 +17,7 @@
 #include <pistache/os.h>
 
 #include PIST_QUOTE(PST_FCNTL_HDR)
+#include PIST_QUOTE(PIST_SOCKFNS_HDR)
 
 #include <pistache/pist_timelog.h>
 

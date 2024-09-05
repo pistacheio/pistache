@@ -325,6 +325,19 @@ typedef struct in_addr PST_IN_ADDR_T;
 
 // PST_SOCK_xxx macros are for sockets. For files, use PST_FILE_xxx
 #ifdef _IS_WINDOWS
+
+// PST_SOCK_STARTUP_CHECK must be invoked before any winsock2 function. It can
+// be invoked as many times as you like, it does nothing after the first time
+// it is invoked, and it is threadsafe. All the PST_SOCK_xxx functions call it
+// themselves, so you don't need to invoke PST_SOCK_STARTUP_CHECK before
+// calling PST_SOCK_SOCKET for instance. However, if code outside of the
+// PST_SOCK_xxx functions is calling winsock, that code must invoke
+// PST_SOCK_STARTUP_CHECK before making the winsock call (e.g. before calling
+// getaddrinfo()).
+//
+// Returns 0 on success, or -1 on failure with errno set.
+#define PST_SOCK_STARTUP_CHECK pist_sock_startup_check()
+
 #define PST_SOCK_CLOSE pist_sock_close
 // Note - Windows use "unsigned int" for count, whereas Linux uses size_t. In
 // general we use size_t for count in Pistache, hence why we cast here
@@ -359,6 +372,8 @@ typedef struct in_addr PST_IN_ADDR_T;
 #define PST_POLLFD pollfd
 typedef struct PST_POLLFD PST_POLLFD_T;
 #define PST_NFDS_T nfds_t
+
+#define PST_SOCK_STARTUP_CHECK
 #endif
 
 

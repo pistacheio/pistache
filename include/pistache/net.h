@@ -1,4 +1,4 @@
-/*
+ /*
  * SPDX-FileCopyrightText: 2015 Mathieu Stefani
  *
  * SPDX-License-Identifier: Apache-2.0
@@ -28,6 +28,8 @@
 #include PIST_QUOTE(PST_SOCKET_HDR)
 #include PIST_QUOTE(PST_SYS_UN_HDR)
 
+#include PIST_QUOTE(PIST_SOCKFNS_HDR)
+
 #ifndef _KERNEL_FASTOPEN
 #define _KERNEL_FASTOPEN
 
@@ -55,6 +57,7 @@ namespace Pistache
         {
             if (addrs)
             {
+                PST_SOCK_STARTUP_CHECK;
                 ::freeaddrinfo(addrs);
             }
         }
@@ -64,6 +67,8 @@ namespace Pistache
         int invoke(const char* node, const char* service,
                    const struct addrinfo* hints)
         {
+            PST_SOCK_STARTUP_CHECK;
+            
             if (addrs)
             {
                 ::freeaddrinfo(addrs);
