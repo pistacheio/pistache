@@ -999,6 +999,8 @@ TEST(http_server_test, client_request_timeout_on_delay_in_request_line_send_rais
 
     if (send_failed)
     { // Usually, send does fail; but on macOS occasionally it does not fail
+      // We workaround that here, since of course we can only check for an
+      // error code when there is an actual error
         EXPECT_EQ(client.lastErrno(), EPIPE) << "Errno: " << client.lastErrno();
 
         char recvBuf[1024] = {
