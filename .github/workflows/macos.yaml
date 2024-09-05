@@ -12,13 +12,9 @@ on:
   push:
     branches:
     - master
-    - macOSRunner
-    - ErrnoNotEPIPEServerTest
   pull_request:
     branches:
     - master
-    - macOSRunner
-    - ErrnoNotEPIPEServerTest
 
 defaults:
   run:
