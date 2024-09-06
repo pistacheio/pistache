@@ -81,11 +81,45 @@ endif
 
 libpistache_gen_cts = [] # generated targets, e.g. pistache.lib in Windows
 libpistache_links_args = []
+pistache_extra_src = []
+
+if host_machine.system() == 'windows'
+    mc_prog = find_program('mc.exe')
+    rc_prog = find_program('rc.exe')
+    link_prog = find_program('link.exe')
+    
+    gen_src_log_rc_ct = custom_target('gen-log-rc',
+                             input: ['winlog'/'pist_winlog.man'],
+                             output: ['pist_winlog.rc', 'pist_winlog.h'],
+                             command: [mc_prog, '-um', '-h', '@SOURCE_ROOT@/include/pistache/', '-r', '@BUILD_ROOT@/src', '@INPUT@'])
+
+    gen_src_log_res_ct = custom_target('gen-log-res',
+                             # input: ['pist_winlog.rc'],
+                             output: ['pist_winlog.res'],
+                             command: [rc_prog, 'src/pist_winlog.rc'],
+                             depends: gen_src_log_rc_ct)
+
+    # Note - we use output: "pistachelog.dum" here because if we use
+    # "pistachelog.dll" meson decides that the dll can be linked
+    # against the library, and includes it on the library link
+    # path. But in fact, DLLs cannot be linked with libraries (static
+    # or dynamic) in Windows, nor with executables - for that the
+    # corresponding import library (.lib) must be used.
+    gen_src_log_dll_ct = custom_target('gen-log-dll',
+                             # input: ['pist_winlog.res'],
+                             output: ['pistachelog.dum'],
+                             command: [link_prog, '/dll', '/noentry', '/machine:x64', 'src/pist_winlog.res', '/OUT:src/pistachelog.dll'],
+                             depends: gen_src_log_res_ct)
+
+    pistache_extra_src += gen_src_log_rc_ct
+    pistache_extra_src += gen_src_log_res_ct
+    pistache_extra_src += gen_src_log_dll_ct
+endif
 
 if host_machine.system() == 'windows'
     libpistache_static = static_library(
 	'pistache',
-	sources: pistache_common_src + pistache_server_src + pistache_client_src,
+	sources: pistache_common_src + pistache_server_src + pistache_client_src + pistache_extra_src,
 	cpp_args: public_args,
 	include_directories: incl_pistache,
 	dependencies: deps_libpistache,
@@ -129,11 +163,13 @@ if host_machine.system() == 'windows'
     
     libpistache_links_args += '/DEF:src/pistache.def'
     libpistache_links_args += '/IGNORE:4102'
+
+
 endif
 
 libpistache = library(
 	'pistache',
-	sources: pistache_common_src + pistache_server_src + pistache_client_src,
+	sources: pistache_common_src + pistache_server_src + pistache_client_src + pistache_extra_src,
 	cpp_args: public_args,
 	include_directories: incl_pistache,
 	dependencies: deps_libpistache,
