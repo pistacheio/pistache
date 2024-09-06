@@ -20,8 +20,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include <pistache/pist_timelog.h>
 #include <pistache/pist_quote.h>
+#include <pistache/pist_timelog.h>
 
 #ifdef _IS_BSD
 // For pthread_set_name_np
@@ -106,6 +106,8 @@ namespace Pistache::Aio
 
             handler->reactor_ = reactor_;
 
+            std::mutex& poller_reg_unreg_mutex(poller.reg_unreg_mutex_);
+            GUARD_AND_DBG_LOG(poller_reg_unreg_mutex);
             auto key = handlers_.add(handler);
             if (setKey)
                 handler->key_ = key;
@@ -113,23 +115,21 @@ namespace Pistache::Aio
             return key;
         }
 
+        // poller.reg_unreg_mutex_ must be locked before calling
         void detachFromReactor(const std::shared_ptr<Handler>& handler)
             override
         {
             PS_TIMEDBG_START_THIS;
 
-            // See comment in class Epoll regarding reg_unreg_mutex_
-            std::lock_guard<std::mutex> l_guard(poller.reg_unreg_mutex_);
-
-            PS_LOG_DEBUG_ARGS("Reactor (this) %p detach passed lock", this);
-
             handler->unregisterPoller(poller);
-
             handler->reactor_ = NULL;
         }
 
         void detachAndRemoveAllHandlers() override
         {
+            std::mutex& poller_reg_unreg_mutex(poller.reg_unreg_mutex_);
+            GUARD_AND_DBG_LOG(poller_reg_unreg_mutex);
+            
             handlers_.forEachHandler([this](
                                          const std::shared_ptr<Handler> handler) {
                 detachFromReactor(handler);
@@ -226,8 +226,9 @@ namespace Pistache::Aio
                 { // encapsulate l_guard(poller.reg_unreg_mutex_)
                   // See comment in class Epoll regarding reg_unreg_mutex_
 
-                    std::lock_guard<std::mutex> l_guard(
-                        poller.reg_unreg_mutex_);
+                    std::mutex&
+                        poller_reg_unreg_mutex(poller.reg_unreg_mutex_);
+                    GUARD_AND_DBG_LOG(poller_reg_unreg_mutex);
 
                     std::vector<Polling::Event> events;
                     int ready_fds = poller.poll(events);
@@ -250,6 +251,10 @@ namespace Pistache::Aio
 
         void run() override
         {
+            // Note: poller_reg_unreg_mutex is already locked (by
+            // Listener::run()) before calling here, so it is safe to call
+            // handlers_.forEachHandler here
+                
             handlers_.forEachHandler([](const std::shared_ptr<Handler> handler) {
                 handler->context_.tid = std::this_thread::get_id();
             });
@@ -331,22 +336,7 @@ namespace Pistache::Aio
             HandlerList(const HandlerList& other)            = delete;
             HandlerList& operator=(const HandlerList& other) = delete;
 
-            HandlerList(HandlerList&& other)            = default;
-            HandlerList& operator=(HandlerList&& other) = default;
-
-            HandlerList clone() const
-            {
-                HandlerList list;
-
-                for (size_t i = 0; i < index_; ++i)
-                {
-                    list.handlers.at(i) = handlers.at(i)->clone();
-                }
-                list.index_ = index_;
-
-                return list;
-            }
-
+            // poller.reg_unreg_mutex_ must be locked before calling
             Reactor::Key add(const std::shared_ptr<Handler>& handler)
             {
                 if (index_ == MaxHandlers)
@@ -358,22 +348,18 @@ namespace Pistache::Aio
                 return key;
             }
 
+            // poller.reg_unreg_mutex_ must be locked before calling
             void removeAll()
             {
                 index_ = 0;
                 handlers.fill(NULL);
             }
 
-            std::shared_ptr<Handler> operator[](size_t index) const
-            {
-                return handlers.at(index);
-            }
-
+            // poller.reg_unreg_mutex_ must be locked before calling
             std::shared_ptr<Handler> at(size_t index) const
             {
                 if (index >= index_)
                     throw std::runtime_error("Attempting to retrieve invalid handler");
-
                 return handlers.at(index);
             }
 
@@ -411,6 +397,7 @@ namespace Pistache::Aio
                 return std::make_pair(index, maskedValueTV);
             }
 
+            // poller.reg_unreg_mutex_ must be locked before calling
             template <typename Func>
             void forEachHandler(Func func) const
             {
@@ -633,7 +620,7 @@ namespace Pistache::Aio
                 thread = std::thread([=]() {
                     if (!threadsName_.empty())
                     {
-#if defined _IS_BSD && ! defined __NetBSD__
+#if defined _IS_BSD && !defined __NetBSD__
                         pthread_set_name_np(
 #else
                         pthread_setname_np(
@@ -651,10 +638,11 @@ namespace Pistache::Aio
                             pthread_self(),
 #endif
 #ifdef __NetBSD__
-                            "%s", //NetBSD has 3 parms for pthread_setname_np
-                            (void *) /*cast away const for NetBSD*/
+                            "%s", // NetBSD has 3 parms for pthread_setname_np
+                            (void*)/*cast away const for NetBSD*/
 #endif
-                            threadsName_.substr(0, 15).c_str());
+                            threadsName_.substr(0, 15)
+                                .c_str());
                     }
                     sync->run();
                 });
