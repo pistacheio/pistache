@@ -129,7 +129,7 @@ namespace Pistache::Aio
         {
             std::mutex& poller_reg_unreg_mutex(poller.reg_unreg_mutex_);
             GUARD_AND_DBG_LOG(poller_reg_unreg_mutex);
-            
+
             handlers_.forEachHandler([this](
                                          const std::shared_ptr<Handler> handler) {
                 detachFromReactor(handler);

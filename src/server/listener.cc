@@ -397,7 +397,7 @@ namespace Pistache::Tcp
                               F_SETFDL_NOTHING // f_setfl_flags - don't change
                                          ));
 #else
-        Fd event_fd      = actual_fd;
+        Fd event_fd = actual_fd;
 #endif
 
         LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(actual_fd);
@@ -798,7 +798,7 @@ namespace Pistache::Tcp
                               F_SETFDL_NOTHING // f_setfl_flags - don't change
                                          ));
 #else
-        Fd client_fd     = actual_cli_fd;
+        Fd client_fd = actual_cli_fd;
 #endif
 
         std::shared_ptr<Peer> peer;
