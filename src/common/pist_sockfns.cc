@@ -233,7 +233,10 @@ int pist_sock_startup_check()
 {
     if (lWsaStartupDone)
         return(0);
-    
+
+    // !!!!!!!! Remove
+    PS_LOG_ERR("Log Test");
+
     GUARD_AND_DBG_LOG(lWsaStartupDoneMutex);
     if (lWsaStartupDone)
         return(0);

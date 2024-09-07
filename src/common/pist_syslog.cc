@@ -22,6 +22,8 @@
 #include <stdio.h> // snprintf
 #include <stdlib.h> // malloc
 
+#include <iostream> // !!!! Remove once not needed for Windows debug
+
 #include PIST_QUOTE(PST_CLOCK_GETTIME_HDR)
 
 #include <time.h>
@@ -76,6 +78,7 @@
   #include <os/log.h>
 #elif defined _IS_WINDOWS
   #include <windows.h> // needed for PST_THREAD_HDR (processthreadsapi.h)
+  #include <evntprov.h>
   #include <pistache/pist_winlog.h>
 #else
   #include <syslog.h>
@@ -623,7 +626,78 @@ void PSLogging::log(int _priority, bool _andPrintf, const char * _str)
         #ifdef PIST_USE_OS_LOG
         OS_LOG_BY_PRIORITY;
         #elif defined _IS_WINDOWS
-        WIN_LOG_BY_PRIORITY;
+
+{ // This is WIN_LOG_BY_PRIORITY macro in place
+    std::wstring dummy_buff_as_wstr(L"MultiByteToWideChar Fail");
+    std::wstring buff_as_wstr;
+    const wchar_t * buff_as_wstr_data = NULL;
+
+    int convert_result = MultiByteToWideChar(CP_UTF8, 0, &(buff[0]),
+                                        (int)strlen(&(buff[0])), NULL, 0);
+    if (convert_result <= 0)
+    {
+        buff_as_wstr_data = dummy_buff_as_wstr.data();
+    }
+    else
+    {
+        buff_as_wstr.resize(convert_result+10);
+        convert_result = MultiByteToWideChar(CP_UTF8, 0, &(buff[0]),
+                                (int)strlen(&(buff[0])), &buff_as_wstr[0],
+                                (int)buff_as_wstr.size());
+        buff_as_wstr_data = (convert_result <= 0) ?
+            dummy_buff_as_wstr.data() : buff_as_wstr.data();
+    }
+
+    switch(_priority)
+    {
+    case LOG_EMERG:
+        EventWritePSTCH_EMERG_NL(L"%s", buff_as_wstr_data);
+        break;
+
+    case LOG_ALERT:
+        EventWritePSTCH_ALERT_NL(L"%s", buff_as_wstr_data);
+        break;
+
+    case LOG_CRIT:
+        EventWritePSTCH_CRIT_NL(L"%s", buff_as_wstr_data);
+        break;
+
+    case LOG_ERR:
+    {
+        auto ew_res = EventWritePSTCH_ERR_NL_AssumeEnabled(
+                                                     L"%s", buff_as_wstr_data);
+        std::cout << ew_res << std::endl; 
+        break;
+    }
+
+    case LOG_WARNING:
+        EventWritePSTCH_WARNING_NL(L"%s", buff_as_wstr_data);
+        break;
+
+    case LOG_NOTICE:
+        EventWritePSTCH_NOTICE_NL(L"%s", buff_as_wstr_data);
+        break;
+
+    case LOG_INFO:
+        EventWritePSTCH_INFO_NL(L"%s", buff_as_wstr_data);
+        break;
+
+    case LOG_DEBUG:
+        EventWritePSTCH_DEBUG_NL(L"%s", buff_as_wstr_data);
+        break;
+
+    default:
+    {
+        std::wstring _priority_as_wstr(std::to_wstring(_priority));
+        EventWritePSTCH_EMERG_NL(L"Bad log priority %s",
+                                 _priority_as_wstr.data());
+        EventWritePSTCH_EMERG_NL(L"%s", buff_as_wstr_data);
+        break;
+    }
+    }
+}
+
+// !!!!!!!! Put Back        WIN_LOG_BY_PRIORITY;
         #else
         syslog(_priority, "%s", &(buff[0]));
         #endif
