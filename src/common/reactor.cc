@@ -129,7 +129,7 @@ namespace Pistache::Aio
         {
             std::mutex& poller_reg_unreg_mutex(poller.reg_unreg_mutex_);
             GUARD_AND_DBG_LOG(poller_reg_unreg_mutex);
-            
+
             handlers_.forEachHandler([this](
                                          const std::shared_ptr<Handler> handler) {
                 detachFromReactor(handler);
@@ -254,7 +254,7 @@ namespace Pistache::Aio
             // Note: poller_reg_unreg_mutex is already locked (by
             // Listener::run()) before calling here, so it is safe to call
             // handlers_.forEachHandler here
-                
+
             handlers_.forEachHandler([](const std::shared_ptr<Handler> handler) {
                 handler->context_.tid = std::this_thread::get_id();
             });

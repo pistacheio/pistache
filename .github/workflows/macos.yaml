@@ -12,11 +12,9 @@ on:
   push:
     branches:
     - master
-    - macOSRunner
   pull_request:
     branches:
     - master
-    - macOSRunner
 
 defaults:
   run:
