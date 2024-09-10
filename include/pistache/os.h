@@ -138,13 +138,14 @@ namespace Pistache
             Epoll();
             ~Epoll();
 
-            void addFd(Fd fd, Flags<NotifyOn> interest, Tag tag, Mode mode = Mode::Level);
+            void addFd(Fd fd, Flags<NotifyOn> interest, Tag tag,
+                       [[maybe_unused]] Mode mode = Mode::Level);
             void addFdOneShot(Fd fd, Flags<NotifyOn> interest, Tag tag,
                               Mode mode = Mode::Level);
 
             void removeFd(Fd fd);
             void rearmFd(Fd fd, Flags<NotifyOn> interest, Tag tag,
-                         Mode mode = Mode::Level);
+                         [[maybe_unused]] Mode mode = Mode::Level);
 
             int poll(std::vector<Event>& events, const std::chrono::milliseconds timeout = std::chrono::milliseconds(-1)) const;
 

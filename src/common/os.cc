@@ -194,7 +194,8 @@ namespace Pistache
 #endif
         }
 
-        void Epoll::addFd(Fd fd, Flags<NotifyOn> interest, Tag tag, Mode mode)
+        void Epoll::addFd(Fd fd, Flags<NotifyOn> interest, Tag tag,
+                          [[maybe_unused]] Mode mode)
         {
             PS_TIMEDBG_START_ARGS("fd %" PIST_QUOTE(PS_FD_PRNTFCD), fd);
 
@@ -227,6 +228,7 @@ namespace Pistache
 
 #ifdef _USE_LIBEVENT
             short events = (short)epoll_fd->toEvEvents(interest);
+            
             if (mode == Mode::Edge)
                 events |= EVM_ET;
 
@@ -267,7 +269,7 @@ namespace Pistache
         }
 
         void Epoll::rearmFd(Fd fd, Flags<NotifyOn> interest, Tag tag,
-                            Mode mode)
+                            [[maybe_unused]] Mode mode)
         {
             PS_TIMEDBG_START_ARGS("fd %" PIST_QUOTE(PS_FD_PRNTFCD), fd);
 
@@ -291,6 +293,7 @@ namespace Pistache
 
             if (mode == Mode::Edge)
                 events |= EVM_ET;
+            
             EventMethFns::setEmEventUserData(fd, tag.value_);
             TRY(epoll_fd->ctl(EvCtlAction::Mod,
                               fd, events, NULL /* time */));

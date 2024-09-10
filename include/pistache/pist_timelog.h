@@ -54,7 +54,7 @@
 #ifdef PS_TIMINGS_DBG
 // For C++ name demangling:
 #ifdef _IS_WINDOWS
-#pragma comment(lib, "dbghelp.lib")
+// From dbghelp.lib/dll
 extern "C" char *__unDName(char*, const char*, int, void*, void*, int);
 #else
 #include <cxxabi.h> // for abi::__cxa_demangle
@@ -114,28 +114,40 @@ extern "C" char *__unDName(char*, const char*, int, void*, void*, int);
     char ptst_undecorated_name[2048+16];                                \
     ptst_undecorated_name[0] = 0;                                       \
     char * __ptst_demangled = __unDName(&(ptst_undecorated_name[0]),    \
-                   typeid(*this).name()+1, 2048, malloc, free, 0x2800); 
+                   typeid(*this).name(), 2048, malloc, free, 0x2800);
+    // Note: __ptst_demangled will point to ptst_undecorated_name; 
+    // Do not free
 #else
 #define GET__PTST_DEMANGLED                                             \
     char * __ptst_demangled = abi::__cxa_demangle(                      \
-        typeid(*this).name(), NULL, NULL, &__ptst_dem_status);
+        typeid(*this).name(), NULL, NULL, &__ptst_dem_status);          \
+    __ptst_demangled_to_free = __ptst_demangled;
 #endif // of ifdef _IS_WINDOWS ... else ...
 
 // Same as PS_TIMEDBG_START but logs class name and "this" value
 #define PS_TIMEDBG_START_THIS                                           \
     int __ptst_dem_status = 0;                                          \
+    char * __ptst_demangled_to_free = NULL;                             \
     GET__PTST_DEMANGLED;                                                \
     char ps_timedbg_this_buff[2048];                                    \
     if ((__ptst_demangled) && (__ptst_dem_status == 0))                 \
+    {                                                                   \
+        if (PST_STRCASECMP(__ptst_demangled, "class ") == 0)            \
+            __ptst_demangled += 6;                                      \
+        else if (PST_STRCASECMP(__ptst_demangled, "struct ") == 0)      \
+            __ptst_demangled += 7;                                      \
         snprintf(&(ps_timedbg_this_buff[0]),                            \
                  sizeof(ps_timedbg_this_buff),                          \
                  "%s (this) %p", __ptst_demangled, (void *) this);      \
+    }                                                                   \
     else                                                                \
+    {                                                                   \
         snprintf(&(ps_timedbg_this_buff[0]),                            \
                  sizeof(ps_timedbg_this_buff),                          \
                  "this %p",  (void *) this);                            \
-    if ((__ptst_demangled) && (__ptst_dem_status == 0))                 \
-        free(__ptst_demangled);                                         \
+    }                                                                   \
+    if ((__ptst_demangled_to_free) && (__ptst_dem_status == 0))         \
+        free(__ptst_demangled_to_free);                                 \
     PS_TIMEDBG_START_ARGS("%s", &(ps_timedbg_this_buff[0]));
 
     
@@ -272,8 +284,8 @@ public:
             if (res == 0)
             {
                 struct tm pstm;
-                if (PST_GMTIME_R((const time_t *)(&mPsTimedbg.tv_sec),
-                                 &pstm)!= NULL)
+                const time_t ps_timedbg_sec = mPsTimedbg.tv_sec;
+                if (PST_GMTIME_R(&ps_timedbg_sec, &pstm)!= NULL)
                 {
                     if (PST_ASCTIME_R(&pstm, pschbuff) != NULL)
                     {
@@ -324,8 +336,8 @@ public:
             if (res == 0)
             {
                 struct tm pstm;
-                if (PST_GMTIME_R((const time_t *)(&latest_ps_timedbg.tv_sec),
-                                 &pstm) != NULL)
+                const time_t latest_ps_timedbg_sec = latest_ps_timedbg.tv_sec;
+                if (PST_GMTIME_R(&latest_ps_timedbg_sec, &pstm) != NULL)
                 {
                     if (PST_ASCTIME_R(&pstm, pschbuff) != NULL)
                     {

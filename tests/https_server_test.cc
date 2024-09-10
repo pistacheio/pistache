@@ -8,6 +8,7 @@
 #include <cstring>
 
 #include <pistache/winornix.h>
+#include <pistache/ps_strl.h> // for PS_STRNCPY_S
 #include <pistache/client.h>
 #include <pistache/endpoint.h>
 #include <pistache/http.h>
@@ -427,7 +428,7 @@ TEST(https_server_test, basic_tls_request_with_password_cert)
 
     const auto passwordCallback = [](char* buf, int size, int /*rwflag*/, void* /*u*/) -> int {
         static constexpr const char* const password = "test";
-        strncpy_s(buf, size, password, size);
+        PS_STRNCPY_S(buf, size, password, size);
         return static_cast<int>(std::strlen(password));
     };
 

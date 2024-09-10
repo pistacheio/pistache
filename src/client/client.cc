@@ -498,7 +498,17 @@ namespace Pistache::Http::Experimental
                               PST_STRERROR_R(errno, &se_err[0], 256) :
                               "success");
 
-            if ((res == 0) || ((res == -1) && (errno == EINPROGRESS)))
+            if ((res == 0) || ((res == -1) && (errno == EINPROGRESS))
+                #ifdef _IS_WINDOWS
+                || ((res == -1) && (errno == EWOULDBLOCK))
+                // In Linux, EWOULDBLOCK can be set by ::connect, but only for
+                // Unix domain sockets (i.e. sockets being used for
+                // inter-process communication) which is not our situation
+                // 
+                // In Windows, EWOULDBLOCK is typically set here for
+                // non-blocking sockets
+                #endif
+                )
             {
                 reactor()->registerFdOneShot(key(), fd,
                                              NotifyOn::Write | NotifyOn::Hangup | NotifyOn::Shutdown);
@@ -725,7 +735,7 @@ namespace Pistache::Http::Experimental
             fd_ = TRY_NULL_RET(
                 EventMethFns::em_event_new(
                     sfd, // pre-allocated file desc
-                    EVM_READ | EVM_WRITE | EVM_PERSIST,
+                    EVM_READ | EVM_WRITE | EVM_PERSIST | EVM_ET,
                     F_SETFDL_NOTHING, // setfd
                     PST_O_NONBLOCK // setfl
                     ));

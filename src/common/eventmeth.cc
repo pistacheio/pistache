@@ -185,6 +185,10 @@ namespace Pistache
         // Note there is a different EventMethBase for each EventMethEpollEquiv
         EventMethBase * getEventMethBase() {return(event_meth_base_.get());}
 
+        // Adjusts the em_event flags to be exactly what we should pass to the
+        // libevent event_new function
+        short getFlagsToActuallyUseWithLibEvEventNew(short candidate_flags);
+
     #ifdef DEBUG
     public:
         static std::string getActFdAndFdlFlagsAsStr(em_socket_t actual_fd);
@@ -309,6 +313,18 @@ namespace Pistache
 
         int disarm();
         int close(); // disarms and closes
+        
+        // In level-triggered systems, "deactivate" is used for a triggered
+        // event, calling libevent's event_del and then event_add. event_del
+        // causes the event to be inactive and non-pending, while event_add
+        // causes it to be pending (i.e. waiting for events). So after
+        // deactivate is called, the event is inactive and pending.
+        int deactivate();
+
+        // Call only on OS where we don't have edge-trigger support (i.e. where
+        // libevent does not have EV_FEATURE_ET)
+        int deactivateAfterTriggerIfNeeded();
+        
 
         // Return -1 if there is no actual file descriptor
         static evutil_socket_t getActualFd(const EmEvent * em_ev);
@@ -1266,8 +1282,11 @@ namespace Pistache
         if (!(event_base_features_ & EV_FEATURE_ET))
         {
             PS_LOG_WARNING("No edge trigger");
+            // !!!!!!!!
+            #ifndef _IS_WINDOWS
             throw std::system_error(EOPNOTSUPP, std::generic_category(),
                                     "No edge trigger");
+            #endif
             // Because EV_ET is used, e.g. see Epoll::addFd
         }
 
@@ -2354,20 +2373,23 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
         // timeout occurs, but which is not needed to get a timeout.
         flgs &= ~EVM_TIMEOUT;
 
-        if ((event_meth_epoll_equiv_impl_) && (flgs & (EVM_CLOSED | EVM_ET)))
+        // Note - if edge-triggered is requested ("flgs & EVM_ET" is non-zero)
+        // but the underlying OS does not support edge triggered
+        // ("base_features & EV_FEATURE_ET" is zero) as is the case in Windows,
+        // then we will simulate edge triggered
+        #ifdef DEBUG
+        PS_LOG_DEBUG_ARGS("EVM_ET %s", (flgs & EVM_ET) ?
+                          "requested" : "not requested");
+        if ((!(flgs & EVM_ET)) && (flgs & EVM_PERSIST))
+            PS_LOG_DEBUG("flgs_ has EVM_PERSIST, but does not have EVM_ET");
+        #endif
+
+        if ((event_meth_epoll_equiv_impl_) && (flgs & EVM_CLOSED))
         {
             int base_features =
                 event_meth_epoll_equiv_impl_->getEventBaseFeatures();
             
-            if ((flgs & EVM_ET) && (!(base_features & EV_FEATURE_ET)))
-            {
-                PS_LOG_INFO("No edge trigger");
-                throw std::system_error(EOPNOTSUPP,
-                                   std::generic_category(), "No edge trigger");
-            }
-
-            if ((flgs & EVM_CLOSED) &&
-                (!(base_features & EV_FEATURE_EARLY_CLOSE)))
+            if (!(base_features & EV_FEATURE_EARLY_CLOSE))
             {
                 PS_LOG_INFO("No early close");
                 throw std::system_error(EOPNOTSUPP,
@@ -2394,6 +2416,74 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
         int event_del_res = TRY_RET(event_del(ev_));
         return(event_del_res);
     }
+
+    // In level-triggered systems, "deactivate" is used for a triggered event,
+    // calling libevent's event_del and then event_add. event_del causes the
+    // event to be inactive and non-pending, while event_add causes it to be
+    // pending (i.e. waiting for events). So after deactivate is called, the
+    // event is inactive and pending.
+    int EmEvent::deactivate()
+    {
+        PS_TIMEDBG_START;
+        
+        if (ev_ == NULL)
+            return(0); // nothing to do
+
+        // Note. If the event has already executed or has never been added,
+        // event_del will have no effect (i.e. is harmless).
+        int event_del_res = TRY_RET(event_del(ev_));
+        if (event_del_res != 0)
+        {
+            PS_LOG_DEBUG_ARGS("event_del failed for EmEvent %p, ev_ %p",
+                              this, ev_);
+            return(event_del_res);
+        }
+
+        // Re: prior_tv_cptr_, per libevent, timeout pointer may be null. "If a
+        // timeout is NULL, no timeout occurs and the function will only be
+        // called if a matching event occurs."
+        int event_add_res = event_add(ev_, prior_tv_cptr_);
+        if (event_add_res != 0)
+        {
+            PS_LOG_DEBUG_ARGS("event_del failed for EmEvent %p, ev_ %p",
+                              this, ev_);
+        }
+        return(event_add_res);
+    }
+
+    // Call only on OS where we don't have edge-trigger support (i.e. where
+    // libevent does not have EV_FEATURE_ET)
+    int EmEvent::deactivateAfterTriggerIfNeeded()
+    {
+        PS_TIMEDBG_START;
+        
+        if (!(flags_ & EVM_ET))
+        {
+            if (!(flags_ & EVM_PERSIST))
+            {
+                PS_LOG_DEBUG("Deactivate for non-persistence and "
+                             "make not pending");
+                return(disarm());
+            }
+
+            // Remove !!!!
+            PS_LOG_DEBUG("flags_ has EVM_PERSIST, but does not have EVM_ET");
+            
+            return(0);
+        }
+
+        if (flags_ & EVM_PERSIST)
+        {
+            PS_LOG_DEBUG("Deactivate event");
+            
+            // deactivates the libevent event and makes it pending
+            return(deactivate());
+        }
+
+        PS_LOG_DEBUG("Deactivate event and make not pending");
+        return(disarm());
+    }
+
 
     int EmEvent::close() // disarms as well as closes
     {
@@ -2860,8 +2950,8 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
                         event_meth_epoll_equiv_impl_->getEventMethBase()->
                                                                 getEventBase(),
                         actual_fd,
-                        flags_ | EV_FINALIZE, // See earlier comment: Why and
-                                              // how we use libevent's finalize
+                        event_meth_epoll_equiv_impl_->
+                            getFlagsToActuallyUseWithLibEvEventNew(flags_),
                         eventCallbackFn,
                         (void *)this
                         /*final arg here is passed to callback as "arg"*/));
@@ -2916,8 +3006,8 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
                     event_meth_epoll_equiv_impl_->getEventMethBase()->
                                                                 getEventBase(),
                     actual_fd, // keep same actual fd, if any
-                    events | EV_FINALIZE, // See earlier comment: Why and how
-                                          // we use libevent's finalize
+                    event_meth_epoll_equiv_impl_->
+                            getFlagsToActuallyUseWithLibEvEventNew(events),
                     eventCallbackFn,
                     (void *)this/*passed to callback as "arg"*/);
                 if (!replacement_ev)
@@ -3231,6 +3321,27 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
         return(em_event);
     }
 
+    // Adjusts the em_event flags to be exactly what we should pass to the
+    // libevent event_new function
+    short EventMethEpollEquivImpl::getFlagsToActuallyUseWithLibEvEventNew(
+                                                         short candidate_flags)
+    {
+        candidate_flags |= EV_FINALIZE; // See earlier comment: Why and how we
+                                        // use libevent's finalize
+
+        // Don't request edge-triggered from libevent if edge-triggered is not
+        // supported
+        if (!(getEventBaseFeatures() & EV_FEATURE_ET))
+            candidate_flags &= (~EV_ET);
+
+        // Mask out EV_TIMEOUT - a flag that may be set in ready_flags_ if a
+        // timeout occurs, but which is not needed to get a timeout.
+        candidate_flags &= (~EV_TIMEOUT);
+
+        return(candidate_flags);
+    }
+
+
     #ifdef DEBUG
     int EventMethEpollEquivImpl::getEmEventCount()
         { return(em_event_count__); }
@@ -3506,7 +3617,10 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
         #endif
 
         // handleEventCallback may update ev_flags and/or em_event 
-        em_event->handleEventCallback(ev_flags); 
+        em_event->handleEventCallback(ev_flags);
+
+        if (!(getEventBaseFeatures() & EV_FEATURE_ET))
+            em_event->deactivateAfterTriggerIfNeeded();
 
         addEventToReadyInterestAlrdyLocked(em_event, ev_flags);
     }

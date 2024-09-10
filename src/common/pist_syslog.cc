@@ -376,43 +376,43 @@ static int snprintProcessAndThread(char * _buff, size_t _buffSize)
     switch(_priority)                                                   \
     {                                                                   \
     case LOG_EMERG:                                                     \
-        EventWritePSTCH_EMERG_NL(POL_FORM, buff_as_wstr_data);          \
+        EventWritePSTCH_EMERG_NL_AssumeEnabled(POL_FORM, buff_as_wstr_data); \
         break;                                                          \
                                                                         \
     case LOG_ALERT:                                                     \
-        EventWritePSTCH_ALERT_NL(POL_FORM, buff_as_wstr_data);          \
+        EventWritePSTCH_ALERT_NL_AssumeEnabled(POL_FORM, buff_as_wstr_data); \
         break;                                                          \
                                                                         \
     case LOG_CRIT:                                                      \
-        EventWritePSTCH_CRIT_NL(POL_FORM, buff_as_wstr_data);           \
+        EventWritePSTCH_CRIT_NL_AssumeEnabled(POL_FORM, buff_as_wstr_data); \
         break;                                                          \
                                                                         \
     case LOG_ERR:                                                       \
-        EventWritePSTCH_ERR_NL(POL_FORM, buff_as_wstr_data);            \
+        EventWritePSTCH_ERR_NL_AssumeEnabled(POL_FORM, buff_as_wstr_data); \
         break;                                                          \
                                                                         \
     case LOG_WARNING:                                                   \
-        EventWritePSTCH_WARNING_NL(POL_FORM, buff_as_wstr_data);        \
+        EventWritePSTCH_WARNING_NL_AssumeEnabled(POL_FORM, buff_as_wstr_data); \
         break;                                                          \
                                                                         \
     case LOG_NOTICE:                                                    \
-        EventWritePSTCH_NOTICE_NL(POL_FORM, buff_as_wstr_data);         \
+        EventWritePSTCH_NOTICE_NL_AssumeEnabled(POL_FORM, buff_as_wstr_data); \
         break;                                                          \
                                                                         \
     case LOG_INFO:                                                      \
-        EventWritePSTCH_INFO_NL(POL_FORM, buff_as_wstr_data);           \
+        EventWritePSTCH_INFO_NL_AssumeEnabled(POL_FORM, buff_as_wstr_data); \
         break;                                                          \
                                                                         \
     case LOG_DEBUG:                                                     \
-        EventWritePSTCH_DEBUG_NL(POL_FORM, buff_as_wstr_data);          \
+        EventWritePSTCH_DEBUG_NL_AssumeEnabled(POL_FORM, buff_as_wstr_data); \
         break;                                                          \
                                                                         \
     default:                                                            \
     {                                                                   \
         std::wstring _priority_as_wstr(std::to_wstring(_priority));     \
-        EventWritePSTCH_EMERG_NL(L"Bad log priority %s",                \
+        EventWritePSTCH_EMERG_NL_AssumeEnabled(L"Bad log priority %s",   \
                                  _priority_as_wstr.data());             \
-        EventWritePSTCH_EMERG_NL(POL_FORM, buff_as_wstr_data);          \
+        EventWritePSTCH_EMERG_NL_AssumeEnabled(POL_FORM, buff_as_wstr_data); \
         break;                                                          \
     }                                                                   \
     }                                                                   \
@@ -651,15 +651,15 @@ void PSLogging::log(int _priority, bool _andPrintf, const char * _str)
     switch(_priority)
     {
     case LOG_EMERG:
-        EventWritePSTCH_EMERG_NL(L"%s", buff_as_wstr_data);
+        EventWritePSTCH_EMERG_NL_AssumeEnabled(L"%s", buff_as_wstr_data);
         break;
 
     case LOG_ALERT:
-        EventWritePSTCH_ALERT_NL(L"%s", buff_as_wstr_data);
+        EventWritePSTCH_ALERT_NL_AssumeEnabled(L"%s", buff_as_wstr_data);
         break;
 
     case LOG_CRIT:
-        EventWritePSTCH_CRIT_NL(L"%s", buff_as_wstr_data);
+        EventWritePSTCH_CRIT_NL_AssumeEnabled(L"%s", buff_as_wstr_data);
         break;
 
     case LOG_ERR:
@@ -671,27 +671,27 @@ void PSLogging::log(int _priority, bool _andPrintf, const char * _str)
     }
 
     case LOG_WARNING:
-        EventWritePSTCH_WARNING_NL(L"%s", buff_as_wstr_data);
+        EventWritePSTCH_WARNING_NL_AssumeEnabled(L"%s", buff_as_wstr_data);
         break;
 
     case LOG_NOTICE:
-        EventWritePSTCH_NOTICE_NL(L"%s", buff_as_wstr_data);
+        EventWritePSTCH_NOTICE_NL_AssumeEnabled(L"%s", buff_as_wstr_data);
         break;
 
     case LOG_INFO:
-        EventWritePSTCH_INFO_NL(L"%s", buff_as_wstr_data);
+        EventWritePSTCH_INFO_NL_AssumeEnabled(L"%s", buff_as_wstr_data);
         break;
 
     case LOG_DEBUG:
-        EventWritePSTCH_DEBUG_NL(L"%s", buff_as_wstr_data);
+        EventWritePSTCH_DEBUG_NL_AssumeEnabled(L"%s", buff_as_wstr_data);
         break;
 
     default:
     {
         std::wstring _priority_as_wstr(std::to_wstring(_priority));
-        EventWritePSTCH_EMERG_NL(L"Bad log priority %s",
+        EventWritePSTCH_EMERG_NL_AssumeEnabled(L"Bad log priority %s",
                                  _priority_as_wstr.data());
-        EventWritePSTCH_EMERG_NL(L"%s", buff_as_wstr_data);
+        EventWritePSTCH_EMERG_NL_AssumeEnabled(L"%s", buff_as_wstr_data);
         break;
     }
     }

@@ -498,6 +498,15 @@ typedef uint32_t pst_thread_id; // DWORD := uint32_t
 #endif
 
 #ifdef _IS_WINDOWS
+#define PST_STRCASECMP _stricmp
+#else
+#define PST_STRCASECMP strcasecmp
+#endif
+
+// Note: PS_STRLCPY, PS_STRLCAT, PS_STRNCPY_S and PS_ESTRUNCATE are defined in
+// ps_strl.h.
+
+#ifdef _IS_WINDOWS
 // Reference /usr/include/asm-generic/fcntl.h
 // #define PST_O_ACCMODE  	00000003
 // #define PST_O_RDONLY	00000000

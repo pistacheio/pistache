@@ -392,9 +392,9 @@ namespace Pistache::Tcp
         // Use EVM_READ, as per call to addFd below
         Fd event_fd = TRY_NULL_RET(
             Polling::Epoll::em_event_new(actual_fd, // pre-allocated file desc
-                                         EVM_READ | EVM_PERSIST,
-                                         F_SETFDL_NOTHING, // f_setfd_flags - don't change
-                                         F_SETFDL_NOTHING // f_setfl_flags - don't change
+                              EVM_READ | EVM_PERSIST |EVM_ET,
+                              F_SETFDL_NOTHING, // f_setfd_flags - don't change
+                              F_SETFDL_NOTHING // f_setfl_flags - don't change
                                          ));
 #else
         Fd event_fd = actual_fd;
@@ -780,10 +780,10 @@ namespace Pistache::Tcp
         // Since we're accepting a remote connection here, presumably it makes
         // sense to have it be able to read *or* write?
         Fd client_fd = TRY_NULL_RET(
-            Polling::Epoll::em_event_new(actual_cli_fd, // pre-allocated file dsc
-                                         EVM_READ | EVM_WRITE | EVM_PERSIST,
-                                         F_SETFDL_NOTHING, // f_setfd_flags - don't change
-                                         F_SETFDL_NOTHING // f_setfl_flags - don't change
+            Polling::Epoll::em_event_new(actual_cli_fd, // pre-alloced file dsc
+                              EVM_READ | EVM_WRITE | EVM_PERSIST | EVM_ET,
+                              F_SETFDL_NOTHING, // f_setfd_flags - don't change
+                              F_SETFDL_NOTHING // f_setfl_flags - don't change
                                          ));
 #else
         Fd client_fd = actual_cli_fd;

@@ -83,6 +83,7 @@
 // 
 // You can define PS_LOG_AND_STDOUT to true using the meson build option
 // "PISTACHE_LOG_AND_STDOUT", or simple #define it here
+#define PS_LOG_AND_STDOUT true // !!!!!!!!
 #ifndef PS_LOG_AND_STDOUT
 #define PS_LOG_AND_STDOUT false
 #endif
