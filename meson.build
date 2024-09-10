@@ -179,9 +179,9 @@ endif
 # which is called by PS_LogWoBreak, used in turn by the stack-trace
 # logging macro PS_LOG_WO_BREAK_LIMITED and its derivatives. Issue
 # #1230.
-ldl = compiler.find_library('dl', required: true)
-deps_libpistache += ldl
-public_deps += ldl
+# Note: If 'dl' is not available, per Meson it suggests that the
+# functionality is provided by libc
+deps_libpistache += dependency('dl', required: false)
 
 version_array = []
 if meson.version().version_compare('>=0.57.0')
