@@ -16,7 +16,7 @@
 
 // In CLIENT_TRY, note that strerror is allowed to change errno in certain
 // circumstances, so we must save errno in lastErrno_ BEFORE we call strerror
-// 
+//
 // Secondly, if errno has not been set at all then we set lastErrno_ =
 // ECANCELED; the ECANCELED errno is not used in Pistache code as of Aug/2024.
 static const char * strerror_errstr = "<no strerror>";
