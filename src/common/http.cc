@@ -538,7 +538,9 @@ namespace Pistache::Http
             {
                 raise("Unsupported Transfer-Encoding", Code::Not_Implemented);
             }
-            return State::Done;
+            #ifndef _IS_WINDOWS 
+            return State::Done; // unreachable code warning in Windows
+            #endif
         }
 
         ParserBase::ParserBase(size_t maxDataSize)

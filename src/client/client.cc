@@ -491,7 +491,7 @@ namespace Pistache::Http::Experimental
             PS_LOG_DEBUG_ARGS("Calling ::connect fs %d", GET_ACTUAL_FD(fd));
 
             int res = PST_SOCK_CONNECT(GET_ACTUAL_FD(fd), data->getAddr(), data->addr_len);
-            char se_err[256 + 16];
+            PST_DBG_DECL_SE_ERR_256_P_16;
             PS_LOG_DEBUG_ARGS("::connect res %d, errno on fail %d (%s)",
                               res, (res < 0) ? errno : 0,
                               (res < 0) ?

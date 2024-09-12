@@ -28,7 +28,6 @@
 #include <map>
 #include <mutex>
 
-
 // ---------------------------------------------------------------------------
 
 #include <pistache/pist_syslog.h>
@@ -171,11 +170,8 @@ private:
     struct PST_TIMESPEC mPsTimedbg;
     struct PST_TIMESPEC mPsTimeCPUdbg;
 
-    static unsigned mUniCounter; // universal (static) counter
     unsigned mCounter; // individual counter for this __PS_TIMEDBG
-
-    static std::map<PST_THREAD_ID, unsigned> mThreadMap;
-    static std::mutex mThreadMapMutex;
+    unsigned getNextUniCounter();
 
     unsigned getThreadNextDepth(); // returns depth value after increment
     unsigned decrementThreadDepth(); // returns depth value before decrement
@@ -271,7 +267,10 @@ public:
     __PS_TIMEDBG(char marker_ch,
                  const char * f, int l, const char * m, const char * _inf) :
         mMarkerChar(marker_ch),
-        mFileName(f), mLineNum(l), mFnName(m), mCounter(++mUniCounter)
+        mFileName(f),
+        mLineNum(l),
+        mFnName(m),
+        mCounter(getNextUniCounter())
         {
             const char * ps_time_str = "No-Time";
             char pschbuff[40];

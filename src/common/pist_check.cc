@@ -76,7 +76,7 @@ static void logStackTrace(int pri)
             {
                 DWORD last_err = GetLastError();
         
-                PS_LOG_DEBUG_ARGS(
+                PS_LOG_INFO_ARGS(
                     "SymInitialize fail, system error code (WinError.h) 0x%x",
                     (unsigned int) last_err);
                 return;
@@ -91,7 +91,8 @@ static void logStackTrace(int pri)
                                    // process outside Pistache resets it
     
     void         * stack[1024+16];
-    unsigned short frames = CaptureStackBackTrace(0, 1024, stack, NULL);
+    unsigned short frames = CaptureStackBackTrace(2, // skip first 2 frames
+                                                  1024, stack, NULL);
 
     if (frames  == 0)
     {
@@ -106,16 +107,27 @@ static void logStackTrace(int pri)
 
     for(unsigned int i = 0; i < frames; i++ )
     {
-        SYMBOL_INFO    symbol;
-        memset(&symbol, 0, sizeof(symbol));
+        const unsigned sym_max_size = 2048;
+        unsigned char symbol_and_name[sizeof(SYMBOL_INFO) +
+                                      (sym_max_size * sizeof(TCHAR)) + 16];
+        memset(&(symbol_and_name[0]), 0, sizeof(symbol_and_name));
+        
+        SYMBOL_INFO * symbol =
+            reinterpret_cast<SYMBOL_INFO *>(&(symbol_and_name[0]));
+        symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+        symbol->MaxNameLen = sym_max_size;
 
-        SymFromAddr(process, (DWORD64)(stack[i]), 0, &symbol);
+        bool sfa_res = SymFromAddr(process,
+                                   (DWORD64)(stack[i]),
+                                   0, symbol);
 
         const char * name = "{Unknown symbol name}";
-        if ((symbol.NameLen) && (symbol.MaxNameLen))
-            name = &(symbol.Name[0]);
+        if (!sfa_res)
+            name = "{Unknown symbol - SymFromAddr failed}";
+        else if (symbol->NameLen)
+            name = &(symbol->Name[0]);
         
-        PSLogNoLocFn(pri, "  ST- %s", name);
+        PSLogNoLocFn(pri, PS_LOG_AND_STDOUT, "  ST- %s", name);
     }
 }
 

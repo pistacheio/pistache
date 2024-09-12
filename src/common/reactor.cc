@@ -218,11 +218,14 @@ namespace Pistache::Aio
 
         void runOnce() override
         {
+            PS_TIMEDBG_START;
+            
             if (handlers_.empty())
                 throw std::runtime_error("You need to set at least one handler");
 
             for (;;)
             {
+                PS_TIMEDBG_START;
                 { // encapsulate l_guard(poller.reg_unreg_mutex_)
                   // See comment in class Epoll regarding reg_unreg_mutex_
 
@@ -250,12 +253,17 @@ namespace Pistache::Aio
 
         void run() override
         {
+            PS_TIMEDBG_START;
+            
             handlers_.forEachHandler([](const std::shared_ptr<Handler> handler) {
                 handler->context_.tid = std::this_thread::get_id();
             });
 
             while (!shutdown_)
+            {
+                PS_TIMEDBG_START;
                 runOnce();
+            }
         }
 
         void shutdown() override
@@ -630,9 +638,14 @@ namespace Pistache::Aio
 
             void run()
             {
+                PS_TIMEDBG_START;
+
                 thread = std::thread([=]() {
+                    PS_TIMEDBG_START;
+                    
                     if (!threadsName_.empty())
                     {
+                        PS_LOG_DEBUG("Setting thread name/description");
 #ifdef _IS_WINDOWS
                         std::string threads_name(threadsName_.substr(0, 15));
                         std::wstring temp(threads_name.begin(),
@@ -668,6 +681,7 @@ namespace Pistache::Aio
                             threadsName_.substr(0, 15).c_str());
 #endif // of ifdef _IS_WINDOWS... else...
                     }
+                    PS_LOG_DEBUG("Calling sync->run()");
                     sync->run();
                 });
             }

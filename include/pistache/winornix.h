@@ -177,6 +177,15 @@ typedef int PST_SOCK_OPT_VAL_T;
 #define PST_STRERROR_R pist_strerror_r // returns char *
 #endif
 
+// Conveinence mcaros to declare se_err for use by PST_STRERROR_R
+#define PST_DECL_SE_ERR_256_P_16                \
+    char se_err[256 + 16]
+#ifdef DEBUG
+#define PST_DBG_DECL_SE_ERR_256_P_16 PST_DECL_SE_ERR_256_P_16
+#else
+#define PST_DBG_DECL_SE_ERR_256_P_16
+#endif
+
 // Use #include PIST_QUOTE(PST_FCNTL_HDR)
 #ifdef _IS_WINDOWS
 #define PST_FCNTL_HDR pistache/pist_fcntl.h

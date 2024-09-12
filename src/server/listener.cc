@@ -522,6 +522,8 @@ namespace Pistache::Tcp
 
     void Listener::run()
     {
+        PS_TIMEDBG_START;
+        
         if (!shutdownFd.isBound())
             shutdownFd.bind(poller);
         reactor_->run();
@@ -530,6 +532,7 @@ namespace Pistache::Tcp
         {
             { // encapsulate l_guard(poller.reg_unreg_mutex_)
               // See comment in class Epoll regarding reg_unreg_mutex_
+                PS_TIMEDBG_START;
 
                 std::lock_guard<std::mutex> l_guard(poller.reg_unreg_mutex_);
 
@@ -574,8 +577,16 @@ namespace Pistache::Tcp
 
     void Listener::runThreaded()
     {
+        PS_TIMEDBG_START;
+        
         shutdownFd.bind(poller);
-        acceptThread = std::thread([=]() { this->run(); });
+        PS_LOG_DEBUG("shutdownFd.bind done");
+        
+        acceptThread = std::thread([=]()
+       {
+           PS_TIMEDBG_START;
+           this->run();
+       });
     }
 
     void Listener::shutdown()
@@ -877,9 +888,7 @@ namespace Pistache::Tcp
         int fcntl_res = PST_FCNTL(client_actual_fd, PST_F_SETFD, PST_FD_CLOEXEC);
         if (fcntl_res == -1)
         {
-            char se_err[256+16];
-            PST_STRERROR_R(errno, &se_err[0], 256);
-
+            PST_DBG_DECL_SE_ERR_256_P_16;
             PS_LOG_DEBUG_ARGS("fcntl F_SETFD fail for fd %d, errno %d %s",
                               client_actual_fd, errno,
                               PST_STRERROR_R(errno, &se_err[0], 256));
@@ -893,7 +902,7 @@ namespace Pistache::Tcp
         fcntl_res = PST_FCNTL(client_actual_fd, PST_F_SETFL, 0 /*clear everything*/);
         if (fcntl_res == -1)
         {
-            char se_err[256 + 16];
+            PST_DBG_DECL_SE_ERR_256_P_16;
             PS_LOG_DEBUG_ARGS("fcntl F_SETFL fail for fd %d, errno %d %s",
                               client_actual_fd, errno,
                               PST_STRERROR_R(errno, &se_err[0], 256));

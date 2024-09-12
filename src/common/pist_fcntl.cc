@@ -31,7 +31,7 @@ calls CreateProcess, it doesn't replace the parent program.
 So - FD_CLOEXEC is moot in Windows, and hence F_GETFD/SETFD is moot too
 */
 
-static int fcntl_getfd(em_socket_t fd) 
+static int fcntl_getfd([[maybe_unused]] em_socket_t fd) 
 {
     PS_TIMEDBG_START_ARGS("noop function, fd %d", fd);
     
@@ -39,11 +39,11 @@ static int fcntl_getfd(em_socket_t fd)
     return(0);
 }
 
-static int fcntl_setfd(em_socket_t fd, int arg) 
+static int fcntl_setfd([[maybe_unused]] em_socket_t fd, int arg) 
 {
     PS_TIMEDBG_START_ARGS("fd %d, arg %d", fd, arg);
     
-    if ((arg != 0) && (arg != PST_O_CLOEXEC))
+    if ((arg != 0) && (arg != PST_FD_CLOEXEC))
     {
         PS_LOG_WARNING_ARGS("Unsupported fcntl F_SETFD arg %d", arg);
         PS_LOGDBG_STACK_TRACE;
@@ -56,7 +56,7 @@ static int fcntl_setfd(em_socket_t fd, int arg)
 
 /* ------------------------------------------------------------------------- */
 
-static int fcntl_getfl(em_socket_t fd) 
+static int fcntl_getfl([[maybe_unused]] em_socket_t fd) 
 {
     PS_TIMEDBG_START_ARGS("noop function, returns UNKNOWN, fd %d", fd);
     

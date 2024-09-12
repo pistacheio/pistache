@@ -508,8 +508,7 @@ namespace Pistache::Tcp
                 }
                 if (bytesWritten < 0)
                 {
-                    char se_err[256+16];
-                    PST_STRERROR_R(errno, &se_err[0], 256);
+                    PST_DBG_DECL_SE_ERR_256_P_16;
                     PS_LOG_DEBUG_ARGS("fd %" PIST_QUOTE(PS_FD_PRNTFCD) " errno %d %s",
                                       fd, errno, PST_STRERROR_R(errno, &se_err[0], 256));
                     
@@ -646,7 +645,7 @@ namespace Pistache::Tcp
         }
         else
         {
-            char se_err[256 + 16];
+            PST_DBG_DECL_SE_ERR_256_P_16;
             PS_LOG_DEBUG_ARGS("getsockopt failed for fd %p, actual fd %d, "
                               "errno %d, err %s",
                               fd, GET_ACTUAL_FD(fd), errno,
@@ -895,8 +894,7 @@ namespace Pistache::Tcp
 #endif
         if (res == -1)
         {
-            char se_err[256+16];
-            PST_STRERROR_R(errno, &se_err[0], 256);
+            PST_DBG_DECL_SE_ERR_256_P_16;
             PS_LOG_DEBUG_ARGS("Fd %" PIST_QUOTE(PS_FD_PRNTFCD) ",  ernno %d %s",
                               entry.fd, errno, PST_STRERROR_R(errno, &se_err[0], 256));
 

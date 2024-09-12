@@ -16,10 +16,10 @@ if (($MESON_PREFIX_DIR) -and (-not (Test-Path -Path "$MESON_PREFIX_DIR"))) `
     {mkdir "$MESON_PREFIX_DIR"}
 
 if (Test-Path -Path ".\$MESON_BUILD_DIR") {
-    rm -Recurse ".\$MESON_BUILD_DIR"
-#     Write-Host "Using existing build dir $MESON_BUILD_DIR"
+#     rm -Recurse ".\$MESON_BUILD_DIR"
+     Write-Host "Using existing build dir $MESON_BUILD_DIR"
 }
-# else {
+else {
     Write-Host "Going to use build dir $MESON_BUILD_DIR"
     meson.exe setup "$MESON_BUILD_DIR" `
     --buildtype=release `
@@ -29,7 +29,7 @@ if (Test-Path -Path ".\$MESON_BUILD_DIR") {
     -DPISTACHE_BUILD_DOCS=false `
     -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true `
     --prefix="$MESON_PREFIX_DIR"
-# }
+}
 
-# meson compile -C ${MESON_BUILD_DIR}
+meson compile -C ${MESON_BUILD_DIR}
 
