@@ -558,6 +558,8 @@ TEST(headers_test, date_test_ostream)
     const char* cstr_to_compare = "Fri, 25 Jan 2019 21:04:45."
 #if defined __clang__ && !defined __linux__
                                   "000000"
+#elif defined _MSC_VER // Microsoft Visual Compiler
+                                  "0000000"
 #else
                                   "000000000"
 #endif
