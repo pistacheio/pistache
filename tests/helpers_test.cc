@@ -88,8 +88,14 @@ TEST(fd_utils_test, delect_new_descriptor)
     const auto count1 = get_open_fds_count();
     const ScopedFd new_fd;
     const auto count2 = get_open_fds_count();
-
+#ifdef _WIN32
+    // Doing a winsock "socket" call to allocate a socket handle actually seems
+    // to use up 7 handles in total (Windows 11, Sept/2024)
+    ASSERT_GT(count2, count1);
+    ASSERT_GT(count1+32, count2);
+#else
     ASSERT_EQ(count1 + 1, count2);
+#endif
 }
 
 TEST(fd_utils_test, delect_descriptor_close)

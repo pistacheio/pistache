@@ -229,13 +229,14 @@ static WsaStartupAndCleanup lWsaStartupAndCleanup;
 // pist_sock_startup_check, using the macro provided in winornix.h.
 //
 // Returns 0 on success, or -1 on failure with errno set.
+#define PIST_SOCK_STARTUP_CHECK_RET_MINUS_1_ON_ERR      \
+    if (pist_sock_startup_check() < 0)                  \
+        return(-1);                                     \
+
 int pist_sock_startup_check()
 {
     if (lWsaStartupDone)
         return(0);
-
-    // !!!!!!!! Remove
-    PS_LOG_ERR("Log Test");
 
     GUARD_AND_DBG_LOG(lWsaStartupDoneMutex);
     if (lWsaStartupDone)
@@ -319,6 +320,8 @@ WsaStartupAndCleanup::~WsaStartupAndCleanup()
 
 int pist_sock_close(em_socket_t em_sock)
 {
+    PIST_SOCK_STARTUP_CHECK_RET_MINUS_1_ON_ERR;
+
     SOCKET win_sock = get_win_socket_from_em_socket_t(em_sock);
     if (win_sock == INVALID_SOCKET)
     {
@@ -340,6 +343,8 @@ int pist_sock_close(em_socket_t em_sock)
 
 PST_SSIZE_T pist_sock_read(em_socket_t em_sock, void *buf, size_t count)
 {
+    PIST_SOCK_STARTUP_CHECK_RET_MINUS_1_ON_ERR;
+
     SOCKET win_sock = get_win_socket_from_em_socket_t(em_sock);
     if (win_sock == INVALID_SOCKET)
     {
@@ -362,6 +367,8 @@ PST_SSIZE_T pist_sock_read(em_socket_t em_sock, void *buf, size_t count)
 
 PST_SSIZE_T pist_sock_write(em_socket_t em_sock, const void *buf, size_t count)
 {
+    PIST_SOCK_STARTUP_CHECK_RET_MINUS_1_ON_ERR;
+
     SOCKET win_sock = get_win_socket_from_em_socket_t(em_sock);
     if (win_sock == INVALID_SOCKET)
     {
@@ -384,6 +391,8 @@ PST_SSIZE_T pist_sock_write(em_socket_t em_sock, const void *buf, size_t count)
 
 em_socket_t pist_sock_socket(int domain, int type, int protocol)
 {
+    PIST_SOCK_STARTUP_CHECK_RET_MINUS_1_ON_ERR;
+
     SOCKET socket_res = ::socket(domain, type, protocol);
     if (socket_res != INVALID_SOCKET)
     {
@@ -400,6 +409,8 @@ em_socket_t pist_sock_socket(int domain, int type, int protocol)
 int pist_sock_bind(em_socket_t em_sock, const struct sockaddr *addr,
                    PST_SOCKLEN_T addrlen)
 {
+    PIST_SOCK_STARTUP_CHECK_RET_MINUS_1_ON_ERR;
+
     SOCKET win_sock = get_win_socket_from_em_socket_t(em_sock);
     if (win_sock == INVALID_SOCKET)
     {
@@ -422,6 +433,8 @@ int pist_sock_bind(em_socket_t em_sock, const struct sockaddr *addr,
 em_socket_t pist_sock_accept(em_socket_t em_sock, struct sockaddr *addr,
                              PST_SOCKLEN_T *addrlen)
 {
+    PIST_SOCK_STARTUP_CHECK_RET_MINUS_1_ON_ERR;
+
     SOCKET win_sock = get_win_socket_from_em_socket_t(em_sock);
     if (win_sock == INVALID_SOCKET)
     {
@@ -447,6 +460,8 @@ em_socket_t pist_sock_accept(em_socket_t em_sock, struct sockaddr *addr,
 int pist_sock_connect(em_socket_t em_sock, const struct sockaddr *addr,
                       PST_SOCKLEN_T addrlen)
 {
+    PIST_SOCK_STARTUP_CHECK_RET_MINUS_1_ON_ERR;
+
     SOCKET win_sock = get_win_socket_from_em_socket_t(em_sock);
     if (win_sock == INVALID_SOCKET)
     {
@@ -472,6 +487,8 @@ int pist_sock_connect(em_socket_t em_sock, const struct sockaddr *addr,
 // On error, -1 is returned, and errno is set.
 int pist_sock_poll(PST_POLLFD_T * fds, PST_NFDS_T nfds, int timeout)
 {
+    PIST_SOCK_STARTUP_CHECK_RET_MINUS_1_ON_ERR;
+
     if (!nfds)
     {
         PS_LOG_DEBUG("Zero nfds");
@@ -513,6 +530,8 @@ int pist_sock_poll(PST_POLLFD_T * fds, PST_NFDS_T nfds, int timeout)
 PST_SSIZE_T pist_sock_send(em_socket_t em_sock, const void *buf,
                            size_t len, int flags)
 {
+    PIST_SOCK_STARTUP_CHECK_RET_MINUS_1_ON_ERR;
+
     SOCKET win_sock = get_win_socket_from_em_socket_t(em_sock);
     if (win_sock == INVALID_SOCKET)
     {
