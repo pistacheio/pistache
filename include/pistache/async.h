@@ -718,8 +718,7 @@ namespace Pistache::Async
 
                     void operator()()
                     {
-                        auto core   = this->chain_;
-                        core->state = State::Fulfilled;
+                        chainCore->state = State::Fulfilled;
 
                         for (const auto& req : chainCore->requests)
                         {
