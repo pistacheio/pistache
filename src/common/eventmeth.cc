@@ -2351,6 +2351,8 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
                     throw std::invalid_argument(
                         "EmEventTmrFd EMEE cannot be changed");
                 }
+                PS_LOG_DEBUG_ARGS("Setting EMEE %p for EmEvent %p",
+                                  emee, this);
                 event_meth_epoll_equiv_impl_ = emee;
             }
         }
@@ -2559,6 +2561,8 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
                               "unexpectedly not in emee_cptr_set, "
                               "nulling out event_meth_epoll_equiv_impl_",
                 this, tmp_event_meth_epoll_equiv);
+            
+            PS_LOG_DEBUG_ARGS("Setting EMEE null for EmEvent %p", this);
             event_meth_epoll_equiv_impl_ = NULL;
             return(NULL);
         }
@@ -2604,6 +2608,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
             // DEC_DEBUG_CTR(libevent_event)
         }
 
+        PS_LOG_DEBUG_ARGS("Setting EMEE null for EmEvent %p", this);
         event_meth_epoll_equiv_impl_ = NULL;
     }
     
@@ -2867,7 +2872,9 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
                         throw std::runtime_error("Unsupported emee change");
                     }
                 }
-                
+
+                PS_LOG_DEBUG_ARGS("Setting EMEE %p for EmEvent %p",
+                                  emee, this);
                 event_meth_epoll_equiv_impl_ = emee;
             }
         }
@@ -2893,6 +2900,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
                 throw std::invalid_argument("emee null and owning_emee null");
             }
 
+            PS_LOG_DEBUG_ARGS("Setting EMEE %p for EmEvent %p", emee, this);
             event_meth_epoll_equiv_impl_ = emee;
         }
         

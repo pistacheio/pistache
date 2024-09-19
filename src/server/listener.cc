@@ -954,8 +954,19 @@ namespace Pistache::Tcp
             return;
         }
 
+        em_socket_t input_for_idx = actual_fd;
+        #ifdef _IS_WINDOWS
+        // !!!!!!!! Do something smarter than this
+        // 
+        // actual_fd in Windows seems to be a multiple of 4, so we'll miss a
+        // bunch of handlers if we just do "idx = actual_fd %
+        // handlers.size()". For instance, if handlers.size() is 4, idx will
+        // always be zero
+        input_for_idx /= 4;
+        #endif
+
         auto handlers  = reactor_->handlers(transportKey);
-        auto idx       = actual_fd % handlers.size();
+        auto idx       = input_for_idx % handlers.size();
         auto transport = std::static_pointer_cast<Transport>(handlers[idx]);
 
         transport->handleNewPeer(peer);

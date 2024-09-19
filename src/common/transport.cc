@@ -116,13 +116,17 @@ namespace Pistache::Tcp
     {
         auto ctx                   = context();
         const bool isInRightThread = std::this_thread::get_id() == ctx.thread();
+
         if (!isInRightThread)
         {
+            PS_LOG_DEBUG_ARGS("Pushing to peersQueue");
+            
             PeerEntry entry(peer);
             peersQueue.push(std::move(entry));
         }
         else
         {
+            PS_LOG_DEBUG("Not pushing to peersQueue, handling directly");
             handlePeer(peer);
         }
 

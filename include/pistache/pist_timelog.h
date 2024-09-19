@@ -179,16 +179,18 @@ private:
     void setMarkerChars(char * marker_chars, char the_marker,
                         unsigned call_depth)
         {
+            
             if (call_depth > 20)
             {
                 for(unsigned int i=0; i<10; i++)
                     marker_chars[i] = the_marker;
-                PS_STRLCPY(&(marker_chars[10]), "...", 4);
 
+                PS_STRLCPY(&(marker_chars[10]), "...", 4);
                 marker_chars += (10 + 3);
+                
                 for(unsigned int i=0; i<10; i++)
                     marker_chars[i] = the_marker;
-                marker_chars[10 + 3 + 10] = 0;
+                marker_chars[10] = 0;
             }
             else
             {
@@ -273,7 +275,7 @@ public:
         mCounter(getNextUniCounter())
         {
             const char * ps_time_str = "No-Time";
-            char pschbuff[40];
+            char pschbuff[80];
 
             int res = PST_CLOCK_GETTIME(PST_CLOCK_PROCESS_CPUTIME_ID,
                                         &mPsTimeCPUdbg);
@@ -301,7 +303,7 @@ public:
                 }
             }
 
-            char marker_chars[32];
+            char marker_chars[64];
             unsigned call_depth = getThreadNextDepth();
             setMarkerChars(&(marker_chars[0]), mMarkerChar, call_depth);
             

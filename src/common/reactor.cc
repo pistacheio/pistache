@@ -242,10 +242,12 @@ namespace Pistache::Aio
                     case 0:
                         break;
                     default:
-                        if (shutdown_)
-                            return;
-
-                        handleFds(std::move(events));
+                        {
+                            if (shutdown_)
+                                return;
+                            
+                            handleFds(std::move(events));
+                        }
                     }
                 }
             }
@@ -474,18 +476,22 @@ namespace Pistache::Aio
                   size_t threads, const std::string& threadsName)
             : Reactor::Impl(reactor)
         {
-
+            PS_TIMEDBG_START_THIS;
+            
             if (threads > SyncImpl::MaxHandlers())
                 throw std::runtime_error("Too many worker threads requested (max "s + std::to_string(SyncImpl::MaxHandlers()) + ")."s);
 
             for (size_t i = 0; i < threads; ++i)
                 workers_.emplace_back(std::make_unique<Worker>(reactor, threadsName));
+            PS_LOG_DEBUG_ARGS("threads %d, workers_.size() %d",
+                              threads, workers_.size());
         }
 
         Reactor::Key addHandler(const std::shared_ptr<Handler>& handler,
                                 bool) override
         {
-
+            PS_TIMEDBG_START_THIS;
+            
             std::array<Reactor::Key, SyncImpl::MaxHandlers()> keys;
 
             for (size_t i = 0; i < workers_.size(); ++i)
@@ -550,6 +556,8 @@ namespace Pistache::Aio
                         Polling::Tag tag,
                         Polling::Mode mode = Polling::Mode::Level) override
         {
+            PS_TIMEDBG_START_THIS;
+            
             dispatchCall(key, &SyncImpl::registerFd, fd, interest, tag, mode);
         }
 
@@ -557,6 +565,8 @@ namespace Pistache::Aio
                                Polling::NotifyOn interest, Polling::Tag tag,
                                Polling::Mode mode = Polling::Mode::Level) override
         {
+            PS_TIMEDBG_START_THIS;
+            
             dispatchCall(key, &SyncImpl::registerFdOneShot, fd, interest, tag, mode);
         }
 
@@ -564,12 +574,14 @@ namespace Pistache::Aio
                       Polling::Tag tag,
                       Polling::Mode mode = Polling::Mode::Level) override
         {
+            PS_TIMEDBG_START_THIS;
+            
             dispatchCall(key, &SyncImpl::modifyFd, fd, interest, tag, mode);
         }
 
         void removeFd(const Reactor::Key& key, Fd fd) override
         {
-            PS_TIMEDBG_START_ARGS("Reactor %p, Fd %" PIST_QUOTE(PS_FD_PRNTFCD),
+            PS_TIMEDBG_START_ARGS("this %p, Fd %" PIST_QUOTE(PS_FD_PRNTFCD),
                                   this, fd);
             dispatchCall(key, &SyncImpl::removeFd, fd);
         }
@@ -611,10 +623,22 @@ namespace Pistache::Aio
         template <typename Func, typename... Args>
         void dispatchCall(const Reactor::Key& key, Func func, Args&&... args) const
         {
+            PS_TIMEDBG_START_THIS;
+            PS_LOG_DEBUG_ARGS("workers_.size() %d", workers_.size());
+            
             auto decoded    = decodeKey(key);
             const auto& wrk = workers_.at(decoded.second);
 
             Reactor::Key originalKey(decoded.first);
+
+            // !!!! Remove - debugging only
+            PS_LOG_DEBUG_ARGS("whole key %llu, decoded.first %lu, "
+                              "decoded.second %lu, sync %p",
+                              (unsigned long long) key.data(),
+                              (unsigned long) decoded.first,
+                              (unsigned long) decoded.second,
+                              wrk->sync.get());
+
             CALL_MEMBER_FN(wrk->sync.get(), func)
             (originalKey, std::forward<Args>(args)...);
         }

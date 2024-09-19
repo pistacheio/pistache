@@ -363,6 +363,7 @@ typedef struct in_addr PST_IN_ADDR_T;
 #define PST_SOCK_ACCEPT pist_sock_accept
 #define PST_SOCK_CONNECT pist_sock_connect
 #define PST_SOCK_SEND pist_sock_send
+#define PST_SOCK_RECV pist_sock_recv
 
 // PST_POLLFD, PST_POLLFD_T + PST_NFDS_T defined in pist_sockfns.h for Windows
 #define PST_SOCK_POLL pist_sock_poll
@@ -376,6 +377,7 @@ typedef struct in_addr PST_IN_ADDR_T;
 #define PST_SOCK_ACCEPT ::accept
 #define PST_SOCK_CONNECT ::connect
 #define PST_SOCK_SEND ::send
+#define PST_SOCK_RECV ::recv
 
 #define PST_SOCK_POLL ::poll
 #define PST_POLLFD pollfd

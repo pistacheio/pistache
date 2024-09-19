@@ -550,4 +550,29 @@ PST_SSIZE_T pist_sock_send(em_socket_t em_sock, const void *buf,
 
 /* ------------------------------------------------------------------------- */
 
+// On success, returns the number of bytes received. On error, -1 is
+// returned and errno is set. Returns 0 if connection closed gracefully.
+PST_SSIZE_T pist_sock_recv(em_socket_t em_sock, void * buf, size_t len,
+                           int flags)
+{
+    PIST_SOCK_STARTUP_CHECK_RET_MINUS_1_ON_ERR;
+
+    SOCKET win_sock = get_win_socket_from_em_socket_t(em_sock);
+    if (win_sock == INVALID_SOCKET)
+    {
+        PS_LOG_DEBUG("Invalid Socket");
+        errno = EBADF;
+        return(-1);
+    }
+
+    int recv_res = ::recv(win_sock, (char *)buf, (int)len, flags);
+    
+    if (recv_res != SOCKET_ERROR)
+        return(recv_res); // success - ret number of bytes received
+
+    return(WSAGetLastErrorSetErrno());
+}
+
+/* ------------------------------------------------------------------------- */
+
 #endif // of ifdef _IS_WINDOWS

@@ -66,6 +66,11 @@ int pist_sock_connect(em_socket_t em_sock, const struct sockaddr *addr,
 PST_SSIZE_T pist_sock_send(em_socket_t sockfd, const void *buf,
                            size_t len, int flags);
 
+// On success, returns the number of bytes received. On error, -1 is
+// returned and errno is set. Returns 0 if connection closed gracefully.
+PST_SSIZE_T pist_sock_recv(em_socket_t em_sock, void * buf, size_t len,
+                           int flags);
+
 typedef struct PST_POLLFD
 {
     em_socket_t   fd;

@@ -659,15 +659,18 @@ namespace Pistache::Http::Experimental
             if (conn_fd == PS_FD_EMPTY)
                 break; // can happen if fd was closed meanwhile
 
-            const PST_SSIZE_T bytes = recv(GET_ACTUAL_FD(conn_fd),
-                                       buffer, Const::MaxBuffer, 0);
+            const PST_SSIZE_T bytes = PST_SOCK_RECV(GET_ACTUAL_FD(conn_fd),
+                                                  buffer, Const::MaxBuffer, 0);
             if (bytes == -1)
             {
                 if (errno != EAGAIN && errno != EWOULDBLOCK)
                 {
-                    char se_err[256+16];
-                    PST_STRERROR_R(errno, &se_err[0], 256);
-                    connection->handleError(&se_err[0]);
+                    char se_err[256 + 16];
+                    const char * err_msg = PST_STRERROR_R(errno,
+                                                          &se_err[0], 256);
+                    PS_LOG_DEBUG_ARGS("recv err, errno %d %s", errno, err_msg);
+
+                    connection->handleError(err_msg);
                 }
                 break;
             }
