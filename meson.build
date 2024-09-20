@@ -148,6 +148,14 @@ if host_machine.system().endswith('bsd')
         deps_libpistache += libexecinfo_dep
 endif
 
+# libdl may be required for function dladdr, used in logStackTrace,
+# which is called by PS_LogWoBreak, used in turn by the stack-trace
+# logging macro PS_LOG_WO_BREAK_LIMITED and its derivatives. Issue
+# #1230.
+# Note: If 'dl' is not available, per Meson it suggests that the
+# functionality is provided by libc
+deps_libpistache += dependency('dl', required: false)
+
 version_array = []
 if meson.version().version_compare('>=0.57.0')
 	version_array = fs.read('version.txt').strip().split('.')
