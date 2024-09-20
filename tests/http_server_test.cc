@@ -1023,22 +1023,77 @@ TEST(http_server_test, client_request_timeout_on_delay_in_request_line_send_rais
     const std::string reqStr { "GET /ping HTTP/1.1\r\n" };
     TcpClient client;
     EXPECT_TRUE(client.connect(Pistache::Address("localhost", port))) << client.lastError();
+
+    char recvBuf[1024] = {
+        0,
+    };
+    size_t bytes = 0;
+    bool cli_rx_res = false;
+
     for (size_t i = 0; i < reqStr.size(); ++i)
     {
         if (!client.send(reqStr.substr(i, 1)))
         {
             break;
         }
+
+        // This code sends a request from client to server one character at
+        // a time, with delays between characters. Eventually the server
+        // gets bored of waiting for a fully formed request (i.e. times
+        // out), sends an HTTP error response, and closes the connection
+        // (does CLOSE_FD). Once the server has closed the connection, the
+        // next client.send (see above) will fail.
+        //
+        // In Linux, we can then do "poll" and read the server's
+        // HTTP response at the client.
+        //
+        // However, in Windows once the connection has been closed an
+        // attempt to do a read on the socket will result in an
+        // ECONNABORTED error. This is because, in Windows, the failing
+        // send has error WSAECONNABORTED, and then any further call on the
+        // client socket, other than close, will generate an additional
+        // ECONNABORTED error (see // https://learn.microsoft.com/
+        //              en-us/windows/win32/api/winsock2/nf-winsock2-send).
+        //
+        // At the level of the "poll" call, after the send has failed, in
+        // Linux the poll revents flags are POLLIN | POLLHUP (read
+        // available | connection hung-up); but in Windows they are POLLERR
+        // | POLLHUP (connection error | connection hung-up).
+        //
+        // To workaround this, in Windows we will attempt a receive after
+        // each send, and we'll expect the attempt at receive that follows
+        // the last successful send to read back the server's timeout error
+        // message. Then we check that the correct HTTP message has been
+        // returned.
+#ifdef _WIN32
+        bool this_cli_rx_res =
+            client.receive(recvBuf, sizeof(recvBuf),
+                           &bytes, std::chrono::milliseconds(300));
+        PS_LOG_DEBUG_ARGS("i = %u, client.receive %s%s", i,
+                          (this_cli_rx_res ? "succeeded" : "failed, "),
+                          (this_cli_rx_res ? "" : client.lastError().c_str()));
+        cli_rx_res |= this_cli_rx_res;
+        // Note: We expect the succeeding receive to be either the last, or
+        // the last-but-one
+#else
         std::this_thread::sleep_for(std::chrono::milliseconds(300));
+#endif
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
     }
 
-    EXPECT_EQ(client.lastErrno(), EPIPE) << "Errno: " << client.lastErrno();
+#ifdef _WIN32
+    if (client.lastErrno() == ECONNABORTED)
+        EXPECT_EQ(client.lastErrno(), ECONNABORTED) << "Errno: " << client.lastErrno();
+    else
+#endif
+        EXPECT_EQ(client.lastErrno(), EPIPE) << "Errno: " << client.lastErrno();
 
-    char recvBuf[1024] = {
-        0,
-    };
-    size_t bytes;
-    EXPECT_TRUE(client.receive(recvBuf, sizeof(recvBuf), &bytes, std::chrono::seconds(5))) << client.lastError();
+#ifndef _WIN32
+    cli_rx_res = client.receive(recvBuf, sizeof(recvBuf),
+                                &bytes, std::chrono::seconds(5));
+#endif
+    EXPECT_TRUE(cli_rx_res) << client.lastError();
     EXPECT_EQ(0, strncmp(recvBuf, ExpectedResponseLine, strlen(ExpectedResponseLine)));
 
     server.shutdown();

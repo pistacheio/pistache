@@ -119,7 +119,7 @@ namespace Pistache::Tcp
 
         if (!isInRightThread)
         {
-            PS_LOG_DEBUG_ARGS("Pushing to peersQueue");
+            PS_LOG_DEBUG("Pushing to peersQueue");
             
             PeerEntry entry(peer);
             peersQueue.push(std::move(entry));
