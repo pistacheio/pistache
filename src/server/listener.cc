@@ -956,8 +956,6 @@ namespace Pistache::Tcp
 
         em_socket_t input_for_idx = actual_fd;
         #ifdef _IS_WINDOWS
-        // !!!!!!!! Do something smarter than this
-        // 
         // actual_fd in Windows seems to be a multiple of 4, so we'll miss a
         // bunch of handlers if we just do "idx = actual_fd %
         // handlers.size()". For instance, if handlers.size() is 4, idx will
