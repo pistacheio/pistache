@@ -41,8 +41,6 @@ using namespace std::chrono_literals;
 #include <Windows.h> // for fileapi.h
 #include <fileapi.h> // for GetTempPathA
 #include <random>
-
-#include "helpers/win_fork_ish.h"
 #endif
 
 class SocketWrapper
@@ -436,20 +434,10 @@ public:
         return listener;
     }
 
-    bool is_child_process(
-#ifdef _WIN32
-        int win_fork_res
-#else
-        pid_t id
-#endif
-        )
+    bool is_child_process(pid_t id)
     {
-#ifdef _WIN32
-        return(win_fork_res == 1);
-#else
         constexpr auto fork_child_pid = 0;
         return id == fork_child_pid;
-#endif
     }
 
     /*
@@ -460,19 +448,7 @@ public:
     {
         PS_TIMEDBG_START;
 
-#ifdef _IS_WINDOWS
-        HANDLE process_handle = 0;
-        HANDLE thread_handle = 0;
-        int fork_res = pist_simple_create_user_process(
-            &process_handle, &thread_handle, true); // true => inherit handles
-        if (fork_res < 0)
-        {
-            std::cerr << "pist_simple_create_user_process failed";
-            return;
-        }
-#else
         pid_t fork_res = fork();
-#endif
         if (is_child_process(fork_res))
         {
             PS_TIMEDBG_START;
@@ -490,14 +466,10 @@ public:
             exit(0);
         }
 
-#ifdef _IS_WINDOWS
-        DWORD wait_res = WaitForSingleObject(process_handle, INFINITE);
-        ASSERT_NE(WAIT_FAILED, wait_res);
-#else
         int status = 0;
         wait(&status);
         ASSERT_EQ(0, status);
-#endif
+
         // wait 100 ms, so socket gets a chance to be closed
         std::this_thread::sleep_for(100ms);
     }
