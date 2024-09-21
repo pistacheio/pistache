@@ -257,7 +257,29 @@ TEST(rest_server_test, keepalive_multithread_client_request)
             std::this_thread::sleep_for(KEEPALIVE_TIMEOUT + std::chrono::milliseconds(700));
         }));
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(700));
+    // @Sept/2024. Based on behavior seen in Windows, changed this timeout from
+    // 700ms to 3500ms.
+    //
+    // The longer timeout is required due to the behavior of httplib.h
+    // client.Get. In overview, httplib.h loops through the client addr it
+    // finds, issuing a "connect" for each addr in series. Following each
+    // "connect", it calls wait_until_socket_is_ready, which uses "select" with
+    // a 300ms timeout to get a result for the connect. Now, suppose there
+    // were 10 addr that failed select based on the timeout, it would take
+    // 3000ms until finally connect was issued on the addr that works.
+    //
+    // On the server side, the peer cannot be created until the "connect" is
+    // received. So if the sleep_for below were 700ms, there would still be
+    // zero server-side peers once the sleep_for completes, causing:
+    //   EXPECT_EQ(peer.size(), THR_NUMBER)
+    // to fail below.
+    //
+    // In practice, we saw ~2200ms delay before the socket connected
+    // successfully - Windows 11 running in a VM. So in Windows, this test
+    // would fail with a 700ms sleep_for, but succeed with 3500ms.
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(3500));
+    
     auto peer = stats.getAllPeer();
     EXPECT_EQ(peer.size(), THR_NUMBER);
 
