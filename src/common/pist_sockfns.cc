@@ -313,6 +313,28 @@ WsaStartupAndCleanup::~WsaStartupAndCleanup()
 
     
 
+/* ------------------------------------------------------------------------- */
+
+// Returns 0 for success. On fail, rets -1, and errno is set
+int pist_sock_getsockname(em_socket_t em_sock,
+                          struct sockaddr *addr, PST_SOCKLEN_T *addrlen)
+{
+    PIST_SOCK_STARTUP_CHECK_RET_MINUS_1_ON_ERR;
+
+    SOCKET win_sock = get_win_socket_from_em_socket_t(em_sock);
+    if (win_sock == INVALID_SOCKET)
+    {
+        PS_LOG_DEBUG("Invalid Socket");
+        errno = EBADF;
+        return(-1);
+    }
+
+    int getsockname_res = ::getsockname(win_sock, addr, addrlen);
+    if (getsockname_res == 0)
+        return(0); // success
+
+    return(WSAGetLastErrorSetErrno());
+}
 
 /* ------------------------------------------------------------------------- */
 

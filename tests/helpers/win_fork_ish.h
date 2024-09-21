@@ -17,7 +17,8 @@ typedef void * HANDLE; // as per WinNT.h
 // Returns 0 if parent process, 1 if child process, and -1 on error in which
 // case errno is set
 int pist_simple_create_user_process(HANDLE * processHandle,
-                                    HANDLE * threadHandle);
+                                    HANDLE * threadHandle,
+                                    bool inheritHandles);
 
 /* ------------------------------------------------------------------------- */
 

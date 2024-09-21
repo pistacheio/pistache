@@ -66,7 +66,7 @@ public:
         socklen_t len = sizeof(sin);
 
         uint16_t port = 0;
-        if (getsockname(fd_, reinterpret_cast<struct sockaddr*>(&sin), &len) == -1)
+        if (PST_SOCK_GETSOCKNAME(fd_, reinterpret_cast<struct sockaddr*>(&sin), &len) == -1)
         {
             perror("getsockname");
         }
@@ -115,6 +115,7 @@ SocketWrapper bind_free_port_helper(int ai_family)
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags    = AI_PASSIVE; // use my IP
 
+    PST_SOCK_STARTUP_CHECK;
     if ((rv = getaddrinfo(nullptr, "0", &hints, &servinfo)) != 0)
     {
         if (ai_family == AF_UNSPEC)
@@ -297,6 +298,11 @@ TEST(listener_test, listener_bind_port_not_free_throw_runtime)
         {
             flag = 1;
         }
+        // MSVS
+        if (strncmp(err.what(), "address in use", sizeof("address in use")) == 0)
+        {
+            flag = 1;
+        }
         ASSERT_EQ(flag, 1);
     }
     catch (...)
@@ -402,6 +408,16 @@ TEST(listener_test, listener_bind_unix_domain)
     (void)PST_RMDIR(tmpDir);
 }
 
+#ifndef _WIN32
+// CLOEXEC doesn't exist on Windows, and forking is a lower-level system not
+// exposed to the user with documented APIs, so these are not really meaningful
+// Windows tests
+// 
+// For more inform on the not-officially-documented Windows forking
+// capabilities, see:
+//   https://github.com/huntandhackett/process-cloning
+//   https://captmeelo.com/redteam/maldev/2022/05/10/ntcreateuserprocess.html
+
 class CloseOnExecTest : public testing::Test
 {
 public:
@@ -445,10 +461,10 @@ public:
         PS_TIMEDBG_START;
 
 #ifdef _IS_WINDOWS
-        HANDLE process_handle;
-        HANDLE thread_handle;
+        HANDLE process_handle = 0;
+        HANDLE thread_handle = 0;
         int fork_res = pist_simple_create_user_process(
-            &process_handle, &thread_handle);
+            &process_handle, &thread_handle, true); // true => inherit handles
         if (fork_res < 0)
         {
             std::cerr << "pist_simple_create_user_process failed";
@@ -522,3 +538,5 @@ TEST_F(CloseOnExecTest, socket_leaked)
         },
         std::runtime_error);
 }
+
+#endif // of ifndef _WIN32

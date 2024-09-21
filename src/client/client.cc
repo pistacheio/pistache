@@ -757,7 +757,7 @@ namespace Pistache::Http::Experimental
                 .then(
                     [=]() {
                         socklen_t len = sizeof(saddr);
-                        getsockname(sfd, reinterpret_cast<struct sockaddr*>(&saddr), &len);
+                        PST_SOCK_GETSOCKNAME(sfd, reinterpret_cast<struct sockaddr*>(&saddr), &len);
                         connectionState_.store(Connected);
                         processRequestQueue();
                     },

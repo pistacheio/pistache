@@ -499,7 +499,7 @@ namespace Pistache::Tcp
         socklen_t addrlen                 = sizeof(sock_addr);
         auto* sock_addr_alias             = reinterpret_cast<struct sockaddr*>(&sock_addr);
 
-        if (-1 == getsockname(GET_ACTUAL_FD(listen_fd), sock_addr_alias, &addrlen))
+        if (-1 == PST_SOCK_GETSOCKNAME(GET_ACTUAL_FD(listen_fd), sock_addr_alias, &addrlen))
         {
             return Port();
         }

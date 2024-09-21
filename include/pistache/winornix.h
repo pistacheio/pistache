@@ -347,6 +347,9 @@ typedef struct in_addr PST_IN_ADDR_T;
 // Returns 0 on success, or -1 on failure with errno set.
 #define PST_SOCK_STARTUP_CHECK pist_sock_startup_check()
 
+#define PST_SOCK_GETSOCKNAME pist_sock_getsockname
+#define PST_SOCKLEN_T int
+
 #define PST_SOCK_CLOSE pist_sock_close
 // Note - Windows use "unsigned int" for count, whereas Linux uses size_t. In
 // general we use size_t for count in Pistache, hence why we cast here
@@ -369,6 +372,9 @@ typedef struct in_addr PST_IN_ADDR_T;
 #define PST_SOCK_POLL pist_sock_poll
 
 #else
+#define PST_SOCK_GETSOCKNAME ::getsockname
+#define PST_SOCKLEN_T socklen_t
+
 #define PST_SOCK_CLOSE ::close
 #define PST_SOCK_READ ::read
 #define PST_SOCK_WRITE ::write

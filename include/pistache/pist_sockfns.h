@@ -34,7 +34,11 @@
 // Returns 0 on success, or -1 on failure with errno set.
 int pist_sock_startup_check();
 
-// pist_sock_close fns ret 0 for success. On fail, ret -1, and errno is set
+// Returns 0 for success. On fail, rets -1, and errno is set
+int pist_sock_getsockname(em_socket_t em_sock,
+                          struct sockaddr *addr, PST_SOCKLEN_T *addrlen);
+
+// pist_sock_close rets 0 for success. On fail, ret -1, and errno is set
 int pist_sock_close(em_socket_t em_sock);
 
 // On success, returns number of bytes read (zero meaning the connection has
