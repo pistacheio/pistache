@@ -116,6 +116,29 @@ TEST(https_server_test, first_curl_global_init)
     ASSERT_EQ(res, CURLE_OK);
 }
 
+#ifdef _WIN32
+// CURLSSLOPT_REVOKE_BEST_EFFORT tells libcurl to ignore certificate revocation
+// checks in case of missing or offline distribution points for those SSL
+// backends where such behavior is present. This option is only supported for
+// Schannel (the native Windows SSL library). Setting this option eliminates
+// the stderr "schannel: CertGetCertificateChain trust error
+// CERT_TRUST_REVOCATION_STATUS_UNKNOWN" message, and makes the following tests
+// work in Windows which otherwise failed:
+//   https_server_test.basic_tls_request
+//   https_server_test.basic_tls_request_with_chained_server_cert
+//   https_server_test.basic_tls_request_with_servefile 
+//   https_server_test.basic_tls_request_with_password_cert
+
+#define CSO_WIN_REVOKE_BEST_EFFORT                                      \
+  {                                                                     \
+    CURLcode set_ssl_opts_res = curl_easy_setopt(                       \
+        curl, CURLOPT_SSL_OPTIONS, CURLSSLOPT_REVOKE_BEST_EFFORT);      \
+    ASSERT_EQ(set_ssl_opts_res, CURLE_OK);                              \
+  }
+#else
+#define CSO_WIN_REVOKE_BEST_EFFORT
+#endif
+
 TEST(https_server_test, basic_tls_request)
 {
     Http::Endpoint server(Address("localhost", Pistache::Port(0)));
@@ -140,7 +163,8 @@ TEST(https_server_test, basic_tls_request)
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
-
+    CSO_WIN_REVOKE_BEST_EFFORT;
+    
     // Skip hostname check
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 
@@ -185,7 +209,8 @@ TEST(https_server_test, basic_tls_request_with_chained_server_cert)
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
-
+    CSO_WIN_REVOKE_BEST_EFFORT;
+    
     /* Skip hostname check */
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 
@@ -227,6 +252,7 @@ TEST(https_server_test, basic_tls_request_with_auth)
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
+    CSO_WIN_REVOKE_BEST_EFFORT;
 
     /* Skip hostname check */
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
@@ -267,6 +293,7 @@ TEST(https_server_test, basic_tls_request_with_auth_no_client_cert)
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
+    CSO_WIN_REVOKE_BEST_EFFORT;
 
     /* Skip hostname check */
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
@@ -308,6 +335,7 @@ TEST(https_server_test, basic_tls_request_with_auth_client_cert_not_signed)
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
+    CSO_WIN_REVOKE_BEST_EFFORT;
 
     /* Skip hostname check */
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
@@ -359,6 +387,7 @@ TEST(https_server_test, basic_tls_request_with_auth_with_cb)
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
+    CSO_WIN_REVOKE_BEST_EFFORT;
 
     /* Skip hostname check */
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
@@ -403,6 +432,8 @@ TEST(https_server_test, basic_tls_request_with_servefile)
     std::array<char, CURL_ERROR_SIZE> errorstring;
     curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errorstring.data());
     // curl_easy_setopt(curl, CURLOPT_VERBOSE, true);
+
+    CSO_WIN_REVOKE_BEST_EFFORT;
 
     /* Skip hostname check */
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
@@ -450,6 +481,7 @@ TEST(https_server_test, basic_tls_request_with_password_cert)
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
+    CSO_WIN_REVOKE_BEST_EFFORT;
 
     /* Skip hostname check */
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
