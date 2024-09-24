@@ -166,6 +166,9 @@ if host_machine.system() == 'windows'
     libpistache_links_args += '/DEF:src/pistache.def'
     libpistache_links_args += '/IGNORE:4102'
 
+    # Take DLL library name from the linker cmd line, not from .def/.exp file
+    # Alternately, could fix this in dump2def (LIBRARY statement)
+    libpistache_links_args += '/IGNORE:4070' 
 
 endif
 

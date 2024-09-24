@@ -17,9 +17,7 @@
 
 #include <algorithm>
 
-#include <windows.h>
-#include <errhandlingapi.h> // getLastError
-#include <stringapiset.h> // MultiByteToWideChar
+#include <filesystem> // for path.stem()
 
 typedef std::set<std::wstring> SymbolMap;
 
@@ -138,65 +136,10 @@ int main(int argc, char* argv[])
 
     try
     {
-        // If we wanted to make the .def file a wchar_t file, we'd use
-        // std::wofstream here; prefix static strings to be output with "L";
-        // output name_ws rather than name; and output each symbol without
-        // converting to symbol_ns.
-        
         std::wofstream outfile(opts[2].c_str());
 
-        // Library name
-        std::string name = opts[2];
-        std::string::size_type pos = name.find_last_of(".");
-
-        if (pos != std::string::npos)
-            name.erase(pos);
-
-        #define name_wc_buf_size_in_wc 4096
-        wchar_t name_wcs[name_wc_buf_size_in_wc+16];
-        
-        int mbtwc_res = MultiByteToWideChar(CP_UTF8,
-                                         MB_ERR_INVALID_CHARS, // fail on inval
-                                         name.c_str(),
-                                         -1, // name len => null-terminated
-                                         &(name_wcs[0]),
-                                         name_wc_buf_size_in_wc);
-        if (mbtwc_res <= 0)
-        {
-            std::cerr << "Error: MultiByteToWideChar failure converting "
-                      << name << std::endl;
-            auto last_err = GetLastError();
-            
-            const char * errmsg = "unexpected error code";
-            switch(last_err)
-            {
-            case ERROR_INSUFFICIENT_BUFFER:
-                errmsg = "insufficient buffer";
-                break;
-
-            case ERROR_INVALID_FLAGS:
-                errmsg = "invalid flags";
-                break;
-
-            case ERROR_INVALID_PARAMETER:
-                errmsg = "invalid parameter";
-                break;
-
-            case ERROR_NO_UNICODE_TRANSLATION:
-                errmsg = "no unicode translation";
-                break;
-
-            default:
-                break;
-            }
-
-            std::cerr << "       error code " <<  last_err <<
-                " (" << errmsg << ")" << std::endl;
-
-            PrintHelpAndExit(1);
-        }
-        
-        std::wstring name_ws(&(name_wcs[0]));
+        std::filesystem::path name_stem(std::filesystem::path(opts[2]).stem());
+        const std::wstring name_ws(name_stem.native());
 
         outfile << L"LIBRARY " << name_ws << std::endl;
         outfile << L"EXPORTS" << std::endl;
