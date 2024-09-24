@@ -67,7 +67,10 @@ em_socket_t pist_sock_accept(em_socket_t em_sock, struct sockaddr *addr,
 int pist_sock_connect(em_socket_t em_sock, const struct sockaddr *addr,
                       PST_SOCKLEN_T addrlen);
 
-PST_SSIZE_T pist_sock_send(em_socket_t sockfd, const void *buf,
+// On success, returns 0. On failure, -1 is returned and errno is set.
+int pist_sock_listen(em_socket_t em_sock, int backlog);
+
+PST_SSIZE_T pist_sock_send(em_socket_t em_sock, const void *buf,
                            size_t len, int flags);
 
 // On success, returns the number of bytes received. On error, -1 is

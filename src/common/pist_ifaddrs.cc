@@ -226,8 +226,7 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
                 }
 
                 PS_STRLCPY(this_ifaddrs.ifa_name,
-                           adap_addr->AdapterName, name_len);
-                this_ifaddrs.ifa_name[name_len] = 0;
+                           adap_addr->AdapterName, name_len+1);
             }
 
             this_ifaddrs.ifa_flags = adap_flags;

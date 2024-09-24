@@ -23,6 +23,15 @@ using namespace Pistache;
  * directory.
  */
 
+/* Sept/2024: In Windows, if basic_tls_request_with_auth and
+ * basic_tls_request_with_auth_with_cb fail, you may need to uninstall the
+ * default (schannel) libcurl, and install the openssl one instead:
+ *   vcpkg remove curl
+ *   vcpkg install curl[openssl]
+ *
+ * See https://github.com/openssl/openssl/issues/25520 for more details
+ */
+
 static size_t write_cb(void* contents, size_t size, size_t nmemb, void* userp)
 {
     (static_cast<std::string*>(userp))->append(static_cast<char*>(contents), size * nmemb);

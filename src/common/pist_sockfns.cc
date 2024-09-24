@@ -502,6 +502,29 @@ int pist_sock_connect(em_socket_t em_sock, const struct sockaddr *addr,
 
 /* ------------------------------------------------------------------------- */
 
+// On success, returns 0. On failure, -1 is returned and errno is set.
+int pist_sock_listen(em_socket_t em_sock, int backlog)
+{
+    PIST_SOCK_STARTUP_CHECK_RET_MINUS_1_ON_ERR;
+
+    SOCKET win_sock = get_win_socket_from_em_socket_t(em_sock);
+    if (win_sock == INVALID_SOCKET)
+    {
+        PS_LOG_DEBUG("Invalid Socket");
+        errno = EBADF;
+        return(-1);
+    }
+
+    SOCKET listen_res = ::listen(win_sock, backlog);
+
+    if (listen_res != INVALID_SOCKET)
+        return(0); // success
+
+    return(WSAGetLastErrorSetErrno());
+}
+
+/* ------------------------------------------------------------------------- */
+
 // On success, returns a nonnegative value which is the number of elements in
 // the pollfds whose revents fields have been set to a non‐ zero value
 // (indicating an event or an error).  A return value of zero indicates that

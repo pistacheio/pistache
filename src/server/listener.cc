@@ -372,7 +372,7 @@ namespace Pistache::Tcp
 
         LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(actual_fd);
 
-        TRY(::listen(actual_fd, backlog_));
+        TRY(PST_SOCK_LISTEN(actual_fd, backlog_));
 
         LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(actual_fd);
 

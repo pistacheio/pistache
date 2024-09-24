@@ -117,6 +117,9 @@ if host_machine.system() == 'windows'
 endif
 
 if host_machine.system() == 'windows'
+    dump2def_subproj = subproject('dump2def')
+    my_dump2def_exe = dump2def_subproj.get_variable('dump2def_exe')
+
     libpistache_static = static_library(
 	'pistache',
 	sources: pistache_common_src + pistache_server_src + pistache_client_src + pistache_extra_src,
@@ -128,7 +131,6 @@ if host_machine.system() == 'windows'
 )
 
     dumpbin_prog = find_program('dumpbin.exe')
-    dump2def_prog = find_program('dump2def.exe')
     lib_prog = find_program('lib.exe')
 
     gen_src_dump = custom_target('gen-pistachedump',
@@ -140,8 +142,8 @@ if host_machine.system() == 'windows'
     gen_src_def = custom_target('gen-pistachedef',
                              # input: ['pistache.dump'],
                              output: ['pistache.def'],
-                             command: [dump2def_prog, 'src/pistache.dump', '@OUTPUT0@'],
-                             depends: [gen_src_dump])
+                             command: [my_dump2def_exe, 'src/pistache.dump', '@OUTPUT0@'],
+                             depends: [gen_src_dump, my_dump2def_exe])
 
     # It is possible to invoke lib.exe to explicitly create the import
     # library, pistache.lib, as per below. However, this is

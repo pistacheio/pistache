@@ -365,6 +365,7 @@ typedef struct in_addr PST_IN_ADDR_T;
     pist_sock_bind(__sockfd, __addr, (PST_SOCKLEN_T) __addrlen)
 #define PST_SOCK_ACCEPT pist_sock_accept
 #define PST_SOCK_CONNECT pist_sock_connect
+#define PST_SOCK_LISTEN pist_sock_listen
 #define PST_SOCK_SEND pist_sock_send
 #define PST_SOCK_RECV pist_sock_recv
 
@@ -382,6 +383,7 @@ typedef struct in_addr PST_IN_ADDR_T;
 #define PST_SOCK_BIND ::bind
 #define PST_SOCK_ACCEPT ::accept
 #define PST_SOCK_CONNECT ::connect
+#define PST_SOCK_LISTEN ::listen
 #define PST_SOCK_SEND ::send
 #define PST_SOCK_RECV ::recv
 
