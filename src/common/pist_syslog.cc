@@ -79,7 +79,7 @@
 #elif defined _IS_WINDOWS
   #include <windows.h> // needed for PST_THREAD_HDR (processthreadsapi.h)
   #include <evntprov.h>
-  #include <pistache/pist_winlog.h>
+#include "pist_winlog.h" // generated header file
 #else
   #include <syslog.h>
 #endif

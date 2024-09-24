@@ -84,39 +84,85 @@ libpistache_links_args = []
 pistache_extra_src = []
 
 if host_machine.system() == 'windows'
+
+    # Here we are a taking a Windows "manifest" file
+    # (pist_winlog.man), an XML file that defines the logging objects to be
+    # used by Pistache in Windows, and using it to generate:
+    #    1) pist_winlog.h, C hdr included by Pistache logging code
+    #    2) pist_winlog.res, Windows resource file linked with pistache.dll
+    #    3) pistachelog.dll, DLL used during logging
+    #   (we also generate pist_winlog.rc, a purely intermediate file)
+    #
+    # The causal chain that generates thsoe files is:
+    #   pist_winlog.man
+    #         |
+    #      *mc.exe*
+    #         |
+    #         pist_winlog.rc + pist_winlog.h
+    #               |
+    #            *rc.exe*
+    #               |
+    #               pist_winlog.res
+    #                     |
+    #                   *link*
+    #                     |
+    #                     pistachelog.dll
+    #   mc.exe and rc.exe being utilities provided by Windows
+    
     mc_prog = find_program('mc.exe')
     rc_prog = find_program('rc.exe')
-    link_prog = find_program('link.exe')
-    
-    gen_src_log_rc_ct = custom_target('gen-log-rc',
-                             input: ['winlog'/'pist_winlog.man'],
-                             output: ['pist_winlog.rc', 'pist_winlog.h'],
-                             command: [mc_prog, '-um', '-h', '@SOURCE_ROOT@/include/pistache/', '-r', '@BUILD_ROOT@/src', '@INPUT@'])
+
+    gen_src_log_rc_ct = custom_target(
+      'gen-log-rc',
+      input: ['winlog'/'pist_winlog.man'],
+      output: ['pist_winlog.rc', 'pist_winlog.h'],
+      command: [mc_prog, '-um', '-h', '@OUTDIR@', '-r', '@OUTDIR@', '@INPUT@']
+    )
 
     gen_src_log_res_ct = custom_target('gen-log-res',
-                             # input: ['pist_winlog.rc'],
+                             input: [gen_src_log_rc_ct[0]], # pist_winlog.rc
                              output: ['pist_winlog.res'],
-                             command: [rc_prog, 'src/pist_winlog.rc'],
-                             depends: gen_src_log_rc_ct)
+                             command: [rc_prog, '@INPUT@'])
 
-    # Note - we use output: "pistachelog.dum" here because if we use
-    # "pistachelog.dll" meson decides that the dll can be linked
-    # against the library, and includes it on the library link
-    # path. But in fact, DLLs cannot be linked with libraries (static
-    # or dynamic) in Windows, nor with executables - for that the
-    # corresponding import library (.lib) must be used.
-    gen_src_log_dll_ct = custom_target('gen-log-dll',
-                             # input: ['pist_winlog.res'],
-                             output: ['pistachelog.dum'],
-                             command: [link_prog, '/dll', '/noentry', '/machine:x64', 'src/pist_winlog.res', '/OUT:src/pistachelog.dll'],
-                             depends: gen_src_log_res_ct)
+    win_log_dll = shared_library(
+        'pistachelog',
+        sources: [gen_src_log_res_ct],
+        link_args: ['/noentry'],
+        install: true # pistachelog.dll's location is hardcoded in logging
+                      # manifest (.man) file, so we kind of have to
+                      # install it in that location if we're going to
+                      # use it
+    )
 
-    pistache_extra_src += gen_src_log_rc_ct
-    pistache_extra_src += gen_src_log_res_ct
-    pistache_extra_src += gen_src_log_dll_ct
+    pistache_extra_src += gen_src_log_rc_ct[1] # for pist_winlog.h
 endif
 
 if host_machine.system() == 'windows'
+
+    # In order for other programs to use pistache.dll, we need to
+    # provide a pistache import library, pistache.lib, which provides
+    # the pistache symbols that the pistache.dll-using-code can access.
+    #
+    # In Windows, unlike in Linux, a symbol is not exported from a
+    # shared library (dll) unless explicitly defined to be an
+    # export. This can be done either by adding __declspec(dllexport)
+    # to each exported symbol in the C++ source, or by providing a
+    # .def file that lists all the exported symbols. However, we don't
+    # want to have to decorated the source code with
+    # __declspec(dllexport) everywhere, nor do we want to maintain the
+    # .def file manually, so we automate the creation of the .def file
+    # as follows.
+    #
+    #   1/ Generate the pistache library in static-library form.
+    #   2/ Use Window's dumpbin.exe to list all pistache's public symbols
+    #   3/ Use dump2def.exe to turn the dumpbin output into a pistache.def file
+    #   (dump2def is our own utility that we have made a Pistache subproject)
+    #   4/ Link in pistache.def when linking pistache.dll
+    #   5/ Provide pistache.def as a dependency to pistache.dll-using code
+    #
+    # This means that every public symbol in pistache.dll is exported,
+    # just like pistache.so under linux
+
     dump2def_subproj = subproject('dump2def')
     my_dump2def_exe = dump2def_subproj.get_variable('dump2def_exe')
 
@@ -128,37 +174,21 @@ if host_machine.system() == 'windows'
 	dependencies: deps_libpistache,
 	install: false, # Could do get_option('PISTACHE_INSTALL') if preferred
 	pic: get_option('b_staticpic')
-)
+    )
 
     dumpbin_prog = find_program('dumpbin.exe')
-    lib_prog = find_program('lib.exe')
 
     gen_src_dump = custom_target('gen-pistachedump',
-                             # input: ['libpistache.a'],
+                             input: [libpistache_static], # src/libpistache.a
                              output: ['pistache.dump'],
-                             command: [dumpbin_prog, '/LINKERMEMBER', 'src/libpistache.a', '/OUT:@OUTPUT0@'],
+                             command: [dumpbin_prog, '/LINKERMEMBER', '@INPUT@', '/OUT:@OUTPUT0@'], 
                              depends: [libpistache_static])
 
     gen_src_def = custom_target('gen-pistachedef',
-                             # input: ['pistache.dump'],
+                             input: [gen_src_dump], # src/pistache.dump
                              output: ['pistache.def'],
-                             command: [my_dump2def_exe, 'src/pistache.dump', '@OUTPUT0@'],
+                             command: [my_dump2def_exe, '@INPUT@', '@OUTPUT0@'],
                              depends: [gen_src_dump, my_dump2def_exe])
-
-    # It is possible to invoke lib.exe to explicitly create the import
-    # library, pistache.lib, as per below. However, this is
-    # unnecessary - linking the DLL actually generates pistache.lib
-    # as a side effect, and meson adds 'src/pistache.lib' to the list
-    # of libs linked with test and example programs without us
-    # explicitly defining a dependency for pistache.lib.
-    #
-    # pistache_dll_import_lib_ct = custom_target('gen-pistachelib',
-    #                          # input: ['pistache.def'],
-    #                          output: ['pistache.lib'],
-    #                          command: [lib_prog, '/IGNORE:4102', '/DEF:src/pistache.def', '/OUT:@OUTPUT0@'],
-    #                          depends: [gen_src_def])
-    # import_lib_dep = declare_dependency(sources: [pistache_dll_import_lib_ct])
-    # libpistache_gen_cts += pistache_dll_import_lib_ct
 
     gen_src_def_dep = declare_dependency(sources: [gen_src_def])
     deps_libpistache += gen_src_def_dep # DLL is dependent on .def file
