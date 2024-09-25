@@ -12,13 +12,16 @@
 
     <instrumentation>
         <events>
-            <provider name="Pistache Provider"
+            <provider name="Pistache-Provider"
                 guid="{cb8de796-f9ba-4712-a13f-99bdf30e06aa}"
                 symbol="PISTACHE_GUID"
                 resourceFileName="C:\Program Files\pistache_distribution\pistachelog.dll"
                 messageFileName="C:\Program Files\pistache_distribution\pistachelog.dll"
                 message="$(string.Provider.Name)">
                 <channels>
+                    <importChannel
+                             chid="cadminbltin"
+                             name="Application"/>
                     <channel chid="cadmin"
                              name="Pistache-BaseProvider/Admin"
                              symbol="CHAN_PSTCHPROVIDER_ADMIN"
@@ -48,25 +51,11 @@
                 <!--Winmeta.xml has predefined opcodes, including win:Info"-->
                 <!--Winmeta.xml has predefined keywords e.g. win:AnyKeyword"-->
                 <!--Filters are optional-->
-                <maps>
-                    <valueMap name="PistLogLevel">
-                        <map value="0" message="$(string.PistLogLevel.EMERG)"/>
-                        <map value="1" message="$(string.PistLogLevel.ALERT)"/>
-                        <map value="2" message="$(string.PistLogLevel.CRIT)"/>
-                        <map value="3" message="$(string.PistLogLevel.ERR)"/>
-                        <map value="4" message="$(string.PistLogLevel.WARNING)"/>
-                        <map value="5" message="$(string.PistLogLevel.NOTICE)"/>
-                        <map value="6" message="$(string.PistLogLevel.INFO)"/>
-                        <map value="7" message="$(string.PistLogLevel.DEBUG)"/>
-                    </valueMap>
-                </maps>                
                 <templates>
                     <template tid="t2">
-                        <data name="PistLogLevel" inType="win:UnicodeString"/>
                         <data name="Msg" inType="win:UnicodeString"/>
                     </template>
                     <template tid="t3">
-                        <data name="PistLogLevel" inType="win:UnicodeString"/>
                         <data name="File" inType="win:UnicodeString"/>
                         <data name="Line" inType="win:Int32"/>
                         <data name="Function" inType="win:UnicodeString"/>
@@ -137,6 +126,68 @@
                         channel="cadmin"
                         symbol="PSTCH_EMERG_NL"
                         message ="$(string.Event.PstchEmerg)"/>
+
+                    <!-- No event value="101" -->
+                    <!-- level="win:Verbose" cannot be used with -->
+                    <!-- cadminbltin channel -->
+                    
+                    <event value="102"
+                        level="win:Informational"
+                        task="PSTCH"
+                        template="t2"
+                        channel="cadminbltin"
+                        symbol="PSTCH_CBLTIN_INFO_NL"
+                        message ="$(string.Event.PstchInfo)"/>
+
+                    <event value="103"
+                        level="win:Informational"
+                        task="PSTCH"
+                        template="t2"
+                        channel="cadminbltin"
+                        symbol="PSTCH_CBLTIN_NOTICE_NL"
+                        message ="$(string.Event.PstchNotice)"/>
+
+                    <event value="104"
+                        level="win:Warning"
+                        task="PSTCH"
+                        template="t2"
+                        channel="cadminbltin"
+                        symbol="PSTCH_CBLTIN_WARNING_NL"
+                        message ="$(string.Event.PstchWarning)"/>
+
+                    <event value="105"
+                        level="win:Error"
+                        task="PSTCH"
+                        template="t2"
+                        channel="cadminbltin"
+                        symbol="PSTCH_CBLTIN_ERR_NL"
+                        message ="$(string.Event.PstchErr)"/>
+
+                    <event value="106"
+                        level="win:Critical"
+                        task="PSTCH"
+                        template="t2"
+                        channel="cadminbltin"
+                        symbol="PSTCH_CBLTIN_CRIT_NL"
+                        message ="$(string.Event.PstchCrit)"/>
+
+                    <event value="107"
+                        level="win:Critical"
+                        task="PSTCH"
+                        template="t2"
+                        channel="cadminbltin"
+                        symbol="PSTCH_CBLTIN_ALERT_NL"
+                        message ="$(string.Event.PstchAlert)"/>
+
+                    <event value="108"
+                        level="win:Critical"
+                        task="PSTCH"
+                        template="t2"
+                        channel="cadminbltin"
+                        symbol="PSTCH_CBLTIN_EMERG_NL"
+                        message ="$(string.Event.PstchEmerg)"/>
+
+
                 </events>
             </provider>
         </events>
@@ -147,14 +198,6 @@
             <stringTable>
                 <string id="Provider.Name" value="Pistache"/>
                 <string id="Task.PSTCH" value="PSTCH"/>
-                <string id="PistLogLevel.EMERG" value="EMERG"/>
-                <string id="PistLogLevel.ALERT" value="ALERT"/>
-                <string id="PistLogLevel.CRIT" value="CRIT"/>
-                <string id="PistLogLevel.ERR" value="ERR"/>
-                <string id="PistLogLevel.WARNING" value="WARNING"/>
-                <string id="PistLogLevel.NOTICE" value="NOTICE"/>
-                <string id="PistLogLevel.INFO" value="INFO"/>
-                <string id="PistLogLevel.DEBUG" value="DEBUG"/>
                 <string id="Event.PstchDebug" value="DEBUG %1"/>
                 <string id="Event.PstchInfo" value="INFO %1"/>
                 <string id="Event.PstchNotice" value="NOTICE %1"/>
