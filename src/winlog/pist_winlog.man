@@ -4,6 +4,7 @@
 <!--XML file to define Pistache Windows logging events-->
 <!--https://learn.microsoft.com/en-us/windows/win32/wes/writing-an-instrumentation-manifest?source=recommendations-->
 <!--https://kallanreed.com/2016/05/28/creating-an-etw-provider-step-by-step/-->
+<!--https://github.com/microsoft/Windows-classic-samples/tree/main/Samples/Win7Samples/winbase/Eventing/Provider/Simple/CPP-->
 <instrumentationManifest
     xmlns="http://schemas.microsoft.com/win/2004/08/events" 
     xmlns:win="http://manifests.microsoft.com/win/2004/08/windows/events"
@@ -15,8 +16,8 @@
             <provider name="Pistache-Provider"
                 guid="{cb8de796-f9ba-4712-a13f-99bdf30e06aa}"
                 symbol="PISTACHE_GUID"
-                resourceFileName="C:\Program Files\pistache_distribution\pistachelog.dll"
-                messageFileName="C:\Program Files\pistache_distribution\pistachelog.dll"
+                resourceFileName="%ProgramFiles%\pistache_distribution\pistachelog.dll"
+                messageFileName="%ProgramFiles%\pistache_distribution\pistachelog.dll"
                 message="$(string.Provider.Name)">
                 <channels>
                     <importChannel

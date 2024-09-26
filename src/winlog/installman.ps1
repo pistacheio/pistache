@@ -10,6 +10,14 @@
 # installman.ps1 -inpstlogdll <pistachelog.dll path> -inpstman <manifest path>
 #                            -outpstmaninst <file into which date+time written>
 
+# Note: the outpstmaninst file is created purely so that the file's
+# date+time stamp can record when this script copied pistachelog.dll
+# to its correct location and installed the corresponding logging
+# manifest. So then the build system can make the outpstmaninst file
+# dependent on the manifest definition file, such that, if the
+# manifest definition file is changed, this script will be rerun and
+# pistachelog.dll and the installed manifest will be updated.
+
 param (
     [Parameter(Mandatory=$true)][string]$dirinpstlogdll,
     [Parameter(Mandatory=$true)][string]$inpstlogdll,

@@ -208,13 +208,15 @@ if host_machine.system() == 'windows'
     # system. We do this (install logging components alone, without
     # Pistache as a whole) as part of meson build, not just as part of
     # meson install, so that test programs can log without having to
-    # install the whole, updated Pistache in the system
+    # install the whole, updated Pistache in the system.
     # Also of note, the logging manifest and pistachelog.dll are
     # expected to change very rarely.
     #
-    # We do this manifest install after libpistache_static has
-    # compiled+linked successfully, to reduce the risk of doing it
-    # prematurely
+    # We do this pistachelog.dll and manifest install after
+    # libpistache_static has compiled+linked successfully, to reduce
+    # the risk of doing it prematurely i.e. at a time when there are
+    # errors in the Pistache code that prevent compiling+linking from
+    # completing successfully.
     
     powershell_prog = find_program('powershell.exe')
     instl_log_scrpt = 'NONE'
@@ -235,6 +237,21 @@ if host_machine.system() == 'windows'
       'gen-logging-txtfl',
       input: [win_log_dll, 'winlog'/'pist_winlog.man'],
       output: ['pist_winlog_inst_record.txt'],
+          # Note: the output file, pist_winlog_inst_record.txt, is
+          # created purely so that its date+time stamp can record when
+          # the instl_log_scrpt script last ran and copied
+          # pistachelog.dll to its correct location and installed the
+          # corresponding logging manifest. Also, we define the
+          # pist_winlog_inst_record.txt file to be dependent on the
+          # manifest definition file, such that, if the manifest
+          # definition file is changed, instl_log_scrpt will be rerun
+          # and pistachelog.dll and the installed manifest will be
+          # updated.
+          # Further on, we also make library('pistache'...) (aka
+          # pistache.dll) dependent on gen_logging_txtfl_ct,
+          # i.e. dependent on pist_winlog_inst_record.txt, so that the
+          # pistachelog.dll install and manifest install are carried
+          # out as part of building library('pistache'...).
       command: [powershell_prog, '-NoProfile',
                    '-NonInteractive', '-WindowStyle', 'Hidden', '-NoLogo',
                    '-Command',
