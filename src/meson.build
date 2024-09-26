@@ -137,6 +137,7 @@ if host_machine.system() == 'windows'
     pistache_extra_src += gen_src_log_rc_ct[1] # for pist_winlog.h
 endif
 
+
 if host_machine.system() == 'windows'
 
     # In order for other programs to use pistache.dll, we need to
@@ -201,6 +202,53 @@ if host_machine.system() == 'windows'
     libpistache_links_args += '/IGNORE:4070' 
 
 endif
+
+if host_machine.system() == 'windows'
+    # Next we install the logging manifest and pistachelog.dll in the
+    # system. We do this (install logging components alone, without
+    # Pistache as a whole) as part of meson build, not just as part of
+    # meson install, so that test programs can log without having to
+    # install the whole, updated Pistache in the system
+    # Also of note, the logging manifest and pistachelog.dll are
+    # expected to change very rarely.
+    #
+    # We do this manifest install after libpistache_static has
+    # compiled+linked successfully, to reduce the risk of doing it
+    # prematurely
+    
+    powershell_prog = find_program('powershell.exe')
+    instl_log_scrpt = 'NONE'
+    if meson.version().version_compare('>=1.4.0')
+        instl_log_scrpt_arr = files('winlog'/'installman.ps1')
+        instl_log_scrpt = instl_log_scrpt_arr[0].full_path()
+    else
+        instl_log_scrpt = join_paths(meson.current_source_dir(),
+                                     'winlog'/'installman.ps1')
+    endif
+    proj_bld_rt = 'NONE'
+    if meson.version().version_compare('>=0.56.0')
+        proj_bld_rt = meson.project_build_root()
+    else
+        proj_bld_rt = meson.build_root()
+    endif
+    gen_logging_txtfl_ct = custom_target(
+      'gen-logging-txtfl',
+      input: [win_log_dll, 'winlog'/'pist_winlog.man'],
+      output: ['pist_winlog_inst_record.txt'],
+      command: [powershell_prog, '-NoProfile',
+                   '-NonInteractive', '-WindowStyle', 'Hidden', '-NoLogo',
+                   '-Command',
+                   instl_log_scrpt,
+                       '-dirinpstlogdll', proj_bld_rt,
+                       '-inpstlogdll', '@INPUT0@',
+                       '-inpstman', '@INPUT1@',
+                       '-outpstmaninst', '@OUTPUT@'],
+      depends: [win_log_dll, gen_src_log_rc_ct]
+    )
+    gen_logging_txtfl_dep = declare_dependency(sources: [gen_logging_txtfl_ct])
+    deps_libpistache += gen_logging_txtfl_dep
+endif
+
 
 libpistache = library(
 	'pistache',

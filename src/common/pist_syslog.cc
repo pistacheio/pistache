@@ -79,7 +79,50 @@
 #elif defined _IS_WINDOWS
   #include <windows.h> // needed for PST_THREAD_HDR (processthreadsapi.h)
   #include <evntprov.h>
-#include "pist_winlog.h" // generated header file
+  #include "pist_winlog.h" // generated header file
+
+  // In Windows, Pistache uses the ETW ("Event Tracing") system for logging.
+  //   https://learn.microsoft.com/en-us/windows/win32/etw/event-tracing-portal
+  // ETW events are defined in the pist_winlog.man manifest file, from which is
+  // generated the C header file pist_winlog.h, used here.
+  //
+  // For events above level DEBUG, the event is sent to the built-in
+  // Application channel. This make events appear automatically in Event
+  // Viewer, even if you don't run logman.
+  //
+  // DEBUG events (in debug builds) are sent to our custom Pistache debug
+  // channel. Verbose/debug event streams are not to be sent to the Application
+  // channel, because they will clog up the channel.
+  //
+  // Since DEBUG events are not consumed automatically by EventViewer via the
+  // Application channel, we will need another event consumer to record the
+  // events. We can use the Windows utility logman.exe.
+  //
+  // To use logman, you can do:
+  //   logman start -ets Pistache -p "Pistache-Provider" 0 0 -o pistache.etl
+  //  Then run your program, which you want to log
+  //  Once your program is complete, you can do:
+  //   logman stop Pistache -ets
+  // This causes the log information to be written out to pistache.etl
+  //
+  // You can view the etl file:
+  //   1/ Use Event Viewer. (In Event Viewer, Action -> Open Saved Log, then
+  //      choose pistache.etl).
+  //   2/ Convert the etl to XML:
+  //        tracerpt -y pistache.etl
+  //        Then view dumpfile.xml in a text editor or XML viewer
+  // Alternatively, you can have logman generate a CSV file instead of an .etl
+  // by adding the "-f csv" option to the "logman start..." command.
+  // 
+  // logman has many other options, do "logman -?" to see the list.
+  //
+  // To use logging, you must also:
+  //  1/ First, copy pistachelog.dll to the predefined location
+  //     "$env:ProgramFiles\pistache_distribution"
+  //  2/ Install the Pistache manifest file by doing:
+  //     wevtutil im "pist_winlog.man"
+  // src/meson.build should do both 1/ and 2/ automatically upon "meson build"
+
 #else
   #include <syslog.h>
 #endif
