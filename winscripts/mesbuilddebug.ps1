@@ -10,12 +10,12 @@
 #   winscripts/mesbuilddebug.ps1
 
 . winscripts/mesdebugsetdirvars.ps1
+. winscripts/adjbuilddirformesbuild.ps1
 
 if (($MESON_PREFIX_DIR) -and (-not (Test-Path -Path "$MESON_PREFIX_DIR")))
     {mkdir "$MESON_PREFIX_DIR"}
 
-if (Test-Path -Path ".\$MESON_BUILD_DIR") {
-#    rm -Recurse ".\$MESON_BUILD_DIR"
+if (Test-Path -Path "$MESON_BUILD_DIR") {
     Write-Host "Using existing build dir $MESON_BUILD_DIR"
 }
 else {
