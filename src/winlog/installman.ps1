@@ -59,11 +59,38 @@ rm "$outpstmaninst"
 cp "$fpinpstlogdll" "$env:ProgramFiles\pistache_distribution\."
 
 wevtutil um "$inpstman" # Uninstall - does nothing if not installed
-
 wevtutil im "$inpstman" # Install
 
+# Next we create the Windows Registry log-to-stdout-as-well value for
+# Pistache, if it doesn't exist already. If that registry property
+# already exists, we don't change it.
+if (-Not (Test-Path HKCU:\Software\pistacheio))
+{
+    $key1 = New-Item -Path HKCU:\Software -Name pistacheio
+}
+if (Test-Path HKCU:\Software\pistacheio\pistache)
+{
+    $key2 = Get-Item -Path HKCU:\Software\pistacheio\pistache
+}
+else
+{
+    $key2 = New-Item -Path HKCU:\Software\pistacheio -Name pistache
+}
+if (-Not ($key2.Property -contains "psLogToStdoutAsWell"))
+{
+    $newItemPropertySplat = @{
+        Path = $key2.PSPath
+        Name = 'psLogToStdoutAsWell'
+        PropertyType = 'DWord'
+        Value = 0
+    }
+    New-ItemProperty @newItemPropertySplat
+}
+
+# Finally we create the 'out' marker file
 "At $(Get-Date):`r`n  $inpstlogdll copied to $env:ProgramFiles\pistache_distribution\.`r`n  $inpstman logging manifest installed" `
 | out-file -Encoding utf8 -width 2560 -filepath "$outpstmaninst"
+
 
 
 

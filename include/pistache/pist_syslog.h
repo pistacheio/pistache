@@ -83,7 +83,17 @@
 // 
 // You can define PS_LOG_AND_STDOUT to true using the meson build option
 // "PISTACHE_LOG_AND_STDOUT", or simple #define it here
-#define PS_LOG_AND_STDOUT true // !!!!!!!!
+// #define PS_LOG_AND_STDOUT true
+
+#if !defined(PS_LOG_AND_STDOUT) && defined(_IS_WINDOWS)
+// We always define PS_LOG_AND_STDOUT for Windows, but we further control
+// actually sending log messages to stdout with the Registry key
+// HKCU:\Software\pistacheio\pistache property psLogToStdoutAsWell; the
+// Registry key property value can be set to 0 (off) or 1 (on). It defaults to
+// 0 (i.e. off).
+#define PS_LOG_AND_STDOUT true
+#endif
+
 #ifndef PS_LOG_AND_STDOUT
 #define PS_LOG_AND_STDOUT false
 #endif

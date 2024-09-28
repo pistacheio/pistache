@@ -22,8 +22,6 @@
 #include <stdio.h> // snprintf
 #include <stdlib.h> // malloc
 
-#include <iostream> // !!!! Remove once not needed for Windows debug
-
 #include PIST_QUOTE(PST_CLOCK_GETTIME_HDR)
 
 #include <time.h>
@@ -31,6 +29,7 @@
 
 #ifdef _IS_WINDOWS
 #include <string>
+#include <iostream>
 #include <codecvt>
 #include <locale>
 #endif
@@ -142,6 +141,299 @@
 
 
 /*****************************************************************************/
+#ifdef _IS_WINDOWS
+
+#include <sstream> // std::wostringstream
+#include <winreg.h> // Registry functions
+
+// Don't access directly, use getLogToStdoutAsWell()
+static std::atomic_int lLogToStdoutAsWell(-1); // -1 uninited, 0 false, 1 true
+static std::mutex lLogToStdoutAsWellMutex;
+static HKEY lPistacheHkey = 0;
+static std::unique_ptr<std::thread> lLogToStdoutAsWellMonitorThread[2]= {NULL};
+static unsigned int lLTSAWMonitorThreadNextToUseIdx = 0;
+// We use the lLogToStdoutAsWellMonitorThread alternately - when one monitor
+// thread is running, and it needs to create a new monitor thread, it uses the
+// other lLogToStdoutAsWellMonitorThread for the new std::thread unique_ptr.
+
+// getAndInitPsLogToStdoutAsWellPrv helper - on a failure, we try and send an
+// Alert to the Windows Application logging channel, and also to stderr - in
+// the hope someone will notice why logging is not doing as expected.
+static void getPsLogToStdoutAsWellLogFailPrv(const wchar_t * msg_prefix,
+                                             LSTATUS err_code)
+{
+    std::wostringstream err_wostringstream;
+    err_wostringstream << L"getPsLogToStdoutAsWell: "
+        << msg_prefix << L", error code " << err_code;
+
+    TCHAR err_msg_buff_tch[2048+16];
+    DWORD err_msg_res = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,
+                                      NULL, // no msg source string
+                                      err_code,
+                                      0, // unspecified language
+                                      &(err_msg_buff_tch[0]),
+                                      2048, // buff size
+                                      NULL); // msg arguments
+    if (err_msg_res == 0)
+    {
+        err_wostringstream << L". <FormatMessage Failed>.";
+    }
+    else
+    {
+        err_wostringstream << L", " << &(err_msg_buff_tch[0]);
+    }
+
+    std::wstring msg_w(err_wostringstream.str());
+
+    EventWritePSTCH_CBLTIN_ALERT_NL_AssumeEnabled(msg_w.c_str());
+
+    char msg_buf_chs[2048+16];
+    int wctmb_res = WideCharToMultiByte(CP_UTF8,
+                                        0, // no conversion flags, use defaults
+                                        msg_w.c_str(),
+                                        -1, // msg_w is null-terminated
+                                        &(msg_buf_chs[0]),
+                                        2048,
+                                        NULL, // ptr to ch for invalid char
+                                        NULL); // any invalid char?
+    if (wctmb_res <= 0)
+    {
+        EventWritePSTCH_CBLTIN_ALERT_NL_AssumeEnabled(
+            L"getPsLogToStdoutAsWell: WideCharToMultiByte failure for stderr");
+        std::cerr <<
+            "getPsLogToStdoutAsWell: WideCharToMultiByte failure for stderr"
+                  << std::endl;
+        return;
+    }
+
+    std::cerr << (&(msg_buf_chs[0])) << std::endl;
+}
+
+
+// Reads "HKCU:\Software\pistacheio\pistache\psLogToStdoutAsWell" property from
+// the Windows registry, and returns true if the property exists and has a non
+// zero value, or else zero. If the property does not exist in the registry
+// yet, we create it here, set it to zero, and return false.
+// lLogToStdoutAsWellMutex locked before this is called
+// lLogToStdoutAsWell value is NOT set by this function
+static bool getAndInitPsLogToStdoutAsWellPrv()
+{
+    HKEY hklm_software_key = 0;
+    LSTATUS open_res = RegOpenKeyExA(
+        HKEY_CURRENT_USER,
+        "Software",
+        0, // options (not symbolic link)
+        KEY_READ,
+        &hklm_software_key);
+    if (open_res != ERROR_SUCCESS)
+    {
+        getPsLogToStdoutAsWellLogFailPrv(
+            L"Failed to open registry key HKCU:\\Software", open_res);
+        return(false);
+    }
+
+    if (lPistacheHkey)
+    {
+        RegCloseKey(lPistacheHkey);
+        lPistacheHkey = 0;
+    }
+
+    DWORD dw_disposition = 0;
+    LSTATUS create_res = RegCreateKeyExA(
+        hklm_software_key,
+        "pistacheio\\pistache", // will create both "pistacheio" and
+                                          // "pistache" if needed
+        0,
+        NULL, // lpClass
+        0, // default flags
+        KEY_QUERY_VALUE | KEY_SET_VALUE | KEY_NOTIFY, // reqd rights
+        NULL, // don't allow child process to inherit
+        &lPistacheHkey, // HKEY result
+        &dw_disposition);
+    // Note: if the key already exists, RegCreateKeyExA opens it
+
+    if (create_res != ERROR_SUCCESS)
+    {
+        getPsLogToStdoutAsWellLogFailPrv(
+            L"Failed to create/open registry key "
+             "HKCU:\\Software\\pistacheio\\pistache", create_res);
+        return(false);
+    }
+
+    #ifdef DEBUG
+    const std::wstring disposition_msg(
+        (dw_disposition == REG_OPENED_EXISTING_KEY) ?
+        L"Opened existing registry key HKCU:\\Software\\pistacheio\\pistache" :
+        ((dw_disposition == REG_CREATED_NEW_KEY) ?
+         L"Created new registry key HKCU:\\Software\\pistacheio\\pistache" :
+         L"Unknown RegCreateKeyExA disposition"));
+    EventWritePSTCH_DEBUG_NL(disposition_msg.c_str());
+    #endif
+
+    if (dw_disposition != REG_CREATED_NEW_KEY)
+    {
+        uint64_t val = 0; // only needs to be DWORD, but just in case
+        DWORD val_size = sizeof(DWORD);
+        LSTATUS get_val_res = RegGetValueA(lPistacheHkey,
+                                           NULL, // subkey - none
+                                           "psLogToStdoutAsWell", // val name
+                                           RRF_RT_REG_DWORD, // type REG_DWORD
+                                           NULL, // out type
+                                           &val, // out data
+                                           &val_size);  // out data size
+        if (get_val_res == ERROR_SUCCESS)
+            return(val != 0);
+
+        if (get_val_res != ERROR_FILE_NOT_FOUND)
+        {
+            getPsLogToStdoutAsWellLogFailPrv(
+                L"Failed to get Registry value psLogToStdoutAsWell",
+                get_val_res);
+            return(false);
+        }
+    }
+
+    // value didn't exist
+    
+    BYTE data_to_set[8] = {0}; // bigger than it needs to be
+    LSTATUS set_val_res = RegSetValueExA(lPistacheHkey,
+                                         "psLogToStdoutAsWell", // val name
+                                         0, // Reserved
+                                         REG_DWORD, // type to set
+                                         &(data_to_set[0]), // data content
+                                         sizeof(DWORD)); // data size
+
+    if (set_val_res != ERROR_SUCCESS)
+    {
+        getPsLogToStdoutAsWellLogFailPrv(
+            L"Failed to set Registry value psLogToStdoutAsWell", set_val_res);
+        return(false);
+    }
+
+    return(false);
+}
+
+// Calls getAndInitPsLogToStdoutAsWellPrv,and then sets up change monitoring
+// for the key
+// lLogToStdoutAsWellMutex locked before this is called
+// lLogToStdoutAsWell value IS set by this function
+static bool getLogToStdoutAsWellAndMonitorPrv()
+{
+    bool log_to_stdout_as_well = getAndInitPsLogToStdoutAsWellPrv();
+    if (!lPistacheHkey)
+    { // Can't monitor without lPistacheHkey
+        lLogToStdoutAsWell = ((log_to_stdout_as_well) ? 1 : 0);
+        return(log_to_stdout_as_well);
+    }
+
+    bool we_set_l_log_to_stdout_as_well = false;
+
+    HANDLE h_event= CreateEventA(NULL, // handle not inherited by child process
+                                 FALSE,// auto-set to non-signaled after signal
+                                 FALSE,// initial state is non-signaled
+                                 NULL);// Null = event name
+    if (h_event == NULL)
+    {
+        DWORD err_code = GetLastError();
+        getPsLogToStdoutAsWellLogFailPrv(
+            L"CreateEvent fail, cannot monitor psLogToStdoutAsWell Registry "
+             "value",
+            err_code);
+    }
+    else
+    {
+        LSTATUS reg_notify_res = RegNotifyChangeKeyValue(
+            lPistacheHkey,
+            false, // report changes in the key only, not subkeys
+            REG_NOTIFY_CHANGE_ATTRIBUTES | REG_NOTIFY_CHANGE_LAST_SET
+            | REG_NOTIFY_CHANGE_SECURITY
+            | REG_NOTIFY_THREAD_AGNOSTIC, // Changes that will be reported
+            h_event, // event to be signalled on reportable change
+            true); // true => RegNotifyChangeKeyValue to be asynchronous
+
+        if (reg_notify_res == ERROR_SUCCESS)
+        {
+            lLogToStdoutAsWell = ((log_to_stdout_as_well) ? 1 : 0);
+            we_set_l_log_to_stdout_as_well = true;
+
+            unsigned int thread_to_use_idx = lLTSAWMonitorThreadNextToUseIdx;
+            lLTSAWMonitorThreadNextToUseIdx =
+                ((lLTSAWMonitorThreadNextToUseIdx + 1) % 2);
+
+            if (lLogToStdoutAsWellMonitorThread[thread_to_use_idx])
+            {
+                // Wait for the thread to exit BEFORE we delete the std::thread
+                // instance
+                lLogToStdoutAsWellMonitorThread[thread_to_use_idx]->join();
+
+                // Effectively, delete the std::thread instance
+                lLogToStdoutAsWellMonitorThread[thread_to_use_idx] = NULL;
+            }
+
+            lLogToStdoutAsWellMonitorThread[thread_to_use_idx] =
+                std::make_unique<std::thread> ([h_event]
+                 {
+                     auto wfso_res = WaitForSingleObject(h_event, INFINITE);
+
+                     std::lock_guard<std::mutex>
+                         guard(lLogToStdoutAsWellMutex);
+
+                     if (wfso_res  == WAIT_FAILED)
+                     {
+                         DWORD err_code = GetLastError();
+                         getPsLogToStdoutAsWellLogFailPrv(
+                             L"WaitForSingleObject fail, cannot monitor "
+                              "psLogToStdoutAsWell Registry value",
+                             err_code);
+                     }
+                     else
+                     { // A change has occured
+                         // Note - the monitoring only lasts for one change
+                         // event, so we monitor it again
+                         bool log_to_stdout_as_well =
+                             getLogToStdoutAsWellAndMonitorPrv();
+                         lLogToStdoutAsWell = ((log_to_stdout_as_well) ? 1:0);
+                     }
+
+                     CloseHandle(h_event);
+                 });
+        }
+        else
+        {
+            getPsLogToStdoutAsWellLogFailPrv(
+                L"RegNotifyChangeKeyValue fail, cannot monitor "
+                 "psLogToStdoutAsWell Registry value",
+                reg_notify_res);
+        }
+    }
+    
+    if (!we_set_l_log_to_stdout_as_well)
+        lLogToStdoutAsWell = ((log_to_stdout_as_well) ? 1 : 0);
+    return(log_to_stdout_as_well);
+}
+
+
+static bool getLogToStdoutAsWell()
+{
+    { // encapsulate
+        int my_log_to_stdout_as_well(lLogToStdoutAsWell);
+        if (my_log_to_stdout_as_well >= 0)
+            return(my_log_to_stdout_as_well > 0);
+    }
+
+    std::lock_guard<std::mutex> guard(lLogToStdoutAsWellMutex);
+    if (lLogToStdoutAsWell >= 0)
+        return(lLogToStdoutAsWell > 0);
+
+    return(getLogToStdoutAsWellAndMonitorPrv());
+}
+
+
+
+#endif // of ifdef _IS_WINDOWS
+
+/*****************************************************************************/
+
 
 class PSLogging
 {
@@ -728,6 +1020,14 @@ extern "C" void PSLogFn(int _pri, bool _andPrintf,
 {
     if (!_format)
         return;
+
+    #ifdef _IS_WINDOWS
+    // getLogToStdoutAsWell reads the
+    // "HKCU:\Software\pistacheio\pistache\psLogToStdoutAsWell" property from
+    // the Windows registry, and returns true if the property exists and has a
+    // non zero value, or else false.
+    _andPrintf = getLogToStdoutAsWell();
+    #endif
 
     // We preserve errno for this function since i) We don't want the act of
     // logging (e.g. an error) to alter errno, even if the logging fails; and
