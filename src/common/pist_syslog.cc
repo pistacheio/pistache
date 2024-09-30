@@ -211,12 +211,16 @@ static void getPsLogToStdoutAsWellLogFailPrv(const wchar_t * msg_prefix,
 
 
 // Reads "HKCU:\Software\pistacheio\pistache\psLogToStdoutAsWell" property from
-// the Windows registry, and returns true if the property exists and has a non
-// zero value, or else zero. If the property does not exist in the registry
-// yet, we create it here, set it to zero, and return false.
+// the Windows registry, and returns its value, either 0, 1 or 10. Any Registry
+// key property value other than 0, 1 or 10 causes 1 to be returned. If the key
+// doesn't exist or can't be read, 0 is returned.
+//
+// If the property does not exist in the registry yet, we create it here, set
+// it to zero, and return 0.
+//
 // lLogToStdoutAsWellMutex locked before this is called
 // lLogToStdoutAsWell value is NOT set by this function
-static bool getAndInitPsLogToStdoutAsWellPrv()
+static DWORD getAndInitPsLogToStdoutAsWellPrv()
 {
     HKEY hklm_software_key = 0;
     LSTATUS open_res = RegOpenKeyExA(
@@ -229,7 +233,7 @@ static bool getAndInitPsLogToStdoutAsWellPrv()
     {
         getPsLogToStdoutAsWellLogFailPrv(
             L"Failed to open registry key HKCU:\\Software", open_res);
-        return(false);
+        return(0);
     }
 
     if (lPistacheHkey)
@@ -257,7 +261,7 @@ static bool getAndInitPsLogToStdoutAsWellPrv()
         getPsLogToStdoutAsWellLogFailPrv(
             L"Failed to create/open registry key "
              "HKCU:\\Software\\pistacheio\\pistache", create_res);
-        return(false);
+        return(0);
     }
 
     #ifdef DEBUG
@@ -282,14 +286,19 @@ static bool getAndInitPsLogToStdoutAsWellPrv()
                                            &val, // out data
                                            &val_size);  // out data size
         if (get_val_res == ERROR_SUCCESS)
-            return(val != 0);
+        {
+            if ((val != 10) && (val != 0) && (val != 1))
+                return(1);
 
+            return(static_cast<DWORD>(val));
+        }
+        
         if (get_val_res != ERROR_FILE_NOT_FOUND)
         {
             getPsLogToStdoutAsWellLogFailPrv(
                 L"Failed to get Registry value psLogToStdoutAsWell",
                 get_val_res);
-            return(false);
+            return(0);
         }
     }
 
@@ -307,22 +316,22 @@ static bool getAndInitPsLogToStdoutAsWellPrv()
     {
         getPsLogToStdoutAsWellLogFailPrv(
             L"Failed to set Registry value psLogToStdoutAsWell", set_val_res);
-        return(false);
+        return(0);
     }
 
-    return(false);
+    return(0);
 }
 
 // Calls getAndInitPsLogToStdoutAsWellPrv,and then sets up change monitoring
 // for the key
 // lLogToStdoutAsWellMutex locked before this is called
 // lLogToStdoutAsWell value IS set by this function
-static bool getLogToStdoutAsWellAndMonitorPrv()
+static DWORD getLogToStdoutAsWellAndMonitorPrv()
 {
-    bool log_to_stdout_as_well = getAndInitPsLogToStdoutAsWellPrv();
+    DWORD log_to_stdout_as_well = getAndInitPsLogToStdoutAsWellPrv();
     if (!lPistacheHkey)
     { // Can't monitor without lPistacheHkey
-        lLogToStdoutAsWell = ((log_to_stdout_as_well) ? 1 : 0);
+        lLogToStdoutAsWell = log_to_stdout_as_well;
         return(log_to_stdout_as_well);
     }
 
@@ -353,7 +362,7 @@ static bool getLogToStdoutAsWellAndMonitorPrv()
 
         if (reg_notify_res == ERROR_SUCCESS)
         {
-            lLogToStdoutAsWell = ((log_to_stdout_as_well) ? 1 : 0);
+            lLogToStdoutAsWell = log_to_stdout_as_well;
             we_set_l_log_to_stdout_as_well = true;
 
             unsigned int thread_to_use_idx = lLTSAWMonitorThreadNextToUseIdx;
@@ -390,9 +399,9 @@ static bool getLogToStdoutAsWellAndMonitorPrv()
                      { // A change has occured
                          // Note - the monitoring only lasts for one change
                          // event, so we monitor it again
-                         bool log_to_stdout_as_well =
+                         DWORD log_to_stdout_as_well =
                              getLogToStdoutAsWellAndMonitorPrv();
-                         lLogToStdoutAsWell = ((log_to_stdout_as_well) ? 1:0);
+                         lLogToStdoutAsWell = log_to_stdout_as_well;
                      }
 
                      CloseHandle(h_event);
@@ -408,12 +417,12 @@ static bool getLogToStdoutAsWellAndMonitorPrv()
     }
     
     if (!we_set_l_log_to_stdout_as_well)
-        lLogToStdoutAsWell = ((log_to_stdout_as_well) ? 1 : 0);
+        lLogToStdoutAsWell = log_to_stdout_as_well;
     return(log_to_stdout_as_well);
 }
 
 
-static bool getLogToStdoutAsWell()
+static DWORD getLogToStdoutAsWell()
 {
     { // encapsulate
         int my_log_to_stdout_as_well(lLogToStdoutAsWell);
@@ -427,8 +436,6 @@ static bool getLogToStdoutAsWell()
 
     return(getLogToStdoutAsWellAndMonitorPrv());
 }
-
-
 
 #endif // of ifdef _IS_WINDOWS
 
@@ -1006,6 +1013,18 @@ extern "C" void PSLogNoLocFn(int _pri, bool _andPrintf,
 
     if (!_format)
         return;
+
+    #ifdef _IS_WINDOWS
+    // getLogToStdoutAsWell reads the
+    // "HKCU:\Software\pistacheio\pistache\psLogToStdoutAsWell" property from
+    // the Windows registry.
+    DWORD log_to_stdout_as_well = getLogToStdoutAsWell();
+    if (log_to_stdout_as_well == 10)
+        _andPrintf = false;
+    else
+        _andPrintf |= (log_to_stdout_as_well != 0);
+    #endif
+    
     va_list ap;
     va_start(ap, _format);
     PSLogPrv(_pri, _andPrintf, _format, ap);
@@ -1024,9 +1043,12 @@ extern "C" void PSLogFn(int _pri, bool _andPrintf,
     #ifdef _IS_WINDOWS
     // getLogToStdoutAsWell reads the
     // "HKCU:\Software\pistacheio\pistache\psLogToStdoutAsWell" property from
-    // the Windows registry, and returns true if the property exists and has a
-    // non zero value, or else false.
-    _andPrintf = getLogToStdoutAsWell();
+    // the Windows registry.
+    DWORD log_to_stdout_as_well = getLogToStdoutAsWell();
+    if (log_to_stdout_as_well == 10)
+        _andPrintf = false;
+    else
+        _andPrintf |= (log_to_stdout_as_well != 0);
     #endif
 
     // We preserve errno for this function since i) We don't want the act of

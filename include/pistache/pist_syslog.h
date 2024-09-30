@@ -79,20 +79,23 @@
 #define PS_LOG_DEBUG(__str) PS_LOG_DEBUG_ARGS("%s", __str)
 
 // If PS_LOG_AND_STDOUT is true, all logging is sent to stdout in addition to
-// being sent to log file
+// being sent to log file (for Windows, note the additional comment below).
 // 
 // You can define PS_LOG_AND_STDOUT to true using the meson build option
-// "PISTACHE_LOG_AND_STDOUT", or simple #define it here
+// "PISTACHE_LOG_AND_STDOUT", or simply comment in the #define below.
+// 
+// Note that, in the Windows case, sending of log messages to stdout is
+// intended to controlled principally not by the #define PS_LOG_AND_STDOUT but
+// by the Registry key HKCU:\Software\pistacheio\pistache property
+// psLogToStdoutAsWell; the Registry key property value can be set to 0 (off
+// unless PS_LOG_AND_STDOUT is #defined to be true in which case on), 1 (on) or
+// 10 (turn off even if PS_LOG_AND_STDOUT is #defined to be true). It defaults
+// to 0 (i.e. off unless overridden by PS_LOG_AND_STDOUT). Any Registry key
+// property value other than 0, 1 or 10 is treated like 1. Deleting the
+// property or key is treated like 0. If the property value is changed while
+// pistache.dll is running, the log output behavior will update dynamically.
+// 
 // #define PS_LOG_AND_STDOUT true
-
-#if !defined(PS_LOG_AND_STDOUT) && defined(_IS_WINDOWS)
-// We always define PS_LOG_AND_STDOUT for Windows, but we further control
-// actually sending log messages to stdout with the Registry key
-// HKCU:\Software\pistacheio\pistache property psLogToStdoutAsWell; the
-// Registry key property value can be set to 0 (off) or 1 (on). It defaults to
-// 0 (i.e. off).
-#define PS_LOG_AND_STDOUT true
-#endif
 
 #ifndef PS_LOG_AND_STDOUT
 #define PS_LOG_AND_STDOUT false
