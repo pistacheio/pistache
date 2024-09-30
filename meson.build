@@ -154,7 +154,15 @@ endif
 # #1230.
 # Note: If 'dl' is not available, per Meson it suggests that the
 # functionality is provided by libc
-deps_libpistache += dependency('dl', required: false)
+has_dladdr_func = compiler.has_function('dladdr')
+if not has_dladdr_func
+  libdl_dep += dependency('dl')
+  has_dladdr_func = compiler.has_function('dladdr', dependencies: libdl_dep)
+  if not has_dladdr_func
+    warning('Unable to find dladdr(), even when trying to link to libdl')
+  endif
+  libpistache_deps += libdl_dep
+endif
 
 version_array = []
 if meson.version().version_compare('>=0.57.0')
