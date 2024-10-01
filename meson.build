@@ -62,6 +62,12 @@ if get_option('PISTACHE_USE_RAPIDJSON')
 	public_deps += rapidjson_dep
 endif
 
+if get_option('PISTACHE_USE_CONTENT_ENCODING_ZSTD')
+  zstd_dep = dependency('libzstd')
+  deps_libpistache += zstd_dep
+  public_deps += zstd_dep
+endif
+
 # Support Brotli compressed Content-Encoding responses...
 if get_option('PISTACHE_USE_CONTENT_ENCODING_BROTLI')
 

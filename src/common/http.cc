@@ -922,6 +922,10 @@ namespace Pistache::Http
         }
 #endif
 
+#ifdef PISTACHE_USE_CONTENT_ENCODING_ZSTD
+
+#endif
+
 #ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
         // User requested deflate compression...
         case Http::Header::Encoding::Deflate: {
@@ -1082,6 +1086,9 @@ namespace Pistache::Http
         case Http::Header::Encoding::Br:
             contentEncoding_ = Http::Header::Encoding::Br;
             break;
+#endif
+
+#ifdef PISTACHE_USE_CONTENT_ENCODING_ZSTD
 #endif
 
 #ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
