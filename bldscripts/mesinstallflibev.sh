@@ -11,6 +11,7 @@
 #   bldscripts/mesinstallflibev.sh
 
 source bldscripts/mesflibevsetdirvars.sh
+source bldscripts/adjbuilddirformesbuild.sh
 
 # Installs to /usr/local
 

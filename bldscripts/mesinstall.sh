@@ -11,6 +11,7 @@
 #   bldscripts/mesinstall.sh
 
 source bldscripts/messetdirvars.sh
+source bldscripts/adjbuilddirformesbuild.sh
 
 # Installs to /usr/local
 

@@ -17,6 +17,7 @@ else
     source bldscripts/mesdebugflibevsetdirvars.sh
     PFLEV="-DPISTACHE_FORCE_LIBEVENT=true"
 fi
+source bldscripts/adjbuilddirformesbuild.sh
 
 if [ -e "./${MESON_BUILD_DIR}" ]
 then

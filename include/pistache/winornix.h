@@ -163,6 +163,9 @@ typedef int PST_SOCK_OPT_VAL_T;
 #ifdef _IS_WINDOWS
 #define PST_MAXPATH_HDR Stdlib.h
 #define PST_MAXPATHLEN _MAX_PATH
+#elif defined __APPLE__
+#define PST_MAXPATH_HDR sys/syslimits.h
+#define PST_MAXPATHLEN PATH_MAX
 #else
 #define PST_MAXPATH_HDR sys/param.h
 #define PST_MAXPATHLEN MAXPATHLEN

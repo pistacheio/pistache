@@ -11,6 +11,7 @@
 #   bldscripts/mesinstalldebug.sh
 
 source bldscripts/mesdebugsetdirvars.sh
+source bldscripts/adjbuilddirformesbuild.sh
 
 # Installs to /usr/local
 

@@ -12,6 +12,7 @@
 #   bldscripts/mestest.sh
 
 source bldscripts/messetdirvars.sh
+source bldscripts/adjbuilddirformesbuild.sh
 
 if [ -e "./${MESON_BUILD_DIR}" ]
 then

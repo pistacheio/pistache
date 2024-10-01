@@ -442,7 +442,11 @@ TEST(http_client_test, test_client_timeout)
                 }
 #endif
             },
-            [&rejects_counter, num = i](std::exception_ptr)
+            [&rejects_counter
+#ifdef DEBUG             
+             , num = i
+#endif
+                ](std::exception_ptr)
                 {
                      PS_LOG_DEBUG_ARGS("Http::Response reject num %d", num);
                     ++rejects_counter;

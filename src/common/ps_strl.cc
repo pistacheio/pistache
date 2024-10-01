@@ -11,11 +11,11 @@
 
 /* ------------------------------------------------------------------------- */
 
-#if defined(_IS_WINDOWS) || defined(__linux__)
-
-#include <string.h> // for memcpy
 #include <errno.h>
+#include <string.h> // for memcpy
 #include <algorithm> // for std::min
+
+#if defined(_IS_WINDOWS) || defined(__linux__)
 
 /* ------------------------------------------------------------------------- */
 

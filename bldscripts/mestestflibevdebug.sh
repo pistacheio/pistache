@@ -12,6 +12,7 @@
 #   bldscripts/mestestflibevdebug.sh
 
 source bldscripts/mesdebugflibevsetdirvars.sh
+source bldscripts/adjbuilddirformesbuild.sh
 
 if [ -e "./${MESON_BUILD_DIR}" ]
 then

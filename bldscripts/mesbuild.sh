@@ -10,6 +10,7 @@
 #   bldscripts/mesbuild.sh
 
 source bldscripts/messetdirvars.sh
+source bldscripts/adjbuilddirformesbuild.sh
 
 if [ -e "./${MESON_BUILD_DIR}" ]
 then
@@ -22,9 +23,8 @@ else
     -DPISTACHE_BUILD_TESTS=true \
     -DPISTACHE_BUILD_DOCS=false \
     -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true \
-    --prefix="${MESON_PREFIX_DIR}" \
-#    -DPISTACHE_FORCE_LIBEVENT=true
-    
+    --prefix="${MESON_PREFIX_DIR}"
+
 fi
 
 meson compile -C ${MESON_BUILD_DIR}
