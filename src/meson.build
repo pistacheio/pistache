@@ -129,8 +129,15 @@ if host_machine.system() == 'windows'
     # install" expects the .lib file to exist, so we create it using
     # the /DEF: linker arg
     # pistachelog.def is an empty .def file provided in the source tree
-    pistachelog_def_fl = files('winlog'/'pistachelog.def')
-    pistachelog_def_linkarg = '/DEF:' + pistachelog_def_fl[0].full_path()
+    pistachelog_def_linkarg = 'NONE'
+    if meson.version().version_compare('>=1.4.0')
+        pistachelog_def_fl = files('winlog'/'pistachelog.def')
+        pistachelog_def_linkarg = '/DEF:' + pistachelog_def_fl[0].full_path()
+    else
+        pistachelog_def_linkarg =
+            '/DEF:' + meson.current_source_dir() + '/winlog/pistachelog.def'
+    endif
+        
 
     win_log_dll = shared_library(
         'pistachelog',

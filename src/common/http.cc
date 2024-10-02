@@ -538,7 +538,8 @@ namespace Pistache::Http
             {
                 raise("Unsupported Transfer-Encoding", Code::Not_Implemented);
             }
-            return State::Done; // unreachable code warning in Windows
+            // raise defined with [[noreturn]], so compiler knows we cannot
+            // reach here
         }
 
         ParserBase::ParserBase(size_t maxDataSize)
@@ -937,8 +938,7 @@ namespace Pistache::Http
 
             // Compute upper bound on size of expected compressed data. This
             //  will be updated by compress2()...
-            uLongf compressedSize = static_cast<uLongf>
-                (::compressBound(static_cast<uLong>(size)));
+            uLongf compressedSize = static_cast<uLongf>(::compressBound(static_cast<uLong>(size)));
 
             // Allocate a smart buffer to contain compressed data...
             std::unique_ptr compressedData = std::make_unique<std::byte[]>(compressedSize);
@@ -948,7 +948,7 @@ namespace Pistache::Http
                 reinterpret_cast<unsigned char*>(compressedData.get()),
                 &compressedSize,
                 reinterpret_cast<const unsigned char*>(data),
-                static_cast<uLong> (size),
+                static_cast<uLong>(size),
                 contentEncodingDeflateLevel_);
 
             // Failed...

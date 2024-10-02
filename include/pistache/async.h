@@ -185,7 +185,7 @@ namespace Pistache::Async
 
         struct Throw
         {
-            void operator()(std::exception_ptr exc) const
+            [[noreturn]] void operator()(std::exception_ptr exc) const
             {
                 throw InternalRethrow(std::move(exc));
             }
@@ -433,10 +433,15 @@ namespace Pistache::Async
                 void doReject(const std::shared_ptr<CoreT<T>>& core) override
                 {
                     reject_(core->exc);
+                    /*
+                     * reject_ is guaranteed to throw ("[[noreturn]]") so
+                     * doing this "for" loop is pointless
+                     *
                     for (const auto& req : this->chain_->requests)
                     {
                         req->reject(this->chain_);
                     }
+                    */
                 }
 
                 template <typename Ret>

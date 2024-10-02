@@ -464,7 +464,7 @@ namespace Pistache
             sendMethodNotAllowed(const std::vector<Http::Method>& supportedMethods);
 
             Async::Promise<PST_SSIZE_T> send(Code code, const std::string& body = "",
-                                         const Mime::MediaType& mime = Mime::MediaType());
+                                             const Mime::MediaType& mime = Mime::MediaType());
 
             template <size_t N>
             Async::Promise<PST_SSIZE_T>
@@ -475,7 +475,7 @@ namespace Pistache
             }
 
             Async::Promise<PST_SSIZE_T> send(Code code, const char* data, const size_t size,
-                                         const Mime::MediaType& mime = Mime::MediaType());
+                                             const Mime::MediaType& mime = Mime::MediaType());
 
             ResponseStream stream(Code code, size_t streamSize = DefaultStreamSize);
 
@@ -544,8 +544,8 @@ namespace Pistache
             ResponseWriter(const ResponseWriter& other);
 
             Async::Promise<PST_SSIZE_T> sendImpl(Code code, const char* data,
-                                             const size_t size,
-                                             const Mime::MediaType& mime);
+                                                 const size_t size,
+                                                 const Mime::MediaType& mime);
 
             Async::Promise<PST_SSIZE_T> putOnWire(const char* data, size_t len);
 
@@ -588,7 +588,7 @@ namespace Pistache
                 virtual StepId id() const                 = 0;
                 virtual State apply(StreamCursor& cursor) = 0;
 
-                static void raise(const char* msg, Code code = Code::Bad_Request);
+                [[noreturn]] static void raise(const char* msg, Code code = Code::Bad_Request);
 
             protected:
                 Message* message;
