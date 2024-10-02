@@ -10,6 +10,12 @@
 # installman.ps1 -inpstlogdll <pistachelog.dll path> -inpstman <manifest path>
 #                            -outpstmaninst <file into which date+time written>
 
+# This script is expected to be run at build time ("meson
+# compile..."), not at install time ("meson install..."). By
+# installing these logging components at build time, we can use
+# logging while debugging Pistache code, prior to installing the whole
+# Pistache package to its place in the OS.
+
 # Note: the outpstmaninst file is created purely so that the file's
 # date+time stamp can record when this script copied pistachelog.dll
 # to its correct location and installed the corresponding logging

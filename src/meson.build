@@ -142,6 +142,12 @@ if host_machine.system() == 'windows'
                       # use it
     )
 
+    # Add script to install logging manifest when "meson install..." is run
+    install_headers(
+	'winlog'/'pist_winlog.man', 'winlog'/'installmanatinstall.ps1',
+        install_dir : 'src'/'winlog')
+    meson.add_install_script('winlog'/'installmanatinstall.ps1')
+
     pistache_extra_src += gen_src_log_rc_ct[1] # for pist_winlog.h
 endif
 
