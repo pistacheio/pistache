@@ -51,10 +51,10 @@ else {
 
 if ([Environment]::Is64BitOperatingSystem) {
     $MESON_BUILD_DIR="build$MY_ARCH_NM.mes.w64"
-    $MESON_PREFIX_DIR="$ProgramFiles\pistache_distribution"
+    $MESON_PREFIX_DIR="$env:ProgramFiles\pistache_distribution"
 }
 else {
     $MESON_BUILD_DIR="build$MY_ARCH_NM.mes.w32"
-    $MESON_PREFIX_DIR="$ProgramFiles\pistache_distribution"
+    $MESON_PREFIX_DIR="$env:ProgramFiles\pistache_distribution"
 }
 

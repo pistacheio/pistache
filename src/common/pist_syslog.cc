@@ -117,7 +117,7 @@
   //
   // To use logging, you must also:
   //  1/ First, copy pistachelog.dll to the predefined location
-  //     "$env:ProgramFiles\pistache_distribution"
+  //     "$env:ProgramFiles\pistache_distribution\bin"
   //  2/ Install the Pistache manifest file by doing:
   //     wevtutil im "pist_winlog.man"
   // src/meson.build should do both 1/ and 2/ automatically upon "meson build"

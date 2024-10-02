@@ -5,4 +5,4 @@ return 0
 
 mc.exe -um -h "..\..\include\pistache\" -r ".\" pist_winlog.man
 rc.exe 'pist_winlog.rc'
-link.exe  /dll /noentry /machine:x64 pist_winlog.res /OUT:'C:\Program Files\pistache_distribution\pistachelog.dll'
+link.exe  /dll /noentry /machine:x64 pist_winlog.res /OUT:'C:\Program Files\pistache_distribution\bin\pistachelog.dll'

@@ -90,7 +90,7 @@ if host_machine.system() == 'windows'
     # used by Pistache in Windows, and using it to generate:
     #    1) pist_winlog.h, C hdr included by Pistache logging code
     #    2) pist_winlog.res, Windows resource file linked with pistache.dll
-    #    3) pistachelog.dll, DLL used during logging
+    #    3) pistachelog.dll, DLL used when installing logging manifest/template
     #   (we also generate pist_winlog.rc, a purely intermediate file)
     #
     # The causal chain that generates thsoe files is:
@@ -124,10 +124,18 @@ if host_machine.system() == 'windows'
                              output: ['pist_winlog.res'],
                              command: [rc_prog, '@INPUT@'])
 
+    # We don't really need a pistachelog import library (.lib file) -
+    # nothing is going to link to pistachelog.dll - but "meson
+    # install" expects the .lib file to exist, so we create it using
+    # the /DEF: linker arg
+    # pistachelog.def is an empty .def file provided in the source tree
+    pistachelog_def_fl = files('winlog'/'pistachelog.def')
+    pistachelog_def_linkarg = '/DEF:' + pistachelog_def_fl[0].full_path()
+
     win_log_dll = shared_library(
         'pistachelog',
         sources: [gen_src_log_res_ct],
-        link_args: ['/noentry'],
+        link_args: ['/noentry', pistachelog_def_linkarg],
         install: true # pistachelog.dll's location is hardcoded in logging
                       # manifest (.man) file, so we kind of have to
                       # install it in that location if we're going to

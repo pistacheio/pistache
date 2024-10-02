@@ -1,4 +1,4 @@
-# PowerShell Script
+#!/usr/bin/env powershell
 
 #
 # SPDX-FileCopyrightText: 2024 Duncan Greatwood

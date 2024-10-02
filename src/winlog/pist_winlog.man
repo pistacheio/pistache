@@ -16,8 +16,8 @@
             <provider name="Pistache-Provider"
                 guid="{cb8de796-f9ba-4712-a13f-99bdf30e06aa}"
                 symbol="PISTACHE_GUID"
-                resourceFileName="%ProgramFiles%\pistache_distribution\pistachelog.dll"
-                messageFileName="%ProgramFiles%\pistache_distribution\pistachelog.dll"
+                resourceFileName="%ProgramFiles%\pistache_distribution\bin\pistachelog.dll"
+                messageFileName="%ProgramFiles%\pistache_distribution\bin\pistachelog.dll"
                 message="$(string.Provider.Name)">
                 <channels>
                     <importChannel

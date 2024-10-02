@@ -1,4 +1,4 @@
-# PowerShell Script
+#!/usr/bin/env powershell
 
 #
 # SPDX-FileCopyrightText: 2024 Duncan Greatwood
@@ -16,11 +16,14 @@
 if (($MESON_PREFIX_DIR) -and (-not (Test-Path -Path "$MESON_PREFIX_DIR"))) `
     {mkdir "$MESON_PREFIX_DIR"}
 
-if (Test-Path -Path "$MESON_BUILD_DIR") {
-     Write-Host "Using existing build dir $MESON_BUILD_DIR"
+if ((Test-Path -Path "$MESON_BUILD_DIR") -and`
+    (Test-Path -Path "$MESON_PREFIX_DIR")) {
+        Write-Host "Using existing build dir $MESON_BUILD_DIR"
+        Write-Host "Using existing prefix/install dir $MESON_PREFIX_DIR"
 }
 else {
     Write-Host "Going to use build dir $MESON_BUILD_DIR"
+    Write-Host "Going to use prefix/install dir $MESON_PREFIX_DIR"
     meson.exe setup "$MESON_BUILD_DIR" `
     --buildtype=release `
     -DPISTACHE_USE_SSL=true `

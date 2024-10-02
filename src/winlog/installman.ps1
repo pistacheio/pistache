@@ -47,6 +47,10 @@ if (-Not (Test-Path "$env:ProgramFiles\pistache_distribution"))
 {
     mkdir "$env:ProgramFiles\pistache_distribution"
 }
+if (-Not (Test-Path "$env:ProgramFiles\pistache_distribution\bin"))
+{
+    mkdir "$env:ProgramFiles\pistache_distribution\bin"
+}
 
 # Check we'll be able to write $outpstmaninst
 # And remove the old one, if any
@@ -56,7 +60,7 @@ if (-Not (Test-Path "$outpstmaninst"))
 }
 rm "$outpstmaninst"
 
-cp "$fpinpstlogdll" "$env:ProgramFiles\pistache_distribution\."
+cp "$fpinpstlogdll" "$env:ProgramFiles\pistache_distribution\bin\."
 
 wevtutil um "$inpstman" # Uninstall - does nothing if not installed
 wevtutil im "$inpstman" # Install
@@ -88,7 +92,7 @@ if (-Not ($key2.Property -contains "psLogToStdoutAsWell"))
 }
 
 # Finally we create the 'out' marker file
-"At $(Get-Date):`r`n  $inpstlogdll copied to $env:ProgramFiles\pistache_distribution\.`r`n  $inpstman logging manifest installed" `
+"At $(Get-Date):`r`n  $inpstlogdll copied to $env:ProgramFiles\pistache_distribution\bin\.`r`n  $inpstman logging manifest installed" `
 | out-file -Encoding utf8 -width 2560 -filepath "$outpstmaninst"
 
 
