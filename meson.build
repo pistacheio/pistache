@@ -62,7 +62,10 @@ if get_option('PISTACHE_USE_RAPIDJSON')
 	public_deps += rapidjson_dep
 endif
 
+# Support Zstd compressed Content-Encoding responses...
 if get_option('PISTACHE_USE_CONTENT_ENCODING_ZSTD')
+
+  #Need Zstd encoder for library...
   zstd_dep = dependency('libzstd')
   deps_libpistache += zstd_dep
   public_deps += zstd_dep

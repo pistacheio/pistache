@@ -48,6 +48,10 @@
 #include <zlib.h>
 #endif
 
+#ifdef PISTACHE_USE_CONTENT_ENCODING_ZSTD
+#include <zstd.h>
+#endif
+
 namespace Pistache
 {
     namespace Tcp
