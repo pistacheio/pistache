@@ -119,20 +119,35 @@ extern "C" int PST_CLOCK_GETTIME(PST_CLOCK_ID_T clockid,
     }
 
     case PST_CLOCK_PROCESS_CPUTIME_ID:
-    { // !!!!!!!! Consider GetProcessTimes instead?
-        std::clock_t sct_time = std::clock();
-        if (sct_time == std::clock_t(-1))
-        {
+    {
+        __int64 win_creation_time = 0;
+        __int64 win_exit_time = 0;
+        __int64 win_kernel_time = 0;
+        __int64 win_user_time = 0;
+
+        BOOL res_gpt = GetProcessTimes(GetCurrentProcess(),
+                                      (FILETIME*)&win_creation_time,
+                                      (FILETIME*)&win_exit_time,
+                                      (FILETIME*)&win_kernel_time,
+                                      (FILETIME*)&win_user_time);
+        if (!res_gpt)
+        { // Possibly because of access rights
+          // The process handle must have PROCESS_QUERY_INFORMATION or
+          // PROCESS_QUERY_LIMITED_INFORMATION
+            
             errno = ENOTSUP;
             return(-1);
         }
 
-        spec->tv_sec  = (sct_time / CLOCKS_PER_SEC);
-        spec->tv_nsec = ((1000000i64 * sct_time) % CLOCKS_PER_SEC) * 1000i64;
-        // Note: POSIX defines CLOCKS_PER_SEC as one million, regardless of the
-        // actual precision of clock
-
+        __int64 wintime = win_kernel_time + win_user_time;
+        
+        wintime      -=116444736000000000i64;           //1jan1601 to 1jan1970
+        spec->tv_sec  =(long)(wintime / 10000000i64);   //seconds
+        spec->tv_nsec =wintime % 10000000i64 *100;      //nano-seconds
+        
         break;
+        // Alternatively, we could use std::clock(), but GetProcessTimes seems
+        // to ensure better precision
     }
 
     case PST_CLOCK_THREAD_CPUTIME_ID:

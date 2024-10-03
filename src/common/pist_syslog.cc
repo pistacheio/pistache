@@ -575,6 +575,14 @@ PSLogging::PSLogging()
         throw std::runtime_error("Windows logging EventRegister failed");
     #endif
 
+    const wchar_t * pist_start_wmsg =
+        L"Pistache start. INFO and up log messages visible in Event Viewer."
+        #ifdef DEBUG    
+         " See pist_syslog.cc comments to view DEBUG and up logging."
+        #endif
+        ;
+    EventWritePSTCH_CBLTIN_INFO_NL_AssumeEnabled(pist_start_wmsg);
+
     #else
     
     if (!gSetPsLogCategoryCalledWithNull)
@@ -595,6 +603,7 @@ PSLogging::PSLogging()
 PSLogging::~PSLogging()
 {
     #ifdef _IS_WINDOWS
+    EventWritePSTCH_CBLTIN_INFO_NL_AssumeEnabled(L"Pistache exiting");
     EventUnregisterPistache_Provider(); // macro calls EventUnregister
     #else
     if (!gSetPsLogCategoryCalledWithNull)

@@ -599,10 +599,15 @@ namespace Pistache::Async
                 void doReject(const std::shared_ptr<CoreT<T>>& core) override
                 {
                     reject_(core->exc);
+                    /*
+                     * reject_ is guaranteed to throw ("[[noreturn]]") so
+                     * doing this "for" loop is pointless
+                     *
                     for (const auto& req : core->requests)
                     {
                         req->reject(core);
                     }
+                    */
                 }
 
                 template <typename PromiseType>

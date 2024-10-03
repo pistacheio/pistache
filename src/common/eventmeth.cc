@@ -1281,13 +1281,11 @@ namespace Pistache
         event_base_features_ = event_base_get_features(event_base_);
         if (!(event_base_features_ & EV_FEATURE_ET))
         {
-            PS_LOG_WARNING("No edge trigger");
-            // !!!!!!!!
-            #ifndef _IS_WINDOWS
-            throw std::system_error(EOPNOTSUPP, std::generic_category(),
-                                    "No edge trigger");
+            #ifdef _IS_WINDOWS
+            PS_LOG_DEBUG("No edge trigger, as expected in Windows");
+            #else
+            PS_LOG_INFO("No edge trigger");
             #endif
-            // Because EV_ET is used, e.g. see Epoll::addFd
         }
 
         INC_DEBUG_CTR(event_meth_base);
