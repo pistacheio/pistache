@@ -12,6 +12,7 @@ install_headers(
 	'config.h',
 	'cookie.h',
 	'description.h',
+	'em_socket_t.h',
 	'emosandlibevdefs.h',
 	'endpoint.h',
 	'eventmeth.h',

@@ -1,3 +1,11 @@
+#!/usr/bin/env powershell
+
+#
+# SPDX-FileCopyrightText: 2024 Duncan Greatwood
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
 # https://kallanreed.com/2016/05/28/creating-an-etw-provider-step-by-step/
 
 Write-Host "Not needed any more - src/meson.build does it for us instead"

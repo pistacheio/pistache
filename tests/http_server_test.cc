@@ -1084,11 +1084,20 @@ TEST(http_server_test, client_request_timeout_on_delay_in_request_line_send_rais
       // error code when there is an actual error
         EXPECT_EQ(client.lastErrno(), EPIPE) << "Errno: " << client.lastErrno();
 
-        char recvBuf[1024] = {
-            0,
-        };
-        size_t bytes;
-        EXPECT_TRUE(client.receive(recvBuf, sizeof(recvBuf), &bytes, std::chrono::seconds(5))) << client.lastError();
+#ifdef _WIN32
+        if (client.lastErrno() == ECONNABORTED) // Windows 11 Home
+            EXPECT_EQ(client.lastErrno(), ECONNABORTED) << "Errno: " << client.lastErrno();
+        else if (client.lastErrno() == ECONNRESET) // Windows Server 2022
+            EXPECT_EQ(client.lastErrno(), ECONNRESET) << "Errno: " << client.lastErrno();
+        else
+#endif
+            EXPECT_EQ(client.lastErrno(), EPIPE) << "Errno: " << client.lastErrno();
+
+#ifndef _WIN32
+        cli_rx_res = client.receive(recvBuf, sizeof(recvBuf),
+                                    &bytes, std::chrono::seconds(5));
+#endif
+        EXPECT_TRUE(cli_rx_res) << client.lastError();
         EXPECT_EQ(0, strncmp(recvBuf, ExpectedResponseLine, strlen(ExpectedResponseLine)));
     }
 

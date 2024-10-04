@@ -70,9 +70,11 @@ TEST(rest_swagger_server_test, basic_test)
 {
     filesystem::create_directory("assets");
 
-    ofstream("assets/good.txt") << "good";
+    ofstream gd_txt("assets/good.txt");
+    gd_txt << "good";
 
-    ofstream("bad.txt") << "bad";
+    ofstream bd_txt("bad.txt");
+    bd_txt << "bad";
 
     Address addr(Ipv4::loopback(), Port(0));
     SwaggerEndpoint swagger(addr);
@@ -111,6 +113,16 @@ TEST(rest_swagger_server_test, basic_test)
     swagger.start();
 
     t.join();
+
+    // Note: If we don't close the file, then on Windows we may see an
+    // exception "The process cannot access the file because it is being used
+    // by another process" during remove_all below. Windows Server 2022, as of
+    // Oct/2024.
+    if (gd_txt.is_open())
+        gd_txt.close();
+    if (bd_txt.is_open())
+        bd_txt.close();
+
     filesystem::remove_all("assets");
     filesystem::remove_all("bad.txt");
 }

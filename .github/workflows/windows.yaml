@@ -1,0 +1,528 @@
+# SPDX-FileCopyrightText: 2022 Andrea Pappacoda
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# See:
+#   https://docs.github.com/en/actions/writing-workflows/choosing-where-your-workflow-runs/choosing-the-runner-for-a-job
+
+name: Windows
+
+on:
+  push:
+    branches:
+    - master
+    - windows
+  pull_request:
+    branches:
+    - master
+    - windows
+
+defaults:
+  run:
+    shell: powershell
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Windows with Libevent
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # os: [ 'windows-2019', 'windows-2022', 'windows-latest' ] # !!!!!!!!
+        os: [ 'windows-2022' ]
+        # compiler: [ 'msvc', 'gcc', 'clang' ] # !!!!!!!!
+        compiler: [ 'msvc' ]
+        # sanitizer: [ 'address', 'undefined', 'none' ] # !!!!!!!!
+        sanitizer: [ 'none' ]
+        # tls: [ 'true', 'false' ] # !!!!!!!!
+        tls: [ 'true' ]
+        # def_debug: [ 'true', 'false' ] # !!!!!!!!
+        def_debug: [ 'true' ]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Install dependencies (Windows)
+      env:
+        mtrx_compiler: ${{ matrix.compiler }}
+      if: contains(matrix.os, 'windows')
+      run: >
+        if (($env:VCPKG_INSTALLATION_ROOT) -and ($env:VCPKG_ROOT) -and (Test-Path "$env:VCPKG_INSTALLATION_ROOT")) {
+            $env:VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT
+        } # Check this both before and after getting a Visual Studio Developer Prompt
+
+        # Start a Visual Studio Developer Prompt
+        # As at Aug-2024, VS 2022, Launch-VsDevShell.ps1 defaults to
+        # 32-bit host and target architectures. However you can specify
+        # both target architecture (-Arch option, valid values: x86,
+        # amd64, arm, arm64) and host architecture (-HostArch option,
+        # valid values: x86, amd64)
+        #
+        # If we don't do this, then meson will pickup 32-bit as the host
+        # and target architecture. Meanwhile, vcpkg defaults to 64-bit
+        # libraries (since we're on a 64-bit Windows). So then the
+        # linker can't link, because it is trying to link 64-bit vcpkg
+        # libs with our 32-bit object files.
+        #
+        # Ref: https://learn.microsoft.com/en-us/visualstudio/
+        #          ide/reference/command-prompt-powershell?view=vs-2022
+        
+        if (Test-Path -Path "$env:ProgramFiles/Microsoft Visual Studio") {
+          cd "$env:ProgramFiles/Microsoft Visual Studio";
+          $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
+              Sort-Object -Descending -Property LastWriteTime |
+              Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path;
+          if (($launch_vs_dev_shell_dir) -And (Test-Path -Path $launch_vs_dev_shell_dir)) {
+              cd "$launch_vs_dev_shell_dir";
+              ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
+          };
+          cd ~
+          
+        }
+        elseif (Test-Path -Path "$env:ProgramFiles(x86)/Microsoft Visual Studio") {
+          cd "$env:ProgramFiles(x86)/Microsoft Visual Studio";
+          $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
+              Sort-Object -Descending -Property LastWriteTime |
+              Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path;
+          if (($launch_vs_dev_shell_dir) -And (Test-Path -Path $launch_vs_dev_shell_dir)) {
+              cd "$launch_vs_dev_shell_dir";
+              ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
+              
+          }
+          cd ~
+          
+        }
+
+        if (($env:VCPKG_INSTALLATION_ROOT) -and ($env:VCPKG_ROOT) -and (Test-Path "$env:VCPKG_INSTALLATION_ROOT")) {
+            $env:VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT
+        } # Check this both before and after getting a Visual Studio Developer Prompt
+        
+
+        if ((! (Get-Command pkg-config -errorAction SilentlyContinue)) -or ((which pkg-config) -like "*Strawberry*"))
+        { # meson does not accept the version of pkg-config in Strawberry Perl
+        
+            if (Get-Command winget -errorAction SilentlyContinue)
+            { # winget exists on newer versions of Windows 10 and on
+              # Windows 11 and after. It is is not supported on Windows
+              # Server 2019, and is experimental only on Windows Server
+              # 2022.
+        
+                winget install bloodrock.pkg-config-lite # For pkg-config
+        
+                # winget install Python # Already installed
+            }
+            else
+            {
+                vcpkg install pkgconf
+            
+            }
+        }
+        
+        $old_pkg_config_path=$env:PKG_CONFIG_PATH;
+        $env:PKG_CONFIG_PATH="$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows\lib\pkgconfig";
+        if ($old_pkg_config_path) {
+            $env:PKG_CONFIG_PATH="$env:PKG_CONFIG_PATH;$old_pkg_config_path"
+        }
+        
+        if (($env:VCPKG_INSTALLATION_ROOT) -And
+            (Test-Path -Path "$env:VCPKG_INSTALLATION_ROOT\installed")) {
+            # We add the ...\vcpkg\installed\...\bin dir to the path
+    
+            cd "$env:VCPKG_INSTALLATION_ROOT\installed"
+            # Find ...\installed\...\bin directory. Choose shortest path
+            # if more than one
+            
+            $vcpkg_installed_bin_dir=Get-ChildItem -Path "bin" -Recurse |
+              Select -ExpandProperty "FullName" | Sort-Object { $_.Length } |
+              Select -Index 0;
+            if (($vcpkg_installed_bin_dir) -And
+              (Test-Path -Path $vcpkg_installed_bin_dir)) {
+                  $env:Path="$vcpkg_installed_bin_dir;$env:Path"
+            }
+            else {
+                Write-Error "...\vcpkg\installed\...\bin directory not found"
+            }
+
+            $vcpkg_installed_pkgconf_dir=Get-ChildItem -Path "pkgconf.exe" -Recurse |
+              Select -ExpandProperty "FullName" | Sort-Object { $_.Length } |
+              Select -Index 0 | Split-Path;
+            if (($vcpkg_installed_pkgconf_dir) -And
+              (Test-Path -Path $vcpkg_installed_pkgconf_dir)) {
+                  $env:Path="$vcpkg_installed_pkgconf_dir;$env:Path"
+                  # Puts pkgconf.exe on the Path
+
+                  if ((! (Get-Command pkg-config.exe -errorAction SilentlyContinue)) -or ((which pkg-config) -like "*Strawberry*"))
+                  {
+                      New-Item -ItemType SymbolicLink -Path "$vcpkg_installed_pkgconf_dir\pkg-config.exe" -Target "$vcpkg_installed_pkgconf_dir\pkgconf.exe"
+                  }
+            }
+
+            cd ~
+        }
+
+        if (! (Get-Command meson -errorAction SilentlyContinue)) {
+            pip3 install --user meson
+        }
+
+        if (! (Get-Command ninja -errorAction SilentlyContinue)) {
+            if (Get-Command winget -errorAction SilentlyContinue)
+            {
+                winget install "Ninja-build.Ninja";
+            }
+            else
+            {
+                vcpkg install vcpkg-tool-ninja
+            }
+        }
+
+        vcpkg install curl[openssl]
+        # See https://github.com/openssl/openssl/issues/25520 for now
+        # As and when the issue is fixed, just do "vcpkg install
+        # curl", which installs default curl that, on Windows, use
+        # S-Channel not openssl.
+
+        vcpkg install openssl # This can take some time
+        
+        vcpkg install libevent
+
+        git clone https://github.com/google/googletest.git;
+        cd googletest;
+        mkdir build;
+        cd build;
+        cmake ..;
+        cmake --build .;
+        cmake --install . --config Debug;
+        cd ~
+
+        # Possible need to install powershell 7 (for pwsh.exe)
+        # Or already installed?
+        
+        git clone https://github.com/Tencent/rapidjson/;
+        cd rapidjson/;
+        mkdir build;
+        cd build;
+        cmake ..;
+        cmake --build . --config Release;
+        cmake --install . --config Release
+
+        vcpkg.exe install date # Howard-Hinnant-Date
+
+        Invoke-WebRequest -Uri https://zlib.net/current/zlib.tar.gz -OutFile zlib.tar.gz;
+        tar -xvzf .\zlib.tar.gz;
+        cd "zlib*" # Adjusts to whatever we downloaded, e.g. zlib-1.3.1
+        
+        mkdir build;
+        cd build;
+        cmake ..;
+        cmake --build . --config Release;
+        cmake --install . --config Release
+
+        if (! (Get-Command doxygen -errorAction SilentlyContinue)) {
+            if (Get-Command winget -errorAction SilentlyContinue)
+            { 
+                winget install doxygen
+            }
+            else
+            {
+                cd ~;
+                Invoke-WebRequest -Uri https://www.doxygen.nl/files/doxygen-1.12.0.windows.x64.bin.zip -OutFile doxygen.bin.zip;
+                Expand-Archive doxygen.bin.zip -DestinationPath doxygen.bin
+            }
+        }
+
+
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Configure Meson
+      env:
+        mtrx_compiler: ${{ matrix.compiler }}
+        mtrx_def_debug: ${{ matrix.def_debug }}
+        mtrx_tls: ${{ matrix.tls }}
+        mtrx_sanitizer: ${{ matrix.sanitizer }}
+      run: >
+        if ($env:mtrx_compiler -eq "msvc") {
+            $env:CXX="cl"
+        }
+        elseif ($env:mtrx_compiler -eq "gcc") {
+            $env:CXX="g++" # Must put mingw-64 g++ compiler on Path
+            
+        }
+        else { # Use clang with MSVC (MSVC's stdlib etc.)
+
+            $env:CXX="clang-cl";
+            $env:CXX_LD="lld"
+        }
+        
+        $env:CC=$env:CXX
+
+        $savedpwd=$pwd
+
+        if (! (Get-Command meson -errorAction SilentlyContinue)) {
+            if (Test-Path "~/AppData/Local/Packages") {
+              cd "~/AppData/Local/Packages";
+              $meson_exe_path = Get-ChildItem -Path "meson.exe" -Recurse |
+                  Sort-Object -Descending -Property LastWriteTime |  
+                  Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
+            }
+
+            if (((! ($meson_exe_path)) -or (! (Test-Path -Path $meson_exe_path))) -and (Test-Path "~/AppData/Roaming/Python")) {
+              cd "~/AppData/Roaming/Python";
+              $meson_exe_path = Get-ChildItem -Path "meson.exe" -Recurse |
+                  Sort-Object -Descending -Property LastWriteTime |
+                  Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
+            }
+
+            if (((! ($meson_exe_path)) -or (! (Test-Path -Path $meson_exe_path))) -and (Test-Path "~/AppData")) {
+              cd "~/AppData";
+              $meson_exe_path = Get-ChildItem -Path "meson.exe" -Recurse |
+                  Sort-Object -Descending -Property LastWriteTime |
+                  Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
+            }
+
+            if (($meson_exe_path) -And (Test-Path -Path $meson_exe_path)) {
+                $env:Path="$env:Path;$meson_exe_path"
+            }
+            else {
+                Write-Host "WARNING: meson.exe directory not added to path"
+            }
+        }
+
+        cd "$savedpwd"
+
+        # Start a Visual Studio Developer Prompt, gives access to compiler "cl"
+
+        if (Test-Path -Path "$env:ProgramFiles/Microsoft Visual Studio") {
+          cd "$env:ProgramFiles/Microsoft Visual Studio";
+          $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
+              Sort-Object -Descending -Property LastWriteTime |
+              Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path;
+          if (($launch_vs_dev_shell_dir) -And (Test-Path -Path $launch_vs_dev_shell_dir)) {
+              cd "$launch_vs_dev_shell_dir";
+              ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
+          };
+        }
+        elseif (Test-Path -Path "$env:ProgramFiles(x86)/Microsoft Visual Studio") {
+          cd "$env:ProgramFiles(x86)/Microsoft Visual Studio";
+          $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
+              Sort-Object -Descending -Property LastWriteTime |
+              Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path;
+          if (($launch_vs_dev_shell_dir) -And (Test-Path -Path $launch_vs_dev_shell_dir)) {
+              cd "$launch_vs_dev_shell_dir";
+              ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
+              
+          }
+        }
+
+        cd "$savedpwd"
+
+        $old_pkg_config_path=$env:PKG_CONFIG_PATH;
+        $env:PKG_CONFIG_PATH="$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows\lib\pkgconfig";
+        if ($old_pkg_config_path) {
+            $env:PKG_CONFIG_PATH="$env:PKG_CONFIG_PATH;$old_pkg_config_path"
+        }
+
+        # For pkg-config, we put the path segment for pkg-config.exe
+        # at the head of the path, so meson finds our installed
+        # pkg-config; whereas otherwise meson seems to find
+        # C:\Strawberry\perl\bin\pkg-config.BAT first, and then meson
+        # says "but it is Strawberry Perl and thus
+        # broken. Ignoring...", and fails to find our pkg-config.
+
+        if (($env:VCPKG_INSTALLATION_ROOT) -And
+            (Test-Path -Path "$env:VCPKG_INSTALLATION_ROOT\installed")) {
+            # We add the ...\vcpkg\installed\...\bin directory to the
+            # path. Not only does this mean that executables can be executed
+            # from that directory, it also allows DLLS to be loaded from that
+            # bin directory (since Windows DLL loader checks path), notably
+            # event_core.dll from libevent.
+    
+            cd "$env:VCPKG_INSTALLATION_ROOT\installed"
+            # Find ...\installed\...\bin directory. Choose shortest path
+            # if more than one
+            
+            $vcpkg_installed_bin_dir=Get-ChildItem -Path "bin" -Recurse |
+              Select -ExpandProperty "FullName" | Sort-Object { $_.Length } |
+              Select -Index 0;
+            if (($vcpkg_installed_bin_dir) -And
+              (Test-Path -Path $vcpkg_installed_bin_dir)) {
+                  $env:Path="$vcpkg_installed_bin_dir;$env:Path"
+            }
+            else {
+                Write-Error "...\vcpkg\installed\...\bin directory not found"
+            }
+
+            $vcpkg_installed_pkgconf_dir=Get-ChildItem -Path "pkgconf.exe" -Recurse |
+              Select -ExpandProperty "FullName" | Sort-Object { $_.Length } |
+              Select -Index 0 | Split-Path;
+            if (($vcpkg_installed_pkgconf_dir) -And
+              (Test-Path -Path $vcpkg_installed_pkgconf_dir)) {
+                  $env:Path="$vcpkg_installed_pkgconf_dir;$env:Path"
+                  # Puts pkgconf.exe on the Path
+
+                }
+
+            cd "$savedpwd"
+        }
+
+        if (Test-Path -Path "$env:USERPROFILE\doxygen.bin") {
+            $env:Path="$env:Path;$env:USERPROFILE\doxygen.bin"
+        }
+
+        meson setup build -DPISTACHE_BUILD_TESTS=true -DPISTACHE_DEBUG="$env:mtrx_def_debug" -DPISTACHE_USE_SSL="$env:mtrx_tls" -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_DOCS=false -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true --buildtype=debug -Db_coverage=true -Db_sanitize="$env:mtrx_sanitizer" -Db_lundef=false
+
+        if (Test-Path -Path 'build/meson-logs/meson-log.txt') {
+            cat build/meson-logs/meson-log.txt
+        }
+        else {
+            Write-Error "ERROR: No meson output log found"
+        }
+
+    - name: Build
+      env:
+        mtrx_compiler: ${{ matrix.compiler }}
+      run: >
+        if ($env:mtrx_compiler -eq "msvc") {
+            $env:CXX="cl"
+        }
+        elseif ($env:mtrx_compiler -eq "gcc") {
+            $env:CXX="g++" # Must put mingw-64 g++ compiler on Path
+            
+        }
+        else { # Use clang with MSVC (MSVC's stdlib etc.)
+
+            $env:CXX="clang-cl";
+            $env:CXX_LD="lld"
+        }
+        
+        $env:CC=$env:CXX
+
+        $savedpwd=$pwd
+
+        # Start a Visual Studio Developer Prompt, gives access to compiler "cl"
+
+        if (Test-Path -Path "$env:ProgramFiles/Microsoft Visual Studio") {
+          cd "$env:ProgramFiles/Microsoft Visual Studio";
+          $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
+              Sort-Object -Descending -Property LastWriteTime |
+              Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path;
+          if (($launch_vs_dev_shell_dir) -And (Test-Path -Path $launch_vs_dev_shell_dir)) {
+              cd "$launch_vs_dev_shell_dir";
+              ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
+          };
+        }
+        elseif (Test-Path -Path "$env:ProgramFiles(x86)/Microsoft Visual Studio") {
+          cd "$env:ProgramFiles(x86)/Microsoft Visual Studio";
+          $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
+              Sort-Object -Descending -Property LastWriteTime |
+              Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path;
+          if (($launch_vs_dev_shell_dir) -And (Test-Path -Path $launch_vs_dev_shell_dir)) {
+              cd "$launch_vs_dev_shell_dir";
+              ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
+              
+          }
+        }
+
+        # Make sure we have ninja on the path
+
+        if (! (Get-Command ninja -errorAction SilentlyContinue))
+        {   # First try vcpkg
+
+            if (($env:VCPKG_INSTALLATION_ROOT) -And
+                (Test-Path -Path "$env:VCPKG_INSTALLATION_ROOT\installed")) {
+
+                cd "$env:VCPKG_INSTALLATION_ROOT\installed"
+
+                $vcpkg_installed_ninja_dir=Get-ChildItem -Path "ninja.exe" -Recurse |
+                  Select -ExpandProperty "FullName" | Sort-Object { $_.Length } |
+                  Select -Index 0 | Split-Path;
+                if (($vcpkg_installed_ninja_dir) -And
+                  (Test-Path -Path $vcpkg_installed_ninja_dir)) {
+                      $env:Path="$vcpkg_installed_ninja_dir;$env:Path"
+                      # Puts ninja.exe on the Path
+                }  
+            }
+        }
+
+        if (! (Get-Command ninja -errorAction SilentlyContinue))
+        {   # vcpkg didn't work, try looking in Microsoft Visual Studio
+
+            if (Test-Path -Path "$env:ProgramFiles/Microsoft Visual Studio") {
+                cd "$env:ProgramFiles/Microsoft Visual Studio";
+                $ninja_dir = Get-ChildItem -Path "ninja.exe" -Recurse |
+                    Sort-Object -Descending -Property LastWriteTime |
+                    Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path;
+                if (($ninja_dir) -And (Test-Path -Path $ninja_dir)) {
+                      $env:Path="$ninja_dir;$env:Path"
+                }
+            }
+        }
+        
+        if (! (Get-Command ninja -errorAction SilentlyContinue))
+        {   # Try looking in 32-bit Microsoft Visual Studio
+        
+            if (Test-Path -Path "$env:ProgramFiles(x86)/Microsoft Visual Studio") {
+                cd "$env:ProgramFiles(x86)/Microsoft Visual Studio";
+                $ninja_dir = Get-ChildItem -Path "ninja.exe" -Recurse |
+                    Sort-Object -Descending -Property LastWriteTime |
+                    Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path;
+                if (($ninja_dir) -And (Test-Path -Path $ninja_dir)) {
+                      $env:Path="$ninja_dir;$env:Path"
+                }
+            }
+        }
+
+        if (Test-Path -Path "$env:USERPROFILE\doxygen.bin") {
+            $env:Path="$env:Path;$env:USERPROFILE\doxygen.bin"
+        }
+
+        cd "$savedpwd"
+        
+        ninja -C build
+
+    - name: Test
+      run: >
+        $savedpwd=$pwd
+
+        if (! (Get-Command meson -errorAction SilentlyContinue)) {
+            if (Test-Path "~/AppData/Local/Packages") {
+              cd "~/AppData/Local/Packages";
+              $meson_exe_path = Get-ChildItem -Path "meson.exe" -Recurse |
+                  Sort-Object -Descending -Property LastWriteTime |  
+                  Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
+            }
+
+            if (((! ($meson_exe_path)) -or (! (Test-Path -Path $meson_exe_path))) -and (Test-Path "~/AppData/Roaming/Python")) {
+              cd "~/AppData/Roaming/Python";
+              $meson_exe_path = Get-ChildItem -Path "meson.exe" -Recurse |
+                  Sort-Object -Descending -Property LastWriteTime |
+                  Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
+            }
+
+            if (((! ($meson_exe_path)) -or (! (Test-Path -Path $meson_exe_path))) -and (Test-Path "~/AppData")) {
+              cd "~/AppData";
+              $meson_exe_path = Get-ChildItem -Path "meson.exe" -Recurse |
+                  Sort-Object -Descending -Property LastWriteTime |
+                  Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
+            }
+
+            if (($meson_exe_path) -And (Test-Path -Path $meson_exe_path)) {
+                $env:Path="$env:Path;$meson_exe_path"
+            }
+            else {
+                Write-Host "WARNING: meson.exe directory not added to path"
+            }
+
+        cd "$savedpwd"
+        }
+
+        meson test --no-rebuild -C build --verbose
+        # Use the following to run just a single test (e.g. http_server_test)
+        #   build/tests/run_http_server_test
+
+    # No coverage analysis for Windows
