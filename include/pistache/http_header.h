@@ -68,6 +68,7 @@ namespace Pistache::Http::Header
                           Br,
                           Compress,
                           Deflate,
+                          Zstd,
                           Identity,
                           Chunked,
                           Unknown };

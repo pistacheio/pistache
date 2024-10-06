@@ -56,6 +56,10 @@ if get_option('PISTACHE_USE_CONTENT_ENCODING_BROTLI')
     brotli_dep = dependency('libbrotlidec')
 endif
 
+if get_option('PISTACHE_USE_CONTENT_ENCODING_ZSTD')
+    zstd_dep = dependency('libzstd')
+endif
+
 foreach test_name : pistache_test_files
 	suite = {}
 	if test_name in network_tests
@@ -77,7 +81,8 @@ foreach test_name : pistache_test_files
 				gmock_dep,
 				curl_dep,
 				cpp_httplib_dep,
-				brotli_dep
+				brotli_dep,
+        zstd_dep
 			]
 		),
 		timeout: 600,

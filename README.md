@@ -217,6 +217,7 @@ $ meson setup build                                 \
     -DPISTACHE_BUILD_DOCS=false                     \
     -DPISTACHE_USE_CONTENT_ENCODING_BROTLI=true     \
     -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true    \
+    -DPISTACHE_USE_CONTENT_ENCODING_ZSTD=true    \
     --prefix="$PWD/prefix"
 $ meson compile -C build
 $ meson install -C build
@@ -240,6 +241,7 @@ Some other Meson options:
 | PISTACHE_BUILD_DOCS                   | False   | Build Doxygen docs                             |
 | PISTACHE_USE_CONTENT_ENCODING_BROTLI  | False   | Build with Brotli content encoding support     |
 | PISTACHE_USE_CONTENT_ENCODING_DEFLATE | False   | Build with deflate content encoding support    |
+| PISTACHE_USE_CONTENT_ENCODING_ZSTD    | False   | Build with zstd content encoding support       |
 
 ## Example
 
