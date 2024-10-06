@@ -1305,7 +1305,7 @@ struct ContentEncodingHandler : public Http::Handler
 
 #ifdef PISTACHE_USE_CONTENT_ENCODING_ZSTD
         case Http::Header::Encoding::Zstd:
-            std::cout << "Hello";
+            writer.setCompressionZstdLevel(ZSTD_btultra2);
             break;
 #endif
 
@@ -1388,7 +1388,7 @@ TEST(http_server_test, server_with_content_encoding_zstd)
                 reinterpret_cast<const char*>(originalUncompressedData.data()),
                 originalUncompressedData.size()));
 
-        // Request server send back response Brotli compressed...
+        // Request server send back response Zstd compressed...
         rb.header<Http::Header::AcceptEncoding>(Http::Header::Encoding::Zstd);
 
         // Send client request. Note that Transport::asyncSendRequestImpl() is
@@ -1398,6 +1398,7 @@ TEST(http_server_test, server_with_content_encoding_zstd)
         auto response = rb.send();
 
         // Storage for server response body...
+
         std::string resultStringData;
 
         // Verify response code, expected header, and store its body...
@@ -1464,8 +1465,6 @@ TEST(http_server_test, server_with_content_encoding_zstd)
         const auto decompressed_size = ZSTD_decompress((void*)newlyDecompressedData.data(), compressionStatus, newlyCompressedResponse.data(), newlyCompressedResponse.size());
 
         ASSERT_EQ(ZSTD_isError(decompressed_size), 0);
-
-        ASSERT_TRUE(compressionStatus != ZSTD_CONTENTSIZE_ERROR);
 
         // The sizes of both the original uncompressed data we sent the server
         //  and the result of decompressing what it sent back should match...

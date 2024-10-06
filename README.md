@@ -15,7 +15,7 @@ SPDX-License-Identifier: Apache-2.0
 
 Pistache is a modern and elegant HTTP and REST framework for C++. It is entirely written in pure-C++17[\*](#linux-only) and provides a clear and pleasant API.
 
-Pistache supports Linux and macOS. To use in macOS, see the file: *Building on macOS.txt*
+Pistache supports Linux and macOS. To use in macOS, see the file: _Building on macOS.txt_
 
 ## Documentation
 
@@ -25,9 +25,9 @@ A benchmark comparison of Pistache to other C++ RESTful APIs was created by gute
 
 ## Articles, Tutorials & Videos
 
-* [Building an API in C++ With Pistache](https://levelup.gitconnected.com/building-an-api-in-c-with-pistache-413247535fd3)
-* [Adding a REST API with Pistache](https://www.youtube.com/watch?v=9BCO5W_Kw3Q)
-* [Slim Microservices with Pistache](https://www.dev-insider.de/schlanke-microservices-mit-pistache-a-87155e2f183e637103e19708200f8931/) (German)
+- [Building an API in C++ With Pistache](https://levelup.gitconnected.com/building-an-api-in-c-with-pistache-413247535fd3)
+- [Adding a REST API with Pistache](https://www.youtube.com/watch?v=9BCO5W_Kw3Q)
+- [Slim Microservices with Pistache](https://www.dev-insider.de/schlanke-microservices-mit-pistache-a-87155e2f183e637103e19708200f8931/) (German)
 
 ## Dependencies
 
@@ -44,7 +44,7 @@ Pistache has the following third party dependencies
 
 Pistache is released under the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0). Contributors are welcome!
 
-Pistache was originally created by Mathieu Stefani (`@octal`). He continues to contribute to the maintainence and development of Pistache, supported by a team of volunteers. The maintainers can be reached  in `#pistache` on [Libera.Chat](https://libera.chat/) (ircs://irc.libera.chat:6697). Please come and join us!
+Pistache was originally created by Mathieu Stefani (`@octal`). He continues to contribute to the maintainence and development of Pistache, supported by a team of volunteers. The maintainers can be reached in `#pistache` on [Libera.Chat](https://libera.chat/) (ircs://irc.libera.chat:6697). Please come and join us!
 
 The [Launchpad Team](https://launchpad.net/~pistache+team) administers the daily and stable Ubuntu pre-compiled packages.
 
@@ -201,7 +201,7 @@ $ git clone https://github.com/pistacheio/pistache.git
 ```
 
 To build for macOS, you can follow the instructions in:
-    *Building on macOS.txt*
+_Building on macOS.txt_
 
 Continuing the Linux instructions:
 
@@ -217,6 +217,7 @@ $ meson setup build                                 \
     -DPISTACHE_BUILD_DOCS=false                     \
     -DPISTACHE_USE_CONTENT_ENCODING_BROTLI=true     \
     -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true    \
+    -DPISTACHE_USE_CONTENT_ENCODING_ZSTD=true    \
     --prefix="$PWD/prefix"
 $ meson compile -C build
 $ meson install -C build
@@ -232,14 +233,15 @@ Be patient, async_test can take some time before completing. And that's it, now 
 
 Some other Meson options:
 
-| Option                                | Default | Description                                    |
-| ------------------------------------- | ------- | ---------------------------------------------- |
-| PISTACHE_USE_SSL                      | False   | Build server with SSL support                  |
-| PISTACHE_BUILD_TESTS                  | False   | Build all of the unit tests                    |
-| PISTACHE_BUILD_EXAMPLES               | False   | Build all of the example apps                  |
-| PISTACHE_BUILD_DOCS                   | False   | Build Doxygen docs                             |
-| PISTACHE_USE_CONTENT_ENCODING_BROTLI  | False   | Build with Brotli content encoding support     |
-| PISTACHE_USE_CONTENT_ENCODING_DEFLATE | False   | Build with deflate content encoding support    |
+| Option                                | Default | Description                                 |
+| ------------------------------------- | ------- | ------------------------------------------- |
+| PISTACHE_USE_SSL                      | False   | Build server with SSL support               |
+| PISTACHE_BUILD_TESTS                  | False   | Build all of the unit tests                 |
+| PISTACHE_BUILD_EXAMPLES               | False   | Build all of the example apps               |
+| PISTACHE_BUILD_DOCS                   | False   | Build Doxygen docs                          |
+| PISTACHE_USE_CONTENT_ENCODING_BROTLI  | False   | Build with Brotli content encoding support  |
+| PISTACHE_USE_CONTENT_ENCODING_DEFLATE | False   | Build with deflate content encoding support |
+| PISTACHE_USE_CONTENT_ENCODING_ZSTD    | False   | Build with Zstd content encoding support    |
 
 ## Example
 
@@ -264,7 +266,7 @@ int main() {
 
 ## Tutorials
 
-* [Adding a REST API with Pistache](https://www.youtube.com/watch?v=9BCO5W_Kw3Q), Utah Cpp Programmers, 20 July 2022.
+- [Adding a REST API with Pistache](https://www.youtube.com/watch?v=9BCO5W_Kw3Q), Utah Cpp Programmers, 20 July 2022.
 
 ## Project status
 

@@ -1113,6 +1113,9 @@ namespace Pistache::Http
 #endif
 
 #ifdef PISTACHE_USE_CONTENT_ENCODING_ZSTD
+        case Http::Header::Encoding::Zstd:
+            contentEncoding_ = Http::Header::Encoding::Zstd;
+            break;
 #endif
 
 #ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
