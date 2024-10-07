@@ -75,28 +75,28 @@ jobs:
           cd "$env:ProgramFiles/Microsoft Visual Studio";
           $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
               Sort-Object -Descending -Property LastWriteTime |
-              Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path;
-          if (($launch_vs_dev_shell_dir) -And (Test-Path -Path $launch_vs_dev_shell_dir)) {
-              cd "$launch_vs_dev_shell_dir";
-              ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
-          };
-          cd ~
-          
+              Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
+         }
+         
+         if ((! ($launch_vs_dev_shell_dir)) -or (! (Test-Path -Path $launch_vs_dev_shell_dir))) {
+             if (Test-Path -Path "$env:ProgramFiles(x86)/Microsoft Visual Studio") {
+                  cd "$env:ProgramFiles(x86)/Microsoft Visual Studio";
+                  $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
+                      Sort-Object -Descending -Property LastWriteTime |
+                      Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
+             }
         }
-        elseif (Test-Path -Path "$env:ProgramFiles(x86)/Microsoft Visual Studio") {
-          cd "$env:ProgramFiles(x86)/Microsoft Visual Studio";
-          $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
-              Sort-Object -Descending -Property LastWriteTime |
-              Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path;
-          if (($launch_vs_dev_shell_dir) -And (Test-Path -Path $launch_vs_dev_shell_dir)) {
-              cd "$launch_vs_dev_shell_dir";
-              ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
               
-          }
-          cd ~
-          
+        if (($launch_vs_dev_shell_dir) -And (Test-Path -Path $launch_vs_dev_shell_dir)) {
+            cd "$launch_vs_dev_shell_dir";
+            ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
         }
-
+        else {
+            Write-Host("WARNING: Launch-VsDevShell.ps1 not found");
+        }
+        
+        cd ~
+          
         if (($env:VCPKG_INSTALLATION_ROOT) -and ($env:VCPKG_ROOT) -and (Test-Path "$env:VCPKG_INSTALLATION_ROOT")) {
             $env:VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT
         } # Check this both before and after getting a Visual Studio Developer Prompt
@@ -327,22 +327,24 @@ jobs:
           cd "$env:ProgramFiles/Microsoft Visual Studio";
           $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
               Sort-Object -Descending -Property LastWriteTime |
-              Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path;
-          if (($launch_vs_dev_shell_dir) -And (Test-Path -Path $launch_vs_dev_shell_dir)) {
-              cd "$launch_vs_dev_shell_dir";
-              ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
-          };
+              Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
+         }
+         
+         if ((! ($launch_vs_dev_shell_dir)) -or (! (Test-Path -Path $launch_vs_dev_shell_dir))) {
+             if (Test-Path -Path "$env:ProgramFiles(x86)/Microsoft Visual Studio") {
+                  cd "$env:ProgramFiles(x86)/Microsoft Visual Studio";
+                  $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
+                      Sort-Object -Descending -Property LastWriteTime |
+                      Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
+             }
         }
-        elseif (Test-Path -Path "$env:ProgramFiles(x86)/Microsoft Visual Studio") {
-          cd "$env:ProgramFiles(x86)/Microsoft Visual Studio";
-          $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
-              Sort-Object -Descending -Property LastWriteTime |
-              Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path;
-          if (($launch_vs_dev_shell_dir) -And (Test-Path -Path $launch_vs_dev_shell_dir)) {
-              cd "$launch_vs_dev_shell_dir";
-              ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
               
-          }
+        if (($launch_vs_dev_shell_dir) -And (Test-Path -Path $launch_vs_dev_shell_dir)) {
+            cd "$launch_vs_dev_shell_dir";
+            ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
+        }
+        else {
+            Write-Host("WARNING: Launch-VsDevShell.ps1 not found");
         }
 
         cd "$savedpwd"
@@ -436,23 +438,27 @@ jobs:
           cd "$env:ProgramFiles/Microsoft Visual Studio";
           $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
               Sort-Object -Descending -Property LastWriteTime |
-              Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path;
-          if (($launch_vs_dev_shell_dir) -And (Test-Path -Path $launch_vs_dev_shell_dir)) {
-              cd "$launch_vs_dev_shell_dir";
-              ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
-          };
+              Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
+         }
+         
+         if ((! ($launch_vs_dev_shell_dir)) -or (! (Test-Path -Path $launch_vs_dev_shell_dir))) {
+             if (Test-Path -Path "$env:ProgramFiles(x86)/Microsoft Visual Studio") {
+                  cd "$env:ProgramFiles(x86)/Microsoft Visual Studio";
+                  $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
+                      Sort-Object -Descending -Property LastWriteTime |
+                      Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
+             }
         }
-        elseif (Test-Path -Path "$env:ProgramFiles(x86)/Microsoft Visual Studio") {
-          cd "$env:ProgramFiles(x86)/Microsoft Visual Studio";
-          $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
-              Sort-Object -Descending -Property LastWriteTime |
-              Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path;
-          if (($launch_vs_dev_shell_dir) -And (Test-Path -Path $launch_vs_dev_shell_dir)) {
-              cd "$launch_vs_dev_shell_dir";
-              ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
               
-          }
+        if (($launch_vs_dev_shell_dir) -And (Test-Path -Path $launch_vs_dev_shell_dir)) {
+            cd "$launch_vs_dev_shell_dir";
+            ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
         }
+        else {
+            Write-Host("WARNING: Launch-VsDevShell.ps1 not found");
+        }
+        
+        cd "$savedpwd"
 
         # Make sure we have ninja on the path
 
