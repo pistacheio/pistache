@@ -33,15 +33,15 @@ jobs:
       fail-fast: false
       matrix:
         # os: [ 'windows-2019', 'windows-2022', 'windows-latest' ] # !!!!!!!!
-        os: [ 'windows-2022' ]
+        os: [ 'windows-2019' ]
         # compiler: [ 'msvc', 'gcc', 'clang' ] # !!!!!!!!
         compiler: [ 'msvc' ]
         # sanitizer: [ 'address', 'undefined', 'none' ] # !!!!!!!!
-        sanitizer: [ 'none' ]
+        sanitizer: [ 'address' ]
         # tls: [ 'true', 'false' ] # !!!!!!!!
         tls: [ 'true' ]
         # def_debug: [ 'true', 'false' ] # !!!!!!!!
-        def_debug: [ 'true' ]
+        def_debug: [ 'false' ]
 
     runs-on: ${{ matrix.os }}
 
