@@ -169,14 +169,40 @@ jobs:
         }
 
         if (! (Get-Command ninja -errorAction SilentlyContinue)) {
-            if (Get-Command winget -errorAction SilentlyContinue)
-            {
-                winget install "Ninja-build.Ninja";
+            # Try looking in Microsoft Visual Studio
+            
+            if (Test-Path -Path "$env:ProgramFiles/Microsoft Visual Studio") {
+                cd "$env:ProgramFiles/Microsoft Visual Studio";
+                $ninja_dir = Get-ChildItem -Path "ninja.exe" -Recurse |
+                    Sort-Object -Descending -Property LastWriteTime |
+                    Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
             }
-            else
-            {
-                vcpkg install vcpkg-tool-ninja
+
+            if ((! ($ninja_dir)) -or (! (Test-Path -Path $ninja_dir))) {
+                # Try looking in 32-bit Microsoft Visual Studio
+                
+                if (Test-Path -Path "$env:ProgramFiles(x86)/Microsoft Visual Studio") {
+                    cd "$env:ProgramFiles(x86)/Microsoft Visual Studio";
+                    $ninja_dir = Get-ChildItem -Path "ninja.exe" -Recurse |
+                        Sort-Object -Descending -Property LastWriteTime |
+                        Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
+                    }
+                }
+
+            if ((! ($ninja_dir)) -or (! (Test-Path -Path $ninja_dir))) {
+                # Can't find ninja in Microsoft Visual Studio, so install
+            
+                if (Get-Command winget -errorAction SilentlyContinue)
+                {
+                    winget install "Ninja-build.Ninja";
+                }
+                else
+                {
+                    vcpkg install vcpkg-tool-ninja
+                }
             }
+
+            cd ~
         }
 
         vcpkg install curl[openssl]
