@@ -92,33 +92,42 @@ jobs:
               
         if (($launch_vs_dev_shell_dir) -And (Test-Path -Path $launch_vs_dev_shell_dir)) {
             cd "$launch_vs_dev_shell_dir";
-            ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
-        }
-        else {
-            Write-Host("WARNING: Launch-VsDevShell.ps1 not found");
-            $hacked_lvsdv_path='C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\Tools\Launch-VsDevShell.ps1'
-            if (Test-Path -Path $hacked_lvsdv_path) {
-                Write-Host "Found $hacked_lvsdv_path"
-            }
-            else {
-                Write-Host "NOT found $hacked_lvsdv_path"
-
-                $hacked_lvsdv_path='C:\Program Files (x86)\Microsoft Visual Studio\2019\Community';
-                if (Test-Path -Path $hacked_lvsdv_path) {
-                    Write-Host "Found $hacked_lvsdv_path"
-                }
-                else {
-                    Write-Host "NOT found $hacked_lvsdv_path"
-
-                    $hacked_lvsdv_path='C:\Program Files (x86)\Microsoft Visual Studio\2019';
-                    if (Test-Path -Path $hacked_lvsdv_path) {
-                        Write-Host "Found $hacked_lvsdv_path"
+            try {
+                ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
+            } catch {
+                Write-Host "Error in Launch-VsDevShell.ps1, checking Launch-VsDevShell.ps1's help";
+                cd "$launch_vs_dev_shell_dir";
+                if (! ((./Launch-VsDevShell.ps1 -?) -like "*-HostArch*")) {
+                    Write-Host "Launch-VsDevShell.ps1 has no parameter -HostArch";
+                    if (Test-Path -Path "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe") {
+                        Write-Host "Going to try Import-Module and Enter-VsDevShell";
+                        cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer";
+                        $vs_instance_id=.\vswhere.exe -property instanceId;
+                        cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio";
+                        $dev_shell_path=Get-ChildItem -Path "Microsoft.VisualStudio.DevShell.dll" -Recurse |
+                          Sort-Object -Descending -Property LastWriteTime |
+                          Select -Index 0 | Select -ExpandProperty "FullName";
+                        if ($dev_shell_path) {
+                            Import-Module "$dev_shell_path";
+                            Write-Host (Get-Help Enter-VsDevShell);
+                            $env:VSCMD_DEBUG=1;
+                            Enter-VsDevShell -VsInstanceId $vs_instance_id -SkipAutomaticLocation -DevCmdDebugLevel Basic -DevCmdArguments '-arch=x64'
+                        }
+                        else {
+                            Write-Host "WARNING: Microsoft.VisualStudio.DevShell.dll"
+                        }
                     }
                     else {
-                        Write-Host "NOT found $hacked_lvsdv_path"
+                        Write-Host "WARNING: vswhere.exe not found"
                     }
                 }
+                else {
+                    Write-Host "WARNING: Unexpected Launch-VsDevShell.ps1 error"
+                }
             }
+        }
+        else {
+            Write-Host("WARNING: Launch-VsDevShell.ps1 not found")
         }
         
         cd ~
@@ -367,10 +376,42 @@ jobs:
               
         if (($launch_vs_dev_shell_dir) -And (Test-Path -Path $launch_vs_dev_shell_dir)) {
             cd "$launch_vs_dev_shell_dir";
-            ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
+            try {
+                ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
+            } catch {
+                Write-Host "Error in Launch-VsDevShell.ps1, checking Launch-VsDevShell.ps1's help";
+                cd "$launch_vs_dev_shell_dir";
+                if (! ((./Launch-VsDevShell.ps1 -?) -like "*-HostArch*")) {
+                    Write-Host "Launch-VsDevShell.ps1 has no parameter -HostArch";
+                    if (Test-Path -Path "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe") {
+                        Write-Host "Going to try Import-Module and Enter-VsDevShell";
+                        cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer";
+                        $vs_instance_id=.\vswhere.exe -property instanceId;
+                        cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio";
+                        $dev_shell_path=Get-ChildItem -Path "Microsoft.VisualStudio.DevShell.dll" -Recurse |
+                          Sort-Object -Descending -Property LastWriteTime |
+                          Select -Index 0 | Select -ExpandProperty "FullName";
+                        if ($dev_shell_path) {
+                            Import-Module "$dev_shell_path";
+                            Write-Host (Get-Help Enter-VsDevShell);
+                            $env:VSCMD_DEBUG=1;
+                            Enter-VsDevShell -VsInstanceId $vs_instance_id -SkipAutomaticLocation -DevCmdDebugLevel Basic -DevCmdArguments '-arch=x64'
+                        }
+                        else {
+                            Write-Host "WARNING: Microsoft.VisualStudio.DevShell.dll"
+                        }
+                    }
+                    else {
+                        Write-Host "WARNING: vswhere.exe not found"
+                    }
+                }
+                else {
+                    Write-Host "WARNING: Unexpected Launch-VsDevShell.ps1 error"
+                }
+            }
         }
         else {
-            Write-Host("WARNING: Launch-VsDevShell.ps1 not found");
+            Write-Host("WARNING: Launch-VsDevShell.ps1 not found")
         }
 
         cd "$savedpwd"
@@ -478,10 +519,42 @@ jobs:
               
         if (($launch_vs_dev_shell_dir) -And (Test-Path -Path $launch_vs_dev_shell_dir)) {
             cd "$launch_vs_dev_shell_dir";
-            ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
+            try {
+                ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
+            } catch {
+                Write-Host "Error in Launch-VsDevShell.ps1, checking Launch-VsDevShell.ps1's help";
+                cd "$launch_vs_dev_shell_dir";
+                if (! ((./Launch-VsDevShell.ps1 -?) -like "*-HostArch*")) {
+                    Write-Host "Launch-VsDevShell.ps1 has no parameter -HostArch";
+                    if (Test-Path -Path "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe") {
+                        Write-Host "Going to try Import-Module and Enter-VsDevShell";
+                        cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer";
+                        $vs_instance_id=.\vswhere.exe -property instanceId;
+                        cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio";
+                        $dev_shell_path=Get-ChildItem -Path "Microsoft.VisualStudio.DevShell.dll" -Recurse |
+                          Sort-Object -Descending -Property LastWriteTime |
+                          Select -Index 0 | Select -ExpandProperty "FullName";
+                        if ($dev_shell_path) {
+                            Import-Module "$dev_shell_path";
+                            Write-Host (Get-Help Enter-VsDevShell);
+                            $env:VSCMD_DEBUG=1;
+                            Enter-VsDevShell -VsInstanceId $vs_instance_id -SkipAutomaticLocation -DevCmdDebugLevel Basic -DevCmdArguments '-arch=x64'
+                        }
+                        else {
+                            Write-Host "WARNING: Microsoft.VisualStudio.DevShell.dll"
+                        }
+                    }
+                    else {
+                        Write-Host "WARNING: vswhere.exe not found"
+                    }
+                }
+                else {
+                    Write-Host "WARNING: Unexpected Launch-VsDevShell.ps1 error"
+                }
+            }
         }
         else {
-            Write-Host("WARNING: Launch-VsDevShell.ps1 not found");
+            Write-Host("WARNING: Launch-VsDevShell.ps1 not found")
         }
         
         cd "$savedpwd"
