@@ -7,6 +7,7 @@ gtest_main_dep = dependency('gtest', main: true, fallback: ['gtest', 'gtest_main
 gmock_dep = dependency('gmock', version: '>=1.11.0', fallback: ['gtest', 'gmock_dep'])
 cpp_httplib_dep = dependency('cpp-httplib', fallback: ['cpp-httplib', 'cpp_httplib_dep'])
 brotli_dep = dependency('', required: false)
+zstd_dep = dependency('', required: false)
 
 subdir('helpers')
 

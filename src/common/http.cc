@@ -933,7 +933,7 @@ namespace Pistache::Http
 
             // Compress data using compresion_level = 5: https://facebook.github.io/zstd/zstd_manual.html#Chapter5
             auto compress_size = ZSTD_compress((void*)compressedData.get(), estimated_size,
-                                               data, size, ZSTD_lazy2);
+                                               data, size, 11);
             if (ZSTD_isError(compress_size))
             {
                 throw std::runtime_error(
