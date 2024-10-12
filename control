@@ -11,6 +11,7 @@ Build-Depends: debhelper-compat (= 13), meson (>= 0.53.2)
 Build-Depends-Arch: libbrotli-dev,
                     libcurl4-openssl-dev,
                     libevent-dev,
+                    libzstd-dev,
                     libgmock-dev (>= 1.11.0) <!nocheck> | googletest (>= 1.11.0) <!nocheck>,
                     libssl-dev,
                     netbase <!nocheck>,
@@ -40,6 +41,7 @@ Section: libdevel
 Architecture: any
 Depends: libpistache0 (= ${binary:Version}),
          libbrotli-dev,
+         libzstd-dev,
          libssl-dev,
          rapidjson-dev,
          zlib1g-dev | libz-dev
