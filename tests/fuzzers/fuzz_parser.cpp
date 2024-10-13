@@ -86,6 +86,21 @@ void fuzz_request_parser(const std::string& input)
     }
 }
 
+void fuzz_response_parser(const std::string& input)
+{
+    constexpr size_t maxDataSize = 4096;
+    Pistache::Http::ResponseParser rparser(maxDataSize);
+
+    if (rparser.feed(input.data(), input.size()))
+    {
+        auto state = Pistache::Http::Private::State::Done;
+        ignoreExceptions([&] { state = rparser.parse(); });
+
+        if (state == Pistache::Http::Private::State::Again)
+            ignoreExceptions([&] { rparser.parse(); });
+    }
+}
+
 void fuzz_router(const std::string& input)
 {
     std::string path_input;
@@ -151,6 +166,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
         break;
     case 'R':
         fuzz_request_parser(input);
+        break;
+    case 'A':
+        fuzz_response_parser(input);
         break;
     case 'S':
         fuzz_router(input);
