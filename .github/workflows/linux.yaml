@@ -8,6 +8,7 @@ on:
   push:
     branches:
     - master
+    - MakeDlLibraryDependency4
   pull_request:
     branches:
     - master
