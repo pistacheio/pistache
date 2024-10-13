@@ -47,7 +47,8 @@ jobs:
         if [ ${{ matrix.compiler }} = gcc ]; then compiler=g++; else compiler="clang lld ?exact-name(libclang-rt-dev)"; fi
         brew update
 
-        brew install meson --overwrite # Enables Python3 upgrade
+        if ! type "meson" > /dev/null; then brew install meson --overwrite; fi
+
         brew install lcov
         brew install --quiet --cask doxygen
         brew install googletest
