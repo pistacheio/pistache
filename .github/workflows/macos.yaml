@@ -12,6 +12,7 @@ on:
   push:
     branches:
     - master
+    - macOSRunner2
   pull_request:
     branches:
     - master
@@ -46,7 +47,7 @@ jobs:
         if [ ${{ matrix.compiler }} = gcc ]; then compiler=g++; else compiler="clang lld ?exact-name(libclang-rt-dev)"; fi
         brew update
 
-        brew install meson
+        brew install meson --overwrite # Enables Python3 upgrade
         brew install lcov
         brew install --quiet --cask doxygen
         brew install googletest
