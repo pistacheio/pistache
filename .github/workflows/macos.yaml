@@ -32,7 +32,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ 'macos-12', 'macos-13', 'macos-14', 'macos-15' ]
+#        os: [ 'macos-12', 'macos-13', 'macos-14', 'macos-15' ]
+        os: [ 'macos-13' ] # !!!!!!!!
         compiler: [ 'gcc', 'clang' ]
         sanitizer: [ 'address', 'undefined', 'none' ]
         tls: [ 'true', 'false' ]
@@ -45,7 +46,8 @@ jobs:
       if: contains(matrix.os, 'macos')
       run: |
         if [ ${{ matrix.compiler }} = gcc ]; then compiler=g++; else compiler="clang lld ?exact-name(libclang-rt-dev)"; fi
-        brew update
+
+        # brew update # !!!!!!!!
 
         if ! type "meson" > /dev/null; then brew install meson --overwrite; fi
 
