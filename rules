@@ -37,8 +37,8 @@ override_dh_auto_configure:
 		-DPISTACHE_BUILD_DOCS=false \
 		-DPISTACHE_USE_SSL=true \
 		-DPISTACHE_USE_CONTENT_ENCODING_BROTLI=true \
-		-DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true
-
+		-DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true \
+		-DPISTACHE_USE_CONTENT_ENCODING_ZSTD=true
 override_dh_auto_test:
 	dh_auto_test -- \
 		--no-suite=network
