@@ -31,7 +31,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ 'macos-12', 'macos-13', 'macos-latest' ]
+        os: [ 'macos-12', 'macos-13', 'macos-14', 'macos-15' ]
         compiler: [ 'gcc', 'clang' ]
         sanitizer: [ 'address', 'undefined', 'none' ]
         tls: [ 'true', 'false' ]
@@ -44,9 +44,23 @@ jobs:
       if: contains(matrix.os, 'macos')
       run: |
         if [ ${{ matrix.compiler }} = gcc ]; then compiler=g++; else compiler="clang lld ?exact-name(libclang-rt-dev)"; fi
-        brew update
 
-        brew install meson
+        # Avoid doing "brew update" - the brew formulas that are
+        # preinstalled on the github runner image are likely
+        # consistent with the pre-installed software on the image. If
+        # we do "brew upate", and then install something new with
+        # brew, and the "something new" depends on pre-installed
+        # software on the image, and there are new versions of the
+        # pre-installed software revealed by doing "brew update", then
+        # when we install the "something new" brew may try and also
+        # install a new version of the pre-installed software on which
+        # the "something new" depends, but that attempt to install a
+        # new version of the pre-installed software can fail as a
+        # result of being blocked by the software that is already
+        # installed.
+
+        if ! type "meson" > /dev/null; then brew install meson --overwrite; fi
+
         brew install lcov
         brew install --quiet --cask doxygen
         brew install googletest
