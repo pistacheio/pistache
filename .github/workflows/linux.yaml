@@ -8,6 +8,7 @@ on:
   push:
     branches:
     - master
+    - stdcppForDebTesting
   pull_request:
     branches:
     - master
@@ -25,10 +26,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ 'debian:stable', 'debian:testing', 'registry.access.redhat.com/ubi8/ubi-minimal', 'registry.access.redhat.com/ubi9/ubi-minimal' ]
-        compiler: [ 'gcc', 'clang' ]
-        sanitizer: [ 'address', 'undefined', 'none' ] # ThreadSanitizer reports errors
-        tls: [ 'true', 'false' ]
+        os: [ 'debian:testing' ]
+        compiler: [ 'clang' ]
+        sanitizer: [ 'none' ] # ThreadSanitizer reports errors
+        tls: [ 'true' ]
+# !!!!!!!!
+#         os: [ 'debian:stable', 'debian:testing', 'registry.access.redhat.com/ubi8/ubi-minimal', 'registry.access.redhat.com/ubi9/ubi-minimal' ]
+#         compiler: [ 'gcc', 'clang' ]
+#         sanitizer: [ 'address', 'undefined', 'none' ] # ThreadSanitizer reports errors
+#         tls: [ 'true', 'false' ]
         exclude:
           - os: 'registry.access.redhat.com/ubi8/ubi-minimal'
             sanitizer: 'address'
@@ -58,6 +64,14 @@ jobs:
         if [ ${{ matrix.compiler }} = gcc ]; then compiler=g++; else compiler="clang lld ?exact-name(libclang-rt-dev)"; fi
         apt -y update
         apt -y install $compiler meson pkg-config cmake rapidjson-dev libssl-dev netbase '?exact-name(libhowardhinnant-date-dev)' '?exact-name(libgmock-dev) (?version([1-9]\.[1-9][1-9]) | ?version([1-9]\.[2-9][0-9]))' '?exact-name(libcpp-httplib-dev)' libcurl4-openssl-dev git ca-certificates curl gpg gpgv gpg-agent lcov llvm-dev --no-install-recommends
+        if [ ${{ matrix.compiler }} = clang ] && [ ${{ matrix.os == 'debian:testing' }} ]; then dpkg-query -l "libstdc++*-dev*"; apt-cache search "libstdc++"; fi
+        # !!!!!!!!
+        # if [ ${{ matrix.compiler }} = clang ] && [ ${{ matrix.os == 'debian:testing' }} ]; then...
+        # To see if installed:
+        #   dpkg-query -l "libstdc++*-dev*" | grep "ii"
+        # To see what's available: apt-cache search <name>
+        
+        
 
     - name: Install dependencies (Red Hat)
       if: contains(matrix.os, 'redhat')
