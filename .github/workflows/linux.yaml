@@ -65,8 +65,8 @@ jobs:
         apt -y update
         apt -y install $compiler meson pkg-config cmake rapidjson-dev libssl-dev netbase '?exact-name(libhowardhinnant-date-dev)' '?exact-name(libgmock-dev) (?version([1-9]\.[1-9][1-9]) | ?version([1-9]\.[2-9][0-9]))' '?exact-name(libcpp-httplib-dev)' libcurl4-openssl-dev git ca-certificates curl gpg gpgv gpg-agent lcov llvm-dev --no-install-recommends
         if [ ${{ matrix.compiler }} = clang ] && [ ${{ matrix.os == 'debian:testing' }} ]; then dpkg-query -l "libstdc++*-dev*"; apt-cache search "libstdc++"; fi
-        apt -y install libstdc++-dev --no-install-recommends
-        # apt -y install libstdc++-13-dev --no-install-recommends
+        # apt -y install libstdc++-dev --no-install-recommends
+        apt -y install libstdc++-13-dev --no-install-recommends
         
         # !!!!!!!!
         # if [ ${{ matrix.compiler }} = clang ] && [ ${{ matrix.os == 'debian:testing' }} ]; then...
