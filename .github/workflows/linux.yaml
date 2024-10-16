@@ -68,6 +68,7 @@ jobs:
         if [ ${{ matrix.compiler }} = clang ] && [ ${{ matrix.os == 'debian:testing' }} ]; then dpkg-query -l "libstdc++*-dev*"; apt-cache search "libstdc++"; fi
         # apt -y install libstdc++-dev --no-install-recommends
         apt -y install libstdc++-12-dev --no-install-recommends
+        apt -y install libstdc++-14-dev --no-install-recommends
         
         # !!!!!!!!
         # if [ ${{ matrix.compiler }} = clang ] && [ ${{ matrix.os == 'debian:testing' }} ]; then...
