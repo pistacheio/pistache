@@ -70,8 +70,7 @@ jobs:
         # apt -y install libstdc++-14-dev --no-install-recommends
         libstdcpp_latest=$(apt-cache search "libstdc++" | grep "libstdc++-..-dev " | sort -r | head -c 16)
         echo "libstdcpp_latest is $libstdcpp_latest"
-        if [ ${libstdcpp_latest:0:9} = "libstdc++" ]  && [ ${libstdcpp_latest:13:3} = "dev" ]; then echo "libstdcpp_latest $libstdcpp_latest matches"; fi
-        if [ ${libstdcpp_latest:0:9} = "libstdc++" ]  && [ ${libstdcpp_latest:13:3} = "dev" ]; then apt -y install ${libstdcpp_latest} --no-install-recommends; fi
+#        if [ ${libstdcpp_latest:0:9} = "libstdc++" ]  && [ ${libstdcpp_latest:13:3} = "dev" ]; then apt -y install ${libstdcpp_latest} --no-install-recommends; fi
         
         # !!!!!!!!
         # if [ ${{ matrix.compiler }} = clang ] && [ ${{ matrix.os == 'debian:testing' }} ]; then...
