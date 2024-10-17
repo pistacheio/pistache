@@ -252,6 +252,7 @@ namespace Pistache
                 // Since it's Single-Consumer, the store does not need to be atomic
                 tail = next;
                 new (&res->storage) T(std::move(next->data()));
+                next->data().~T();
                 return res;
             }
             return nullptr;
