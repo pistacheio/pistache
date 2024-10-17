@@ -9,28 +9,47 @@
 
 struct Data
 {
-    static int num_instances;
+    static inline int num_instances = 0;
     static constexpr int fingerprint = 0xdeadbeef;
 
     Data()
         : val(Data::fingerprint)
+        , payload(std::string(100, 'x'))
     {
         num_instances++;
     }
 
+    Data(Data&&)
+        : val(Data::fingerprint)
+        , payload(std::string(100, 'x'))
+    {
+        num_instances++;
+    }
+
+    Data(const Data&) = delete;
+
     ~Data()
     {
         EXPECT_EQ(val, Data::fingerprint);
-        EXPECT_GE(0, --num_instances);
+        EXPECT_GE(--num_instances, 0);
     }
 
     int val;
+
+    // Dynamic allocation is required to detect a potential memory leak here
+    std::string payload;
 };
 
-int Data::num_instances = 0;
-constexpr int Data::fingerprint;
+class QueueTest : public testing::Test
+{
+public:
+    void SetUp() override
+    {
+        Data::num_instances = 0;
+    }
+};
 
-TEST(queue_test, destructor_test)
+TEST_F(QueueTest, destructor_test)
 {
     Pistache::Queue<Data> queue;
     EXPECT_TRUE(queue.empty());
@@ -40,4 +59,23 @@ TEST(queue_test, destructor_test)
         queue.push(Data());
     }
     // Should call Data::~Data 5 times and not 6 (placeholder entry)
+}
+
+TEST_F(QueueTest, push_pop)
+{
+    auto queue = std::make_unique<Pistache::Queue<Data>>();
+    EXPECT_TRUE(queue->empty());
+
+    for (int i = 0; i < 5; i++)
+    {
+        queue->push(Data());
+    }
+
+    for (int i = 0; i < 5; i++)
+    {
+        EXPECT_NE(queue->popSafe(), nullptr);
+    }
+
+    EXPECT_TRUE(queue->empty());
+    EXPECT_EQ(Data::num_instances, 0);
 }
