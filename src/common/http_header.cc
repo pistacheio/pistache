@@ -18,6 +18,7 @@
 #include <pistache/stream.h>
 
 #include <algorithm>
+#include <charconv>
 #include <cstring>
 #include <iostream>
 #include <iterator>
@@ -221,13 +222,20 @@ namespace Pistache::Http::Header
                                 "Invalid caching directive, missing delta-seconds");
                         }
 
-                        char* end;
                         const char* beg = cursor.offset();
-                        // @Security: if str is not \0 terminated, there might be a situation
-                        // where strtol can overflow. Double-check that it's harmless and fix
-                        // if not
-                        auto secs = strtol(beg, &end, 10);
-                        cursor.advance(end - beg);
+                        const char* end = cursor.offset() + cursor.remaining();
+
+                        std::uint64_t secs     = 0;
+                        const auto parseResult = std::from_chars(beg, end, secs);
+
+                        if (parseResult.ec != std::errc {})
+                        {
+                            throw std::runtime_error(
+                                "Invalid caching directive, malformated delta-seconds");
+                        }
+
+                        cursor.advance(parseResult.ptr - beg);
+
                         if (!cursor.eof() && cursor.current() != ',')
                         {
                             throw std::runtime_error(
