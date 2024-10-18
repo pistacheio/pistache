@@ -51,45 +51,25 @@ using namespace std::chrono;
 
 namespace
 {
-
-    class SimpleLogger
-    {
-    public:
-        static SimpleLogger& instance()
-        {
-            static SimpleLogger logger;
-            return logger;
-        }
-
-        void log(const std::string& message)
-        {
-            std::lock_guard<std::mutex> guard { m_coutLock };
-            std::cout << message << std::endl;
-
-            // Save in syslog / os_log as well
-            PSLogNoLocFn(LOG_INFO,
-                         false, // don't send to stdout - just did that
-                         "%s", message.c_str());
-        }
-
-    private:
-        SimpleLogger() = default;
-        std::mutex m_coutLock;
-    };
-
     // from
     // https://stackoverflow.com/questions/9667963/can-i-rewrite-a-logging-macro-with-stream-operators-to-use-a-c-template-functi
     class ScopedLogger
     {
     public:
-        ScopedLogger(const std::string& prefix)
+        ScopedLogger(const std::string& prefix,
+                     const char * f, int l, const char * m) :
+            f_(f), l_(l), m_(m)
         {
-            m_stream << "[" << prefix << "] [" << std::hex << std::this_thread::get_id() << "] " << std::dec;
+            m_stream << "[" << prefix << "] ";
         }
 
         ~ScopedLogger()
         {
-            SimpleLogger::instance().log(m_stream.str());
+            // Save in syslog / os_log and send to stdout
+            PSLogFn(LOG_INFO, true, f_.c_str(), l_, m_.c_str(),
+                    "%s", m_stream.str().c_str());
+            // The "true" in PSLogFn (normally PS_LOG_AND_STDOUT) is "send to
+            // both stdout and log"
         }
 
         std::stringstream& stream()
@@ -99,9 +79,13 @@ namespace
 
     private:
         std::stringstream m_stream;
+        std::string f_;
+        int l_;
+        std::string m_;
     };
 
-#define LOGGER(prefix, message) ScopedLogger(prefix).stream() << message;
+#define LOGGER(prefix, message) ScopedLogger(                   \
+    prefix, __FILE__, __LINE__, __FUNCTION__).stream() << message;
 
 }
 
