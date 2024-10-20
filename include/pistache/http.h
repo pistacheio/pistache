@@ -536,9 +536,9 @@ namespace Pistache
 #endif
 #ifdef PISTACHE_USE_CONTENT_ENCODING_ZSTD
 
-            void setCompressionZstdLevel(const int _contentEncodingZstdLevel)
+            void setCompressionZstdLevel(const int contentEncodingZstdLevel)
             {
-                contentEncodingZstdLevel = _contentEncodingZstdLevel;
+                contentEncodingZstdLevel_ = contentEncodingZstdLevel;
             }
 
 #endif
@@ -575,7 +575,7 @@ namespace Pistache
 #endif
 
 #ifdef PISTACHE_USE_CONTENT_ENCODING_ZSTD
-            int contentEncodingZstdLevel = ZSTD_lazy2;
+            int contentEncodingZstdLevel_ = ZSTD_defaultCLevel();
 #endif
 
 #ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
