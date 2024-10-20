@@ -163,14 +163,23 @@ endif
 # #1230.
 # Note: If 'dl' is not available, per Meson it suggests that the
 # functionality is provided by libc
-has_dladdr_func = compiler.has_function('dladdr')
-if not has_dladdr_func
-  libdl_dep += dependency('dl')
-  has_dladdr_func = compiler.has_function('dladdr', dependencies: libdl_dep)
-  if not has_dladdr_func
-    warning('Unable to find dladdr(), even when trying to link to libdl')
-  endif
-  libpistache_deps += libdl_dep
+
+# It would be nice to use compiler.has_function('dladdr') to test if
+# we need to add libdl, but unfortunately that approach seems to break
+# certain Redhat builds, specifically the Redhat builds that use
+# ubi-8. In such cases, it appears meson creates a test file that
+# includes the comment:
+#   With some toolchains ... the compiler provides various builtins
+#   which are not really implemented... [If] the user provides a
+#   header, including the header didn't lead to the function being
+#   defined, and the function we are checking isn't a builtin itself,
+#   we assume the builtin is not functional and error out
+# To avoid generating such an error, we take the simpler approach of
+# trying to add libdl but making it optional (i.e. not required).
+if meson.version().version_compare('>=0.62.0')
+  deps_libpistache += dependency('dl', required: false)
+else
+  deps_libpistache += compiler.find_library('dl', required: false)
 endif
 
 version_array = []
