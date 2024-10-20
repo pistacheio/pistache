@@ -1303,7 +1303,7 @@ struct ContentEncodingHandler : public Http::Handler
 
 #ifdef PISTACHE_USE_CONTENT_ENCODING_ZSTD
         case Http::Header::Encoding::Zstd:
-            writer.setCompressionZstdLevel(ZSTD_btultra2);
+            writer.setCompressionZstdLevel(ZSTD_maxCLevel());
             break;
 #endif
 
