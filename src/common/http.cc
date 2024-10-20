@@ -938,9 +938,9 @@ namespace Pistache::Http
             // Allocate a smart buffer to contain compressed data...
             std::unique_ptr compressedData = std::make_unique<std::byte[]>(estimated_size);
 
-            // Compress data using compresion_level = 5: https://facebook.github.io/zstd/zstd_manual.html#Chapter5
-            auto compress_size = ZSTD_compress((void*)compressedData.get(), estimated_size,
-                                               data, size, 11);
+            // Compress data using default compression level: https://raw.githack.com/facebook/zstd/release/doc/zstd_manual.html#Chapter3
+            auto compress_size = ZSTD_compress(reinterpret_cast<void*>(compressedData.get()), estimated_size,
+                                               data, size, ZSTD_defaultCLevel());
             if (ZSTD_isError(compress_size))
             {
                 throw std::runtime_error(
