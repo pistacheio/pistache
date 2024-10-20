@@ -17,6 +17,7 @@
 
 using testing::ElementsAre;
 using testing::SizeIs;
+using testing::ThrowsMessage;
 using testing::UnorderedElementsAre;
 
 TEST(headers_test, accept)
@@ -240,6 +241,13 @@ TEST(headers_test, cache_control)
         ASSERT_EQ(directives[0].delta(), std::chrono::seconds(delta));
     };
 
+    auto testInvalid = [](std::string str, std::string error) {
+        Pistache::Http::Header::CacheControl cc;
+        ASSERT_THAT(
+            [&] { cc.parse(str); },
+            ThrowsMessage<std::runtime_error>("Invalid caching directive, " + error));
+    };
+
     testTrivial("no-cache", Pistache::Http::CacheDirective::NoCache);
     testTrivial("no-store", Pistache::Http::CacheDirective::NoStore);
     testTrivial("no-transform", Pistache::Http::CacheDirective::NoTransform);
@@ -250,6 +258,13 @@ TEST(headers_test, cache_control)
 
     testTimed("max-stale=12345", Pistache::Http::CacheDirective::MaxStale, 12345);
     testTimed("min-fresh=48", Pistache::Http::CacheDirective::MinFresh, 48);
+
+    testInvalid("max-age", "missing delta-seconds");
+    testInvalid("max-age=", "malformated delta-seconds");
+    testInvalid("max-age=abc", "malformated delta-seconds");
+    testInvalid("max-age=12345678987654321123324688", "malformated delta-seconds");
+    testInvalid("max-age=-42", "malformated delta-seconds");
+    testInvalid("max-age=42abc", "malformated delta-seconds");
 
     Pistache::Http::Header::CacheControl cc1;
     cc1.parse("private, max-age=600");
