@@ -350,9 +350,10 @@ namespace Pistache::Async
                 {
                     chain_->exc   = e.exc;
                     chain_->state = State::Rejected;
-                    for (const auto& req : chain_->requests)
+                    for (const auto req : chain_->requests)
                     {
-                        req->reject(chain_);
+                        if (req)
+                            req->reject(chain_);
                     }
                 }
             }
@@ -437,9 +438,10 @@ namespace Pistache::Async
                      * reject_ is guaranteed to throw ("[[noreturn]]") so
                      * doing this "for" loop is pointless
                      *
-                    for (const auto& req : this->chain_->requests)
+                    for (const auto req : this->chain_->requests)
                     {
-                        req->reject(this->chain_);
+                        if (req)
+                            req->reject(this->chain_);
                     }
                     */
                 }
@@ -449,9 +451,10 @@ namespace Pistache::Async
                 {
                     typedef typename std::decay<Ret>::type CleanRet;
                     this->chain_->template construct<CleanRet>(std::forward<Ret>(ret));
-                    for (const auto& req : this->chain_->requests)
+                    for (const auto req : this->chain_->requests)
                     {
-                        req->resolve(this->chain_);
+                        if (req)
+                            req->resolve(this->chain_);
                     }
                 }
 
@@ -483,9 +486,10 @@ namespace Pistache::Async
                 void doReject(const std::shared_ptr<CoreT<void>>& core) override
                 {
                     reject_(core->exc);
-                    for (const auto& req : this->chain_->requests)
+                    for (const auto req : this->chain_->requests)
                     {
-                        req->reject(this->chain_);
+                        if (req)
+                            req->reject(this->chain_);
                     }
                 }
 
@@ -494,9 +498,10 @@ namespace Pistache::Async
                 {
                     typedef typename std::remove_reference<Ret>::type CleanRet;
                     this->chain_->template construct<CleanRet>(std::forward<Ret>(ret));
-                    for (const auto& req : this->chain_->requests)
+                    for (const auto req : this->chain_->requests)
                     {
-                        req->resolve(this->chain_);
+                        if (req)
+                            req->resolve(this->chain_);
                     }
                 }
 
@@ -603,9 +608,10 @@ namespace Pistache::Async
                      * reject_ is guaranteed to throw ("[[noreturn]]") so
                      * doing this "for" loop is pointless
                      *
-                    for (const auto& req : core->requests)
+                    for (const auto req : core->requests)
                     {
-                        req->reject(core);
+                        if (req)
+                            req->reject(core);
                     }
                     */
                 }
@@ -620,9 +626,10 @@ namespace Pistache::Async
                     void operator()(const PromiseType& val)
                     {
                         chainCore->construct<PromiseType>(val);
-                        for (const auto& req : chainCore->requests)
+                        for (const auto req : chainCore->requests)
                         {
-                            req->resolve(chainCore);
+                            if (req)
+                                req->resolve(chainCore);
                         }
                     }
 
@@ -647,9 +654,10 @@ namespace Pistache::Async
                             core->exc   = std::move(exc);
                             core->state = State::Rejected;
 
-                            for (const auto& req : core->requests)
+                            for (const auto req : core->requests)
                             {
-                                req->reject(core);
+                                if (req)
+                                    req->reject(core);
                             }
                         }
                     });
@@ -684,9 +692,10 @@ namespace Pistache::Async
                 void doReject(const std::shared_ptr<CoreT<void>>& core) override
                 {
                     reject_(core->exc);
-                    for (const auto& req : core->requests)
+                    for (const auto req : core->requests)
                     {
-                        req->reject(core);
+                        if (req)
+                            req->reject(core);
                     }
                 }
 
@@ -700,9 +709,10 @@ namespace Pistache::Async
                     void operator()(const PromiseType& val)
                     {
                         chainCore->construct<PromiseType>(val);
-                        for (const auto& req : chainCore->requests)
+                        for (const auto req : chainCore->requests)
                         {
-                            req->resolve(chainCore);
+                            if (req)
+                                req->resolve(chainCore);
                         }
                     }
 
@@ -720,9 +730,10 @@ namespace Pistache::Async
                     {
                         chainCore->state = State::Fulfilled;
 
-                        for (const auto& req : chainCore->requests)
+                        for (const auto req : chainCore->requests)
                         {
-                            req->resolve(chainCore);
+                            if (req)
+                                req->resolve(chainCore);
                         }
                     }
 
@@ -745,9 +756,10 @@ namespace Pistache::Async
                         core->exc   = std::move(exc);
                         core->state = State::Rejected;
 
-                        for (const auto& req : core->requests)
+                        for (const auto req : core->requests)
                         {
-                            req->reject(core);
+                            if (req)
+                                req->reject(core);
                         }
                     });
                 }
@@ -861,9 +873,10 @@ namespace Pistache::Async
             std::unique_lock<std::mutex> guard(core_->mtx);
             core_->construct<Type>(std::forward<Arg>(arg));
 
-            for (const auto& req : core_->requests)
+            for (const auto req : core_->requests)
             {
-                req->resolve(core_);
+                if (req)
+                    req->resolve(core_);
             }
 
             return true;
@@ -882,9 +895,10 @@ namespace Pistache::Async
 
             std::unique_lock<std::mutex> guard(core_->mtx);
             core_->state = State::Fulfilled;
-            for (const auto& req : core_->requests)
+            for (const auto req : core_->requests)
             {
-                req->resolve(core_);
+                if (req)
+                    req->resolve(core_);
             }
 
             return true;
@@ -923,9 +937,10 @@ namespace Pistache::Async
             std::unique_lock<std::mutex> guard(core_->mtx);
             core_->exc   = std::make_exception_ptr(exc);
             core_->state = State::Rejected;
-            for (const auto& req : core_->requests)
+            for (const auto req : core_->requests)
             {
-                req->reject(core_);
+                if (req)
+                    req->reject(core_);
             }
 
             return true;
@@ -1130,11 +1145,13 @@ namespace Pistache::Async
             std::unique_lock<std::mutex> guard(core_->mtx);
             if (isFulfilled())
             {
-                req->resolve(core_);
+                if (req)
+                    req->resolve(core_);
             }
             else if (isRejected())
             {
-                req->reject(core_);
+                if (req)
+                    req->reject(core_);
             }
 
             core_->requests.push_back(req);

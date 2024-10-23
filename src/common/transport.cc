@@ -40,6 +40,11 @@
 
 using std::to_string;
 
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#if defined(__NetBSD__) || defined(_IS_WINDOWS)
+#define PS_USE_TCP_NODELAY 1
+#endif
+
 namespace Pistache::Tcp
 {
     using namespace Polling;
@@ -582,14 +587,15 @@ namespace Pistache::Tcp
         }
     }
 
-#ifdef _USE_LIBEVENT_LIKE_APPLE
+    // PS_USE_TCP_NODELAY defined (or not) at top of file
+    
     void Transport::configureMsgMoreStyle(Fd fd, bool msg_more_style)
     {
         int tcp_no_push  = 0;
         socklen_t len    = sizeof(tcp_no_push);
         int sock_opt_res = -1;
 
-#if defined(__NetBSD__) || defined(_IS_WINDOWS)
+#ifdef PS_USE_TCP_NODELAY
         { // encapsulate
             PST_SOCK_OPT_VAL_T tcp_nodelay = 0;
             sock_opt_res    = getsockopt(GET_ACTUAL_FD(fd), tcp_prot_num_,
@@ -615,7 +621,7 @@ namespace Pistache::Tcp
                                   (msg_more_style) ? "on" : "off");
 
                 PST_SOCK_OPT_VAL_T optval =
-#if defined(__NetBSD__) || defined(_IS_WINDOWS)
+#ifdef PS_USE_TCP_NODELAY
                     // In NetBSD case we're getting/setting (or resetting) the
                     // TCP_NODELAY socket option, which _stops_ data being held
                     // prior to send, whereas in Linux, macOS, FreeBSD or
@@ -627,9 +633,8 @@ namespace Pistache::Tcp
                     msg_more_style ? 1 : 0;
 #endif
 
-                tcp_no_push  = msg_more_style ? 1 : 0;
                 sock_opt_res = setsockopt(GET_ACTUAL_FD(fd), tcp_prot_num_,
-#if defined(__NetBSD__) || defined(_IS_WINDOWS)
+#ifdef PS_USE_TCP_NODELAY
                                           TCP_NODELAY,
 #elif defined __APPLE__ || defined _IS_BSD
                                           TCP_NOPUSH,
@@ -644,7 +649,7 @@ namespace Pistache::Tcp
             else
             {
                 PS_LOG_DEBUG_ARGS("MSG_MORE style is already %s",
-                                  (tcp_no_push) ? "on" : "off");
+                                  (msg_more_style ? 1 : 0) ? "on" : "off");
             }
 #endif
         }
@@ -698,10 +703,22 @@ namespace Pistache::Tcp
         if (it_second_ssl_is_null)
         {
 #endif /* PISTACHE_USE_SSL */
-            // MSG_NOSIGNAL is used to prevent SIGPIPE on client connection termination
 
+#ifdef PS_USE_TCP_NODELAY
+            // Note re: TCP_NODELAY. Per the Linux tcp man page, "setting this
+            // option forces an explicit flush of pending output". However, we
+            // don't want the waiting content to be sent until after the
+            // _current_ send, which can then be included in the data being
+            // flushed; i.e. we want to send any already-pending output, plus
+            // the new output we're adding here with "send", in one go.
+            // Accordingly, when TCP_NODELAY is used, if we are turning
+            // TCP_NODELAY to OFF (i.e. msg_more_style is true), we want to do
+            // so _before_ calling send; but if we are turning it ON, we want
+            // to do so _after_ calling send.
+            if (msg_more_style)
+#endif
 #ifdef _USE_LIBEVENT_LIKE_APPLE
-            configureMsgMoreStyle(fd, msg_more_style);
+                configureMsgMoreStyle(fd, msg_more_style);
 #endif
 
             PS_LOG_DEBUG_ARGS("::send, fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", actual_fd %d, len %d",
@@ -713,12 +730,20 @@ namespace Pistache::Tcp
                 // Windows and MSG_NOSIGNAL is not defined in Windows
                 PST_SOCK_SEND(GET_ACTUAL_FD(fd), buffer, len, flags);
 #else
-
                 PST_SOCK_SEND(GET_ACTUAL_FD(fd), buffer, len,
                               flags | MSG_NOSIGNAL);
-#endif                
+                // MSG_NOSIGNAL is used to prevent SIGPIPE on client connection
+                // termination
+#endif
+            PS_LOG_DEBUG_ARGS("bytesWritten = %d, msg_more_style = %s",
+                              bytesWritten, msg_more_style ? "on" : "off");
 
-            PS_LOG_DEBUG_ARGS("bytesWritten = %d", bytesWritten);
+#ifdef PS_USE_TCP_NODELAY
+            // See comment above on why configureMsgMoreStyle is done after
+            // "send" in TCP_NODELAY case.
+            if (!msg_more_style)
+                configureMsgMoreStyle(fd, msg_more_style);
+#endif
 
 #ifdef PISTACHE_USE_SSL
         }
@@ -775,10 +800,13 @@ namespace Pistache::Tcp
                 "%s fd %" PIST_QUOTE(PS_FD_PRNTFCD) " actual-fd %d, file fd %d, len %d", sendfile_fn_name,
                 fd, GET_ACTUAL_FD(fd), file, len);
 
-#ifdef _USE_LIBEVENT_LIKE_APPLE
+#if defined(_USE_LIBEVENT_LIKE_APPLE) && !defined(PS_USE_TCP_NODELAY)
+            // See prior comment on why configureMsgMoreStyle is done after
+            // "send" in TCP_NODELAY case.
+            configureMsgMoreStyle(fd, false /*msg_more_style*/);
+            
             // !!!! Should we do configureMsgMoreStyle for SSL as well? And
             // same question in sendRawBuffer
-            configureMsgMoreStyle(fd, false /*msg_more_style*/);
 #endif
 
 #ifdef __APPLE__
@@ -809,9 +837,14 @@ namespace Pistache::Tcp
             }
 
 #else
-        bytesWritten = PS_SENDFILE(GET_ACTUAL_FD(fd), file, &offset, len);
+            bytesWritten = PS_SENDFILE(GET_ACTUAL_FD(fd), file, &offset, len);
 #endif
-
+#ifdef PS_USE_TCP_NODELAY
+            // See prior comment on why configureMsgMoreStyle is done after
+            // "send" in TCP_NODELAY case.
+            configureMsgMoreStyle(fd, false /*msg_more_style*/);
+#endif
+            
             PS_LOG_DEBUG_ARGS(
                 "%s fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", bytesWritten %d",
                 sendfile_fn_name, fd, bytesWritten);

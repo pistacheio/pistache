@@ -71,6 +71,17 @@ if get_option('PISTACHE_FORCE_LIBEVENT')
         add_project_arguments('-DPISTACHE_FORCE_LIBEVENT', language: 'cpp')
 endif
 
+# To add symbols to release build in Windows:
+#  add_project_arguments('-Zi', language: 'cpp')
+#  add_project_arguments('-O2', language: 'cpp') # May not be needed
+# See also the later additions needed for libpistache_links_args
+# NB: We do NOT do
+#   DON'T: "add_project_arguments('-MDd', language: 'cpp')"
+# We leave the release '-Md' option. '-MD' means build DLL, '-MDd'
+# means build debug DLL. In cases of interest, '-MDd' hides crashes
+# that will show up with '-MD'. But you still have symbols and source
+# with '-MD'.
+
 # generate Windows import library (.lib)
 
 # implib: true is not accepted by "library" or "shared_library",
@@ -221,6 +232,11 @@ if host_machine.system() == 'windows'
     # Take DLL library name from the linker cmd line, not from .def/.exp file
     # Alternately, could fix this in dump2def (LIBRARY statement)
     libpistache_links_args += '/IGNORE:4070' 
+
+    # To add symbols to release build in Windows:
+    # libpistache_links_args += '/DEBUG'
+    # libpistache_links_args += '/PDB:src/pistache-0.4.pdb'
+    # See also the required "add_project_arguments(...)", above
 
 endif
 

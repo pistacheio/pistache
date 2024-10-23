@@ -34,6 +34,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <cstring> // for std::memcpy
 
 namespace Pistache::Http::Experimental
 {
@@ -648,22 +649,40 @@ namespace Pistache::Http::Experimental
         PS_TIMEDBG_START_THIS;
 
         PST_SSIZE_T totalBytes = 0;
+        unsigned int max_buffer = Const::MaxBuffer;
+        char stack_buffer[Const::MaxBuffer+16] = {
+                0,
+            };
+        char * buffer = &(stack_buffer[0]);
+        std::unique_ptr<char[]> buffer_uptr;
 
         for (;;)
         {
-            char buffer[Const::MaxBuffer] = {
-                0,
-            };
-
             Fd conn_fd = connection->fd();
             if (conn_fd == PS_FD_EMPTY)
                 break; // can happen if fd was closed meanwhile
 
-            const PST_SSIZE_T bytes = PST_SOCK_RECV(GET_ACTUAL_FD(conn_fd),
-                                                  buffer, Const::MaxBuffer, 0);
+            const PST_SSIZE_T bytes = PST_SOCK_RECV(
+                GET_ACTUAL_FD(conn_fd), buffer+totalBytes,
+                max_buffer - totalBytes, 0);
             if (bytes == -1)
             {
-                if (errno != EAGAIN && errno != EWOULDBLOCK)
+                if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
+                {
+                    if (totalBytes)
+                    {
+                        PS_LOG_DEBUG_ARGS("Passing %d totalBytes to "
+                                          "handleResponsePacket",
+                                          totalBytes);
+                        
+                        connection->handleResponsePacket(buffer, totalBytes);
+                    }
+                    else
+                    {
+                        PS_LOG_DEBUG("totalBytes is zero");
+                    }
+                }
+                else
                 {
                     char se_err[256 + 16];
                     const char * err_msg = PST_STRERROR_R(errno,
@@ -686,8 +705,29 @@ namespace Pistache::Http::Experimental
             }
             else
             {
+                PS_LOG_DEBUG_ARGS("Rxed %d bytes", bytes);
                 totalBytes += bytes;
-                connection->handleResponsePacket(buffer, bytes);
+            }
+            if (totalBytes >= max_buffer)
+            {
+                auto new_max_buffer = (max_buffer * 2);
+                char * new_buffer = 0;
+                if ((new_max_buffer > 268435456) || // new_max_buffer > 256MB ?
+                    (0 == (new_buffer = new char[new_max_buffer+16])))
+                {
+                    if (new_max_buffer > 268435456)
+                        PS_LOG_WARNING("Receive buffer would be too big");
+                    else
+                        PS_LOG_WARNING_ARGS("Failed to alloc %d bytes memory",
+                                            new_max_buffer+16);
+
+                    connection->handleResponsePacket(buffer, totalBytes);
+                    break;
+                }
+                std::memcpy(new_buffer, buffer, max_buffer);
+                buffer_uptr = std::unique_ptr<char[]>(new_buffer);
+                buffer = new_buffer;
+                max_buffer = new_max_buffer;
             }
         }
     }
@@ -911,6 +951,8 @@ namespace Pistache::Http::Experimental
     void Connection::handleError(const char* error)
     {
         PS_TIMEDBG_START_THIS;
+
+        PS_LOG_DEBUG_ARGS("Error string %s", error);
 
         if (requestEntry)
         {

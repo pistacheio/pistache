@@ -246,6 +246,10 @@ namespace Pistache::Aio
                         {
                             if (shutdown_)
                                 return;
+
+                            GUARD_AND_DBG_LOG(shutdown_mutex_);
+                            if (shutdown_)
+                                return;
                             
                             handleFds(std::move(events));
                         }
@@ -278,6 +282,8 @@ namespace Pistache::Aio
             PS_TIMEDBG_START_THIS;
 
             shutdown_.store(true);
+            
+            GUARD_AND_DBG_LOG(shutdown_mutex_);
             shutdownFd.notify();
         }
 
@@ -422,6 +428,7 @@ namespace Pistache::Aio
 
         HandlerList handlers_;
 
+        std::mutex shutdown_mutex_;
         std::atomic<bool> shutdown_;
         NotifyFd shutdownFd;
 

@@ -368,7 +368,7 @@ namespace Pistache
         // checks emee_cptr_set_
         EventMethEpollEquivImpl * getEventMethEpollEquivImpl();
 
-        void detachEventMethEpollEquiv();
+        void detachEventMethEpollEquivImmedFree();
 
         // made virtual since can't call destructor on non-final type with
         // virtual function(s) but non-virtual destructor
@@ -2581,36 +2581,32 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
     // ev_ (the libevent event) which effectively holds a reference to the
     // libevent event_base class, which is in EventMethBase, which in turn is
     // in EventMethEpollEquiv. So if EventMethEpollEquiv goes out of scope,
-    // then ev_ needs to be freed
-    void EmEvent::detachEventMethEpollEquiv()
+    // then ev_ needs to be freed.
+    // 
+    // Note that this uses event_free, not event_free_finalize; as such, it can
+    // be safely called only after event_base_loopbreak or event_base_loopexit,
+    // which guarantee that there will be no more event callbacks on the event
+    // and that any in-process event callback on the event has completed.
+    void EmEvent::detachEventMethEpollEquivImmedFree()
     {
         if (ev_)
         {
             // See earlier comment: Why and how we use libevent's finalize
-            PS_LOG_DEBUG_ARGS("About to finalize+free ev_ %p of EmEvent %p",
-                              ev_, this);
+            PS_LOG_DEBUG_ARGS("About to free ev_ %p of EmEvent %p", ev_, this);
 
             auto old_ev = ev_;
             ev_ = 0;
 
-            #ifdef DEBUG
-            int ev_free_finalize_initial_res =
-            #endif
-                event_free_finalize(0,//reserved
-                                    old_ev, libevEventFinalizeAndFreeCallback);
-
-            PS_LOG_DEBUG_ARGS("ev_free_finalize_initial_res %d, ev_ %p",
-                              ev_free_finalize_initial_res, old_ev);
-
-            // Note: libevEventFinalizeAndFreeCallback does
-            // DEC_DEBUG_CTR(libevent_event)
+            // event_free makes the event non-pending and non-active before
+            // freeing
+            event_free(old_ev);
+            DEC_DEBUG_CTR(libevent_event);
         }
 
-        PS_LOG_DEBUG_ARGS("Setting EMEE null for EmEvent %p", this);
+        PS_LOG_DEBUG_ARGS("Setting EMEE (was %p) null for EmEvent %p",
+                          event_meth_epoll_equiv_impl_, this);
         event_meth_epoll_equiv_impl_ = NULL;
     }
-    
-        
 
     EmEvent::~EmEvent()
     {
@@ -3397,6 +3393,16 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
 
         PS_TIMEDBG_START_THIS;
 
+        // exit libevent loop
+        //
+        // Note we call event_base_loopbreak not event_base_loopexit. loopbreak
+        // returns as soon as any of our event callbacks that have been called
+        // return to libevent, and doesn't call any more callbacks after that;
+        // whereas loopexit keeps calling event callbacks for all activated
+        // events previously added to the base. We don't need those extra
+        // callbacks.
+        event_meth_base_->eMBaseLoopbreak();
+
         // When emee_cptr_set_mutex_ is to be locked together with
         // interest_mutex_, emee_cptr_set_mutex_ must be locked first
         GUARD_AND_DBG_LOG(emee_cptr_set_mutex_);
@@ -3408,7 +3414,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
         {
             Fd fd = *it;
             if (fd) // forget this EventMethEpollEquiv which is being destroyed
-                fd->detachEventMethEpollEquiv(); 
+                fd->detachEventMethEpollEquivImmedFree(); 
         }
         interest_.clear();
 
@@ -3420,15 +3426,9 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
         {
             Fd fd = *it;
             if (fd) // forget this EventMethEpollEquiv which is being destroyed
-                fd->detachEventMethEpollEquiv(); 
+                fd->detachEventMethEpollEquivImmedFree(); 
         }
         ready_.clear();
-
-        // exit libevent loop
-        // 
-        // Note we call event_base_loopbreak not event_base_loopexit; the later
-        // exits the loop after a time out, while the former exits immediately
-        event_meth_base_->eMBaseLoopbreak();
 
         event_meth_base_ = NULL;
     }

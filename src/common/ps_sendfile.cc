@@ -19,6 +19,8 @@
 #include <winbase.h> // for HasOverlappedIoCompleted macro
 #include <io.h> // _get_osfhandle, _lseeki64
 
+#include <algorithm> // for std::min
+
 #include <pistache/pist_syslog.h>
 /* ------------------------------------------------------------------------- */
 
@@ -35,14 +37,40 @@ extern "C" PST_SSIZE_T ps_sendfile(em_socket_t out_fd, int in_fd,
             return(-1);
         }
     }
-        
-    OVERLAPPED overlapped;
-    memset(&overlapped, 0, sizeof(overlapped));
-    if (offset)
+
+    auto in_fd_end_fl_pos = _lseeki64(in_fd, 0, SEEK_END);
+    if (in_fd_end_fl_pos < 0)
     {
-        overlapped.Offset = (DWORD)((*offset) & 0xFFFFFFFF);
-        overlapped.OffsetHigh = (DWORD)((*offset) / 0x100000000ull);
+        PS_LOG_INFO("lseek error");
+        return(-1);
     }
+
+    // Set offset to starting offset specified by caller if any; otherwise,
+    // return file offset to what it was on entry to this function
+    off_t offs_to_start =
+        offset ? (*offset) : static_cast<off_t>(in_fd_end_fl_pos);
+    if (offs_to_start > in_fd_end_fl_pos)
+        offs_to_start = static_cast<off_t>(in_fd_end_fl_pos);
+    auto set_start_offs_res = _lseeki64(in_fd, offs_to_start, SEEK_SET);
+    if (set_start_offs_res < 0)
+    {
+        PS_LOG_INFO("lseek error");
+        return(-1);
+    }
+
+    // Note: Per Windows documentation, in TransmitFile (used below) "the
+    // transmission of data starts at the current offset in the file" (which of
+    // course is why we set the file offset immediately above). The Windows
+    // documentation is silent on whether the file offset is updated by
+    // TransmitFile.
+    // 
+    // Note: Per Linux documentation:
+    //   1/ If offset ptr is NULL, then data will be read from in_fd starting
+    //   at the file offset, and the file offset will be updated by the call.
+    //   2/ If offset ptr is NOT NULL, then sendfile() will start reading data
+    //   from *offset in in_fd.  When sendfile() returns, offset will be set
+    //   to the offset of the byte following the last byte that was read, and
+    //   sendfile() does NOT modify the file offset of in_fd.
 
     HANDLE in_fd_handle = (HANDLE) _get_osfhandle(in_fd);
     if (in_fd_handle == INVALID_HANDLE_VALUE)
@@ -55,55 +83,54 @@ extern "C" PST_SSIZE_T ps_sendfile(em_socket_t out_fd, int in_fd,
     BOOL res = TransmitFile(out_fd, in_fd_handle,
                             (DWORD) count, // 0 => transmit whole file
                             0, // nNumberOfBytesPerSend => use default
-                            &overlapped,
+                            NULL, // no "overlapped"
                             NULL, // lpTransmitBuffers => no pre/suffix buffs
                             0); // flags
 
     DWORD num_bytes_transferred = 0;
     int last_err = -1;
     
-    if (!res)
+    if (res)
+    {
+        __int64 final_file_pos = in_fd_end_fl_pos;
+        if (count)
+            final_file_pos = std::min(offs_to_start+static_cast<off_t>(count),
+                                      static_cast<off_t>(in_fd_end_fl_pos));
+
+        num_bytes_transferred =
+            static_cast<DWORD>(final_file_pos - offs_to_start);
+    }
+    else
     {
         last_err = WSAGetLastError();
-        if ((last_err == WSA_IO_PENDING ) || (last_err == ERROR_IO_PENDING))
-            HasOverlappedIoCompleted(&overlapped);
-    }
-
-    if ((res) ||
-        (last_err == WSA_IO_PENDING ) || (last_err == ERROR_IO_PENDING))
-    {
-        // Do this even if res was TRUE (in which case we know it's already
-        // completed) so we can populate num_bytes_transferred
-        BOOL res_overlapped_result =
-            GetOverlappedResult(in_fd_handle, &overlapped,
-                                &num_bytes_transferred,
-                                TRUE/* wait for completion */);
-
-        if (res_overlapped_result)
-        {
-            res = TRUE; // success after IO completed
-        }
-        else
-        {
-            DWORD last_overlap_err = GetLastError();
-            PS_LOG_INFO_ARGS("TransmitFile GetOverlappedResult Windows "
-                             "System Error Code (WinError.h) 0x%x",
-                             (unsigned int)last_overlap_err);
-        }
-    }
-
-    if ((offset) && _lseeki64(in_fd, in_fd_start_pos, SEEK_SET) < 0)
-    {
-        // If offset is non-null, sendfile is not supposed to affect file
-        // position
-        PS_LOG_INFO("lseek error");
-        return(-1);
-    }
-    
-    if (!res)
-    {
+        PS_LOG_INFO_ARGS("TransmitFile failed, WSAGetLastError %d",
+                          last_err);
         errno = EIO;
         return(-1);
+    }
+
+    if (offset)
+    {
+        if (_lseeki64(in_fd, in_fd_start_pos, SEEK_SET) < 0)
+        {
+            // If offset is non-null, sendfile is not supposed to affect file
+            // position
+            PS_LOG_INFO("lseek error");
+            errno = EIO;
+            return(-1);
+        }
+        *offset = (offs_to_start + num_bytes_transferred);
+    }
+    else
+    {
+        if (_lseeki64(in_fd, offs_to_start+num_bytes_transferred, SEEK_SET)< 0)
+        {
+            // If offset ptr is null, sendfile should make the file offset be
+            // immediately after the data that was read from the file
+            PS_LOG_INFO("lseek error");
+            errno = EIO;
+            return(-1);
+        }
     }
 
     return(num_bytes_transferred);
