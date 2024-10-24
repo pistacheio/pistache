@@ -16,6 +16,10 @@
 #include <chrono>
 #include <thread>
 
+#ifdef _WIN32
+#include <versionhelpers.h> // used for choosing certain timeouts
+#endif
+
 using namespace std;
 using namespace Pistache;
 
@@ -79,6 +83,8 @@ private:
     std::shared_ptr<Http::Endpoint> httpEndpoint;
     Rest::Router router;
 };
+
+// #if 0 // !!!!!!!!!
 
 TEST(rest_server_test, basic_test)
 {
@@ -234,6 +240,7 @@ TEST(rest_server_test, keepalive_client_timeout)
 
     stats.shutdown();
 }
+// #endif // if 0
 
 TEST(rest_server_test, keepalive_multithread_client_request)
 {
@@ -257,8 +264,8 @@ TEST(rest_server_test, keepalive_multithread_client_request)
             std::this_thread::sleep_for(KEEPALIVE_TIMEOUT + std::chrono::milliseconds(700));
         }));
     }
-    // @Sept/2024. Based on behavior seen in Windows, changed this timeout from
-    // 700ms to 3500ms.
+    // @Sept/2024. Based on behavior seen in Windows 11, changed this timeout
+    // from 700ms to 3500ms.
     //
     // The longer timeout is required due to the behavior of httplib.h
     // client.Get. In overview, httplib.h loops through the client addr it
@@ -277,17 +284,42 @@ TEST(rest_server_test, keepalive_multithread_client_request)
     // In practice, we saw ~2200ms delay before the socket connected
     // successfully - Windows 11 running in a VM. So in Windows, this test
     // would fail with a 700ms sleep_for, but succeed with 3500ms.
+    //
+    // Conversely, for macOS if we use 3500ms then the test fails - presumably,
+    // the connect happens so fast that not only has the connect happened but
+    // also the clients connections have timed out and the peers at the server
+    // have all closed again before the EXPECT_EQ(peer.size(), THR_NUMBER) test
+    // below executes.
+    //
+    // Experimentation with Windows 2019 server (using Visual Studio
+    // 2019), indicates further variability in the correct sleep time ahead of
+    // testing that peer.size() equals THR_NUMBER.
+    // In Debug build, it works with sleep times between 3000 and 3750ms.
+    // In Release build, it works with sleep times between 1063 and 3063.
+    //
+    // Given this level of variability in the time taken to connect the peers,
+    // we make the sleep time dynamic, checking every 700ms to see if the peers
+    // have successfully connected.
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(3500));
-    
-    auto peer = stats.getAllPeer();
-    EXPECT_EQ(peer.size(), THR_NUMBER);
+    size_t max_peers_seen = 0;
+    for(unsigned int i=0; i<8; i++)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(700));
+        auto peer = stats.getAllPeer();
+        if (peer.size() > max_peers_seen)
+        {
+            max_peers_seen = peer.size();
+            if (max_peers_seen >= THR_NUMBER)
+                break;
+        }
+    }
+    EXPECT_EQ(max_peers_seen, THR_NUMBER);
 
     for (auto it = threads.begin(); it != threads.end(); ++it)
     {
         it->join();
     }
-    peer = stats.getAllPeer();
+    auto peer = stats.getAllPeer();
     EXPECT_EQ(peer.size(), 0ul);
 
     stats.shutdown();

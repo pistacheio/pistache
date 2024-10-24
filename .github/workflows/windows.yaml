@@ -32,16 +32,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # os: [ 'windows-2019', 'windows-2022', 'windows-latest' ] # !!!!!!!!
-        os: [ 'windows-2019' ]
-        # compiler: [ 'msvc', 'gcc', 'clang' ] # !!!!!!!!
+        os: [ 'windows-2019', 'windows-latest' ] # Oct/2024, latest = 2022
+        # compiler: [ 'msvc', 'gcc' ] # !!!!!!!!. Could also add clang
         compiler: [ 'msvc' ]
-        # sanitizer: [ 'address', 'undefined', 'none' ] # !!!!!!!!
-        sanitizer: [ 'address' ]
-        # tls: [ 'true', 'false' ] # !!!!!!!!
-        tls: [ 'true' ]
-        # def_debug: [ 'true', 'false' ] # !!!!!!!!
-        def_debug: [ 'false' ]
+        sanitizer: [ 'address', 'undefined', 'none' ]
+        tls: [ 'true', 'false' ]
+        def_debug: [ 'true', 'false' ]
+        exclude:
+          # VS only supports address sanitizer as of Oct/2024
+          - compiler: msvc
+            sanitizer: undefined
 
     runs-on: ${{ matrix.os }}
 
@@ -51,10 +51,12 @@ jobs:
         mtrx_compiler: ${{ matrix.compiler }}
       if: contains(matrix.os, 'windows')
       run: >
-        if (($env:VCPKG_INSTALLATION_ROOT) -and ($env:VCPKG_ROOT) -and (Test-Path "$env:VCPKG_INSTALLATION_ROOT")) {
-            $env:VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT
-        } # Check this both before and after getting a Visual Studio Developer Prompt
-
+        $savedpwd=$pwd
+        
+        # Save variables that we store to a file to be restored on next step
+        
+        $csvarray = @()
+        
         # Start a Visual Studio Developer Prompt
         # As at Aug-2024, VS 2022, Launch-VsDevShell.ps1 defaults to
         # 32-bit host and target architectures. However you can specify
@@ -72,21 +74,64 @@ jobs:
         #          ide/reference/command-prompt-powershell?view=vs-2022
         
         if (Test-Path -Path "$env:ProgramFiles/Microsoft Visual Studio") {
-          cd "$env:ProgramFiles/Microsoft Visual Studio";
-          $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
-              Sort-Object -Descending -Property LastWriteTime |
-              Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
-         }
+            cd "$env:ProgramFiles/Microsoft Visual Studio";
+            $dirents=Get-ChildItem -Filter "????" -Name | Sort-Object -Descending -Property Name;
+            foreach ($itm in $dirents) {
+                if ("$itm" -match "^\d+$") {
+                    $itm_as_num=$itm/1;
+                    if ($itm_as_num -gt 1970) {
+                        if (Test-Path "$itm/Enterprise/Common7/Tools/Launch-VsDevShell.ps1") {
+                        $launch_vs_dev_shell_dir="$pwd\$itm\Enterprise\Common7\Tools";
+                         break
+                    }
+                        elseif (Test-Path "$itm/Professional/Common7/Tools/Launch-VsDevShell.ps1") {
+                            $launch_vs_dev_shell_dir="$pwd\$itm\Professional\Common7\Tools";
+                            break
+                        }
+                        elseif (Test-Path "$itm/Community/Common7/Tools/Launch-VsDevShell.ps1") {
+                            $launch_vs_dev_shell_dir="$pwd\$itm\Community\Common7\Tools";
+                            break
+                        }
+                    }
+                }
+            }
+            if (! ($launch_vs_dev_shell_dir)) {
+            $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
+                Sort-Object -Descending -Property LastWriteTime |
+                Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
+            }
+        }
          
-         if ((! ($launch_vs_dev_shell_dir)) -or (! (Test-Path -Path $launch_vs_dev_shell_dir))) {
+        if ((! ($launch_vs_dev_shell_dir)) -or (! (Test-Path -Path $launch_vs_dev_shell_dir))) {
              Write-Host "Launch-VsDevShell.ps1 not found in $env:ProgramFiles/Microsoft Visual Studio";
-             Write-Host "Looking in ${env:ProgramFiles(x86)}/Microsoft Visual Studio";
              if (Test-Path -Path "${env:ProgramFiles(x86)}/Microsoft Visual Studio") {
-                  Write-Host "Actually looking in ${env:ProgramFiles(x86)}/Microsoft Visual Studio";
+                  Write-Host "Looking in ${env:ProgramFiles(x86)}/Microsoft Visual Studio";
                   cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio";
-                  $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
-                      Sort-Object -Descending -Property LastWriteTime |
-                      Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
+                  $dirents=Get-ChildItem -Filter "????" -Name | Sort-Object -Descending -Property Name;
+                  foreach ($itm in $dirents) {
+                      if ("$itm" -match "^\d+$") {
+                          $itm_as_num=$itm/1;
+                          if ($itm_as_num -gt 1970) {
+                              if (Test-Path "$itm/Enterprise/Common7/Tools/Launch-VsDevShell.ps1") {
+                              $launch_vs_dev_shell_dir="$pwd\$itm\Enterprise\Common7\Tools";
+                               break
+                          }
+                              elseif (Test-Path "$itm/Professional/Common7/Tools/Launch-VsDevShell.ps1") {
+                                  $launch_vs_dev_shell_dir="$pwd\$itm\Professional\Common7\Tools";
+                                  break
+                              }
+                              elseif (Test-Path "$itm/Community/Common7/Tools/Launch-VsDevShell.ps1") {
+                                  $launch_vs_dev_shell_dir="$pwd\$itm\Community\Common7\Tools";
+                                  break
+                              }
+                          }
+                      }
+                  }
+                  if (! ($launch_vs_dev_shell_dir)) {
+                      $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
+                          Sort-Object -Descending -Property LastWriteTime |
+                          Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
+                  }
              }
         }
               
@@ -102,11 +147,38 @@ jobs:
                     if (Test-Path -Path "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe") {
                         Write-Host "Going to try Import-Module and Enter-VsDevShell";
                         cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer";
-                        $vs_instance_id=.\vswhere.exe -property instanceId;
+                        $script:vs_instance_id=.\vswhere.exe -property instanceId;
                         cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio";
-                        $dev_shell_path=Get-ChildItem -Path "Microsoft.VisualStudio.DevShell.dll" -Recurse |
-                          Sort-Object -Descending -Property LastWriteTime |
-                          Select -Index 0 | Select -ExpandProperty "FullName";
+                        $dirents=Get-ChildItem -Filter "????" -Name | Sort-Object -Descending -Property Name;
+                        foreach ($itm in $dirents) {
+                            if ("$itm" -match "^\d+$") {
+                                $itm_as_num=$itm/1;
+                                if ($itm_as_num -gt 1970) {
+                                    if (Test-Path "$itm/Enterprise/Common7/Tools/Microsoft.VisualStudio.DevShell.dll") {
+                                        $script:dev_shell_path="$pwd\$itm\Enterprise\Common7\Tools";
+                                        break
+                                }
+                                    elseif (Test-Path "$itm/Professional/Common7/Tools/Microsoft.VisualStudio.DevShell.dll") {
+                                        $script:dev_shell_path="$pwd\$itm\Professional\Common7\Tools";
+                                        break
+                                    }
+                                    elseif (Test-Path "$itm/Community/Common7/Tools/Microsoft.VisualStudio.DevShell.dll") {
+                                        $script:dev_shell_path="$pwd\$itm\Community\Common7\Tools";
+                                        break
+                                    }
+                                }
+                            }
+                        }
+                        if ("$dev_shell_path") {
+                            $script:dev_shell_path="$dev_shell_path\Microsoft.VisualStudio.DevShell.dll"
+                        }
+                        else {
+                            Write-Host "Searching for Microsoft.VisualStudio.DevShell.dll";
+                            $script:dev_shell_path=Get-ChildItem -Path "Microsoft.VisualStudio.DevShell.dll" -Recurse |
+                              Sort-Object -Descending -Property LastWriteTime |
+                              Select -Index 0 |
+                              Select -ExpandProperty "FullName"
+                        }
                         if ($dev_shell_path) {
                             Import-Module "$dev_shell_path";
                             Write-Host (Get-Help Enter-VsDevShell);
@@ -114,29 +186,62 @@ jobs:
                             Enter-VsDevShell -VsInstanceId $vs_instance_id -SkipAutomaticLocation -DevCmdDebugLevel Basic -DevCmdArguments '-arch=x64'
                         }
                         else {
-                            Write-Host "WARNING: Microsoft.VisualStudio.DevShell.dll"
+                            Write-Error "ERROR: No Microsoft.VisualStudio.DevShell.dll"
                         }
                     }
                     else {
-                        Write-Host "WARNING: vswhere.exe not found"
+                        Write-Error "ERROR: vswhere.exe not found"
                     }
                 }
                 else {
-                    Write-Host "WARNING: Unexpected Launch-VsDevShell.ps1 error"
+                    Write-Error "ERROR: Unexpected Launch-VsDevShell.ps1 error"
                 }
             }
         }
         else {
-            Write-Host("WARNING: Launch-VsDevShell.ps1 not found")
+            Write-Error("ERROR: Launch-VsDevShell.ps1 not found")
         }
+
+        $myobj = "" | Select "name", "val";
+        $myobj.name = "launch_vs_dev_shell_dir";
+        $myobj.val = $launch_vs_dev_shell_dir;
+        $csvarray += $myobj
+
+        if ($vs_instance_id) {
+            $myobj = "" | Select "name", "val";
+            $myobj.name = "vs_instance_id";
+            $myobj.val = $vs_instance_id;
+            $csvarray += $myobj
+        }
+        
+        if ($dev_shell_path) {
+            $myobj = "" | Select "name", "val";
+            $myobj.name = "dev_shell_path";
+            $myobj.val = $dev_shell_path;
+            $csvarray += $myobj
+        }
+
+        if ($env:VSCMD_DEBUG) {
+            $myobj = "" | Select "name", "val";
+            $myobj.name = "env:VSCMD_DEBUG";
+            $myobj.val = $env:VSCMD_DEBUG;
+            $csvarray += $myobj
+        }
+
         
         cd ~
           
-        if (($env:VCPKG_INSTALLATION_ROOT) -and ($env:VCPKG_ROOT) -and (Test-Path "$env:VCPKG_INSTALLATION_ROOT")) {
+        if (($env:VCPKG_INSTALLATION_ROOT) -and (Test-Path "$env:VCPKG_INSTALLATION_ROOT")) {
             $env:VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT
-        } # Check this both before and after getting a Visual Studio Developer Prompt
+        }
         
-
+        if ($env:VCPKG_ROOT) {
+            $myobj = "" | Select "name", "val";
+            $myobj.name = "env:VCPKG_ROOT";
+            $myobj.val = $env:VCPKG_ROOT;
+            $csvarray += $myobj
+        }
+        
         if ((! (Get-Command pkg-config -errorAction SilentlyContinue)) -or ((which pkg-config) -like "*Strawberry*"))
         { # meson does not accept the version of pkg-config in Strawberry Perl
         
@@ -204,25 +309,80 @@ jobs:
         }
 
         if (! (Get-Command ninja -errorAction SilentlyContinue)) {
-            # Try looking in Microsoft Visual Studio
+            # Try looking in known places in Microsoft Visual Studio
             
             if (Test-Path -Path "$env:ProgramFiles/Microsoft Visual Studio") {
                 cd "$env:ProgramFiles/Microsoft Visual Studio";
-                $ninja_dir = Get-ChildItem -Path "ninja.exe" -Recurse |
-                    Sort-Object -Descending -Property LastWriteTime |
-                    Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
+                $dirents=Get-ChildItem -Filter "????" -Name | Sort-Object -Descending -Property Name;
+                foreach ($itm in $dirents) {
+                    if ("$itm" -match "^\d+$") {
+                        $itm_as_num=$itm/1;
+                        if ($itm_as_num -gt 1970) {
+                            if (Test-Path "$itm/Enterprise/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe") {
+                            $script:ninja_dir="$pwd\$itm\Enterprise\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja";
+                            break
+                            }
+                            elseif (Test-Path "$itm/Professional/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe") {
+                                $script:ninja_dir="$pwd\$itm\Professional\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja";
+                                break
+                            }
+                            elseif (Test-Path "$itm/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe") {
+                                $script:ninja_dir="$pwd\$itm\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja";
+                                break
+                            }
+                        }
+                    }
+                }
             }
 
             if ((! ($ninja_dir)) -or (! (Test-Path -Path $ninja_dir))) {
-                # Try looking in 32-bit Microsoft Visual Studio
+                # Try looking in known places in 32-bit Microsoft Visual Studio
                 
                 if (Test-Path -Path "${env:ProgramFiles(x86)}/Microsoft Visual Studio") {
                     cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio";
-                    $ninja_dir = Get-ChildItem -Path "ninja.exe" -Recurse |
-                        Sort-Object -Descending -Property LastWriteTime |
-                        Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
+                        $dirents=Get-ChildItem -Filter "????" -Name | Sort-Object -Descending -Property Name;
+                    foreach ($itm in $dirents) {
+                        if ("$itm" -match "^\d+$") {
+                            $itm_as_num=$itm/1;
+                            if ($itm_as_num -gt 1970) {
+                                if (Test-Path "$itm/Enterprise/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe") {
+                                $script:ninja_dir="$pwd\$itm\Enterprise\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja";
+                                break
+                                }
+                                elseif (Test-Path "$itm/Professional/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe") {
+                                    $script:ninja_dir="$pwd\$itm\Professional\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja";
+                                    break
+                                }
+                                elseif (Test-Path "$itm/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe") {
+                                    $script:ninja_dir="$pwd\$itm\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja";
+                                    break
+                                }
+                            }
+                        }
                     }
                 }
+            }
+
+            if ((! ($ninja_dir)) -or (! (Test-Path -Path $ninja_dir))) {
+                # Try looking anywhere in 64-bit Microsoft Visual Studio
+                if (Test-Path -Path "$env:ProgramFiles/Microsoft Visual Studio") {
+                    cd "$env:ProgramFiles/Microsoft Visual Studio";
+                    $script:ninja_dir = Get-ChildItem -Path "ninja.exe" -Recurse |
+                      Sort-Object -Descending -Property LastWriteTime |
+                      Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
+                }
+            }
+
+            if ((! ($ninja_dir)) -or (! (Test-Path -Path $ninja_dir))) {
+                # Try looking anywhere in 32-bit Microsoft Visual Studio
+                
+                if (Test-Path -Path "${env:ProgramFiles(x86)}/Microsoft Visual Studio") {
+                    cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio";
+                    $script:ninja_dir = Get-ChildItem -Path "ninja.exe" -Recurse |
+                        Sort-Object -Descending -Property LastWriteTime |
+                        Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
+                }
+            }
 
             if ((! ($ninja_dir)) -or (! (Test-Path -Path $ninja_dir))) {
                 # Can't find ninja in Microsoft Visual Studio, so install
@@ -234,7 +394,21 @@ jobs:
                 else
                 {
                     vcpkg install vcpkg-tool-ninja
+
+                    if (($env:VCPKG_INSTALLATION_ROOT) -And
+                        (Test-Path -Path "$env:VCPKG_INSTALLATION_ROOT\installed")) {
+
+                        cd "$env:VCPKG_INSTALLATION_ROOT\installed"
+    
+                        $script:ninja_dir=Get-ChildItem -Path "ninja.exe" -Recurse |
+                          Select -ExpandProperty "FullName" | Sort-Object { $_.Length } |
+                          Select -Index 0 | Split-Path;
+                    }
                 }
+            }
+
+            if (($ninja_dir) -And (Test-Path -Path $ninja_dir)) {
+                $env:Path="$ninja_dir;$env:Path"
             }
 
             cd ~
@@ -291,22 +465,11 @@ jobs:
             {
                 cd ~;
                 Invoke-WebRequest -Uri https://www.doxygen.nl/files/doxygen-1.12.0.windows.x64.bin.zip -OutFile doxygen.bin.zip;
-                Expand-Archive doxygen.bin.zip -DestinationPath doxygen.bin
+                Expand-Archive doxygen.bin.zip -DestinationPath doxygen.bin;
+                $env:Path="$env:Path;$env:USERPROFILE\doxygen.bin"
             }
         }
 
-
-    - uses: actions/checkout@v4
-      with:
-        submodules: true
-
-    - name: Configure Meson
-      env:
-        mtrx_compiler: ${{ matrix.compiler }}
-        mtrx_def_debug: ${{ matrix.def_debug }}
-        mtrx_tls: ${{ matrix.tls }}
-        mtrx_sanitizer: ${{ matrix.sanitizer }}
-      run: >
         if ($env:mtrx_compiler -eq "msvc") {
             $env:CXX="cl"
         }
@@ -319,10 +482,28 @@ jobs:
             $env:CXX="clang-cl";
             $env:CXX_LD="lld"
         }
-        
         $env:CC=$env:CXX
 
-        $savedpwd=$pwd
+        if ($env:CXX) {
+            $myobj = "" | Select "name", "val";
+            $myobj.name = "env:CXX";
+            $myobj.val = $env:CXX;
+            $csvarray += $myobj
+        }
+
+        if ($env:CC) {
+            $myobj = "" | Select "name", "val";
+            $myobj.name = "env:CC";
+            $myobj.val = $env:CC;
+            $csvarray += $myobj
+        }
+
+        if ($env:CXX_LD) {
+            $myobj = "" | Select "name", "val";
+            $myobj.name = "env:CXX_LD";
+            $myobj.val = $env:CXX_LD;
+            $csvarray += $myobj
+        }
 
         if (! (Get-Command meson -errorAction SilentlyContinue)) {
             if (Test-Path "~/AppData/Local/Packages") {
@@ -352,74 +533,6 @@ jobs:
             else {
                 Write-Host "WARNING: meson.exe directory not added to path"
             }
-        }
-
-        cd "$savedpwd"
-
-        # Start a Visual Studio Developer Prompt, gives access to compiler "cl"
-
-        if (Test-Path -Path "$env:ProgramFiles/Microsoft Visual Studio") {
-          cd "$env:ProgramFiles/Microsoft Visual Studio";
-          $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
-              Sort-Object -Descending -Property LastWriteTime |
-              Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
-         }
-         
-         if ((! ($launch_vs_dev_shell_dir)) -or (! (Test-Path -Path $launch_vs_dev_shell_dir))) {
-             if (Test-Path -Path "${env:ProgramFiles(x86)}/Microsoft Visual Studio") {
-                  cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio";
-                  $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
-                      Sort-Object -Descending -Property LastWriteTime |
-                      Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
-             }
-        }
-              
-        if (($launch_vs_dev_shell_dir) -And (Test-Path -Path $launch_vs_dev_shell_dir)) {
-            cd "$launch_vs_dev_shell_dir";
-            try {
-                ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
-            } catch {
-                Write-Host "Error in Launch-VsDevShell.ps1, checking Launch-VsDevShell.ps1's help";
-                cd "$launch_vs_dev_shell_dir";
-                if (! ((./Launch-VsDevShell.ps1 -?) -like "*-HostArch*")) {
-                    Write-Host "Launch-VsDevShell.ps1 has no parameter -HostArch";
-                    if (Test-Path -Path "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe") {
-                        Write-Host "Going to try Import-Module and Enter-VsDevShell";
-                        cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer";
-                        $vs_instance_id=.\vswhere.exe -property instanceId;
-                        cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio";
-                        $dev_shell_path=Get-ChildItem -Path "Microsoft.VisualStudio.DevShell.dll" -Recurse |
-                          Sort-Object -Descending -Property LastWriteTime |
-                          Select -Index 0 | Select -ExpandProperty "FullName";
-                        if ($dev_shell_path) {
-                            Import-Module "$dev_shell_path";
-                            Write-Host (Get-Help Enter-VsDevShell);
-                            $env:VSCMD_DEBUG=1;
-                            Enter-VsDevShell -VsInstanceId $vs_instance_id -SkipAutomaticLocation -DevCmdDebugLevel Basic -DevCmdArguments '-arch=x64'
-                        }
-                        else {
-                            Write-Host "WARNING: Microsoft.VisualStudio.DevShell.dll"
-                        }
-                    }
-                    else {
-                        Write-Host "WARNING: vswhere.exe not found"
-                    }
-                }
-                else {
-                    Write-Host "WARNING: Unexpected Launch-VsDevShell.ps1 error"
-                }
-            }
-        }
-        else {
-            Write-Host("WARNING: Launch-VsDevShell.ps1 not found")
-        }
-
-        cd "$savedpwd"
-
-        $old_pkg_config_path=$env:PKG_CONFIG_PATH;
-        $env:PKG_CONFIG_PATH="$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows\lib\pkgconfig";
-        if ($old_pkg_config_path) {
-            $env:PKG_CONFIG_PATH="$env:PKG_CONFIG_PATH;$old_pkg_config_path"
         }
 
         # For pkg-config, we put the path segment for pkg-config.exe
@@ -468,6 +581,81 @@ jobs:
         if (Test-Path -Path "$env:USERPROFILE\doxygen.bin") {
             $env:Path="$env:Path;$env:USERPROFILE\doxygen.bin"
         }
+        
+        if ($env:PKG_CONFIG_PATH) {
+            $myobj = "" | Select "name", "val";
+            $myobj.name = "env:PKG_CONFIG_PATH";
+            $myobj.val = $env:PKG_CONFIG_PATH;
+            $csvarray += $myobj
+        }
+        
+        if ($env:Path) {
+            $myobj = "" | Select "name", "val";
+            $myobj.name = "env:Path";
+            $myobj.val = $env:Path;
+            $csvarray += $myobj
+        }
+        
+        # Save vars for use in later steps
+        
+        cd ~;
+        $csvarray | export-csv "tmpvars.csv"
+        
+        cat "tmpvars.csv"
+        
+
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Configure Meson
+      env:
+        mtrx_compiler: ${{ matrix.compiler }}
+        mtrx_def_debug: ${{ matrix.def_debug }}
+        mtrx_tls: ${{ matrix.tls }}
+        mtrx_sanitizer: ${{ matrix.sanitizer }}
+      run: >
+        $savedpwd=$pwd
+        
+        cd ~;
+        $impcsv = import-csv -Path "tmpvars.csv";
+        foreach ($impobj in $impcsv) {
+            $impobj_name=$impobj.name;
+            $impobj_val=$impobj.val;
+            $assign_cmd=-join('$', "$impobj_name", '="', "$impobj_val", '"');
+            echo "assign_cmd is $assign_cmd";
+            Invoke-Expression "$assign_cmd"
+        }
+
+        # Start a Visual Studio Developer Prompt, gives access to compiler "cl"
+        
+        if (($dev_shell_path) -and (Test-Path -Path $dev_shell_path)) {
+            Write-Host "Doing Import-Module and Enter-VsDevShell";
+            Import-Module "$dev_shell_path";
+            $env:VSCMD_DEBUG=1;
+            Enter-VsDevShell -VsInstanceId $vs_instance_id -SkipAutomaticLocation -DevCmdDebugLevel Basic -DevCmdArguments '-arch=x64'
+        }
+        elseif (($launch_vs_dev_shell_dir) -and (Test-Path -Path $launch_vs_dev_shell_dir)) {
+            cd "$launch_vs_dev_shell_dir";
+            ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
+        }
+        else {
+            Write-Error "ERROR: Failed to start Visual Studio Developer Prompt"
+        }
+
+        # Import vars again in case starting dev prompt overwrote anything
+        
+        cd ~;
+        $impcsv = import-csv -Path "tmpvars.csv";
+        foreach ($impobj in $impcsv) {
+            $impobj_name=$impobj.name;
+            $impobj_val=$impobj.val;
+            $assign_cmd=-join('$', "$impobj_name", '="', "$impobj_val", '"');
+            echo "assign_cmd is $assign_cmd";
+            Invoke-Expression "$assign_cmd"
+        }
+
+        cd "$savedpwd"
 
         meson setup build -DPISTACHE_BUILD_TESTS=true -DPISTACHE_DEBUG="$env:mtrx_def_debug" -DPISTACHE_USE_SSL="$env:mtrx_tls" -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_DOCS=false -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true --buildtype=debug -Db_coverage=true -Db_sanitize="$env:mtrx_sanitizer" -Db_lundef=false
 
@@ -482,175 +670,93 @@ jobs:
       env:
         mtrx_compiler: ${{ matrix.compiler }}
       run: >
-        if ($env:mtrx_compiler -eq "msvc") {
-            $env:CXX="cl"
-        }
-        elseif ($env:mtrx_compiler -eq "gcc") {
-            $env:CXX="g++" # Must put mingw-64 g++ compiler on Path
-            
-        }
-        else { # Use clang with MSVC (MSVC's stdlib etc.)
-
-            $env:CXX="clang-cl";
-            $env:CXX_LD="lld"
-        }
-        
-        $env:CC=$env:CXX
-
         $savedpwd=$pwd
 
-        # Start a Visual Studio Developer Prompt, gives access to compiler "cl"
-
-        if (Test-Path -Path "$env:ProgramFiles/Microsoft Visual Studio") {
-          cd "$env:ProgramFiles/Microsoft Visual Studio";
-          $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
-              Sort-Object -Descending -Property LastWriteTime |
-              Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
-         }
-         
-         if ((! ($launch_vs_dev_shell_dir)) -or (! (Test-Path -Path $launch_vs_dev_shell_dir))) {
-             if (Test-Path -Path "${env:ProgramFiles(x86)}/Microsoft Visual Studio") {
-                  cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio";
-                  $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
-                      Sort-Object -Descending -Property LastWriteTime |
-                      Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
-             }
+        cd ~;
+        $impcsv = import-csv -Path "tmpvars.csv";
+        foreach ($impobj in $impcsv) {
+            $impobj_name=$impobj.name;
+            $impobj_val=$impobj.val;
+            $assign_cmd=-join('$', "$impobj_name", '="', "$impobj_val", '"');
+            echo "assign_cmd is $assign_cmd";
+            Invoke-Expression "$assign_cmd"
         }
-              
-        if (($launch_vs_dev_shell_dir) -And (Test-Path -Path $launch_vs_dev_shell_dir)) {
+
+        # Start a Visual Studio Developer Prompt, gives access to compiler "cl"
+        
+        if (($dev_shell_path) -and (Test-Path -Path $dev_shell_path)) {
+            Write-Host "Doing Import-Module and Enter-VsDevShell";
+            Import-Module "$dev_shell_path";
+            $env:VSCMD_DEBUG=1;
+            Enter-VsDevShell -VsInstanceId $vs_instance_id -SkipAutomaticLocation -DevCmdDebugLevel Basic -DevCmdArguments '-arch=x64'
+        }
+        elseif (($launch_vs_dev_shell_dir) -and (Test-Path -Path $launch_vs_dev_shell_dir)) {
             cd "$launch_vs_dev_shell_dir";
-            try {
-                ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
-            } catch {
-                Write-Host "Error in Launch-VsDevShell.ps1, checking Launch-VsDevShell.ps1's help";
-                cd "$launch_vs_dev_shell_dir";
-                if (! ((./Launch-VsDevShell.ps1 -?) -like "*-HostArch*")) {
-                    Write-Host "Launch-VsDevShell.ps1 has no parameter -HostArch";
-                    if (Test-Path -Path "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe") {
-                        Write-Host "Going to try Import-Module and Enter-VsDevShell";
-                        cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer";
-                        $vs_instance_id=.\vswhere.exe -property instanceId;
-                        cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio";
-                        $dev_shell_path=Get-ChildItem -Path "Microsoft.VisualStudio.DevShell.dll" -Recurse |
-                          Sort-Object -Descending -Property LastWriteTime |
-                          Select -Index 0 | Select -ExpandProperty "FullName";
-                        if ($dev_shell_path) {
-                            Import-Module "$dev_shell_path";
-                            Write-Host (Get-Help Enter-VsDevShell);
-                            $env:VSCMD_DEBUG=1;
-                            Enter-VsDevShell -VsInstanceId $vs_instance_id -SkipAutomaticLocation -DevCmdDebugLevel Basic -DevCmdArguments '-arch=x64'
-                        }
-                        else {
-                            Write-Host "WARNING: Microsoft.VisualStudio.DevShell.dll"
-                        }
-                    }
-                    else {
-                        Write-Host "WARNING: vswhere.exe not found"
-                    }
-                }
-                else {
-                    Write-Host "WARNING: Unexpected Launch-VsDevShell.ps1 error"
-                }
-            }
+            ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
         }
         else {
-            Write-Host("WARNING: Launch-VsDevShell.ps1 not found")
+            Write-Error "ERROR: Failed to start Visual Studio Developer Prompt"
         }
+
+        # Import vars again in case starting dev prompt overwrote anything
         
-        cd "$savedpwd"
-
-        # Make sure we have ninja on the path
-
-        if (! (Get-Command ninja -errorAction SilentlyContinue))
-        {   # First try vcpkg
-
-            if (($env:VCPKG_INSTALLATION_ROOT) -And
-                (Test-Path -Path "$env:VCPKG_INSTALLATION_ROOT\installed")) {
-
-                cd "$env:VCPKG_INSTALLATION_ROOT\installed"
-
-                $vcpkg_installed_ninja_dir=Get-ChildItem -Path "ninja.exe" -Recurse |
-                  Select -ExpandProperty "FullName" | Sort-Object { $_.Length } |
-                  Select -Index 0 | Split-Path;
-                if (($vcpkg_installed_ninja_dir) -And
-                  (Test-Path -Path $vcpkg_installed_ninja_dir)) {
-                      $env:Path="$vcpkg_installed_ninja_dir;$env:Path"
-                      # Puts ninja.exe on the Path
-                }  
-            }
-        }
-
-        if (! (Get-Command ninja -errorAction SilentlyContinue))
-        {   # vcpkg didn't work, try looking in Microsoft Visual Studio
-
-            if (Test-Path -Path "$env:ProgramFiles/Microsoft Visual Studio") {
-                cd "$env:ProgramFiles/Microsoft Visual Studio";
-                $ninja_dir = Get-ChildItem -Path "ninja.exe" -Recurse |
-                    Sort-Object -Descending -Property LastWriteTime |
-                    Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path;
-                if (($ninja_dir) -And (Test-Path -Path $ninja_dir)) {
-                      $env:Path="$ninja_dir;$env:Path"
-                }
-            }
-        }
-        
-        if (! (Get-Command ninja -errorAction SilentlyContinue))
-        {   # Try looking in 32-bit Microsoft Visual Studio
-        
-            if (Test-Path -Path "${env:ProgramFiles(x86)}/Microsoft Visual Studio") {
-                cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio";
-                $ninja_dir = Get-ChildItem -Path "ninja.exe" -Recurse |
-                    Sort-Object -Descending -Property LastWriteTime |
-                    Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path;
-                if (($ninja_dir) -And (Test-Path -Path $ninja_dir)) {
-                      $env:Path="$ninja_dir;$env:Path"
-                }
-            }
-        }
-
-        if (Test-Path -Path "$env:USERPROFILE\doxygen.bin") {
-            $env:Path="$env:Path;$env:USERPROFILE\doxygen.bin"
+        cd ~;
+        $impcsv = import-csv -Path "tmpvars.csv";
+        foreach ($impobj in $impcsv) {
+            $impobj_name=$impobj.name;
+            $impobj_val=$impobj.val;
+            $assign_cmd=-join('$', "$impobj_name", '="', "$impobj_val", '"');
+            echo "assign_cmd is $assign_cmd";
+            Invoke-Expression "$assign_cmd"
         }
 
         cd "$savedpwd"
-        
+
         ninja -C build
 
     - name: Test
       run: >
         $savedpwd=$pwd
 
-        if (! (Get-Command meson -errorAction SilentlyContinue)) {
-            if (Test-Path "~/AppData/Local/Packages") {
-              cd "~/AppData/Local/Packages";
-              $meson_exe_path = Get-ChildItem -Path "meson.exe" -Recurse |
-                  Sort-Object -Descending -Property LastWriteTime |  
-                  Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
-            }
+        cd ~;
+        $impcsv = import-csv -Path "tmpvars.csv";
+        foreach ($impobj in $impcsv) {
+            $impobj_name=$impobj.name;
+            $impobj_val=$impobj.val;
+            $assign_cmd=-join('$', "$impobj_name", '="', "$impobj_val", '"');
+            echo "assign_cmd is $assign_cmd";
+            Invoke-Expression "$assign_cmd"
+        }
 
-            if (((! ($meson_exe_path)) -or (! (Test-Path -Path $meson_exe_path))) -and (Test-Path "~/AppData/Roaming/Python")) {
-              cd "~/AppData/Roaming/Python";
-              $meson_exe_path = Get-ChildItem -Path "meson.exe" -Recurse |
-                  Sort-Object -Descending -Property LastWriteTime |
-                  Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
-            }
+        # Start a Visual Studio Developer Prompt
+        
+        if (($dev_shell_path) -and (Test-Path -Path $dev_shell_path)) {
+            Write-Host "Doing Import-Module and Enter-VsDevShell";
+            Import-Module "$dev_shell_path";
+            $env:VSCMD_DEBUG=1;
+            Enter-VsDevShell -VsInstanceId $vs_instance_id -SkipAutomaticLocation -DevCmdDebugLevel Basic -DevCmdArguments '-arch=x64'
+        }
+        elseif (($launch_vs_dev_shell_dir) -and (Test-Path -Path $launch_vs_dev_shell_dir)) {
+            cd "$launch_vs_dev_shell_dir";
+            ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
+        }
+        else {
+            Write-Error "ERROR: Failed to start Visual Studio Developer Prompt"
+        }
 
-            if (((! ($meson_exe_path)) -or (! (Test-Path -Path $meson_exe_path))) -and (Test-Path "~/AppData")) {
-              cd "~/AppData";
-              $meson_exe_path = Get-ChildItem -Path "meson.exe" -Recurse |
-                  Sort-Object -Descending -Property LastWriteTime |
-                  Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
-            }
-
-            if (($meson_exe_path) -And (Test-Path -Path $meson_exe_path)) {
-                $env:Path="$env:Path;$meson_exe_path"
-            }
-            else {
-                Write-Host "WARNING: meson.exe directory not added to path"
-            }
+        # Import vars again in case starting dev prompt overwrote anything
+        
+        cd ~;
+        $impcsv = import-csv -Path "tmpvars.csv";
+        foreach ($impobj in $impcsv) {
+            $impobj_name=$impobj.name;
+            $impobj_val=$impobj.val;
+            $assign_cmd=-join('$', "$impobj_name", '="', "$impobj_val", '"');
+            echo "assign_cmd is $assign_cmd";
+            Invoke-Expression "$assign_cmd"
+        }
 
         cd "$savedpwd"
-        }
 
         meson test --no-rebuild -C build --verbose
         # Use the following to run just a single test (e.g. http_server_test)
