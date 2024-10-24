@@ -365,8 +365,11 @@ namespace Pistache::Tcp
 
         if (PST_SOCK_BIND(actual_fd, addr->ai_addr, addr->ai_addrlen) < 0)
         {
+            auto tmp_errno = errno; // in case sock-close changes errno
             PS_LOG_DEBUG_ARGS("::bind failed, actual_fd %d", actual_fd);
             PST_SOCK_CLOSE(actual_fd);
+            errno = tmp_errno;
+            
             return false;
         }
 
