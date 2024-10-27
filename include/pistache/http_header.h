@@ -479,10 +479,14 @@ namespace Pistache::Http::Header
         // Get decoded user ID and password if basic method was used...
         std::string getBasicUser() const;
         std::string getBasicPassword() const;
+        std::string getBearerToken() const;
 
         // Set encoded user ID and password for basic method...
         void setBasicUserPassword(const std::string& User,
                                   const std::string& Password);
+
+
+        void setBearertoken(const std::string& token);
 
         void parse(const std::string& data) override;
         void write(std::ostream& os) const override;

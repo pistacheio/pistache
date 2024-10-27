@@ -427,6 +427,7 @@ TEST(headers_test, authorization_basic_test)
     // Verify it decoded correctly...
     ASSERT_EQ(au.getBasicUser(), "Aladdin");
     ASSERT_EQ(au.getBasicPassword(), "OpenSesame");
+    EXPECT_ANY_THROW( au.getBearerToken() );
 }
 
 TEST(headers_test, authorization_bearer_test)
@@ -458,6 +459,17 @@ TEST(headers_test, authorization_bearer_test)
                       "eyJleHAiOjE1NzA2MzA0MDcsImlhdCI6MTU3MDU0NDAwNywibmFtZSI6IkFkbWluIE5hbWUi"
                       "LCJzYW1wbGUiOiJUZXN0In0.zLTAAnBftlqccsU-4mL69P4tQl3VhcglMg-"
                       "d0131JxqX4xSZLlO5xMRrCPBgn_00OxKJ9CQdnpjpuzblNQd2-A");
+
+    EXPECT_ANY_THROW(au.getBasicUser() );
+    EXPECT_ANY_THROW(au.getBasicPassword() );
+
+    ASSERT_EQ(au.getBearerToken(),
+                      "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXUyJ9."
+                      "eyJleHAiOjE1NzA2MzA0MDcsImlhdCI6MTU3MDU0NDAwNywibmFtZSI6IkFkbWluIE5hbWUi"
+                      "LCJzYW1wbGUiOiJUZXN0In0.zLTAAnBftlqccsU-4mL69P4tQl3VhcglMg-"
+                      "d0131JxqX4xSZLlO5xMRrCPBgn_00OxKJ9CQdnpjpuzblNQd2-A");
+
+
 }
 
 TEST(headers_test, expect_test)

@@ -450,6 +450,16 @@ namespace Pistache::Http::Header
         return true;
     }
 
+    std::string Authorization::getBearerToken() const
+    {
+        // Verify bearer authorization method was used...
+        if (!hasMethod<Authorization::Method::Bearer>())
+            throw std::runtime_error("Authorization header does not use Bearer method.");
+
+        const std::string token(value_.begin() + std::string("Bearer ").length(), value_.end());
+        return token;
+    }
+
     // Get decoded user ID if basic method was used...
     std::string Authorization::getBasicUser() const
     {
