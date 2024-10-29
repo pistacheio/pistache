@@ -18,6 +18,7 @@
 #include <minwinbase.h> // for OVERLAPPED structure
 #include <winbase.h> // for HasOverlappedIoCompleted macro
 #include <io.h> // _get_osfhandle, _lseeki64
+#include <share.h> // for _SH_DENYNO used by _sopen_s
 #include <fcntl.h> // for _O_CREAT etc.
 
 #include <pistache/pist_syslog.h>

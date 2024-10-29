@@ -32,7 +32,9 @@
 // Need to do this FIRST before including any windows headers, otherwise those
 // headers may redefine min/max such that valid expressions like
 // "std::numeric_limits<int>::max()" no longer work
+#ifndef NOMINMAX
 #define NOMINMAX
+#endif
 #endif
 
 #ifdef _IS_WINDOWS
@@ -172,7 +174,8 @@ typedef int PST_SOCK_OPT_VAL_T;
 #endif
 
 // Use #include PIST_QUOTE(PST_STRERROR_R_HDR)
-#if defined(__GNUC__) && !defined(__clang__)
+// mingw gcc doesn't define strerror_r (Oct/2024)
+#if defined(__GNUC__) && (!defined(__MINGW32__)) && (!defined(__clang__))
 #define PST_STRERROR_R_HDR string.h
 #define PST_STRERROR_R strerror_r // returns char *
 #else
@@ -299,7 +302,8 @@ typedef struct in_addr PST_IN_ADDR_T;
 
 // Use #include PIST_QUOTE(PST_ERRNO_HDR)
 #ifdef _IS_WINDOWS
-#define PST_ERRNO_HDR errno.h
+// pistache/pst_errno.h prevents mingw gcc's bad macro substitution on errno
+#define PST_ERRNO_HDR pistache/pst_errno.h
 #else
 #define PST_ERRNO_HDR sys/errno.h
 #endif
@@ -357,9 +361,9 @@ typedef struct in_addr PST_IN_ADDR_T;
 // Note - Windows use "unsigned int" for count, whereas Linux uses size_t. In
 // general we use size_t for count in Pistache, hence why we cast here
 #define PST_SOCK_READ(__fd, __buf, __count)                     \
-    pist_sock_read(__fd, __buf, (unsigned const) __count)
+    pist_sock_read(__fd, __buf, static_cast<size_t>(__count))
 #define PST_SOCK_WRITE(__fd, __buf, __count)                    \
-    pist_sock_write(__fd, __buf, (unsigned int) __count)
+    pist_sock_write(__fd, __buf, static_cast<size_t>(__count))
 #define PST_SOCK_SOCKET pist_sock_socket
 // Note - Windows uses "int" for socklen_t, whereas Linux uses size_t. In
 // general we use size_t for addresses' lengths in Pistache (e.g. in struct
@@ -412,7 +416,7 @@ typedef struct PST_POLLFD PST_POLLFD_T;
 // Note - Windows use "unsigned int" for count, whereas Linux uses size_t. In
 // general we use size_t for count in Pistache, hence why we cast here
 #define PST_FILE_READ(__fd, __buf, __count)                  \
-    ::_read(__fd, __buf, (unsigned const) __count)
+    ::_read(__fd, __buf, (unsigned) __count)
 #define PST_FILE_WRITE(__fd, __buf, __count)         \
     ::_write(__fd, __buf, (unsigned int) __count)
 #define PST_FILE_PREAD pist_pread

@@ -71,7 +71,7 @@ if get_option('PISTACHE_FORCE_LIBEVENT')
         add_project_arguments('-DPISTACHE_FORCE_LIBEVENT', language: 'cpp')
 endif
 
-# To add symbols to release build in Windows:
+# To add symbols to release MSVC build in Windows:
 #  add_project_arguments('-Zi', language: 'cpp')
 #  add_project_arguments('-O2', language: 'cpp') # May not be needed
 # See also the later additions needed for libpistache_links_args
@@ -104,7 +104,7 @@ if host_machine.system() == 'windows'
     #    3) pistachelog.dll, DLL used when installing logging manifest/template
     #   (we also generate pist_winlog.rc, a purely intermediate file)
     #
-    # The causal chain that generates thsoe files is:
+    # The causal chain that generates those files is:
     #   pist_winlog.man
     #         |
     #      *mc.exe*
@@ -121,7 +121,11 @@ if host_machine.system() == 'windows'
     #   mc.exe and rc.exe being utilities provided by Windows
     
     mc_prog = find_program('mc.exe')
-    rc_prog = find_program('rc.exe')
+    if compiler.get_id() == 'gcc'
+        rc_prog = find_program('windres.exe')
+    else
+        rc_prog = find_program('rc.exe')
+    endif
 
     gen_src_log_rc_ct = custom_target(
       'gen-log-rc',
@@ -130,30 +134,47 @@ if host_machine.system() == 'windows'
       command: [mc_prog, '-um', '-h', '@OUTDIR@', '-r', '@OUTDIR@', '@INPUT@']
     )
 
-    gen_src_log_res_ct = custom_target('gen-log-res',
+    if compiler.get_id() == 'gcc'
+        gen_src_log_res_ct = custom_target('gen-log-res',
+                             input: [gen_src_log_rc_ct[0]], # pist_winlog.rc
+                             output: ['pist_winlog.o'],
+                             command: [rc_prog, '@INPUT@', '-o', '@OUTPUT@'])
+    else
+        gen_src_log_res_ct = custom_target('gen-log-res',
                              input: [gen_src_log_rc_ct[0]], # pist_winlog.rc
                              output: ['pist_winlog.res'],
                              command: [rc_prog, '@INPUT@'])
+    endif
 
     # We don't really need a pistachelog import library (.lib file) -
     # nothing is going to link to pistachelog.dll - but "meson
-    # install" expects the .lib file to exist, so we create it using
-    # the /DEF: linker arg
-    # pistachelog.def is an empty .def file provided in the source tree
-    pistachelog_def_linkarg = 'NONE'
-    if meson.version().version_compare('>=1.4.0')
-        pistachelog_def_fl = files('winlog'/'pistachelog.def')
-        pistachelog_def_linkarg = '/DEF:' + pistachelog_def_fl[0].full_path()
+    # install" expects the .lib file to exist, so we create it.
+    pistachelog_implib_linkarg = 'NONE'
+    if compiler.get_id() == 'gcc'
+        pistachelog_implib_linkarg = '-Wl,--out-implib=src\pistachelog.lib'
     else
-        pistachelog_def_linkarg =
-            '/DEF:' + meson.current_source_dir() + '/winlog/pistachelog.def'
+        # Using the /DEF: linker arg to create the import library (.lib)
+        # pistachelog.def is an empty .def file provided in the source
+        # tree
+    
+        if meson.version().version_compare('>=1.4.0')
+            pistachelog_def_fl = files('winlog'/'pistachelog.def')
+            pistachelog_implib_linkarg = '/DEF:' + pistachelog_def_fl[0].full_path()
+        else
+            pistachelog_implib_linkarg = '/DEF:' + meson.current_source_dir() + '/winlog/pistachelog.def'
+        endif
     endif
-        
+    
+    pistachelog_linkargs = []
+    if compiler.get_id() == 'msvc'
+        pistachelog_linkargs += '/noentry'
+    endif
+    pistachelog_linkargs += pistachelog_implib_linkarg
 
     win_log_dll = shared_library(
         'pistachelog',
         sources: [gen_src_log_res_ct],
-        link_args: ['/noentry', pistachelog_def_linkarg],
+        link_args: pistachelog_linkargs,
         install: true # pistachelog.dll's location is hardcoded in logging
                       # manifest (.man) file, so we kind of have to
                       # install it in that location if we're going to
@@ -171,6 +192,7 @@ endif
 
 
 if host_machine.system() == 'windows'
+  if compiler.get_id() == 'msvc'
 
     # In order for other programs to use pistache.dll, we need to
     # provide a pistache import library, pistache.lib, which provides
@@ -225,15 +247,22 @@ if host_machine.system() == 'windows'
 
     gen_src_def_dep = declare_dependency(sources: [gen_src_def])
     deps_libpistache += gen_src_def_dep # DLL is dependent on .def file
-    
+
     libpistache_links_args += '/DEF:src/pistache.def'
     libpistache_links_args += '/IGNORE:4102'
 
-    # Take DLL library name from the linker cmd line, not from .def/.exp file
-    # Alternately, could fix this in dump2def (LIBRARY statement)
-    libpistache_links_args += '/IGNORE:4070' 
+    # Take DLL library name from the linker cmd line, not from
+    # .def/.exp file Alternately, could fix this in dump2def
+    # (LIBRARY statement)
+    libpistache_links_args += '/IGNORE:4070'
 
-    # To add symbols to release build in Windows:
+  else # Not MSVC
+    if compiler.get_id() == 'gcc'
+        libpistache_links_args += '-Wl,--export-all-symbols'
+    endif
+  endif
+    
+    # To add symbols to release MSVC build in Windows:
     # libpistache_links_args += '/DEBUG'
     # libpistache_links_args += '/PDB:src/pistache-0.4.pdb'
     # See also the required "add_project_arguments(...)", above
@@ -302,7 +331,6 @@ if host_machine.system() == 'windows'
     gen_logging_txtfl_dep = declare_dependency(sources: [gen_logging_txtfl_ct])
     deps_libpistache += gen_logging_txtfl_dep
 endif
-
 
 libpistache = library(
 	'pistache',

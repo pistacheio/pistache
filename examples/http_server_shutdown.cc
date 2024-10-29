@@ -10,7 +10,7 @@
 #ifdef _WIN32
 #include <Windows.h>
 #include <WinCon.h>
-#include <ConsoleApi.h> // Needs Kernel32.lib
+// #include <ConsoleApi.h> // included in WinCon.h; needs Kernel32.lib
 #endif
 
 using namespace Pistache;

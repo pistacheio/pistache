@@ -49,9 +49,9 @@ static int initInitialMonoValsIfNotInited()
     // information is in Coordinated Universal Time (UTC)
     // format. GetSystemTimeAsFileTime is void / cannot fail.
 
-    wintime      -=116444736000000000i64;           //1jan1601 to 1jan1970
-    lInitialTimespec.tv_sec  =(long)(wintime / 10000000i64);   //seconds
-    lInitialTimespec.tv_nsec =wintime % 10000000i64 *100;      //nano-seconds
+    wintime      -=116444736000000000ll;           //1jan1601 to 1jan1970
+    lInitialTimespec.tv_sec  =(long)(wintime / 10000000ll);   //seconds
+    lInitialTimespec.tv_nsec = static_cast<long>(wintime % 10000000ll *100);
 
     lInitialMsSinceSystemStart = GetTickCount64();
     if ((lInitialMsSinceSystemStart == 0) ||
@@ -105,8 +105,8 @@ extern "C" int PST_CLOCK_GETTIME(PST_CLOCK_ID_T clockid,
         spec->tv_sec= (long)
             (lInitialTimespec.tv_sec + whole_s_since_mono_vals_inited);
 
-        long new_tv_nsec = (long)
-            ((1000000l * remainder_ms_since_mono_vals_inited) +
+        long new_tv_nsec = static_cast<long>(
+            (1000000l * remainder_ms_since_mono_vals_inited) +
                                                      lInitialTimespec.tv_nsec);
         if (new_tv_nsec >= 1000000000l)
         {
@@ -141,9 +141,9 @@ extern "C" int PST_CLOCK_GETTIME(PST_CLOCK_ID_T clockid,
 
         __int64 wintime = win_kernel_time + win_user_time;
         
-        wintime      -=116444736000000000i64;           //1jan1601 to 1jan1970
-        spec->tv_sec  =(long)(wintime / 10000000i64);   //seconds
-        spec->tv_nsec =wintime % 10000000i64 *100;      //nano-seconds
+        wintime      -=116444736000000000ll;           //1jan1601 to 1jan1970
+        spec->tv_sec  =(long)(wintime / 10000000ll);   //seconds
+        spec->tv_nsec =static_cast<long>(wintime % 10000000ll *100);
         
         break;
         // Alternatively, we could use std::clock(), but GetProcessTimes seems
@@ -173,9 +173,9 @@ extern "C" int PST_CLOCK_GETTIME(PST_CLOCK_ID_T clockid,
 
         __int64 wintime = win_kernel_time + win_user_time;
         
-        wintime      -=116444736000000000i64;           //1jan1601 to 1jan1970
-        spec->tv_sec  =(long)(wintime / 10000000i64);   //seconds
-        spec->tv_nsec =wintime % 10000000i64 *100;      //nano-seconds
+        wintime      -=116444736000000000ll;           //1jan1601 to 1jan1970
+        spec->tv_sec  =(long)(wintime / 10000000ll);   //seconds
+        spec->tv_nsec = static_cast<long>(wintime % 10000000ll *100);
         
         break;
     }
@@ -192,9 +192,9 @@ extern "C" int PST_CLOCK_GETTIME(PST_CLOCK_ID_T clockid,
         // There are other Get...Time... functions as well, see:
         //   https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/
 
-        wintime      -=116444736000000000i64;           //1jan1601 to 1jan1970
-        spec->tv_sec  =(long)(wintime / 10000000i64);   //seconds
-        spec->tv_nsec =wintime % 10000000i64 *100;      //nano-seconds
+        wintime      -=116444736000000000ll;           //1jan1601 to 1jan1970
+        spec->tv_sec  =(long)(wintime / 10000000ll);   //seconds
+        spec->tv_nsec = static_cast<long>(wintime % 10000000ll *100);
         
         break;
     }

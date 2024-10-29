@@ -29,3 +29,8 @@ if (Test-Path -Path "$env:USERPROFILE/mesbuild") {
     }
 }
 
+if ((Get-Command gcc.exe -errorAction SilentlyContinue) -and `
+  (("$env:CC" -eq "gcc") -or ("$env:CC" -eq "g++") -or `
+  ("$env:CXX" -eq "gcc") -or ("$env:CXX" -eq "g++"))) {
+      $MESON_BUILD_DIR="$MESON_BUILD_DIR.gcc"
+}

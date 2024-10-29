@@ -26,6 +26,7 @@
 
 #include <time.h>
 #include <string.h>
+#include <thread>
 
 #ifdef _IS_WINDOWS
 #include <string>
@@ -77,8 +78,41 @@
   #include <os/log.h>
 #elif defined _IS_WINDOWS
   #include <windows.h> // needed for PST_THREAD_HDR (processthreadsapi.h)
+  #include <stringapiset.h>
   #include <evntprov.h>
+
+  #ifdef __MINGW32__
+    #ifndef _Pre_cap_
+      // With Visual Studio, _Pre_cap_ is a multi-layer macro defined in sal.h,
+      // the source-code annotation language used by Microsoft; and it is used
+      // in the generated header file pist_winlog.h. For mingw, _Pre_cap_
+      // doesn't seem to be defined in their sal.h, and we simply define it to
+      // be nothing so pist_winlog.h can compile.
+      #include <sal.h>
+      #ifndef _Pre_cap_
+        #define _Pre_cap_(__T)
+      #endif
+    #endif
+  #endif
+
+  #ifdef __MINGW32__
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wunknown-pragmas"
+    // The generated header file pist_winlog.h likely includes some Visual
+    // Studio specific pragmas such as "#pragma warning(suppress:
+    // 26451)". gcc/mingw would normally generate a warning for pragmas it
+    // doesn't recognize; here we temporarily hide such warnings while
+    // pist_winlog.h is compiled.
+  #endif
   #include "pist_winlog.h" // generated header file
+  #ifdef __MINGW32__
+    #pragma GCC diagnostic pop
+
+    // pist_winlog.h declares this ULONG as an extern, but does not provide an
+    // instantiation for it. WIth mingw, we have to provide an instantiation to
+    // avoid an "undefined reference" linker error
+    ULONG Pistache_ProviderEnableBits[1] = {0};
+  #endif
 
   // In Windows, Pistache uses the ETW ("Event Tracing") system for logging.
   //   https://learn.microsoft.com/en-us/windows/win32/etw/event-tracing-portal
@@ -145,16 +179,45 @@
 
 #include <sstream> // std::wostringstream
 #include <winreg.h> // Registry functions
+#include <atomic>
 
-// Don't access directly, use getLogToStdoutAsWell()
-static std::atomic_int lLogToStdoutAsWell(-1); // -1 uninited, 0 false, 1 true
-static std::mutex lLogToStdoutAsWellMutex;
-static HKEY lPistacheHkey = 0;
-static std::unique_ptr<std::thread> lLogToStdoutAsWellMonitorThread[2]= {NULL};
-static unsigned int lLTSAWMonitorThreadNextToUseIdx = 0;
-// We use the lLogToStdoutAsWellMonitorThread alternately - when one monitor
-// thread is running, and it needs to create a new monitor thread, it uses the
-// other lLogToStdoutAsWellMonitorThread for the new std::thread unique_ptr.
+class LogToStdPutAsWell
+{
+public:
+    LogToStdPutAsWell() :
+        logToStdoutAsWell(-1),
+        pistacheHkey(0),
+        ltsawMonitorThreadNextToUseIdx(0)
+    {}
+
+    ~LogToStdPutAsWell()
+        {
+            for(unsigned int i=0; i<2; i++)
+            {
+                if (logToStdoutAsWellMonitorThread[i])
+                {
+                    // If we allow std::~thread to be called while thread is
+                    // still joinable (i.e. before it is already joined),
+                    // std::termimate will be called immediately
+                    if (logToStdoutAsWellMonitorThread[i]->joinable())
+                        logToStdoutAsWellMonitorThread[i]->join();
+                }
+            }
+        }
+public:
+    // Don't access directly, use getLogToStdoutAsWell()
+    std::atomic_int logToStdoutAsWell; // -1 uninited, 0 false, 1 true
+    std::mutex logToStdoutAsWellMutex;
+    HKEY pistacheHkey;
+    std::unique_ptr<std::thread> logToStdoutAsWellMonitorThread[2];
+    unsigned int ltsawMonitorThreadNextToUseIdx;
+    // We use the logToStdoutAsWellMonitorThread alternately - when one
+    // monitor thread is running, and it needs to create a new monitor thread,
+    // it uses the other logToStdoutAsWellMonitorThread for the new
+    // std::thread unique_ptr.
+};
+static LogToStdPutAsWell lLogToStdOutAsWellInst;
+
 
 // getAndInitPsLogToStdoutAsWellPrv helper - on a failure, we try and send an
 // Alert to the Windows Application logging channel, and also to stderr - in
@@ -218,8 +281,8 @@ static void getPsLogToStdoutAsWellLogFailPrv(const wchar_t * msg_prefix,
 // If the property does not exist in the registry yet, we create it here, set
 // it to zero, and return 0.
 //
-// lLogToStdoutAsWellMutex locked before this is called
-// lLogToStdoutAsWell value is NOT set by this function
+// logToStdoutAsWellMutex locked before this is called
+// logToStdoutAsWell value is NOT set by this function
 static DWORD getAndInitPsLogToStdoutAsWellPrv()
 {
     HKEY hklm_software_key = 0;
@@ -236,10 +299,10 @@ static DWORD getAndInitPsLogToStdoutAsWellPrv()
         return(0);
     }
 
-    if (lPistacheHkey)
+    if (lLogToStdOutAsWellInst.pistacheHkey)
     {
-        RegCloseKey(lPistacheHkey);
-        lPistacheHkey = 0;
+        RegCloseKey(lLogToStdOutAsWellInst.pistacheHkey);
+        lLogToStdOutAsWellInst.pistacheHkey = 0;
     }
 
     DWORD dw_disposition = 0;
@@ -252,7 +315,7 @@ static DWORD getAndInitPsLogToStdoutAsWellPrv()
         0, // default flags
         KEY_QUERY_VALUE | KEY_SET_VALUE | KEY_NOTIFY, // reqd rights
         NULL, // don't allow child process to inherit
-        &lPistacheHkey, // HKEY result
+        &lLogToStdOutAsWellInst.pistacheHkey, // HKEY result
         &dw_disposition);
     // Note: if the key already exists, RegCreateKeyExA opens it
 
@@ -278,7 +341,7 @@ static DWORD getAndInitPsLogToStdoutAsWellPrv()
     {
         uint64_t val = 0; // only needs to be DWORD, but just in case
         DWORD val_size = sizeof(DWORD);
-        LSTATUS get_val_res = RegGetValueA(lPistacheHkey,
+        LSTATUS get_val_res = RegGetValueA(lLogToStdOutAsWellInst.pistacheHkey,
                                            NULL, // subkey - none
                                            "psLogToStdoutAsWell", // val name
                                            RRF_RT_REG_DWORD, // type REG_DWORD
@@ -305,7 +368,7 @@ static DWORD getAndInitPsLogToStdoutAsWellPrv()
     // value didn't exist
     
     BYTE data_to_set[8] = {0}; // bigger than it needs to be
-    LSTATUS set_val_res = RegSetValueExA(lPistacheHkey,
+    LSTATUS set_val_res = RegSetValueExA(lLogToStdOutAsWellInst.pistacheHkey,
                                          "psLogToStdoutAsWell", // val name
                                          0, // Reserved
                                          REG_DWORD, // type to set
@@ -324,14 +387,14 @@ static DWORD getAndInitPsLogToStdoutAsWellPrv()
 
 // Calls getAndInitPsLogToStdoutAsWellPrv,and then sets up change monitoring
 // for the key
-// lLogToStdoutAsWellMutex locked before this is called
-// lLogToStdoutAsWell value IS set by this function
+// logToStdoutAsWellMutex locked before this is called
+// logToStdoutAsWell value IS set by this function
 static DWORD getLogToStdoutAsWellAndMonitorPrv()
 {
     DWORD log_to_stdout_as_well = getAndInitPsLogToStdoutAsWellPrv();
-    if (!lPistacheHkey)
-    { // Can't monitor without lPistacheHkey
-        lLogToStdoutAsWell = log_to_stdout_as_well;
+    if (!lLogToStdOutAsWellInst.pistacheHkey)
+    { // Can't monitor without lLogToStdOutAsWellInst.pistacheHkey
+        lLogToStdOutAsWellInst.logToStdoutAsWell = log_to_stdout_as_well;
         return(log_to_stdout_as_well);
     }
 
@@ -352,7 +415,7 @@ static DWORD getLogToStdoutAsWellAndMonitorPrv()
     else
     {
         LSTATUS reg_notify_res = RegNotifyChangeKeyValue(
-            lPistacheHkey,
+            lLogToStdOutAsWellInst.pistacheHkey,
             false, // report changes in the key only, not subkeys
             REG_NOTIFY_CHANGE_ATTRIBUTES | REG_NOTIFY_CHANGE_LAST_SET
             | REG_NOTIFY_CHANGE_SECURITY
@@ -362,30 +425,35 @@ static DWORD getLogToStdoutAsWellAndMonitorPrv()
 
         if (reg_notify_res == ERROR_SUCCESS)
         {
-            lLogToStdoutAsWell = log_to_stdout_as_well;
+            lLogToStdOutAsWellInst.logToStdoutAsWell = log_to_stdout_as_well;
             we_set_l_log_to_stdout_as_well = true;
 
-            unsigned int thread_to_use_idx = lLTSAWMonitorThreadNextToUseIdx;
-            lLTSAWMonitorThreadNextToUseIdx =
-                ((lLTSAWMonitorThreadNextToUseIdx + 1) % 2);
+            unsigned int thread_to_use_idx =
+                lLogToStdOutAsWellInst.ltsawMonitorThreadNextToUseIdx;
+            lLogToStdOutAsWellInst.ltsawMonitorThreadNextToUseIdx =
+                                                 ((thread_to_use_idx + 1) % 2);
 
-            if (lLogToStdoutAsWellMonitorThread[thread_to_use_idx])
+            if (lLogToStdOutAsWellInst.
+                             logToStdoutAsWellMonitorThread[thread_to_use_idx])
             {
                 // Wait for the thread to exit BEFORE we delete the std::thread
                 // instance
-                lLogToStdoutAsWellMonitorThread[thread_to_use_idx]->join();
+                lLogToStdOutAsWellInst.
+                     logToStdoutAsWellMonitorThread[thread_to_use_idx]->join();
 
                 // Effectively, delete the std::thread instance
-                lLogToStdoutAsWellMonitorThread[thread_to_use_idx] = NULL;
+                lLogToStdOutAsWellInst.
+                      logToStdoutAsWellMonitorThread[thread_to_use_idx] = NULL;
             }
 
-            lLogToStdoutAsWellMonitorThread[thread_to_use_idx] =
+            lLogToStdOutAsWellInst.
+                logToStdoutAsWellMonitorThread[thread_to_use_idx] =
                 std::make_unique<std::thread> ([h_event]
                  {
                      auto wfso_res = WaitForSingleObject(h_event, INFINITE);
 
                      std::lock_guard<std::mutex>
-                         guard(lLogToStdoutAsWellMutex);
+                         guard(lLogToStdOutAsWellInst.logToStdoutAsWellMutex);
 
                      if (wfso_res  == WAIT_FAILED)
                      {
@@ -401,7 +469,8 @@ static DWORD getLogToStdoutAsWellAndMonitorPrv()
                          // event, so we monitor it again
                          DWORD log_to_stdout_as_well =
                              getLogToStdoutAsWellAndMonitorPrv();
-                         lLogToStdoutAsWell = log_to_stdout_as_well;
+                         lLogToStdOutAsWellInst.logToStdoutAsWell =
+                                                         log_to_stdout_as_well;
                      }
 
                      CloseHandle(h_event);
@@ -417,7 +486,7 @@ static DWORD getLogToStdoutAsWellAndMonitorPrv()
     }
     
     if (!we_set_l_log_to_stdout_as_well)
-        lLogToStdoutAsWell = log_to_stdout_as_well;
+        lLogToStdOutAsWellInst.logToStdoutAsWell = log_to_stdout_as_well;
     return(log_to_stdout_as_well);
 }
 
@@ -425,14 +494,15 @@ static DWORD getLogToStdoutAsWellAndMonitorPrv()
 static DWORD getLogToStdoutAsWell()
 {
     { // encapsulate
-        int my_log_to_stdout_as_well(lLogToStdoutAsWell);
+        int my_log_to_stdout_as_well(lLogToStdOutAsWellInst.logToStdoutAsWell);
         if (my_log_to_stdout_as_well >= 0)
             return(my_log_to_stdout_as_well > 0);
     }
 
-    std::lock_guard<std::mutex> guard(lLogToStdoutAsWellMutex);
-    if (lLogToStdoutAsWell >= 0)
-        return(lLogToStdoutAsWell > 0);
+    std::lock_guard<std::mutex> guard(
+                                lLogToStdOutAsWellInst.logToStdoutAsWellMutex);
+    if (lLogToStdOutAsWellInst.logToStdoutAsWell >= 0)
+        return(lLogToStdOutAsWellInst.logToStdoutAsWell > 0);
 
     return(getLogToStdoutAsWellAndMonitorPrv());
 }

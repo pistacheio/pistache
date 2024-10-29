@@ -109,11 +109,13 @@ extern "C" char *__unDName(char*, const char*, int, void*, void*, int);
 //    (Pistache note - memget used solely if buffer null or buflen zero)
 //    Failure: NULL.
 
+
 #define GET__PTST_DEMANGLED                                             \
     char ptst_undecorated_name[2048+16];                                \
     ptst_undecorated_name[0] = 0;                                       \
     char * __ptst_demangled = __unDName(&(ptst_undecorated_name[0]),    \
-                   typeid(*this).name(), 2048, malloc, free, 0x2800);
+        typeid(*this).name(), 2048, reinterpret_cast<void *>(malloc),        \
+        reinterpret_cast<void *>(free), 0x2800);
     // Note: __ptst_demangled will point to ptst_undecorated_name; 
     // Do not free
 #else

@@ -220,7 +220,7 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
                 if (!this_ifaddrs.ifa_name)
                 {
                     PS_LOG_WARNING("Name MALLOC failed");
-                    delete pst_ifaddrs;
+                    delete[] pst_ifaddrs;
                     errno = ENOMEM;
                     return(-1);
                 }
@@ -235,7 +235,7 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
             if (!sock_addr)
             {
                 PS_LOG_WARNING("MALLOC failed");
-                delete pst_ifaddrs;
+                delete[] pst_ifaddrs;
                 errno = ENOMEM;
                 return(-1);
             }
@@ -257,7 +257,7 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
                         if (!mask_sock_addr)
                         {
                             PS_LOG_WARNING("MALLOC failed");
-                            delete pst_ifaddrs;
+                            delete[] pst_ifaddrs;
                             errno = ENOMEM;
                             return(-1);
                         }

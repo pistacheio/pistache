@@ -46,7 +46,7 @@ int main(int argc, char* argv[])
 
     // Convenience item
     std::vector<std::string> opts;
-    for (size_t i=0; i<argc; ++i)
+    for (int i=0; i<argc; ++i)
         opts.push_back(argv[i]);
 
     // Look for help

@@ -80,7 +80,10 @@ if get_option('PISTACHE_USE_CONTENT_ENCODING_DEFLATE')
 	public_deps += zlib_dep
 endif
 
+default_static_only = false
+
 if host_machine.system() == 'windows'
+    def_stat_only = (compiler.get_id() == 'gcc')
 
     # We have to use find_library unless the library is one of the
     # special ones documented here:
@@ -88,17 +91,33 @@ if host_machine.system() == 'windows'
     # If the library is one of the "special ones", we can simply do
     # deps_libpistache += <library-name> as we do for zlib above for
     # instance
-    
-    ws2_32_dep = compiler.find_library('Ws2_32', required: true)
+
+    if (def_stat_only)
+     ws2_32_dep = compiler.find_library('Ws2_32', required: true, static: true)
+    else
+     ws2_32_dep = compiler.find_library('Ws2_32', required: true)
+    endif
     deps_libpistache += ws2_32_dep
 
-    dbghelp_dep = compiler.find_library('dbghelp', required: true)
+    if (def_stat_only)
+     dbghelp_dep = compiler.find_library('dbghelp', required: true, static: true)
+    else
+     dbghelp_dep = compiler.find_library('dbghelp', required: true)
+    endif
     deps_libpistache += dbghelp_dep # for __unDName
 
-    iphlpapi_dep = compiler.find_library('Iphlpapi', required: true)
+    if (def_stat_only)
+     iphlpapi_dep = compiler.find_library('Iphlpapi', required: true, static: true)
+    else
+     iphlpapi_dep = compiler.find_library('Iphlpapi', required: true)
+    endif
     deps_libpistache += iphlpapi_dep # for GetAdaptersAddresses
 
-    mswsock_dep = compiler.find_library('Mswsock', required: true)
+    if (def_stat_only)
+     mswsock_dep = compiler.find_library('Mswsock', required: true, static: true)
+    else
+     mswsock_dep = compiler.find_library('Mswsock', required: true)
+    endif
     deps_libpistache += mswsock_dep # for TransmitFile
 endif
 
@@ -144,9 +163,17 @@ endif
 
 # Workaround https://github.com/pistacheio/pistache/issues/1068
 if compiler_id == 'gcc' and compiler.version().version_compare('<9.1') or compiler_id == 'clang'
-	cpp_fs_dep = compiler.find_library('stdc++fs', required: false)
+   	if (def_stat_only)  
+	 cpp_fs_dep = compiler.find_library('stdc++fs', required: false, static: true)
+        else
+         cpp_fs_dep = compiler.find_library('stdc++fs', required: false)
+        endif
 	if not cpp_fs_dep.found()
-		cpp_fs_dep = compiler.find_library('c++fs', required: false)
+		if (def_stat_only)
+		 cpp_fs_dep = compiler.find_library('c++fs', required: false, static: true)
+                else
+                 cpp_fs_dep = compiler.find_library('c++fs', required: false)
+                endif
 	endif
 	if cpp_fs_dep.found()
 		deps_libpistache += cpp_fs_dep
@@ -171,7 +198,12 @@ endif
 
 if host_machine.system().endswith('bsd')
         # libexecinfo is included for the 'backtrace' function
-        libexecinfo_dep = compiler.find_library('execinfo')
+        if (def_stat_only)
+         libexecinfo_dep = compiler.find_library('execinfo', static: true)
+        else
+         libexecinfo_dep = compiler.find_library('execinfo')
+        endif
+         
         deps_libpistache += libexecinfo_dep
 endif
 

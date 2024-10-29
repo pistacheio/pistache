@@ -56,12 +56,12 @@ extern "C" int pist_getrusage(int who, struct PST_RUSAGE * rusage)
     memcpy(&li, &kerneltime, sizeof(FILETIME));
     li.QuadPart /= 10L;            /* Convert to microseconds */
     rusage->ru_stime.tv_sec = (long) (li.QuadPart / 1000000L);
-    rusage->ru_stime.tv_usec = li.QuadPart % 1000000L;
+    rusage->ru_stime.tv_usec = static_cast<long int>(li.QuadPart % 1000000L);
 
     memcpy(&li, &usertime, sizeof(FILETIME));
     li.QuadPart /= 10L;            /* Convert to microseconds */
     rusage->ru_utime.tv_sec = (long) (li.QuadPart / 1000000L);
-    rusage->ru_utime.tv_usec = li.QuadPart % 1000000L;
+    rusage->ru_utime.tv_usec = static_cast<long int>(li.QuadPart % 1000000L);
 
     return(0); // success
 }

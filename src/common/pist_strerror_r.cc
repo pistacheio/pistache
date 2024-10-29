@@ -194,9 +194,11 @@ extern "C" char * pist_strerror_r(int errnum, char *buf, size_t buflen)
                 str = "Operation not supported";
                 break;
 
+#ifndef __MINGW32__
             case EOTHER:
                 str = "Other";
                 break;
+#endif
 
             case EOVERFLOW:
                 str = "Value too large";

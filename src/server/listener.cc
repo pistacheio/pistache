@@ -142,7 +142,14 @@ namespace Pistache::Tcp
 
 /* Function introduced in 1.0.2 */
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
+#ifdef __MINGW32__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-value"
+#endif
             SSL_CTX_set_ecdh_auto(GetSSLContext(ctx), 1);
+#ifdef __MINGW32__
+#pragma GCC diagnostic pop
+#endif
 #endif /* OPENSSL_VERSION_NUMBER */
 
             if (SSL_CTX_use_certificate_chain_file(GetSSLContext(ctx), cert.c_str()) <= 0)

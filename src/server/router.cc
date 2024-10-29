@@ -69,7 +69,7 @@ namespace Pistache::Rest
         , splat_(nullptr)
         , route_(nullptr)
     {
-        std::shared_ptr<char> ptr(new char[0], std::default_delete<char[]>());
+        std::shared_ptr<char> ptr(new char[1], std::default_delete<char[]>());
         resource_ref_.swap(ptr);
     }
 
