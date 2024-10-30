@@ -38,15 +38,18 @@ jobs:
         # compiler: [ 'msvc' ] # !!!!!!!!
         compiler: [ 'gcc' ]
         # sanitizer: [ 'address', 'undefined', 'none' ] # !!!!!!!!
-        sanitizer: [ 'address' ] 
+        sanitizer: [ 'none' ] 
         # tls: [ 'true', 'false' ] # !!!!!!!!
         tls: [ 'true' ]
         # def_debug: [ 'true', 'false' ] # !!!!!!!!
         def_debug: [ 'true' ]
         exclude:
           # VS only supports address sanitizer as of Oct/2024
+          # mingw-gcc does not support address sanitizer as of Oct/2024
           - compiler: msvc
             sanitizer: undefined
+          - compiler: gcc
+            sanitizer: address
 
     runs-on: ${{ matrix.os }}
 

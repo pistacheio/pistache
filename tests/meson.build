@@ -69,7 +69,7 @@ if host_machine.system() == 'windows'
     libpistache_filename = libpistache.full_path()
 
     unversioned_dll_ct1 = custom_target('unversioned_dll',
-                              # input: [libpistache_filename]
+                              # input: [libpistache]
                               output: ['pistache.dll'],
                               command: [powershell_prog, '-NoProfile',
                               '-NonInteractive', '-WindowStyle', 'Hidden',
@@ -82,7 +82,7 @@ if host_machine.system() == 'windows'
     
     if compiler.get_id() == 'gcc'
         unversioned_dll_ct2 = custom_target('altname_dll',
-                              input: [libpistache_filename],
+                              input: [libpistache],
                               output: ['@PLAINNAME@'],
                               command: [powershell_prog, '-NoProfile',
                               '-NonInteractive', '-WindowStyle', 'Hidden',
