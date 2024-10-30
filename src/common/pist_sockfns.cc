@@ -18,6 +18,7 @@
 #include <vector>
 #include <atomic>
 #include <mutex>
+#include <iostream>
 
 #include <winsock2.h>
 
@@ -289,12 +290,16 @@ int pist_sock_startup_check()
     return(-1);
 }
 
-WsaStartupAndCleanup::~WsaStartupAndCleanup()
+WsaStartupAndCleanup::~WsaStartupAndCleanup() // DO NOT LOG
 {
+    // Since this is the destructor of what is in fact a static instance, we
+    // are careful not log here (we just use std::cout instead); the logging
+    // object may already have been destroyed before this destructor is called
+    
     if (!lWsaStartupDone)
         return;
-    
-    GUARD_AND_DBG_LOG(lWsaStartupDoneMutex);
+
+    std::lock_guard<std::mutex> guard(lWsaStartupDoneMutex);
     if (!lWsaStartupDone)
         return;
 
@@ -302,12 +307,17 @@ WsaStartupAndCleanup::~WsaStartupAndCleanup()
 
     if (wsa_cleanupres == 0)
     {
-        PS_LOG_DEBUG("WSACleanup success");
+        #ifdef DEBUG
+        std::cout << "WsaStartupAndCleanup: WSACleanup success" << std::endl;
+        #endif
         lWsaStartupDone = false;
         return;
     }
 
-    PS_LOG_INFO_ARGS("WSACleanup failed, returned %d", wsa_cleanupres);
+    #ifdef DEBUG
+    std::cout << "WsaStartupAndCleanup: WSACleanup fail, ret " <<
+        wsa_cleanupres << std::endl;
+    #endif
 }
 
 
