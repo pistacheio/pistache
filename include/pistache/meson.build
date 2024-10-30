@@ -36,6 +36,8 @@ install_headers(
 	'pist_syslog.h',
 	'prototype.h',
 	'pist_timelog.h',
+	'ps_strl.h',
+	'pst_errno.h',
 	'reactor.h',
 	'route_bind.h',
 	'router.h',
