@@ -32,22 +32,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # os: [ 'windows-2019', 'windows-latest' ] # Oct/2024, latest = 2022
-        os: [ 'windows-latest' ] # !!!!!!!!
-        # compiler: [ 'msvc', 'gcc' ] # !!!!!!!!. Could also add clang
-        # compiler: [ 'msvc' ] # !!!!!!!!
+        os: [ 'windows-2019', 'windows-latest' ] # Oct/2024, latest = 2022
+        # compiler: [ 'msvc', 'gcc' ] # Could also add clang # !!!!!!!!
         compiler: [ 'gcc' ]
-        # sanitizer: [ 'address', 'undefined', 'none' ] # !!!!!!!!
-        sanitizer: [ 'none' ] 
-        # tls: [ 'true', 'false' ] # !!!!!!!!
-        tls: [ 'true' ]
+        sanitizer: [ 'address', 'none' ]
+        tls: [ 'true', 'false' ]
         # def_debug: [ 'true', 'false' ] # !!!!!!!!
         def_debug: [ 'true' ]
         exclude:
           # VS only supports address sanitizer as of Oct/2024
-          # mingw-gcc does not support address sanitizer as of Oct/2024
-          - compiler: msvc
-            sanitizer: undefined
+          # mingw-gcc does not support any sanitizer as of Oct/2024
           - compiler: gcc
             sanitizer: address
 
@@ -260,16 +254,35 @@ jobs:
               
           }
 
-          if (! (Get-Command gcc.exe -errorAction SilentlyContinue)) {
-              if (! (Test-Path -Path "$msys64_dir\ucrt64\bin\gcc.exe")) {
-                  & $msys64_dir\msys2_shell.cmd -defterm -here -no-start -ucrt64 -c "pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc"
-                  
-                  if (! (Test-Path -Path "$msys64_dir\ucrt64\bin\gcc.exe")) {
-                      Write-Error("gcc didn't install as expected?")
-                  }
-              }
-              $env:PATH="$msys64_dir\ucrt64\bin;$env:PATH"
+          # Even if gcc is already on the path, we install /
+          # make-sure-up-to-date the msys64-ucrt64 version and put
+          # that up-to-date gcc version first on the path. Otherwise
+          # (notably in Github's Windows Server 2019 image) we may
+          # have an older version of gcc that causes build problems,
+          # specifically i) afunix.h missing; and ii) syntax errors in
+          # compiling <filesystem> (std::filesystem) header.
+
+          if (Get-Command gcc.exe -errorAction SilentlyContinue) {
+              Write-Host "May override gcc that's already on the path";
+              Write-Host "gcc to be overridden:";
+              gcc.exe --version
           }
+
+          if (Test-Path -Path "$msys64_dir\ucrt64\bin\gcc.exe") {
+              Write-Host "Running gcc upgrade";
+              & $msys64_dir\msys2_shell.cmd -defterm -here -no-start -ucrt64 -c "pacman --noconfirm -S -u mingw-w64-ucrt-x86_64-gcc"
+          }
+          else {
+              Write-Host "Running gcc install";
+              & $msys64_dir\msys2_shell.cmd -defterm -here -no-start -ucrt64 -c "pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc"
+              
+          }
+          if (! (Test-Path -Path "$msys64_dir\ucrt64\bin\gcc.exe")) {
+              Write-Error("gcc didn't install in msys as expected?")
+          }
+          $env:PATH="$msys64_dir\ucrt64\bin;$env:PATH";
+          Write-Host "gcc installed/upgraded in msys-ucrt:";
+          gcc.exe --version
 
           if (! (Get-Command mc.exe -errorAction SilentlyContinue)) {
               if (Test-Path -Path "$env:ProgramFiles\Windows Kits") {
@@ -815,8 +828,24 @@ jobs:
         ninja -C build
 
     - name: Test
+      env:
+        mtrx_compiler: ${{ matrix.compiler }}
+        mtrx_def_debug: ${{ matrix.def_debug }}
       run: >
         $savedpwd=$pwd
+
+        if (($env:mtrx_compiler -eq "gcc") -and
+              ($env:mtrx_def_debug -eq "false")) {
+            $registryPath = "HKCU:\Software\pistacheio\pistache";
+            $valName = "psLogToStdoutAsWell";
+            if (! (Test-Path $registryPath)) {
+                Write-Error "pistache registry entry missing?"
+                }
+            else {
+                New-ItemProperty -Path $registryPath -Name $valName
+                      -Value 1 -PropertyType DWORD -Force
+                }
+            }
 
         cd ~;
         $impcsv = import-csv -Path "tmpvars.csv";

@@ -36,6 +36,58 @@
 #include PIST_QUOTE(PST_THREAD_HDR) // for SetThreadDescription
 #endif
 
+#ifdef _IS_WINDOWS
+std::atomic_bool lLoggedSetThreadDescriptionFail = false;
+#ifdef __MINGW32__
+
+#include <windows.h>
+#include <libloaderapi.h> // for GetProcAddress and GetModuleHandleA
+typedef HRESULT (WINAPI *TSetThreadDescription)(HANDLE, PCWSTR);
+
+std::atomic_bool lSetThreadDescriptionLoaded = false;
+std::mutex lSetThreadDescriptionLoadMutex;
+TSetThreadDescription lSetThreadDescriptionPtr = NULL;
+
+TSetThreadDescription getSetThreadDescriptionPtr()
+{
+    if (lSetThreadDescriptionLoaded)
+        return(lSetThreadDescriptionPtr);
+
+    GUARD_AND_DBG_LOG(lSetThreadDescriptionLoadMutex);
+    if (lSetThreadDescriptionLoaded)
+        return(lSetThreadDescriptionPtr);
+
+    HMODULE hKernelBase = GetModuleHandleA("KernelBase.dll");
+
+    if (!hKernelBase)
+    {
+        PS_LOG_WARNING(
+            "Failed to get KernelBase.dll for SetThreadDescription");
+        lSetThreadDescriptionLoaded = true;
+        return(NULL);
+    }
+
+    FARPROC set_thread_desc_fpptr =
+        GetProcAddress(hKernelBase, "SetThreadDescription");
+
+    // We do the cast in two steps, otherwise mingw-gcc complains about
+    // incompatible types
+    void * set_thread_desc_vptr =
+        reinterpret_cast<void *>(set_thread_desc_fpptr);
+    lSetThreadDescriptionPtr =
+        reinterpret_cast<TSetThreadDescription>(set_thread_desc_vptr);
+
+    lSetThreadDescriptionLoaded = true;
+    if (!lSetThreadDescriptionPtr)
+    {
+        PS_LOG_WARNING(
+            "Failed to get SetThreadDescription from KernelBase.dll");
+    }
+    return(lSetThreadDescriptionPtr);
+}
+#endif // of ifdef __MINGW32__
+#endif // of ifdef _IS_WINDOWS
+
 using namespace std::string_literals;
 
 namespace Pistache::Aio
@@ -668,6 +720,33 @@ namespace Pistache::Aio
                     
                     if (!threadsName_.empty())
                     {
+                        PS_LOG_DEBUG("Setting thread name/description");
+#ifdef _IS_WINDOWS
+                        std::string threads_name(threadsName_.substr(0, 15));
+                        std::wstring temp(threads_name.begin(),
+                                          threads_name.end());
+                        LPCWSTR wide_threads_name = temp.c_str();
+
+                        HRESULT hr = E_NOTIMPL;
+#ifdef __MINGW32__
+                        TSetThreadDescription set_thread_description_ptr =
+                            getSetThreadDescriptionPtr();
+                        if (set_thread_description_ptr)
+                        {
+                            hr = set_thread_description_ptr(
+                                GetCurrentThread(), wide_threads_name);
+                        }
+#else
+                        hr = SetThreadDescription(GetCurrentThread(),
+                                                  wide_threads_name);
+#endif
+                        if ((FAILED(hr)) && (!lLoggedSetThreadDescriptionFail))
+                        {
+                            lLoggedSetThreadDescriptionFail = true;
+                            // Log it just once
+                            PS_LOG_INFO("SetThreadDescription failed");
+                        }
+#else
 #if defined _IS_BSD && !defined __NetBSD__
                         pthread_set_name_np(
 #else
