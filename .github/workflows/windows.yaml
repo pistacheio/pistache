@@ -33,12 +33,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [ 'windows-2019', 'windows-latest' ] # Oct/2024, latest = 2022
-        # compiler: [ 'msvc', 'gcc' ] # Could also add clang # !!!!!!!!
-        compiler: [ 'gcc' ]
+        compiler: [ 'msvc', 'gcc' ] # Could also add clang
         sanitizer: [ 'address', 'none' ]
         tls: [ 'true', 'false' ]
-        # def_debug: [ 'true', 'false' ] # !!!!!!!!
-        def_debug: [ 'true' ]
+        def_debug: [ 'true', 'false' ]
         exclude:
           # VS only supports address sanitizer as of Oct/2024
           # mingw-gcc does not support any sanitizer as of Oct/2024
@@ -834,19 +832,6 @@ jobs:
       run: >
         $savedpwd=$pwd
 
-        if (($env:mtrx_compiler -eq "gcc") -and
-              ($env:mtrx_def_debug -eq "false")) {
-            $registryPath = "HKCU:\Software\pistacheio\pistache";
-            $valName = "psLogToStdoutAsWell";
-            if (! (Test-Path $registryPath)) {
-                Write-Error "pistache registry entry missing?"
-                }
-            else {
-                New-ItemProperty -Path $registryPath -Name $valName
-                      -Value 1 -PropertyType DWORD -Force
-                }
-            }
-
         cd ~;
         $impcsv = import-csv -Path "tmpvars.csv";
         foreach ($impobj in $impcsv) {
@@ -856,6 +841,32 @@ jobs:
             echo "assign_cmd is $assign_cmd";
             Invoke-Expression "$assign_cmd"
         }
+
+        # To make log messages for the test executables go to stdout,
+        # we can set the registry value psLogToStdoutAsWell to 1, as below.
+        
+        #if (($env:mtrx_compiler -eq "gcc") -and
+        #      ($env:mtrx_def_debug -eq "false")) {
+        #    $registryPath = "HKCU:\Software\pistacheio\pistache";
+        #    $valName = "psLogToStdoutAsWell";
+        #    if (! (Test-Path $registryPath)) {
+        #        Write-Error "pistache registry entry missing?"
+        #        }
+        #    else {
+        #        New-ItemProperty -Path $registryPath -Name $valName
+        #              -Value 1 -PropertyType DWORD -Force
+        #        }
+        #    }
+
+        # Alternatively, you could write the logging to a csv file. Do:
+        #   logman start -f csv -ets Pistache -p "Pistache-Provider" 0 0 -o pistachelog.csv
+        # Then after "meson test" has run:
+        #   logman stop Pistache -ets
+        #   cat pistachelog.csv
+        # or
+        #   logman stop Pistache -ets
+        #   $plogcsv = import-csv -Path "pistachelog.csv"
+        #   Write-Host $plogcsv
 
         if ($env:mtrx_compiler -eq "msvc") {
           # Start a Visual Studio Developer Prompt

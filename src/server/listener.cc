@@ -965,15 +965,25 @@ namespace Pistache::Tcp
             return;
         }
 
-        em_socket_t input_for_idx = actual_fd;
-        #ifdef _IS_WINDOWS
-        PS_LOG_INFO_ARGS("actual_fd %d", actual_fd); // !!!!!!!! Remove
-        // actual_fd in Windows seems to be a multiple of 4, so we'll miss a
-        // bunch of handlers if we just do "idx = actual_fd %
+        em_socket_t input_for_idx = 0;
+#ifdef _IS_WINDOWS
+        // actual_fd in Windows seems to be a multiple of 4, so we'll fail to
+        // use a bunch of handlers if we just do "idx = actual_fd %
         // handlers.size()". For instance, if handlers.size() is 4, idx will
         // always be zero
-        input_for_idx /= 4;
-        #endif
+
+        { // encapsulate
+            auto this_ctr = (idxCtr_++);
+            if (!this_ctr)
+            {
+                PS_LOG_WARNING("Apparent idxCtr overflow");
+                this_ctr = (idxCtr_++);
+            }
+            input_for_idx = this_ctr;
+        }
+#else
+        input_for_idx = actual_fd;
+#endif
 
         auto handlers  = reactor_->handlers(transportKey);
         auto idx       = input_for_idx % handlers.size();
