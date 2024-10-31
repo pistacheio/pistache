@@ -122,7 +122,9 @@ namespace Pistache::Tcp
         em_socket_t acceptConnection(struct sockaddr_storage& peer_addr) const;
         void dispatchPeer(const std::shared_ptr<Peer>& peer);
 
+#ifdef _IS_WINDOWS
         std::atomic<em_socket_t> idxCtr_ = 1;
+#endif
         bool useSSL_            = false;
         ssl::SSLCtxPtr ssl_ctx_ = nullptr;
 
