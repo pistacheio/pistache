@@ -649,11 +649,7 @@ TEST(http_server_test, server_with_static_file)
     barrier.wait_for(std::chrono::seconds(WAIT_TIME));
 
     client.shutdown();
-<<<<<<< HEAD
-    server->shutdown();
-=======
     server.shutdown();
->>>>>>> bb70117 (Fix: Correct Windows ps_sendfile and Fix Associated Crashes)
 
     LOGGER("test", "Deleting file " << fileName);
     std::remove(fileName);
@@ -870,35 +866,6 @@ TEST(http_server_test, client_request_timeout_on_only_connect_raises_http_408)
 
     const auto headerTimeout = std::chrono::seconds(2);
 
-<<<<<<< HEAD
-    EndpointPtrT server(new Http::Endpoint(address));
-
-    // Http::Endpoint server(address);
-    auto flags = Tcp::Options::ReuseAddr;
-    auto opts  = Http::Endpoint::options()
-        .flags(flags)
-        .headerTimeout(headerTimeout);
-
-    server->init(opts);
-    server->setHandler(Http::make_handler<PingHandler>());
-    server->serveThreaded();
-
-    auto port = server->getPort();
-    auto addr = "localhost:" + port.toString();
-    LOGGER("test", "Server address: " << addr);
-
-    TcpClient client;
-    EXPECT_TRUE(client.connect(Pistache::Address("localhost", port))) << client.lastError();
-
-    char recvBuf[1024] = {
-        0,
-    };
-    size_t bytes;
-    EXPECT_TRUE(client.receive(recvBuf, sizeof(recvBuf), &bytes, std::chrono::seconds(5))) << client.lastError();
-    EXPECT_EQ(0, strncmp(recvBuf, ExpectedResponseLine, strlen(ExpectedResponseLine)));
-
-    server->shutdown();
-=======
     Http::Endpoint server(address);
     auto flags = Tcp::Options::ReuseAddr;
     auto opts  = Http::Endpoint::options()
@@ -924,7 +891,6 @@ TEST(http_server_test, client_request_timeout_on_only_connect_raises_http_408)
     EXPECT_EQ(0, strncmp(recvBuf, ExpectedResponseLine, strlen(ExpectedResponseLine)));
 
     server.shutdown();
->>>>>>> bb70117 (Fix: Correct Windows ps_sendfile and Fix Associated Crashes)
 
     } // end encapsulate
     
@@ -1013,87 +979,90 @@ TEST(http_server_test, client_request_timeout_on_delay_in_request_line_send_rais
 
     { // encapsulate
 
-    Pistache::Address address("localhost", Pistache::Port(0));
+        Pistache::Address address("localhost", Pistache::Port(0));
 
-    const auto headerTimeout = std::chrono::seconds(2);
+        const auto headerTimeout = std::chrono::seconds(2);
 
-    Http::Endpoint server(address);
-    auto flags = Tcp::Options::ReuseAddr;
-    auto opts  = Http::Endpoint::options()
-                    .flags(flags)
-                    .headerTimeout(headerTimeout);
+        Http::Endpoint server(address);
+        auto flags = Tcp::Options::ReuseAddr;
+        auto opts  = Http::Endpoint::options()
+                        .flags(flags)
+                        .headerTimeout(headerTimeout);
 
-    server.init(opts);
-    server.setHandler(Http::make_handler<PingHandler>());
-    server.serveThreaded();
+        server.init(opts);
+        server.setHandler(Http::make_handler<PingHandler>());
+        server.serveThreaded();
 
-    auto port = server.getPort();
-    auto addr = "localhost:" + port.toString();
-    LOGGER("test", "Server address: " << addr);
+        auto port = server.getPort();
+        auto addr = "localhost:" + port.toString();
+        LOGGER("test", "Server address: " << addr);
 
-    const std::string reqStr { "GET /ping HTTP/1.1\r\n" };
-    TcpClient client;
-    EXPECT_TRUE(client.connect(Pistache::Address("localhost", port))) << client.lastError();
-    bool send_failed = false;
+        const std::string reqStr { "GET /ping HTTP/1.1\r\n" };
+        TcpClient client;
+        EXPECT_TRUE(client.connect(Pistache::Address("localhost", port))) << client.lastError();
+        bool send_failed = false;
 
-    for (size_t i = 0; i < reqStr.size(); ++i)
-    {
-        if (!client.send(reqStr.substr(i, 1)))
+        char recvBuf[1024] = {
+            0,
+        };
+        size_t bytes = 0;
+        bool cli_rx_res = false;
+
+        for (size_t i = 0; i < reqStr.size(); ++i)
         {
-            send_failed = true;
-            break;
-        }
+            if (!client.send(reqStr.substr(i, 1)))
+            {
+                send_failed = true;
+                break;
+            }
 
-        // This code sends a request from client to server one character at
-        // a time, with delays between characters. Eventually the server
-        // gets bored of waiting for a fully formed request (i.e. times
-        // out), sends an HTTP error response, and closes the connection
-        // (does CLOSE_FD). Once the server has closed the connection, the
-        // next client.send (see above) will fail.
-        //
-        // In Linux, we can then do "poll" and read the server's
-        // HTTP response at the client.
-        //
-        // However, in Windows once the connection has been closed an
-        // attempt to do a read on the socket will result in an
-        // ECONNABORTED error. This is because, in Windows, the failing
-        // send has error WSAECONNABORTED, and then any further call on the
-        // client socket, other than close, will generate an additional
-        // ECONNABORTED error (see // https://learn.microsoft.com/
-        //              en-us/windows/win32/api/winsock2/nf-winsock2-send).
-        //
-        // At the level of the "poll" call, after the send has failed, in
-        // Linux the poll revents flags are POLLIN | POLLHUP (read
-        // available | connection hung-up); but in Windows they are POLLERR
-        // | POLLHUP (connection error | connection hung-up).
-        //
-        // To workaround this, in Windows we will attempt a receive after
-        // each send, and we'll expect the attempt at receive that follows
-        // the last successful send to read back the server's timeout error
-        // message. Then we check that the correct HTTP message has been
-        // returned.
+            // This code sends a request from client to server one character at
+            // a time, with delays between characters. Eventually the server
+            // gets bored of waiting for a fully formed request (i.e. times
+            // out), sends an HTTP error response, and closes the connection
+            // (does CLOSE_FD). Once the server has closed the connection, the
+            // next client.send (see above) will fail.
+            //
+            // In Linux, we can then do "poll" and read the server's
+            // HTTP response at the client.
+            //
+            // However, in Windows once the connection has been closed an
+            // attempt to do a read on the socket will result in an
+            // ECONNABORTED error. This is because, in Windows, the failing
+            // send has error WSAECONNABORTED, and then any further call on the
+            // client socket, other than close, will generate an additional
+            // ECONNABORTED error (see // https://learn.microsoft.com/
+            //              en-us/windows/win32/api/winsock2/nf-winsock2-send).
+            //
+            // At the level of the "poll" call, after the send has failed, in
+            // Linux the poll revents flags are POLLIN | POLLHUP (read
+            // available | connection hung-up); but in Windows they are POLLERR
+            // | POLLHUP (connection error | connection hung-up).
+            //
+            // To workaround this, in Windows we will attempt a receive after
+            // each send, and we'll expect the attempt at receive that follows
+            // the last successful send to read back the server's timeout error
+            // message. Then we check that the correct HTTP message has been
+            // returned.
 #ifdef _WIN32
-        bool this_cli_rx_res =
-            client.receive(recvBuf, sizeof(recvBuf),
-                           &bytes, std::chrono::milliseconds(300));
-        PS_LOG_DEBUG_ARGS("i = %u, client.receive %s%s", i,
-                          (this_cli_rx_res ? "succeeded" : "failed, "),
-                          (this_cli_rx_res ? "" : client.lastError().c_str()));
-        cli_rx_res |= this_cli_rx_res;
-        // Note: We expect the succeeding receive to be either the last, or
-        // the last-but-one
+            bool this_cli_rx_res =
+                client.receive(recvBuf, sizeof(recvBuf),
+                               &bytes, std::chrono::milliseconds(300));
+            PS_LOG_DEBUG_ARGS("i = %u, client.receive %s%s", i,
+                              (this_cli_rx_res ? "succeeded" : "failed, "),
+                              (this_cli_rx_res ? "" : client.lastError().c_str()));
+            cli_rx_res |= this_cli_rx_res;
+            // Note: We expect the succeeding receive to be either the last, or
+            // the last-but-one
 #else
-        std::this_thread::sleep_for(std::chrono::milliseconds(300));
+            std::this_thread::sleep_for(std::chrono::milliseconds(300));
 #endif
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(300));
-    }
+        }
 
     if (send_failed)
     { // Usually, send does fail; but on macOS occasionally it does not fail
       // We workaround that here, since of course we can only check for an
       // error code when there is an actual error
-        EXPECT_EQ(client.lastErrno(), EPIPE) << "Errno: " << client.lastErrno();
 
 #ifdef _WIN32
         if (client.lastErrno() == ECONNABORTED) // Windows 11 Home
@@ -1113,9 +1082,8 @@ TEST(http_server_test, client_request_timeout_on_delay_in_request_line_send_rais
     }
 
     server.shutdown();
-
     } // end encapsulate
-    
+
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 #ifdef DEBUG
     const int em_event_count_after = EventMethFns::getEmEventCount();
@@ -1435,7 +1403,7 @@ TEST(http_server_test, server_with_content_encoding_brotli)
 
     { // encapsulate
 
-      // Data to send to server to expect it to return compressed...
+        // Data to send to server to expect it to return compressed...
 
         // Allocate storage...
         std::vector<unsigned short> originalUncompressedData(1024);
@@ -1459,130 +1427,131 @@ TEST(http_server_test, server_with_content_encoding_brotli)
             std::end(originalUncompressedData),
             [&randomEngine]() { return static_cast<unsigned short>(randomEngine()); });
 
-    // Bind server to localhost on a random port...
-    const Pistache::Address address("localhost", Pistache::Port(0));
+        // Bind server to localhost on a random port...
+        const Pistache::Address address("localhost", Pistache::Port(0));
 
-    // Initialize server...
-    Http::Endpoint server(address);
-    auto flags       = Tcp::Options::ReuseAddr;
-    auto server_opts = Http::Endpoint::options().flags(flags);
-    server_opts.maxRequestSize(1024 * 1024 * 20);
-    server_opts.maxResponseSize(1024 * 1024 * 20);
-    server.init(server_opts);
-    server.setHandler(Http::make_handler<ContentEncodingHandler>());
-    server.serveThreaded();
+        // Initialize server...
+        Http::Endpoint server(address);
+        auto flags       = Tcp::Options::ReuseAddr;
+        auto server_opts = Http::Endpoint::options().flags(flags);
+        server_opts.maxRequestSize(1024 * 1024 * 20);
+        server_opts.maxResponseSize(1024 * 1024 * 20);
+        server.init(server_opts);
+        server.setHandler(Http::make_handler<ContentEncodingHandler>());
+        server.serveThreaded();
 
-    // Verify server is running...
-    ASSERT_TRUE(server.isBound());
+        // Verify server is running...
+        ASSERT_TRUE(server.isBound());
 
-    // Log server coordinates...
-    const std::string server_address = "localhost:" + server.getPort().toString();
-    LOGGER("test", "Server address: " << server_address);
+        // Log server coordinates...
+        const std::string server_address = "localhost:" + server.getPort().toString();
+        LOGGER("test", "Server address: " << server_address);
 
-    // Initialize client...
+        // Initialize client...
 
-    // Construct and initialize...
-    Http::Experimental::Client client;
-    client.init();
+        // Construct and initialize...
+        Http::Experimental::Client client;
+        client.init();
 
-    // Set server to connect to and get request builder object...
-    auto rb = client.get(server_address);
+        // Set server to connect to and get request builder object...
+        auto rb = client.get(server_address);
 
-    // Set data to send as body...
-    rb.body(std::string(
+        // Set data to send as body...
+        rb.body(
+            std::string(
                 reinterpret_cast<const unsigned short*>(originalUncompressedData.data()),
                 originalUncompressedData.size()));
 
-    // Request server send back response Brotli compressed...
-    rb.header<Http::Header::AcceptEncoding>(Http::Header::Encoding::Br);
+        // Request server send back response Brotli compressed...
+        rb.header<Http::Header::AcceptEncoding>(Http::Header::Encoding::Br);
 
-    // Send client request. Note that Transport::asyncSendRequestImpl() is
-    //  buggy, or at least with Pistache::Client, when the amount of data being
-    //  sent is large. When that happens send() breaks in asyncSendRequestImpl()
-    //  receiving an errno=EAGAIN...
-    auto response = rb.send();
+        // Send client request. Note that Transport::asyncSendRequestImpl() is
+        //  buggy, or at least with Pistache::Client, when the amount of data being
+        //  sent is large. When that happens send() breaks in asyncSendRequestImpl()
+        //  receiving an errno=EAGAIN...
+        auto response = rb.send();
 
-    // Storage for server response body...
-    std::string resultStringData;
+        // Storage for server response body...
+        std::string resultStringData;
 
-    // Verify response code, expected header, and store its body...
-    response.then(
-        [&resultStringData](Http::Response resp) {
-            // Log response code...
-            LOGGER("client", "Response code: " << resp.code());
+        // Verify response code, expected header, and store its body...
+        response.then(
+            [&resultStringData](Http::Response resp) {
+                // Log response code...
+                LOGGER("client", "Response code: " << resp.code());
 
-            // Log Content-Encoding header value, if present...
-            if (resp.headers().tryGetRaw("Content-Encoding").has_value())
-            {
-                LOGGER("client", "Content-Encoding: " << resp.headers().tryGetRaw("Content-Encoding").value().value());
-            }
+                // Log Content-Encoding header value, if present...
+                if (resp.headers().tryGetRaw("Content-Encoding").has_value())
+                {
+                    LOGGER("client", "Content-Encoding: " << resp.headers().tryGetRaw("Content-Encoding").value().value());
+                }
 
-            // Preserve body only if response code as expected...
-            if (resp.code() == Http::Code::Ok)
-                resultStringData = resp.body();
+                // Preserve body only if response code as expected...
+                if (resp.code() == Http::Code::Ok)
+                    resultStringData = resp.body();
 
-            // Get response headers...
-            const auto& headers = resp.headers();
+                // Get response headers...
+                const auto& headers = resp.headers();
 
-            // Verify Content-Encoding header was present...
-            ASSERT_TRUE(headers.has<Http::Header::ContentEncoding>());
+                // Verify Content-Encoding header was present...
+                ASSERT_TRUE(headers.has<Http::Header::ContentEncoding>());
 
-            // Verify Content-Encoding was set to Brotli...
-            const auto ce = headers.get<Http::Header::ContentEncoding>().get();
-            ASSERT_EQ(ce->encoding(), Http::Header::Encoding::Br);
-        },
-        Async::Throw);
+                // Verify Content-Encoding was set to Brotli...
+                const auto ce = headers.get<Http::Header::ContentEncoding>().get();
+                ASSERT_EQ(ce->encoding(), Http::Header::Encoding::Br);
+            },
+            Async::Throw);
 
-    // Wait for response to complete...
-    Async::Barrier<Http::Response> barrier(response);
-    barrier.wait();
+        // Wait for response to complete...
+        Async::Barrier<Http::Response> barrier(response);
+        barrier.wait();
 
-    // Cleanup client and server...
-    client.shutdown();
-    server.shutdown();
+        // Cleanup client and server...
+        client.shutdown();
+        server.shutdown();
 
-    // Get server response body in vector...
-    std::vector<unsigned short> newlyCompressedResponse(resultStringData.size());
-    std::transform(
-        std::cbegin(resultStringData),
-        std::cend(resultStringData),
-        std::begin(newlyCompressedResponse),
-        [](const unsigned short unss) { return static_cast<unsigned short>(unss); });
+        // Get server response body in vector...
+        std::vector<unsigned short> newlyCompressedResponse(resultStringData.size());
+        std::transform(
+            std::cbegin(resultStringData),
+            std::cend(resultStringData),
+            std::begin(newlyCompressedResponse),
+            [](const unsigned short unss) { return static_cast<unsigned short>(unss); });
 
-    // The data the server responded with should be compressed, and therefore
-    //  different from the original uncompressed sent during the request...
-    ASSERT_NE(originalUncompressedData, newlyCompressedResponse);
+        // The data the server responded with should be compressed, and therefore
+        //  different from the original uncompressed sent during the request...
+        ASSERT_NE(originalUncompressedData, newlyCompressedResponse);
 
-    // Decompress response body...
+        // Decompress response body...
 
-    // Storage for decompressed data...
-    std::vector<unsigned short> newlyDecompressedData(
-        originalUncompressedData.size());
+        // Storage for decompressed data...
+        std::vector<unsigned short> newlyDecompressedData(
+            originalUncompressedData.size());
 
-    // Size of destination buffer, but will be updated by uncompress() to
-    //  actual size used...
-    size_t destinationLength = originalUncompressedData.size();
+        // Size of destination buffer, but will be updated by uncompress() to
+        //  actual size used...
+        size_t destinationLength = originalUncompressedData.size();
 
-    // Decompress...
-    const auto compressionStatus = ::BrotliDecoderDecompress(
-        resultStringData.size(),
-        reinterpret_cast<const uint8_t*>(resultStringData.data()),
-        &destinationLength,
-        reinterpret_cast<uint8_t*>(newlyDecompressedData.data()));
+        // Decompress...
+        const auto compressionStatus = ::BrotliDecoderDecompress(
+            resultStringData.size(),
+            reinterpret_cast<const uint8_t*>(resultStringData.data()),
+            &destinationLength,
+            reinterpret_cast<uint8_t*>(newlyDecompressedData.data()));
 
-    // Check for failure...
-    ASSERT_EQ(compressionStatus, BROTLI_DECODER_RESULT_SUCCESS);
+        // Check for failure...
+        ASSERT_EQ(compressionStatus, BROTLI_DECODER_RESULT_SUCCESS);
 
-    // The sizes of both the original uncompressed data we sent the server
-    //  and the result of decompressing what it sent back should match...
-    ASSERT_EQ(originalUncompressedData.size(), destinationLength);
+        // The sizes of both the original uncompressed data we sent the server
+        //  and the result of decompressing what it sent back should match...
+        ASSERT_EQ(originalUncompressedData.size(), destinationLength);
 
-    // Check to ensure the compressed data received back from server after
-    //  decompression matches exactly what we originally sent it...
-    ASSERT_EQ(originalUncompressedData, newlyDecompressedData);
+        // Check to ensure the compressed data received back from server after
+        //  decompression matches exactly what we originally sent it...
+        ASSERT_EQ(originalUncompressedData, newlyDecompressedData);
 
     } // end encapsulate
-    
+
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 #ifdef DEBUG
     const int em_event_count_after = EventMethFns::getEmEventCount();
@@ -1608,150 +1577,150 @@ TEST(http_server_test, server_with_content_encoding_deflate)
 
     { // encapsulate
 
-    // Data to send to server to expect it to return compressed...
+        // Data to send to server to expect it to return compressed...
 
-    // Allocate storage...
-    std::vector<unsigned short> originalUncompressedData(512);
+        // Allocate storage...
+        std::vector<unsigned short> originalUncompressedData(512);
 
-    // Random engine...
-    using random_us_engine_type = std::independent_bits_engine<
-        std::default_random_engine,
-        8*sizeof(unsigned short),
-        unsigned short>;
-    random_us_engine_type randomEngine;
+        // Random engine...
+        using random_us_engine_type = std::independent_bits_engine<
+            std::default_random_engine,
+            8*sizeof(unsigned short),
+            unsigned short>;
+        random_us_engine_type randomEngine;
 
-    // Fill with random unsigned short
-    std::generate(
-        std::begin(originalUncompressedData),
-        std::end(originalUncompressedData),
-        [&randomEngine]() { return static_cast<unsigned short>(randomEngine()); });
+        // Fill with random unsigned short
+        std::generate(
+            std::begin(originalUncompressedData),
+            std::end(originalUncompressedData),
+            [&randomEngine]() { return static_cast<unsigned short>(randomEngine()); });
 
-    // Bind server to localhost on a random port...
-    const Pistache::Address address("localhost", Pistache::Port(0));
+        // Bind server to localhost on a random port...
+        const Pistache::Address address("localhost", Pistache::Port(0));
 
-    // Initialize server...
-    Http::Endpoint server(address);
-    auto flags       = Tcp::Options::ReuseAddr;
-    auto server_opts = Http::Endpoint::options().flags(flags);
-    server_opts.maxRequestSize(1024 * 1024 * 20);
-    server_opts.maxResponseSize(1024 * 1024 * 20);
-    server.init(server_opts);
-    server.setHandler(Http::make_handler<ContentEncodingHandler>());
-    server.serveThreaded();
+        // Initialize server...
+        Http::Endpoint server(address);
+        auto flags       = Tcp::Options::ReuseAddr;
+        auto server_opts = Http::Endpoint::options().flags(flags);
+        server_opts.maxRequestSize(1024 * 1024 * 20);
+        server_opts.maxResponseSize(1024 * 1024 * 20);
+        server.init(server_opts);
+        server.setHandler(Http::make_handler<ContentEncodingHandler>());
+        server.serveThreaded();
 
-    // Verify server is running...
-    ASSERT_TRUE(server.isBound());
+        // Verify server is running...
+        ASSERT_TRUE(server.isBound());
 
-    // Log server coordinates...
-    const std::string server_address = "localhost:" + server.getPort().toString();
-    LOGGER("test", "Server address: " << server_address);
+        // Log server coordinates...
+        const std::string server_address = "localhost:" + server.getPort().toString();
+        LOGGER("test", "Server address: " << server_address);
 
-    // Initialize client...
+        // Initialize client...
 
-    // Construct and initialize...
-    Http::Experimental::Client client;
-    client.init();
+        // Construct and initialize...
+        Http::Experimental::Client client;
+        client.init();
 
-    // Set server to connect to and get request builder object...
-    auto rb = client.get(server_address);
+        // Set server to connect to and get request builder object...
+        auto rb = client.get(server_address);
 
-    // Set data to send as body...
-    rb.body(
-        std::string(
-            reinterpret_cast<const char*>(originalUncompressedData.data()),
-            originalUncompressedData.size()*sizeof(unsigned short)));
+        // Set data to send as body...
+        rb.body(
+            std::string(
+                reinterpret_cast<const char*>(originalUncompressedData.data()),
+                originalUncompressedData.size()*sizeof(unsigned short)));
 
-    // Request server send back response deflate compressed...
-    rb.header<Http::Header::AcceptEncoding>(Http::Header::Encoding::Deflate);
+        // Request server send back response deflate compressed...
+        rb.header<Http::Header::AcceptEncoding>(Http::Header::Encoding::Deflate);
 
-    // Send client request. Note that Transport::asyncSendRequestImpl() is
-    //  buggy, or at least with Pistache::Client, when the amount of data being
-    //  sent is large. When that happens send() breaks in asyncSendRequestImpl()
-    //  receiving an errno=EAGAIN...
-    auto response = rb.send();
+        // Send client request. Note that Transport::asyncSendRequestImpl() is
+        //  buggy, or at least with Pistache::Client, when the amount of data being
+        //  sent is large. When that happens send() breaks in asyncSendRequestImpl()
+        //  receiving an errno=EAGAIN...
+        auto response = rb.send();
 
-    // Storage for server response body...
-    std::string resultStringData;
+        // Storage for server response body...
+        std::string resultStringData;
 
-    // Verify response code, expected header, and store its body...
-    response.then(
-        [&resultStringData](Http::Response resp) {
-            // Log response code...
-            LOGGER("client", "Response code: " << resp.code());
+        // Verify response code, expected header, and store its body...
+        response.then(
+            [&resultStringData](Http::Response resp) {
+                // Log response code...
+                LOGGER("client", "Response code: " << resp.code());
 
-            // Log Content-Encoding header value, if present...
-            if (resp.headers().tryGetRaw("Content-Encoding").has_value())
-            {
-                LOGGER("client", "Content-Encoding: " << resp.headers().tryGetRaw("Content-Encoding").value().value());
-            }
+                // Log Content-Encoding header value, if present...
+                if (resp.headers().tryGetRaw("Content-Encoding").has_value())
+                {
+                    LOGGER("client", "Content-Encoding: " << resp.headers().tryGetRaw("Content-Encoding").value().value());
+                }
 
-            // Preserve body only if response code as expected...
-            if (resp.code() == Http::Code::Ok)
-                resultStringData = resp.body();
+                // Preserve body only if response code as expected...
+                if (resp.code() == Http::Code::Ok)
+                    resultStringData = resp.body();
 
-            // Get response headers...
-            const auto& headers = resp.headers();
+                // Get response headers...
+                const auto& headers = resp.headers();
 
-            // Verify Content-Encoding header was present...
-            ASSERT_TRUE(headers.has<Http::Header::ContentEncoding>());
+                // Verify Content-Encoding header was present...
+                ASSERT_TRUE(headers.has<Http::Header::ContentEncoding>());
 
-            // Verify Content-Encoding was set to deflate...
-            const auto ce = headers.get<Http::Header::ContentEncoding>().get();
-            ASSERT_EQ(ce->encoding(), Http::Header::Encoding::Deflate);
-        },
-        Async::Throw);
+                // Verify Content-Encoding was set to deflate...
+                const auto ce = headers.get<Http::Header::ContentEncoding>().get();
+                ASSERT_EQ(ce->encoding(), Http::Header::Encoding::Deflate);
+            },
+            Async::Throw);
 
-    // Wait for response to complete...
-    Async::Barrier<Http::Response> barrier(response);
-    barrier.wait();
+        // Wait for response to complete...
+        Async::Barrier<Http::Response> barrier(response);
+        barrier.wait();
 
-    // Cleanup client and server...
-    client.shutdown();
-    server.shutdown();
+        // Cleanup client and server...
+        client.shutdown();
+        server.shutdown();
 
-    // Get server response body in vector...
-    std::vector<unsigned short> newlyCompressedResponse(resultStringData.size());
-    std::transform(
-        std::cbegin(resultStringData),
-        std::cend(resultStringData),
-        std::begin(newlyCompressedResponse),
-        [](const unsigned short unss) { return static_cast<unsigned short>(unss); });
+        // Get server response body in vector...
+        std::vector<unsigned short> newlyCompressedResponse(resultStringData.size());
+        std::transform(
+            std::cbegin(resultStringData),
+            std::cend(resultStringData),
+            std::begin(newlyCompressedResponse),
+            [](const unsigned short unss) { return static_cast<unsigned short>(unss); });
 
-    // The data the server responded with should be compressed, and therefore
-    //  different from the original uncompressed sent during the request...
-    ASSERT_NE(originalUncompressedData, newlyCompressedResponse);
+        // The data the server responded with should be compressed, and therefore
+        //  different from the original uncompressed sent during the request...
+        ASSERT_NE(originalUncompressedData, newlyCompressedResponse);
 
-    // Decompress response body...
+        // Decompress response body...
 
-    // Storage for decompressed data...
-    std::vector<unsigned short> newlyDecompressedData(
-        originalUncompressedData.size());
+        // Storage for decompressed data...
+        std::vector<unsigned short> newlyDecompressedData(
+            originalUncompressedData.size());
 
-    // Size of destination buffer, but will be updated by uncompress() to
-    //  actual size used...
-    uLongf destinationLength =
-        (uLongf) originalUncompressedData.size() * sizeof(unsigned short);
+        // Size of destination buffer, but will be updated by uncompress() to
+        //  actual size used...
+        uLongf destinationLength =
+            (uLongf) originalUncompressedData.size() * sizeof(unsigned short);
 
-    // Decompress...
-    const auto compressionStatus = ::uncompress(
-        reinterpret_cast<Bytef*>(newlyDecompressedData.data()),
-        &destinationLength,
-        reinterpret_cast<const Bytef*>(resultStringData.data()),
-        (uLong) (resultStringData.size() * sizeof(unsigned short)));
+        // Decompress...
+        const auto compressionStatus = ::uncompress(
+            reinterpret_cast<Bytef*>(newlyDecompressedData.data()),
+            &destinationLength,
+            reinterpret_cast<const Bytef*>(resultStringData.data()),
+            (uLong) (resultStringData.size() * sizeof(unsigned short)));
 
-    // Check for failure...
-    ASSERT_EQ(compressionStatus, Z_OK);
+        // Check for failure...
+        ASSERT_EQ(compressionStatus, Z_OK);
 
-    // The sizes of both the original uncompressed data we sent the server
-    //  and the result of decompressing what it sent back should match...
-    ASSERT_EQ(originalUncompressedData.size() * sizeof(unsigned short), destinationLength);
+        // The sizes of both the original uncompressed data we sent the server
+        //  and the result of decompressing what it sent back should match...
+        ASSERT_EQ(originalUncompressedData.size() * sizeof(unsigned short), destinationLength);
 
-    // Check to ensure the compressed data received back from server after
-    //  decompression matches exactly what we originally sent it...
-    ASSERT_EQ(originalUncompressedData, newlyDecompressedData);
+        // Check to ensure the compressed data received back from server after
+        //  decompression matches exactly what we originally sent it...
+        ASSERT_EQ(originalUncompressedData, newlyDecompressedData);
 
     } // end encapsulate
-    
+
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 #ifdef DEBUG
     const int em_event_count_after = EventMethFns::getEmEventCount();

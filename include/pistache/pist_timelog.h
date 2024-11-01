@@ -31,20 +31,7 @@
 // ---------------------------------------------------------------------------
 
 #include <pistache/pist_syslog.h>
-
-#ifdef _IS_BSD
-#define PS_STRLCPY(__dest, __src, __n) strlcpy(__dest, __src, __n)
-#define PS_STRLCAT(__dest, __src, __size) strlcat(__dest, __src, __size)
-#elif defined(__linux__)
-#define PS_STRLCPY(__dest, __src, __n) strncpy(__dest, __src, __n)
-#define PS_STRLCAT(__dest, __src, __size) strncat(__dest, __src, __size)
-#elif defined(__APPLE__)
-#define PS_STRLCPY(__dest, __src, __n) strlcpy(__dest, __src, __n)
-#define PS_STRLCAT(__dest, __src, __size) strlcat(__dest, __src, __size)
-#else
-#define PS_STRLCPY(__dest, __src, __n) strcpy(__dest, __src)
-#define PS_STRLCAT(__dest, __src, __size) strcat(__dest, __src)
-#endif
+#include <pistache/ps_strl.h>
 
 #ifdef DEBUG
 #define PS_TIMINGS_DBG 1

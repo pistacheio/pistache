@@ -14,6 +14,9 @@
 
 #include <pistache/pist_quote.h>
 
+// DO NOT include emosandlibevdefs.h here
+// emosandlibevdefs.h includes winornix.h, and depends on it
+
 /* ------------------------------------------------------------------------- */
 
 // _WIN32 Defined for both 32-bit and 64-bit environments

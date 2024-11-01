@@ -19,6 +19,8 @@
 #include <pistache/peer.h>
 #include <pistache/transport.h>
 
+#include PIST_QUOTE(PST_STRERROR_R_HDR)
+
 #include <charconv>
 #include <cstring>
 #include <ctime>
@@ -37,7 +39,6 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
-
 
 namespace Pistache::Http
 {
@@ -60,7 +61,7 @@ namespace Pistache::Http
     {
         bool writeStatusLine(Version version, Code code, DynamicStreamBuf& buf)
         {
-#define PST_OUT(...)          \
+#define PST_OUT(...)      \
     do                    \
     {                     \
         __VA_ARGS__;      \
@@ -83,7 +84,7 @@ namespace Pistache::Http
 
         bool writeHeaders(const Header::Collection& headers, DynamicStreamBuf& buf)
         {
-#define PST_OUT(...)          \
+#define PST_OUT(...)      \
     do                    \
     {                     \
         __VA_ARGS__;      \
@@ -107,7 +108,7 @@ namespace Pistache::Http
 
         bool writeCookies(const CookieJar& cookies, DynamicStreamBuf& buf)
         {
-#define PST_OUT(...)          \
+#define PST_OUT(...)      \
     do                    \
     {                     \
         __VA_ARGS__;      \
@@ -851,21 +852,21 @@ namespace Pistache::Http
     }
 
     Async::Promise<PST_SSIZE_T> ResponseWriter::send(Code code, const std::string& body,
-                                                 const Mime::MediaType& mime)
+                                                     const Mime::MediaType& mime)
     {
         return sendImpl(code, body.c_str(), body.size(), mime);
     }
 
     Async::Promise<PST_SSIZE_T> ResponseWriter::send(Code code, const char* data,
-                                                 const size_t size,
-                                                 const Mime::MediaType& mime)
+                                                     const size_t size,
+                                                     const Mime::MediaType& mime)
     {
         return sendImpl(code, data, size, mime);
     }
 
     Async::Promise<PST_SSIZE_T> ResponseWriter::sendImpl(Code code, const char* data,
-                                                     const size_t size,
-                                                     const Mime::MediaType& mime)
+                                                         const size_t size,
+                                                         const Mime::MediaType& mime)
     {
         if (!peer_.expired())
         {
@@ -1022,21 +1023,21 @@ namespace Pistache::Http
     ResponseWriter ResponseWriter::clone() const { return ResponseWriter(*this); }
 
     Async::Promise<PST_SSIZE_T> ResponseWriter::putOnWire(const char* data,
-                                                      size_t len)
+                                                          size_t len)
     {
         try
         {
             std::ostream os(&buf_);
 
-#define PST_OUT(...)                                         \
-    do                                                   \
-    {                                                    \
-        __VA_ARGS__;                                     \
-        if (!os)                                         \
-        {                                                \
-            return Async::Promise<PST_SSIZE_T>::rejected(    \
-                Error("Response exceeded buffer size")); \
-        }                                                \
+#define PST_OUT(...)                                      \
+    do                                                    \
+    {                                                     \
+        __VA_ARGS__;                                      \
+        if (!os)                                          \
+        {                                                 \
+            return Async::Promise<PST_SSIZE_T>::rejected( \
+                Error("Response exceeded buffer size"));  \
+        }                                                 \
     } while (0);
 
             PST_OUT(writeStatusLine(response_.version(), response_.code(), buf_));
@@ -1118,17 +1119,16 @@ namespace Pistache::Http
     }
 
     Async::Promise<PST_SSIZE_T> serveFile(ResponseWriter& writer,
-                                      const std::string& fileName,
-                                      const Mime::MediaType& contentType)
+                                          const std::string& fileName,
+                                          const Mime::MediaType& contentType)
     {
         struct stat sb;
 
         int fd = PST_FILE_OPEN(fileName.c_str(), PST_O_RDONLY);
         if (fd == -1)
         {
-            char se_err[256+16];
-            PST_STRERROR_R(errno, &se_err[0], 256);
-            std::string str_error(&se_err[0]);
+            char se_err[256 + 16];
+            std::string str_error(PST_STRERROR_R(errno, &se_err[0], 256));
             if (errno == ENOENT)
             {
                 throw HttpError(Http::Code::Not_Found, std::move(str_error));
@@ -1155,15 +1155,15 @@ namespace Pistache::Http
 
         std::ostream os(buf);
 
-#define PST_OUT(...)                                         \
-    do                                                   \
-    {                                                    \
-        __VA_ARGS__;                                     \
-        if (!os)                                         \
-        {                                                \
-            return Async::Promise<PST_SSIZE_T>::rejected(    \
-                Error("Response exceeded buffer size")); \
-        }                                                \
+#define PST_OUT(...)                                      \
+    do                                                    \
+    {                                                     \
+        __VA_ARGS__;                                      \
+        if (!os)                                          \
+        {                                                 \
+            return Async::Promise<PST_SSIZE_T>::rejected( \
+                Error("Response exceeded buffer size"));  \
+        }                                                 \
     } while (0);
 
         auto setContentType = [&](const Mime::MediaType& contentType) {

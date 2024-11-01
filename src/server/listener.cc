@@ -713,7 +713,7 @@ namespace Pistache::Tcp
 
                 struct timeval timeout;
 
-                timeout.tv_sec = (PST_TIMEVAL_S_T) std::chrono::duration_cast<std::chrono::seconds>(sslHandshakeTimeout_).count();
+                timeout.tv_sec = (PST_TIMEVAL_S_T)std::chrono::duration_cast<std::chrono::seconds>(sslHandshakeTimeout_).count();
 
                 const auto residual_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(sslHandshakeTimeout_) - std::chrono::duration_cast<std::chrono::seconds>(sslHandshakeTimeout_);
                 timeout.tv_usec                  = (PST_SUSECONDS_T)(residual_microseconds.count());
@@ -881,9 +881,8 @@ namespace Pistache::Tcp
 
         if (client_actual_fd < 0)
         {
-            char se_err[256+16];
-            PST_STRERROR_R(errno, &se_err[0], 256);
-            
+            char se_err[256 + 16];
+
             if (errno == EBADF || errno == ENOTSOCK)
                 throw ServerError(PST_STRERROR_R(errno, &se_err[0], 256));
             else

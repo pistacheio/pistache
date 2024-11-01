@@ -374,8 +374,8 @@ namespace Pistache
                 {
                     int efdread_res = READ_EFD(event_fd, &val);
 
-                    // Note: Without this (efdread_res == 0) check, there
-                    // can be an issue that shows up in the test
+                    // Note: Without the read-success check below, there can be
+                    // an issue that shows up in the test
                     // multiple_client_with_requests_to_multithreaded_server
                     // when calling run_http_server_test over and over again.
                     //
@@ -397,13 +397,14 @@ namespace Pistache
                     // the read succeeds.
                     if (efdread_res == 0)
                     { // success
-                        PS_LOG_DEBUG_ARGS("event_fd read, val %u",
-                                          (uint64_t)val);
+                        PS_LOG_DEBUG_ARGS("event_fd read, val %u", val);
+
                         if (!ret)
                         {
-                            // Have another try at pop, in case the push
-                            // happened after the first pop attempt but before
-                            // now
+                            // Have another try at pop, in case there was no
+                            // "pop" to do at the top of this function, but
+                            // then a push happened after the first pop attempt
+                            // but before the read above
                             PS_LOG_DEBUG("event_fd read, but pop was null");
                             ret = Queue<T>::pop();
                         }

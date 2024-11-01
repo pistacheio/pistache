@@ -1915,10 +1915,10 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
                 "clock_id realtime clock not supported");
             break;
 
-        case CLOCK_MONOTONIC:
+        case PST_CLOCK_MONOTONIC:
         #ifndef _IS_BSD
         // CLOCK_MONOTONIC_RAW not defined on FreeBSD13.3 and OpenBSD 7.3
-        case CLOCK_MONOTONIC_RAW:
+        case PST_CLOCK_MONOTONIC_RAW:
         #endif
         #ifdef __APPLE__
         case CLOCK_MONOTONIC_RAW_APPROX:

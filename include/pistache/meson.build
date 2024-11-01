@@ -51,6 +51,7 @@ install_headers(
 	'typeid.h',
 	'utils.h',
 	'view.h',
+	'winornix.h',
 	subdir: 'pistache')
 
 if get_option('PISTACHE_USE_RAPIDJSON')

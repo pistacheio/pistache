@@ -13,26 +13,30 @@
 . winscripts/messetdirvars.ps1
 . winscripts/adjbuilddirformesbuild.ps1
 
-Write-Host "Using build dir $MESON_BUILD_DIR"
-
 # Installs to [C]:\Program Files\pistache_distribution
 
-# We use "Start-Process" so we can do "-verb RunAs", which provides
-# admin-level privileges, like doing "sudo" on Linux
-$insproc = Start-Process -FilePath powershell.exe -ArgumentList "-Command","meson install -C ${MESON_BUILD_DIR}" -PassThru -verb RunAs
+try { meson install -C ${MESON_BUILD_DIR} }
+catch {
+    Write-Host "Plain meson install failed, trying again with Admin rights"
 
-# keep track of timeout event
-$instimeouted = $null
+    # We use "Start-Process" so we can do "-verb RunAs", which provides
+    # admin-level privileges, like doing "sudo" on Linux
+    $insproc = Start-Process -FilePath powershell.exe -ArgumentList "-Command","meson install -C ${MESON_BUILD_DIR}" -PassThru -verb RunAs
 
-# wait up to 60 seconds for normal termination
-$insproc | Wait-Process -Timeout 60 -ErrorAction SilentlyContinue -ErrorVariable instimeouted
+    # keep track of timeout event
+    $instimeouted = $null
 
-if ($instimeouted)
-{
-    $insproc | kill
-    Write-Error "Error: meson install timed out"
+    # wait up to 60 seconds for normal termination
+    $insproc | Wait-Process -Timeout 60 -ErrorAction SilentlyContinue -ErrorVariable instimeouted
+
+    if ($instimeouted)
+    {
+        $insproc | kill
+        Write-Error "Error: meson install timed out"
+    }
+    elseif ($insproc.ExitCode -ne 0)
+    {
+        Write-Error "Error: meson install returned error"    
+    }
 }
-elseif ($insproc.ExitCode -ne 0)
-{
-    Write-Error "Error: meson install returned error"    
-}
+      

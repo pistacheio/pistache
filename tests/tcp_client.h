@@ -24,7 +24,6 @@
 static const char * strerror_errstr = "<no strerror>";
 namespace Pistache
 {
-
 #define CLIENT_TRY(...)                                                 \
     do                                                                  \
     {                                                                   \
@@ -34,7 +33,10 @@ namespace Pistache
             if (errno)                                                  \
             {                                                           \
                 lastErrno_ = errno;                                     \
-                lastError_ = strerror(errno);                           \
+                char se_err[256 + 16];                                  \
+                const char * se = PST_STRERROR_R(errno, &se_err[0], 256); \
+                if (se)                                                 \
+                    lastError_ = std::string(se);                       \
                 if (errno != lastErrno_)                                \
                     std::cout << "strerror changed errno (was " <<      \
                         lastErrno_ << ", now " << errno << " )" << std::endl; \

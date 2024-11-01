@@ -411,7 +411,7 @@ namespace Pistache::Http::Experimental
         PST_SSIZE_T totalWritten = 0;
         for (;;)
         {
-            const char* data           = buffer.data() + totalWritten;
+            const char* data               = buffer.data() + totalWritten;
             const PST_SSIZE_T len          = buffer.size() - totalWritten;
             const PST_SSIZE_T bytesWritten = PST_SOCK_SEND(GET_ACTUAL_FD(fd),
                                                            data, len, 0);

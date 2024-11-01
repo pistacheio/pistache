@@ -318,7 +318,7 @@ namespace Pistache::Aio
         void run() override
         {
             PS_TIMEDBG_START;
-
+            
             // Note: poller_reg_unreg_mutex is already locked (by
             // Listener::run()) before calling here, so it is safe to call
             // handlers_.forEachHandler here
@@ -770,6 +770,7 @@ namespace Pistache::Aio
 #endif
                             threadsName_.substr(0, 15)
                                 .c_str());
+#endif // of ifdef _IS_WINDOWS... else...
                     }
                     PS_LOG_DEBUG("Calling sync->run()");
                     sync->run();

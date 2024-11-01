@@ -14,7 +14,7 @@
 source bldscripts/messetdirvars.sh
 source bldscripts/adjbuilddirformesbuild.sh
 
-if [ -e "./${MESON_BUILD_DIR}" ]
+if [ -e "${MESON_BUILD_DIR}" ]
 then
     echo "Using build dir ${MESON_BUILD_DIR}"
     meson test -C ${MESON_BUILD_DIR}

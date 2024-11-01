@@ -44,6 +44,7 @@ using std::to_string;
 #if defined(__NetBSD__) || defined(_IS_WINDOWS)
 #define PS_USE_TCP_NODELAY 1
 #endif
+#endif
 
 namespace Pistache::Tcp
 {
@@ -472,7 +473,7 @@ namespace Pistache::Tcp
 #ifdef _USE_LIBEVENT_LIKE_APPLE
             bool msg_more_style = entry.msg_more_style;
 #endif
-            BufferHolder& buffer              = entry.buffer;
+            BufferHolder& buffer                  = entry.buffer;
             Async::Deferred<PST_SSIZE_T> deferred = std::move(entry.deferred);
 
             auto cleanUp = [&]() {
@@ -491,7 +492,7 @@ namespace Pistache::Tcp
             for (;;)
             {
                 PST_SSIZE_T bytesWritten = 0;
-                auto len             = buffer.size() - totalWritten;
+                auto len                 = buffer.size() - totalWritten;
 
                 if (buffer.isRaw())
                 {
@@ -587,10 +588,11 @@ namespace Pistache::Tcp
         }
     }
 
-    // PS_USE_TCP_NODELAY defined (or not) at top of file
-    
+#ifdef _USE_LIBEVENT_LIKE_APPLE
     void Transport::configureMsgMoreStyle(Fd fd, bool msg_more_style)
     {
+        // PS_USE_TCP_NODELAY defined (or not) at top of file
+        
         int tcp_no_push  = 0;
         socklen_t len    = sizeof(tcp_no_push);
         int sock_opt_res = -1;
@@ -667,10 +669,10 @@ namespace Pistache::Tcp
 #endif // of ifdef _USE_LIBEVENT_LIKE_APPLE
 
     PST_SSIZE_T Transport::sendRawBuffer(Fd fd, const char* buffer, size_t len,
-                                     int flags
+                                         int flags
 #ifdef _USE_LIBEVENT_LIKE_APPLE
-                                     ,
-                                     bool msg_more_style
+                                         ,
+                                         bool msg_more_style
 #endif
     )
     {
@@ -735,8 +737,12 @@ namespace Pistache::Tcp
                 // MSG_NOSIGNAL is used to prevent SIGPIPE on client connection
                 // termination
 #endif
+#ifdef _USE_LIBEVENT_LIKE_APPLE
             PS_LOG_DEBUG_ARGS("bytesWritten = %d, msg_more_style = %s",
                               bytesWritten, msg_more_style ? "on" : "off");
+#else
+            PS_LOG_DEBUG_ARGS("bytesWritten = %d", bytesWritten);
+#endif
 
 #ifdef PS_USE_TCP_NODELAY
             // See comment above on why configureMsgMoreStyle is done after
@@ -757,6 +763,7 @@ namespace Pistache::Tcp
 #else
 #define SENDFILE ::sendfile
 #endif // ifdef _IS_BSD
+
     PST_SSIZE_T Transport::sendFile(Fd fd, int file, off_t offset, size_t len)
     {
         PST_SSIZE_T bytesWritten = 0;
