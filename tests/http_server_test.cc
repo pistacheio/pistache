@@ -1699,14 +1699,15 @@ TEST(http_server_test, server_with_content_encoding_deflate)
         // Size of destination buffer, but will be updated by uncompress() to
         //  actual size used...
         uLongf destinationLength =
-            (uLongf) originalUncompressedData.size() * sizeof(unsigned short);
+            static_cast<uLongf>(originalUncompressedData.size()) *
+            sizeof(unsigned short);
 
         // Decompress...
         const auto compressionStatus = ::uncompress(
             reinterpret_cast<Bytef*>(newlyDecompressedData.data()),
             &destinationLength,
             reinterpret_cast<const Bytef*>(resultStringData.data()),
-            (uLong) (resultStringData.size() * sizeof(unsigned short)));
+            static_cast<uLong>(resultStringData.size() * sizeof(unsigned short)));
 
         // Check for failure...
         ASSERT_EQ(compressionStatus, Z_OK);

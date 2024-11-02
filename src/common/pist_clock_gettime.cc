@@ -44,18 +44,18 @@ static int initInitialMonoValsIfNotInited()
         return(0);
 
     __int64 wintime = 0;
-    GetSystemTimeAsFileTime((FILETIME*)&wintime);
+    GetSystemTimeAsFileTime(reinterpret_cast<FILETIME*>(&wintime));
     // GetSystemTimeAsFileTime retrieves the current system date and time. The
     // information is in Coordinated Universal Time (UTC)
     // format. GetSystemTimeAsFileTime is void / cannot fail.
 
     wintime      -=116444736000000000ll;           //1jan1601 to 1jan1970
-    lInitialTimespec.tv_sec  =(long)(wintime / 10000000ll);   //seconds
+    lInitialTimespec.tv_sec  = static_cast<long>(wintime / 10000000ll); //secs
     lInitialTimespec.tv_nsec = static_cast<long>(wintime % 10000000ll *100);
 
     lInitialMsSinceSystemStart = GetTickCount64();
     if ((lInitialMsSinceSystemStart == 0) ||
-        (((long long)(lInitialMsSinceSystemStart)) < 0))
+        ((static_cast<long long>(lInitialMsSinceSystemStart)) < 0))
     {
         errno = EFAULT;
         return(-1);

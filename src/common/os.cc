@@ -200,7 +200,7 @@ namespace Pistache
             PS_TIMEDBG_START_ARGS("fd %" PIST_QUOTE(PS_FD_PRNTFCD), fd);
 
 #ifdef _USE_LIBEVENT
-            short events = (short)epoll_fd->toEvEvents(interest);
+            short events = static_cast<short>(epoll_fd->toEvEvents(interest));
             events |= EVM_PERSIST; // since EPOLLONESHOT not to be set
 
             if (mode == Mode::Edge)
@@ -227,7 +227,7 @@ namespace Pistache
             PS_TIMEDBG_START_ARGS("fd %" PIST_QUOTE(PS_FD_PRNTFCD), fd);
 
 #ifdef _USE_LIBEVENT
-            short events = (short)epoll_fd->toEvEvents(interest);
+            short events = static_cast<short>(epoll_fd->toEvEvents(interest));
             
             if (mode == Mode::Edge)
                 events |= EVM_ET;
@@ -274,7 +274,7 @@ namespace Pistache
             PS_TIMEDBG_START_ARGS("fd %" PIST_QUOTE(PS_FD_PRNTFCD), fd);
 
 #ifdef _USE_LIBEVENT
-            short events = (short)epoll_fd->toEvEvents(interest);
+            short events = static_cast<short>(epoll_fd->toEvEvents(interest));
 
             // Why do we set EVM_PERSIST here? Since rearmFd is being called,
             // presumably fd was previously a one-shot event. You might think
@@ -338,13 +338,13 @@ namespace Pistache
             ss3 << fd;
             str += ss3.str();
 
-            if (((unsigned int)interest) & ((unsigned int)Polling::NotifyOn::Read))
+            if ((static_cast<unsigned int>(interest)) & (static_cast<unsigned int>(Polling::NotifyOn::Read)))
                 str += " read";
-            if (((unsigned int)interest) & ((unsigned int)Polling::NotifyOn::Write))
+            if ((static_cast<unsigned int>(interest)) & (static_cast<unsigned int>(Polling::NotifyOn::Write)))
                 str += " write";
-            if (((unsigned int)interest) & ((unsigned int)Polling::NotifyOn::Hangup))
+            if ((static_cast<unsigned int>(interest)) & (static_cast<unsigned int>(Polling::NotifyOn::Hangup)))
                 str += " hangup";
-            if (((unsigned int)interest) & ((unsigned int)Polling::NotifyOn::Shutdown))
+            if ((static_cast<unsigned int>(interest)) & (static_cast<unsigned int>(Polling::NotifyOn::Shutdown)))
                 str += " shutdown";
 
             PS_LOG_DEBUG_ARGS("%s", str.c_str());
@@ -352,14 +352,14 @@ namespace Pistache
 
 #ifdef _USE_LIBEVENT
 #define PS_LOG_DBG_FD_AND_NOTIFY logFdAndNotifyOn(i,                  \
-                                                  epoll_fd.get(),     \
-                                                  (Fd)tag.valueU64(), \
-                                                  event.flags)
+                                        epoll_fd.get(),               \
+                                        reinterpret_cast<Fd>(tag.valueU64()), \
+                                        event.flags)
 #else
 #define PS_LOG_DBG_FD_AND_NOTIFY logFdAndNotifyOn(i,                  \
-                                                  epoll_fd,           \
-                                                  (Fd)tag.valueU64(), \
-                                                  event.flags)
+                                     epoll_fd,                      \
+                                     static_cast<Fd>(tag.valueU64()), \
+                                     event.flags)
 #endif
 #else
 #define PS_LOG_DBG_FD_AND_NOTIFY
@@ -443,7 +443,7 @@ namespace Pistache
             if (ready_evm_events.empty())
                 return (0); // 0 FDs
 
-            return((int)events.size());
+            return(static_cast<int>(events.size()));
 
 #else // not ifdef _USE_LIBEVENT
 

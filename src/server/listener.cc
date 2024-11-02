@@ -193,7 +193,7 @@ namespace Pistache::Tcp
 #ifdef _USE_LIBEVENT_LIKE_APPLE
         if (options.hasFlag(Options::CloseOnExec))
         {
-            int f_setfd_flags = PST_FCNTL(actualFd, PST_F_GETFD, (int)0);
+            int f_setfd_flags = PST_FCNTL(actualFd, PST_F_GETFD, 0);
             if (!(f_setfd_flags & PST_FD_CLOEXEC))
             {
                 f_setfd_flags |= PST_FD_CLOEXEC;
@@ -237,7 +237,8 @@ namespace Pistache::Tcp
             opt.l_onoff  = 1;
             opt.l_linger = 1;
             TRY(::setsockopt(actualFd, SOL_SOCKET, SO_LINGER,
-                             (PST_SOCK_OPT_VAL_T *)&opt, sizeof(opt)));
+                             reinterpret_cast<PST_SOCK_OPT_VAL_T *>(&opt),
+                             sizeof(opt)));
         }
 
 #ifdef _USE_LIBEVENT_LIKE_APPLE
@@ -561,7 +562,7 @@ namespace Pistache::Tcp
 
                     if (event.flags.hasFlag(Polling::NotifyOn::Read))
                     {
-                        Fd fd = (Fd)event.tag.value();
+                        Fd fd = event.tag.value();
                         if (fd == listen_fd)
                         {
                             try
@@ -713,15 +714,17 @@ namespace Pistache::Tcp
 
                 struct timeval timeout;
 
-                timeout.tv_sec = (PST_TIMEVAL_S_T)std::chrono::duration_cast<std::chrono::seconds>(sslHandshakeTimeout_).count();
+                timeout.tv_sec = static_cast<PST_TIMEVAL_S_T>(std::chrono::duration_cast<std::chrono::seconds>(sslHandshakeTimeout_).count());
 
                 const auto residual_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(sslHandshakeTimeout_) - std::chrono::duration_cast<std::chrono::seconds>(sslHandshakeTimeout_);
-                timeout.tv_usec                  = (PST_SUSECONDS_T)(residual_microseconds.count());
+                timeout.tv_usec                  = static_cast<PST_SUSECONDS_T>(residual_microseconds.count());
 
                 TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_RCVTIMEO,
-                                 (PST_SOCK_OPT_VAL_T *)&timeout, sizeof(timeout)));
+                                 reinterpret_cast<PST_SOCK_OPT_VAL_T *>(&timeout),
+                                 sizeof(timeout)));
                 TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_SNDTIMEO,
-                                 (PST_SOCK_OPT_VAL_T *)&timeout, sizeof(timeout)));
+                                 reinterpret_cast<PST_SOCK_OPT_VAL_T *>(&timeout),
+                                 sizeof(timeout)));
             }
 
             SSL_set_fd(ssl_data,
@@ -732,9 +735,13 @@ namespace Pistache::Tcp
                        // to the SLL documentation, the warning can be
                        // suppressed / ignored. @Aug/2024, see 'NOTES' in:
                        // https://docs.openssl.org/3.1/man3/SSL_set_fd/
-                       (int)
+                       static_cast<int>(
 #endif
-                       actual_cli_fd);
+                       actual_cli_fd
+#ifdef _IS_WINDOWS
+                           )
+#endif
+                );
             SSL_set_accept_state(ssl_data);
 
             int ssl_accept_res = SSL_accept(ssl_data);
@@ -779,9 +786,11 @@ namespace Pistache::Tcp
                 timeout.tv_usec = 0;
 
                 TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_RCVTIMEO,
-                                 (PST_SOCK_OPT_VAL_T *)&timeout, sizeof(timeout)));
+                                 reinterpret_cast<PST_SOCK_OPT_VAL_T *>(&timeout),
+                                 sizeof(timeout)));
                 TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_SNDTIMEO,
-                                 (PST_SOCK_OPT_VAL_T *)&timeout, sizeof(timeout)));
+                                 reinterpret_cast<PST_SOCK_OPT_VAL_T *>(&timeout),
+                                 sizeof(timeout)));
             }
 
             ssl = static_cast<void*>(ssl_data);
@@ -1044,7 +1053,7 @@ namespace Pistache::Tcp
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
                            (int (*)(int, X509_STORE_CTX*))cb
 #else
-                           (SSL_verify_cb)cb
+                           reinterpret_cast<SSL_verify_cb>(cb)
 #endif /* OPENSSL_VERSION_NUMBER */
         );
     }

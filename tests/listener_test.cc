@@ -213,7 +213,7 @@ TEST(listener_test, listener_bind_port_free)
         FAIL() << "Could not find a free port. Abort test.\n";
     }
 
-    PS_LOG_DEBUG_ARGS("port_nb %u", (unsigned int)port_nb);
+    PS_LOG_DEBUG_ARGS("port_nb %u", static_cast<unsigned int>(port_nb));
 
     Pistache::Port port(port_nb);
     Pistache::Address address(Pistache::Ipv4::any(), port);
@@ -239,7 +239,7 @@ TEST(listener_test, listener_uses_default)
         PS_LOG_DEBUG("Failed to get port");
         FAIL() << "Could not find a free port. Abort test.\n";
     }
-    PS_LOG_DEBUG_ARGS("port_nb %u", (unsigned int)port_nb);
+    PS_LOG_DEBUG_ARGS("port_nb %u", static_cast<unsigned int>(port_nb));
 
     Pistache::Port port(port_nb);
     Pistache::Address address(Pistache::Ipv4::any(), port);
@@ -323,7 +323,7 @@ TEST(listener_test, listener_bind_ephemeral_v4_port)
     listener.bind(address);
 
     Pistache::Port bound_port = listener.getPort();
-    ASSERT_TRUE(bound_port > (uint16_t)0);
+    ASSERT_TRUE(bound_port > static_cast<uint16_t>(0));
 }
 
 TEST(listener_test, listener_bind_ephemeral_v6_port)
@@ -341,7 +341,7 @@ TEST(listener_test, listener_bind_ephemeral_v6_port)
         listener.bind(address);
 
         Pistache::Port bound_port = listener.getPort();
-        ASSERT_TRUE(bound_port > (uint16_t)0);
+        ASSERT_TRUE(bound_port > static_cast<uint16_t>(0));
     }
     ASSERT_TRUE(true);
 }

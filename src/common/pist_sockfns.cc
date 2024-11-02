@@ -28,7 +28,8 @@
 /* ------------------------------------------------------------------------- */
 
 inline SOCKET get_win_socket_from_em_socket_t(em_socket_t ems)
-{ return((ems < 0) ? INVALID_SOCKET : ((SOCKET)ems)); }
+{ return((ems < 0) ? INVALID_SOCKET : (static_cast<SOCKET>(ems))); }
+// Note: SOCKET is some kind of unsigned integer
 
 /* ------------------------------------------------------------------------- */
 
@@ -385,7 +386,8 @@ PST_SSIZE_T pist_sock_read(em_socket_t em_sock, void *buf, size_t count)
         return(-1);
     }
 
-    int recv_res = ::recv(win_sock, (char *)buf, (int)count, 0 /* flags*/);
+    int recv_res = ::recv(win_sock, reinterpret_cast<char *>(buf),
+                          static_cast<int>(count), 0 /* flags*/);
     if (recv_res != SOCKET_ERROR)
         return(recv_res); // success - return bytes read
 
@@ -409,8 +411,8 @@ PST_SSIZE_T pist_sock_write(em_socket_t em_sock, const void *buf, size_t count)
         return(-1);
     }
 
-    int send_res = ::send(win_sock, (const char *)buf,
-                          ((int)count), 0/*flags*/);
+    int send_res = ::send(win_sock, reinterpret_cast<const char *>(buf),
+                          (static_cast<int>(count)), 0/*flags*/);
     if (send_res != SOCKET_ERROR)
         return(send_res); // success - return bytes read
 
@@ -428,7 +430,7 @@ em_socket_t pist_sock_socket(int domain, int type, int protocol)
     SOCKET socket_res = ::socket(domain, type, protocol);
     if (socket_res != INVALID_SOCKET)
     {
-        em_socket_t res = (em_socket_t) socket_res;
+        em_socket_t res = static_cast<em_socket_t>(socket_res);
         return(res);
     }
 
@@ -479,7 +481,7 @@ em_socket_t pist_sock_accept(em_socket_t em_sock, struct sockaddr *addr,
 
     if (accept_res != INVALID_SOCKET)
     {
-        em_socket_t res = (em_socket_t)accept_res;
+        em_socket_t res = static_cast<em_socket_t>(accept_res);
         return(res); // success - return em_socket_t for the accepted socket
     }
 
@@ -595,7 +597,8 @@ PST_SSIZE_T pist_sock_send(em_socket_t em_sock, const void *buf,
         return(-1);
     }
 
-    int send_res = ::send(win_sock, (const char *)buf, (int)len, flags);
+    int send_res = ::send(win_sock, reinterpret_cast<const char *>(buf),
+                          static_cast<int>(len), flags);
     
     if (send_res != SOCKET_ERROR)
         return(send_res); // success - ret number of bytes sent
@@ -620,7 +623,8 @@ PST_SSIZE_T pist_sock_recv(em_socket_t em_sock, void * buf, size_t len,
         return(-1);
     }
 
-    int recv_res = ::recv(win_sock, (char *)buf, (int)len, flags);
+    int recv_res = ::recv(win_sock, reinterpret_cast<char *>(buf),
+                          static_cast<int>(len), flags);
     
     if (recv_res != SOCKET_ERROR)
         return(recv_res); // success - ret number of bytes received

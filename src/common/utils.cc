@@ -41,7 +41,7 @@ PST_SSIZE_T SSL_sendfile(SSL* out, int in, off_t* offset, size_t count)
 
     written = SSL_write(out, buffer, static_cast<int>(ret));
     if (offset != NULL)
-        *offset += ((off_t)written);
+        *offset += (static_cast<off_t>(written));
 
     return written;
 }

@@ -211,7 +211,7 @@ namespace Pistache
         return other.buf->position() - buf->position();
     }
 
-    size_t StreamCursor::remaining() const {return (size_t)(buf->in_avail());}
+    size_t StreamCursor::remaining() const {return static_cast<size_t>(buf->in_avail());}
 
     void StreamCursor::reset() { buf->reset(); }
 

@@ -43,7 +43,6 @@ namespace Pistache
                 short     events, // bitmask of EVM_... events
                 std::chrono::milliseconds * timeval_cptr);
 
-        #define F_SETFDL_NOTHING ((int)((unsigned) 0x8A82))
         static Fd em_event_new(evutil_socket_t actual_fd,//file desc, signal, or -1
                         short flags, // EVM_... flags
                         // For setfd and setfl arg:
@@ -360,7 +359,8 @@ namespace Pistache
         void resetReadyFlags() {ready_flags_ = 0;}
 
         uint64_t getUserDataUi64() const {return(user_data_);}
-        Fd getUserData() const {return(((Fd)user_data_));}
+        Fd getUserData() const {return((reinterpret_cast<Fd>
+                                  (static_cast<std::uintptr_t>(user_data_))));}
         void setUserData(uint64_t user_data) { user_data_ = user_data; }
 
         virtual EmEventType getEmEventType() const { return(EmEvReg); }
@@ -780,7 +780,6 @@ namespace Pistache
     }
 
     
-    #define F_SETFDL_NOTHING ((int)((unsigned) 0x8A82))
     Fd EventMethFns::em_event_new(
                         evutil_socket_t actual_fd,//file desc, signal, or -1
                         short flags, // EVM_... flags
@@ -1548,7 +1547,7 @@ namespace Pistache
             memset(buf, 0, count);
         }
 
-        return(this->read((uint64_t *)buf));
+        return(this->read(reinterpret_cast<uint64_t *>(buf)));
     }
 
     // write copies an integer of length up to 8 from buf
@@ -1562,7 +1561,8 @@ namespace Pistache
         }
 
         if (count == 8)
-            return(this->writeProt(*((uint64_t *)buf)));
+            return(this->writeProt(
+                       *(reinterpret_cast<const uint64_t *>(buf))));
 
         PS_LOG_DEBUG_ARGS("EmEventCtr::write count is not 8 but %u", count);
         
@@ -1790,11 +1790,11 @@ namespace Pistache
             return(res);
     
         res += ", fd_flags ";
-        int getfd_flags = PST_FCNTL(actual_fd, PST_F_GETFD, (int) 0);
+        int getfd_flags = PST_FCNTL(actual_fd, PST_F_GETFD, 0);
         res += fdlFlagsToStr(getfd_flags);
 
         res += ", fl_flags ";
-        int getfl_flags = PST_FCNTL(actual_fd, PST_F_GETFL, (int) 0);
+        int getfl_flags = PST_FCNTL(actual_fd, PST_F_GETFL, 0);
         res += fdlFlagsToStr(getfl_flags);
 
         return(res);
@@ -2296,11 +2296,11 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
         if (timeval_cptr)
         {
             if (timeval_cptr->count() < 1000)
-                prior_tv_.tv_usec = (PST_SUSECONDS_T) std::chrono::
-               duration_cast<std::chrono::microseconds>(*timeval_cptr).count();
+                prior_tv_.tv_usec = static_cast<PST_SUSECONDS_T>(std::chrono::
+              duration_cast<std::chrono::microseconds>(*timeval_cptr).count());
             else
-                prior_tv_.tv_sec = (PST_TIMEVAL_S_T) (std::chrono::
-                   duration_cast<std::chrono::seconds>(*timeval_cptr).count());
+                prior_tv_.tv_sec = static_cast<PST_TIMEVAL_S_T>((std::chrono::
+                  duration_cast<std::chrono::seconds>(*timeval_cptr).count()));
             prior_tv_cptr_ = &prior_tv_;
         }
     }
@@ -2499,7 +2499,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
         else
         {
             evutil_socket_t ev_fd = event_get_fd(ev_);
-            actual_fd = (ev_fd < 0) ? (-1) : ((int)ev_fd);
+            actual_fd = (ev_fd < 0) ? (-1) : (static_cast<int>(ev_fd));
 
             // See earlier comment: Why and how we use libevent's finalize
             PS_LOG_DEBUG_ARGS("About to finalize+free ev_ %p of EmEvent %p",
@@ -2645,7 +2645,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
         if (ev_)
         {
             evutil_socket_t ev_fd = event_get_fd(ev_);
-            actual_fd = (ev_fd < 0) ? (-1) : ((int)ev_fd);
+            actual_fd = (ev_fd < 0) ? (-1) : (static_cast<int>(ev_fd));
         }
 
         #ifdef DEBUG
@@ -2749,7 +2749,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
                 throw std::invalid_argument("actual_fd not set");
             }
 
-            int old_setfdl_flags = PST_FCNTL(actual_fd, get_cmd, (int) 0);
+            int old_setfdl_flags = PST_FCNTL(actual_fd, get_cmd, 0);
             f_setfdl_flags = (0 - f_setfdl_flags);
             if (old_setfdl_flags != f_setfdl_flags)
             {
@@ -2906,10 +2906,10 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
         if (timeval_cptr)
         {
             if (timeval_cptr->count() < 1000)
-                tv.tv_usec = (PST_SUSECONDS_T) std::chrono::
-               duration_cast<std::chrono::microseconds>(*timeval_cptr).count();
+                tv.tv_usec = static_cast<PST_SUSECONDS_T>(std::chrono::
+              duration_cast<std::chrono::microseconds>(*timeval_cptr).count());
             else
-                tv.tv_sec = (PST_TIMEVAL_S_T) (std::chrono::
+                tv.tv_sec = static_cast<PST_TIMEVAL_S_T>(std::chrono::
                    duration_cast<std::chrono::seconds>(*timeval_cptr).count());
             tv_cptr = &tv;
         }
@@ -2955,7 +2955,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
                         event_meth_epoll_equiv_impl_->
                             getFlagsToActuallyUseWithLibEvEventNew(flags_),
                         eventCallbackFn,
-                        (void *)this
+                        reinterpret_cast<void *>(this)
                         /*final arg here is passed to callback as "arg"*/));
 
                 if (!ev_)
@@ -3011,7 +3011,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
                     event_meth_epoll_equiv_impl_->
                             getFlagsToActuallyUseWithLibEvEventNew(events),
                     eventCallbackFn,
-                    (void *)this/*passed to callback as "arg"*/);
+                    reinterpret_cast<void *>(this)/*passed as callback arg*/);
                 if (!replacement_ev)
                 {
                     PS_LOG_INFO("new replacement_ev is NULL");
@@ -3202,7 +3202,8 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
             throw std::runtime_error("Null fd");
         }
         
-        fd->setUserData((uint64_t)user_data);
+        fd->setUserData(static_cast<uint64_t>(
+                            reinterpret_cast<std::uintptr_t>(user_data)));
     }
 
     void EventMethEpollEquivImpl::resetEmEventReadyFlags(EmEvent * fd)
@@ -3312,7 +3313,8 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
                 throw std::runtime_error("epoll_equiv null");
             }
 
-            Fd this_fd = epoll_equiv->findFdInInterest((Fd) arg);
+            Fd this_fd = epoll_equiv->findFdInInterest(
+                                                    reinterpret_cast<Fd>(arg));
             if (this_fd)
             {
                 em_event = this_fd;
@@ -3534,7 +3536,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
             #else
             // Since this is a signal event, it cannot be a FdEventFd or timer
             
-            int actual_fd_num = (int) fd->getActualFd();
+            int actual_fd_num = static_cast<int>(fd->getActualFd());
             // Per libevent documentation, this is the signal number being
             // monitored by the libevent event.
             // Most, but not all, signals require shutdown. Do "man signal" to
@@ -3599,7 +3601,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
         // 
         // Note: So long as em_event has not already been closed/deleted, it
         // can't be deleted now so long as we have interest_mutex_ locked
-        EmEvent * em_event = ((EmEvent *)cb_arg);
+        EmEvent * em_event = (reinterpret_cast<EmEvent *>(cb_arg));
         if (interest_.find(em_event) == interest_.end())
         {
             PS_LOG_DEBUG_ARGS("cb_arg %p is not in interest_ of EMEEI %p",
@@ -4047,7 +4049,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
             (ready_evm_events_out.size() <= 0))
             res = -1;
         else
-            res = (int)(ready_evm_events_out.size());
+            res = static_cast<int>(ready_evm_events_out.size());
 
         PS_LOG_DEBUG_ARGS("Returning %d", res);
         
@@ -4399,7 +4401,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
 
     // To enable to_string of an Fd
     std::string to_string(const EmEvent * eme)
-                                {return(std::to_string((intptr_t) eme));}
+                {return(std::to_string(reinterpret_cast<std::intptr_t>(eme)));}
     
 /* ------------------------------------------------------------------------- */
     

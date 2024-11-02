@@ -91,7 +91,7 @@ namespace Pistache
 
             CLIENT_TRY(sfd);
             CLIENT_TRY(PST_SOCK_CONNECT(sfd, addr->ai_addr,
-                                        (PST_SOCKLEN_T) addr->ai_addrlen));
+                                        static_cast<PST_SOCKLEN_T>(addr->ai_addrlen)));
             make_non_blocking(sfd);
 
             fd_ = sfd;

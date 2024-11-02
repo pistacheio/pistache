@@ -78,7 +78,7 @@ static void logStackTrace(int pri)
         
                 PS_LOG_INFO_ARGS(
                     "SymInitialize fail, system error code (WinError.h) 0x%x",
-                    (unsigned int) last_err);
+                    static_cast<unsigned int>(last_err));
                 return;
             }
 
@@ -118,8 +118,8 @@ static void logStackTrace(int pri)
         symbol->MaxNameLen = sym_max_size;
 
         bool sfa_res = SymFromAddr(process,
-                                   (DWORD64)(stack[i]),
-                                   0, symbol);
+              static_cast<DWORD64>(reinterpret_cast<std::uintptr_t>(stack[i])),
+              0, symbol);
 
         const char * name = "{Unknown symbol name}";
         if (!sfa_res)
@@ -233,7 +233,7 @@ int PS_LogWoBreak(int pri, const char *p,
                       f, l);
     
     // Print it
-    if (ln >= ((int)sizeof(buf)))
+    if (ln >= (static_cast<int>(sizeof(buf))))
     {
         ln = sizeof(buf);
         buf[sizeof(buf)-2] = '\n';

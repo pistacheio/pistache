@@ -540,7 +540,7 @@ namespace Pistache::Http::Experimental
         // Note: We only use the second element of *connIt (which is
         // "connection"); fd is the first element (the map key). Since *fd is
         // not in fact changed, it is OK to cast away the const of Fd here.
-        Fd fd_for_find = ((Fd)fd);
+        Fd fd_for_find = PS_CAST_AWAY_CONST_FD(fd);
 
         auto connIt = connections.find(fd_for_find);
         if (connIt != std::end(connections))
@@ -584,7 +584,7 @@ namespace Pistache::Http::Experimental
         // Note: We only use the second element of *connIt (which is
         // "connection"); fd is the first element (the map key). Since *fd is
         // not in fact changed, it is OK to cast away the const of Fd here.
-        Fd fd = ((Fd)fd_const);
+        Fd fd = PS_CAST_AWAY_CONST_FD(fd_const);
 
         auto connIt = connections.find(fd);
         if (connIt != std::end(connections))
@@ -630,7 +630,7 @@ namespace Pistache::Http::Experimental
         // Note: We only use the second element of *connIt (which is
         // "connection"); fd is the first element (the map key). Since *fd is
         // not in fact changed, it is OK to cast away the const of Fd here.
-        Fd fd = ((Fd)fd_const);
+        Fd fd = PS_CAST_AWAY_CONST_FD(fd_const);
 
         auto connIt = connections.find(fd);
         if (connIt != std::end(connections))
@@ -788,7 +788,7 @@ namespace Pistache::Http::Experimental
 
             transport_
                 ->asyncConnect(shared_from_this(), an_addr->ai_addr,
-                               (PST_SOCKLEN_T) an_addr->ai_addrlen)
+                               static_cast<PST_SOCKLEN_T>(an_addr->ai_addrlen))
                 // Note: We cast to PST_SOCKLEN_T for Windows because Windows
                 // uses "int" for PST_SOCKLEN_T, whereas Linux uses size_t. In
                 // general, even for Windows we use size_t for addresses'
@@ -1425,7 +1425,7 @@ namespace Pistache::Http::Experimental
                 auto transports = reactor_->handlers(transportKey);
                 auto index  = ioIndex.fetch_add(1) % transports.size();
 
-                auto transport = std::static_pointer_cast<Transport>(transports[(unsigned int)index]);
+                auto transport = std::static_pointer_cast<Transport>(transports[static_cast<unsigned int>(index)]);
                 PS_LOG_DEBUG_ARGS("Associating transport %p on connection %p",
                                   transport.get(), conn.get());
                 conn->associateTransport(transport);

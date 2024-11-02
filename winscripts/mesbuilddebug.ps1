@@ -32,5 +32,5 @@ else {
 
 }
 
-meson compile -v -C ${MESON_BUILD_DIR} # "...compile -v -C ..." for verbose
+meson compile -C ${MESON_BUILD_DIR} # "...compile -v -C ..." for verbose
 

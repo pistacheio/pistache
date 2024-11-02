@@ -88,6 +88,42 @@
 #endif
 
 #ifdef _USE_LIBEVENT
+// PS_FD_CAST_TO_UNUM / PS_FD_CAST_TO_SNUM are used to cast Fd to numeric type
+// E.g.:
+//    Fd fd;
+//    ...
+//    uint64_t n = PS_FD_CAST_TO_UNUM(uint64_t, fd);
+#define PS_FD_CAST_TO_UNUM(__T, __N)                            \
+    (static_cast<__T>(reinterpret_cast<std::uintptr_t>(__N)))
+#define PS_FD_CAST_TO_SNUM(__T, __N)                            \
+    (static_cast<__T>(reinterpret_cast<std::intptr_t>(__N)))
+#else
+#define PS_FD_CAST_TO_UNUM(__T, __N)            \
+    (static_cast<__T>(__N))
+#define PS_FD_CAST_TO_SNUM(__T, __N)            \
+    (static_cast<__T>(__N))
+#endif
+
+#ifdef _USE_LIBEVENT
+// PS_NUM_CAST_TO_FD/PS_NUM_CAST_TO_FDCONST casts a numeric type to Fd/FdConst
+// PS_CAST_AWAY_CONST_FD casts an FdConst to type Fd
+#define PS_NUM_CAST_TO_FD(__N)                                          \
+    (reinterpret_cast<Fd>(static_cast<std::uintptr_t>(__N)))
+#define PS_NUM_CAST_TO_FDCONST(__N)                                     \
+    (reinterpret_cast<const Fd>(static_cast<std::uintptr_t>(__N)))
+#define PS_CAST_AWAY_CONST_FD(__fdconst)        \
+    (const_cast<Fd>(__fdconst))
+#else
+#define PS_NUM_CAST_TO_FD(__N)                  \
+    (static_cast<Fd>(__N))
+#define PS_NUM_CAST_TO_FDCONST(__N)             \
+    PS_NUM_CAST_TO_FD(__N)
+#define PS_CAST_AWAY_CONST_FD(__fdconst)        \
+    (__fdconst)
+#endif
+
+
+#ifdef _USE_LIBEVENT
 // Note - closeEvent calls delete __ev__;
 #define CLOSE_FD(__ev__)                                   \
     {                                                      \
@@ -219,7 +255,7 @@ namespace Pistache
         std::shared_ptr<EventMethEpollEquiv> create(int size);
 
 
-        #define F_SETFDL_NOTHING ((int)((unsigned) 0x8A82))
+        #define F_SETFDL_NOTHING (static_cast<int>(0x8A82u))
         Fd em_event_new(em_socket_t actual_fd,//file desc, signal, or -1
                         short flags, // EVM_... flags
                         // For setfd and setfl arg:

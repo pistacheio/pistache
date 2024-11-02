@@ -197,7 +197,7 @@ namespace Pistache::Aio
 
         std::shared_ptr<Handler> handler(const Reactor::Key& key) const
         {
-            return handlers_.at((size_t) key.data());
+            return handlers_.at(static_cast<size_t>(key.data()));
         }
 
         std::vector<std::shared_ptr<Handler>>
@@ -218,13 +218,13 @@ namespace Pistache::Aio
             ss << fd;
             str += ss.str();
 
-            if (((unsigned int)interest) & ((unsigned int)Polling::NotifyOn::Read))
+            if ((static_cast<unsigned int>(interest)) & (static_cast<unsigned int>(Polling::NotifyOn::Read)))
                 str += " read";
-            if (((unsigned int)interest) & ((unsigned int)Polling::NotifyOn::Write))
+            if ((static_cast<unsigned int>(interest)) & (static_cast<unsigned int>(Polling::NotifyOn::Write)))
                 str += " write";
-            if (((unsigned int)interest) & ((unsigned int)Polling::NotifyOn::Hangup))
+            if ((static_cast<unsigned int>(interest)) & (static_cast<unsigned int>(Polling::NotifyOn::Hangup)))
                 str += " hangup";
-            if (((unsigned int)interest) & ((unsigned int)Polling::NotifyOn::Shutdown))
+            if ((static_cast<unsigned int>(interest)) & (static_cast<unsigned int>(Polling::NotifyOn::Shutdown)))
                 str += " shutdown";
 
             PS_LOG_DEBUG_ARGS("%s", str.c_str());
@@ -454,8 +454,11 @@ namespace Pistache::Aio
                 // encode the index of the handler is that in the fast path, we
                 // won't need to shift the value to retrieve the fd if there is
                 // only one handler as all the bits will already be set to 0.
-                auto encodedValue                = (index << HandlerShift) | ((uint64_t)value);
-                Polling::TagValue encodedValueTV = ((Polling::TagValue)encodedValue);
+                auto encodedValue                =
+                    (index << HandlerShift) |
+                    PS_FD_CAST_TO_UNUM(uint64_t, static_cast<Fd>(value));
+                Polling::TagValue encodedValueTV =
+                    static_cast<Polling::TagValue>(PS_NUM_CAST_TO_FD(encodedValue));
                 return Polling::Tag(encodedValueTV);
             }
 
@@ -465,7 +468,8 @@ namespace Pistache::Aio
                 auto value                      = tag.valueU64();
                 size_t index                    = value >> HandlerShift;
                 uint64_t maskedValue            = value & DataMask;
-                Polling::TagValue maskedValueTV = ((Polling::TagValue)maskedValue);
+                Polling::TagValue maskedValueTV =
+                    static_cast<Polling::TagValue>(PS_NUM_CAST_TO_FD(maskedValue));
 
                 return std::make_pair(index, maskedValueTV);
             }
@@ -685,9 +689,9 @@ namespace Pistache::Aio
             // !!!! Remove - debugging only
             PS_LOG_DEBUG_ARGS("whole key %llu, decoded.first %lu, "
                               "decoded.second %lu, sync %p",
-                              (unsigned long long) key.data(),
-                              (unsigned long) decoded.first,
-                              (unsigned long) decoded.second,
+                              static_cast<unsigned long long>(key.data()),
+                              static_cast<unsigned long>(decoded.first),
+                              static_cast<unsigned long>(decoded.second),
                               wrk->sync.get());
 
             CALL_MEMBER_FN(wrk->sync.get(), func)

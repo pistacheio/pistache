@@ -82,7 +82,7 @@ namespace Pistache
         // that can be accessed as 4 u_char, 2 u_short, or 1 u_long.
         // Meanwhile, s_addr on the right-hand side is type ULONG. So both
         // sides are effectively "ulong *" and the cast is valid
-        PST_IN_ADDR_T* in_addr   = (PST_IN_ADDR_T*)
+        PST_IN_ADDR_T* in_addr   = reinterpret_cast<PST_IN_ADDR_T*>
             (&reinterpret_cast<struct sockaddr_in*>(&addr_)->sin_addr.s_addr);
 
         static_assert(sizeof(buff) == sizeof(*in_addr));
@@ -243,7 +243,7 @@ namespace Pistache
         // that can be accessed as 4 u_char, 2 u_short, or 1 u_long.
         // Meanwhile, s_addr on the right-hand side is type ULONG. So both
         // sides are effectively "ulong *" and the cast is valid
-        PST_IN_ADDR_T* out_ptr   = (PST_IN_ADDR_T*)
+        const PST_IN_ADDR_T* out_ptr   = reinterpret_cast<const PST_IN_ADDR_T*>
             (&reinterpret_cast<const struct sockaddr_in*>(&addr_)->sin_addr.s_addr);
         *out = *out_ptr;
     }

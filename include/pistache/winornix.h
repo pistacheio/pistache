@@ -217,7 +217,7 @@ typedef int PST_SOCK_OPT_VAL_T;
 #endif
 // In Windows, we don't support doing F_GETFL; return this magic num instead
 #define PST_FCNTL_GETFL_UNKNOWN                         \
-    (((int)(((unsigned int)((int)-1))/2)) - (0xded - 97))
+    (static_cast<int>((static_cast<unsigned int>((-1)/2))) - (0xded - 97))
 
 
 // Use #include PIST_QUOTE(PST_NETDB_HDR)
@@ -372,7 +372,7 @@ typedef struct in_addr PST_IN_ADDR_T;
 // general we use size_t for addresses' lengths in Pistache (e.g. in struct
 // ifaddr), hence why we cast here
 #define PST_SOCK_BIND(__sockfd, __addr, __addrlen)      \
-    pist_sock_bind(__sockfd, __addr, (PST_SOCKLEN_T) __addrlen)
+    pist_sock_bind(__sockfd, __addr, static_cast<PST_SOCKLEN_T>(__addrlen))
 #define PST_SOCK_ACCEPT pist_sock_accept
 #define PST_SOCK_CONNECT pist_sock_connect
 #define PST_SOCK_LISTEN pist_sock_listen
@@ -419,9 +419,9 @@ typedef struct PST_POLLFD PST_POLLFD_T;
 // Note - Windows use "unsigned int" for count, whereas Linux uses size_t. In
 // general we use size_t for count in Pistache, hence why we cast here
 #define PST_FILE_READ(__fd, __buf, __count)                  \
-    ::_read(__fd, __buf, (unsigned) __count)
+    ::_read(__fd, __buf, static_cast<unsigned>(__count))
 #define PST_FILE_WRITE(__fd, __buf, __count)         \
-    ::_write(__fd, __buf, (unsigned int) __count)
+    ::_write(__fd, __buf, static_cast<unsigned int>(__count))
 #define PST_FILE_PREAD pist_pread
 
 #define PST_UNLINK ::_unlink

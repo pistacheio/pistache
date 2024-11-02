@@ -557,7 +557,7 @@ static bool gSetPsLogCategoryCalledWithNull = false;
 
 static bool my_is_punct(std::string::value_type & ch)
 { // There's probably a way to do with with std::function
-    return((bool)(std::ispunct((int)ch)));
+    return(static_cast<bool>(std::ispunct(static_cast<int>(ch))));
 }
 
 
@@ -693,7 +693,8 @@ static int snprintProcessAndThread(char * _buff, size_t _buffSize)
     
     PST_THREAD_ID pt = PST_THREAD_ID_SELF(); // This function always succeeds
     
-    unsigned char *ptc = (unsigned char*)(void*)(&pt);
+    unsigned char *ptc =
+        reinterpret_cast<unsigned char*>((reinterpret_cast<void*>(&pt)));
     int buff_would_have_been_len = 0;
     _buff[0] = 0;
 
@@ -715,16 +716,16 @@ static int snprintProcessAndThread(char * _buff, size_t _buffSize)
             break;
     }
     
-    for (int i=(((int)size_pt)-1); i>=0; i--) // little endian, if it matters
+    for (int i=((static_cast<int>(size_pt))-1); i>=0; i--) // little endian, if it matters
     {
         buff_would_have_been_len =
-            snprintf(_buff, _buffSize, "%02x", (unsigned)(ptc[i]));
+            snprintf(_buff, _buffSize, "%02x", static_cast<unsigned>(ptc[i]));
         if (buff_would_have_been_len <= 0)
         {
             _buff[0] = 0;
             return(-1);
         }
-        if (((unsigned int)buff_would_have_been_len) >= _buffSize)
+        if ((static_cast<unsigned int>(buff_would_have_been_len)) >= _buffSize)
             return(-1); // output truncated, see snprintf man page
         _buff += buff_would_have_been_len;
         _buffSize -= buff_would_have_been_len;
@@ -779,7 +780,7 @@ static int snprintProcessAndThread(char * _buff, size_t _buffSize)
     const wchar_t * buff_as_wstr_data = NULL;                           \
                                                                         \
     int convert_result = MultiByteToWideChar(CP_UTF8, 0, POL_ARG,       \
-                                        (int)strlen(POL_ARG), NULL, 0); \
+                           static_cast<int>(strlen(POL_ARG)), NULL, 0); \
     if (convert_result <= 0)                                            \
     {                                                                   \
         buff_as_wstr_data = dummy_buff_as_wstr.data();                  \
@@ -788,8 +789,8 @@ static int snprintProcessAndThread(char * _buff, size_t _buffSize)
     {                                                                   \
         buff_as_wstr.resize(convert_result+10);                         \
         convert_result = MultiByteToWideChar(CP_UTF8, 0, POL_ARG,       \
-                                (int)strlen(POL_ARG), &buff_as_wstr[0], \
-                                (int)buff_as_wstr.size());              \
+                   static_cast<int>(strlen(POL_ARG)), &buff_as_wstr[0], \
+                   static_cast<int>(buff_as_wstr.size())); \
         buff_as_wstr_data = (convert_result <= 0) ?                     \
             dummy_buff_as_wstr.data() : buff_as_wstr.data();            \
     }                                                                   \

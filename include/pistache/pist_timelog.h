@@ -126,13 +126,14 @@ extern "C" char *__unDName(char*, const char*, int, void*, void*, int);
             __ptst_demangled += 7;                                      \
         snprintf(&(ps_timedbg_this_buff[0]),                            \
                  sizeof(ps_timedbg_this_buff),                          \
-                 "%s (this) %p", __ptst_demangled, (void *) this);      \
+                 "%s (this) %p", __ptst_demangled,                      \
+                 reinterpret_cast<const void *>(this));                 \
     }                                                                   \
     else                                                                \
     {                                                                   \
         snprintf(&(ps_timedbg_this_buff[0]),                            \
                  sizeof(ps_timedbg_this_buff),                          \
-                 "this %p",  (void *) this);                            \
+                 "this %p", reinterpret_cast<const void *>(this));      \
     }                                                                   \
     if ((__ptst_demangled_to_free) && (__ptst_dem_status == 0))         \
         free(__ptst_demangled_to_free);                                 \
@@ -248,7 +249,7 @@ public:
             
             va_end(ap);
 
-            if (ln >= ((int) sizeof_buf))
+            if (ln >= (static_cast<int>(sizeof_buf)))
                 PS_STRLCAT(buf_ptr, "...", 5);
 
             return(buf_ptr);
@@ -343,14 +344,14 @@ public:
                     }
                 }
 
-                int diff_sec =
-                    (int)(latest_ps_timedbg.tv_sec - mPsTimedbg.tv_sec);
+                int diff_sec = static_cast<int>
+                    (latest_ps_timedbg.tv_sec - mPsTimedbg.tv_sec);
                 if (diff_sec < 31536000)
                 {
                     long diff_nsec =
                         latest_ps_timedbg.tv_nsec - mPsTimedbg.tv_nsec;
 
-                    long diff_msec = (((long)diff_sec) *  1000) +
+                    long diff_msec = ((static_cast<long>(diff_sec)) *  1000) +
                                                          (diff_nsec / 1000000);
 
                     if ((diff_msec < 10) &&
@@ -358,11 +359,13 @@ public:
                         ((latest_ps_time_cpu_dbg.tv_nsec) ||
                                               (latest_ps_time_cpu_dbg.tv_sec)))
                     {
-                        diff_sec = (int)(latest_ps_time_cpu_dbg.tv_sec -
+                        diff_sec = static_cast<int>
+                            (latest_ps_time_cpu_dbg.tv_sec -
                                                          mPsTimeCPUdbg.tv_sec);
                         diff_nsec = latest_ps_time_cpu_dbg.tv_nsec -
                                                          mPsTimeCPUdbg.tv_nsec;
-                        long diff_usec = (((long)diff_sec) *  1000000) +
+                        long diff_usec =
+                            ((static_cast<long>(diff_sec)) *  1000000) +
                                                             (diff_nsec / 1000);
                         diff_msec = diff_usec / 1000;
                         long diff_ms_thousandths = diff_usec % 1000;

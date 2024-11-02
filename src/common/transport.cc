@@ -156,7 +156,7 @@ namespace Pistache::Tcp
         std::string str("fd ");
 
         std::stringstream ss;
-        ss << ((Fd)entry.getTag().value());
+        ss << (PS_NUM_CAST_TO_FD(entry.getTag().value()));
         str += ss.str();
 #endif
 
@@ -212,8 +212,9 @@ namespace Pistache::Tcp
             else if (entry.isReadable())
             {
                 auto tag = entry.getTag();
-                PS_LOG_DEBUG_ARGS("entry isReadable fd %" PIST_QUOTE(PS_FD_PRNTFCD),
-                                  ((Fd)tag.value()));
+                PS_LOG_DEBUG_ARGS("entry isReadable fd %"
+                                  PIST_QUOTE(PS_FD_PRNTFCD),
+                                  tag.value()); // TagValue type := Fd
 
                 if (isPeerFd(tag))
                 {
@@ -247,7 +248,7 @@ namespace Pistache::Tcp
                 FdConst fdconst = static_cast<FdConst>(tag.value());
                 // Since fd is about to be written to, it isn't really const,
                 // and we cast away the const
-                Fd fd = ((Fd)fdconst);
+                Fd fd = PS_CAST_AWAY_CONST_FD(fdconst);
 
                 {
                     Guard guard(toWriteLock);
@@ -308,7 +309,8 @@ namespace Pistache::Tcp
             {
                 PS_LOG_DEBUG("SSL_read");
 
-                bytes = SSL_read((SSL*)peer->ssl(), buffer + totalBytes,
+                bytes = SSL_read(reinterpret_cast<SSL*>(peer->ssl()),
+                                 buffer + totalBytes,
                                  static_cast<int>(Const::MaxBuffer - totalBytes));
             }
             else
@@ -514,7 +516,7 @@ namespace Pistache::Tcp
                                       fd, len);
 
                     auto file    = buffer.fd();
-                    off_t offset = (off_t) totalWritten;
+                    off_t offset = static_cast<off_t>(totalWritten);
                     bytesWritten = sendFile(fd, file, offset, len);
                 }
                 if (bytesWritten < 0)
@@ -526,7 +528,8 @@ namespace Pistache::Tcp
 
                     if (errno == EAGAIN || errno == EWOULDBLOCK)
                     {
-                        auto bufferHolder = buffer.detach((off_t)totalWritten);
+                        auto bufferHolder =
+                            buffer.detach(static_cast<off_t>(totalWritten));
 
                         // pop_front kills buffer - so we cannot continue loop or use buffer
                         // after this point
@@ -696,7 +699,7 @@ namespace Pistache::Tcp
             if (!it_second_ssl_is_null)
             {
                 auto ssl_ = static_cast<SSL*>(it_->second->ssl());
-                PS_LOG_DEBUG_ARGS("SSL_write, len %d", (int)len);
+                PS_LOG_DEBUG_ARGS("SSL_write, len %d", static_cast<int>(len));
 
                 bytesWritten = SSL_write(ssl_, buffer, static_cast<int>(len));
             }
@@ -724,7 +727,7 @@ namespace Pistache::Tcp
 #endif
 
             PS_LOG_DEBUG_ARGS("::send, fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", actual_fd %d, len %d",
-                              fd, GET_ACTUAL_FD(fd), (int)len);
+                              fd, GET_ACTUAL_FD(fd), static_cast<int>(len));
 
             bytesWritten =
 #ifdef _IS_WINDOWS
@@ -1101,7 +1104,7 @@ namespace Pistache::Tcp
 
         // Cast away const so we can lock the mutex. Nonetheless, this function
         // overall locks then unlocks the mutex, leaving it unchanged
-        Transport* non_const_this = (Transport*)this;
+        Transport* non_const_this = const_cast<Transport*>(this);
 
         std::lock_guard<std::mutex> l_guard(non_const_this->peers_mutex_);
         return (isPeerFdNoPeersMutexLock(fdconst));
@@ -1113,7 +1116,7 @@ namespace Pistache::Tcp
         PS_TIMEDBG_START_THIS;
 
         // Can cast away const since we're not actually going to change fd
-        Fd fd = ((Fd)fdconst);
+        Fd fd = PS_CAST_AWAY_CONST_FD(fdconst);
 
         return peers_.find(fd) != std::end(peers_);
     }
@@ -1123,7 +1126,7 @@ namespace Pistache::Tcp
         PS_TIMEDBG_START_THIS;
 
         // Can cast away const since we're not actually going to change fd
-        Fd fd    = ((Fd)fdconst);
+        Fd fd    = PS_CAST_AWAY_CONST_FD(fdconst);
         bool res = (timers.find(fd) != std::end(timers));
 
         PS_LOG_DEBUG_ARGS("Fd %" PIST_QUOTE(PS_FD_PRNTFCD) " %s in timers",
@@ -1147,7 +1150,7 @@ namespace Pistache::Tcp
         PS_TIMEDBG_START_THIS;
 
         // Can cast away const since we're not actually going to change fd
-        Fd fd = ((Fd)fdconst);
+        Fd fd = PS_CAST_AWAY_CONST_FD(fdconst);
 
         // See comment in transport.h on why peers_ must be mutex-protected
         std::lock_guard<std::mutex> l_guard(peers_mutex_);

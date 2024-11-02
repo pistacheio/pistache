@@ -96,7 +96,8 @@ namespace Pistache
             { }
 
             constexpr TagValue value() const { return value_; }
-            uint64_t valueU64() const { return ((uint64_t)value_); }
+            uint64_t valueU64() const { return (static_cast<uint64_t>
+                                 (reinterpret_cast<std::uintptr_t>(value_))); }
 #ifndef _USE_LIBEVENT
             constexpr
 #endif
@@ -105,9 +106,9 @@ namespace Pistache
             {
 #ifdef _USE_LIBEVENT
                 if (value_ == NULL)
-                    return ((uint64_t)((int)-1));
+                    return (static_cast<uint64_t>(-1));
                 em_socket_t actual_fd = GET_ACTUAL_FD(value_);
-                return ((uint64_t)actual_fd);
+                return (static_cast<uint64_t>(actual_fd));
 #else
                 return (value_);
 #endif

@@ -441,15 +441,17 @@ namespace Pistache::Http
             if (bytesRead > 0)
             {
                 // How many bytes do we still need to read ?
-                const size_t remaining = (size_t)(contentLength - bytesRead);
+                const size_t remaining = static_cast<size_t>(
+                    contentLength - bytesRead);
                 if (!readBody(remaining))
                     return State::Again;
             }
             // This is the first time we are reading the payload
             else
             {
-                message->body_.reserve((unsigned int)contentLength);
-                if (!readBody((size_t)contentLength))
+                message->body_.reserve(
+                    static_cast<unsigned int>(contentLength));
+                if (!readBody(static_cast<size_t>(contentLength)))
                     return State::Again;
             }
 

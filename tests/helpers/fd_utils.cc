@@ -96,7 +96,7 @@ namespace Pistache
         if (!gphc_res)
             throw std::runtime_error("GetProcessHandleCount failed");
 
-        return((std::size_t)dw_handle_count);
+        return(static_cast<std::size_t>(dw_handle_count));
 
 #else // fallback case, e.g. *BSD
 #ifndef OPEN_MAX
