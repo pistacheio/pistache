@@ -84,8 +84,6 @@ private:
     Rest::Router router;
 };
 
-// #if 0 // !!!!!!!!!
-
 TEST(rest_server_test, basic_test)
 {
     int thr = 1;
@@ -240,7 +238,6 @@ TEST(rest_server_test, keepalive_client_timeout)
 
     stats.shutdown();
 }
-// #endif // if 0
 
 TEST(rest_server_test, keepalive_multithread_client_request)
 {
