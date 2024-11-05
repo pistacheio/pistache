@@ -46,6 +46,14 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+        
+        # For Windows, we check out first, before installing
+        # dpendencies, so we can use the Pistache scripts
+        # msvcsetup.ps1 and gccsetup.ps1 for dependency installation
+
     - name: Install dependencies (Windows)
       env:
         mtrx_compiler: ${{ matrix.compiler }}
@@ -59,150 +67,9 @@ jobs:
 
         if ($env:mtrx_compiler -eq "msvc") {
 
-          # Start a Visual Studio Developer Prompt
-          # As at Aug-2024, VS 2022, Launch-VsDevShell.ps1 defaults to
-          # 32-bit host and target architectures. However you can specify
-          # both target architecture (-Arch option, valid values: x86,
-          # amd64, arm, arm64) and host architecture (-HostArch option,
-          # valid values: x86, amd64)
-          #
-          # If we don't do this, then meson will pickup 32-bit as the host
-          # and target architecture. Meanwhile, vcpkg defaults to 64-bit
-          # libraries (since we're on a 64-bit Windows). So then the
-          # linker can't link, because it is trying to link 64-bit vcpkg
-          # libs with our 32-bit object files.
-          #
-          # Ref: https://learn.microsoft.com/en-us/visualstudio/
-          #          ide/reference/command-prompt-powershell?view=vs-2022
+          . winscripts\msvcsetup.ps1
 
-          if (Test-Path -Path "$env:ProgramFiles/Microsoft Visual Studio") {
-              cd "$env:ProgramFiles/Microsoft Visual Studio";
-              $dirents=Get-ChildItem -Filter "????" -Name | Sort-Object -Descending -Property Name;
-              foreach ($itm in $dirents) {
-                  if ("$itm" -match "^\d+$") {
-                      $itm_as_num=$itm/1;
-                      if ($itm_as_num -gt 1970) {
-                          if (Test-Path "$itm/Enterprise/Common7/Tools/Launch-VsDevShell.ps1") {
-                          $launch_vs_dev_shell_dir="$pwd\$itm\Enterprise\Common7\Tools";
-                           break
-                      }
-                          elseif (Test-Path "$itm/Professional/Common7/Tools/Launch-VsDevShell.ps1") {
-                              $launch_vs_dev_shell_dir="$pwd\$itm\Professional\Common7\Tools";
-                              break
-                          }
-                          elseif (Test-Path "$itm/Community/Common7/Tools/Launch-VsDevShell.ps1") {
-                              $launch_vs_dev_shell_dir="$pwd\$itm\Community\Common7\Tools";
-                              break
-                          }
-                      }
-                  }
-              }
-              if (! ($launch_vs_dev_shell_dir)) {
-              $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
-                  Sort-Object -Descending -Property LastWriteTime |
-                  Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
-              }
-          }
-
-          if ((! ($launch_vs_dev_shell_dir)) -or (! (Test-Path -Path $launch_vs_dev_shell_dir))) {
-               Write-Host "Launch-VsDevShell.ps1 not found in $env:ProgramFiles/Microsoft Visual Studio";
-               if (Test-Path -Path "${env:ProgramFiles(x86)}/Microsoft Visual Studio") {
-                    Write-Host "Looking in ${env:ProgramFiles(x86)}/Microsoft Visual Studio";
-                    cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio";
-                    $dirents=Get-ChildItem -Filter "????" -Name | Sort-Object -Descending -Property Name;
-                    foreach ($itm in $dirents) {
-                        if ("$itm" -match "^\d+$") {
-                            $itm_as_num=$itm/1;
-                            if ($itm_as_num -gt 1970) {
-                                if (Test-Path "$itm/Enterprise/Common7/Tools/Launch-VsDevShell.ps1") {
-                                $launch_vs_dev_shell_dir="$pwd\$itm\Enterprise\Common7\Tools";
-                                 break
-                            }
-                                elseif (Test-Path "$itm/Professional/Common7/Tools/Launch-VsDevShell.ps1") {
-                                    $launch_vs_dev_shell_dir="$pwd\$itm\Professional\Common7\Tools";
-                                    break
-                                }
-                                elseif (Test-Path "$itm/Community/Common7/Tools/Launch-VsDevShell.ps1") {
-                                    $launch_vs_dev_shell_dir="$pwd\$itm\Community\Common7\Tools";
-                                    break
-                                }
-                            }
-                        }
-                    }
-                    if (! ($launch_vs_dev_shell_dir)) {
-                        $launch_vs_dev_shell_dir = Get-ChildItem -Path "Launch-VsDevShell.ps1" -Recurse |
-                            Sort-Object -Descending -Property LastWriteTime |
-                            Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
-                    }
-               }
-          }
-
-          if (($launch_vs_dev_shell_dir) -And (Test-Path -Path $launch_vs_dev_shell_dir)) {
-              cd "$launch_vs_dev_shell_dir";
-              try {
-                  ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
-              } catch {
-                  Write-Host "Error in Launch-VsDevShell.ps1, checking Launch-VsDevShell.ps1's help";
-                  cd "$launch_vs_dev_shell_dir";
-                  if (! ((./Launch-VsDevShell.ps1 -?) -like "*-HostArch*")) {
-                      Write-Host "Launch-VsDevShell.ps1 has no parameter -HostArch";
-                      if (Test-Path -Path "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe") {
-                          Write-Host "Going to try Import-Module and Enter-VsDevShell";
-                          cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer";
-                          $script:vs_instance_id=.\vswhere.exe -property instanceId;
-                          cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio";
-                          $dirents=Get-ChildItem -Filter "????" -Name | Sort-Object -Descending -Property Name;
-                          foreach ($itm in $dirents) {
-                              if ("$itm" -match "^\d+$") {
-                                  $itm_as_num=$itm/1;
-                                  if ($itm_as_num -gt 1970) {
-                                      if (Test-Path "$itm/Enterprise/Common7/Tools/Microsoft.VisualStudio.DevShell.dll") {
-                                          $script:dev_shell_path="$pwd\$itm\Enterprise\Common7\Tools";
-                                          break
-                                  }
-                                      elseif (Test-Path "$itm/Professional/Common7/Tools/Microsoft.VisualStudio.DevShell.dll") {
-                                          $script:dev_shell_path="$pwd\$itm\Professional\Common7\Tools";
-                                          break
-                                      }
-                                      elseif (Test-Path "$itm/Community/Common7/Tools/Microsoft.VisualStudio.DevShell.dll") {
-                                          $script:dev_shell_path="$pwd\$itm\Community\Common7\Tools";
-                                          break
-                                      }
-                                  }
-                              }
-                          }
-                          if ("$dev_shell_path") {
-                              $script:dev_shell_path="$dev_shell_path\Microsoft.VisualStudio.DevShell.dll"
-                          }
-                          else {
-                              Write-Host "Searching for Microsoft.VisualStudio.DevShell.dll";
-                              $script:dev_shell_path=Get-ChildItem -Path "Microsoft.VisualStudio.DevShell.dll" -Recurse |
-                                Sort-Object -Descending -Property LastWriteTime |
-                                Select -Index 0 |
-                                Select -ExpandProperty "FullName"
-                          }
-                          if ($dev_shell_path) {
-                              Import-Module "$dev_shell_path";
-                              Write-Host (Get-Help Enter-VsDevShell);
-                              $env:VSCMD_DEBUG=1;
-                              Enter-VsDevShell -VsInstanceId $vs_instance_id -SkipAutomaticLocation -DevCmdDebugLevel Basic -DevCmdArguments '-arch=x64'
-                          }
-                          else {
-                              Write-Error "ERROR: No Microsoft.VisualStudio.DevShell.dll"
-                          }
-                      }
-                      else {
-                          Write-Error "ERROR: vswhere.exe not found"
-                      }
-                  }
-                  else {
-                      Write-Error "ERROR: Unexpected Launch-VsDevShell.ps1 error"
-                  }
-              }
-          }
-          else {
-              Write-Error("ERROR: Launch-VsDevShell.ps1 not found")
-          }
+          cd ~
 
           $myobj = "" | Select "name", "val";
           $myobj.name = "launch_vs_dev_shell_dir";
@@ -232,364 +99,16 @@ jobs:
         } # end 'if ($env:mtrx_compiler -eq "msvc") {...}'
 
         elseif ($env:mtrx_compiler -eq "gcc") {
-          cd ~;
-          if (Test-Path -Path "$env:SYSTEMDRIVE\msys64") {
-              $msys64_dir = "$env:SYSTEMDRIVE\msys64"
-          }
-          elseif (Test-Path -Path "$env:HOMEDRIVE\msys64") {
-              $msys64_dir = "$env:HOMEDRIVE\msys64"
-          }
-          else {
-              Invoke-WebRequest -Uri "https://repo.msys2.org/distrib/msys2-x86_64-latest.sfx.exe" -Outfile "msys2-x86_64-latest.sfx.exe";
-              .\msys2-x86_64-latest.sfx.exe -y -o$env:SYSTEMDRIVE\;
-              if (Test-Path -Path "$env:SYSTEMDRIVE\msys64") {
-                  $msys64_dir = "$env:SYSTEMDRIVE\msys64"
-              }
-              else {
-                  Write-Error("msys64 didn't install as expected?")
-              }
-              & $msys64_dir\msys2_shell.cmd -defterm -here -no-start -ucrt64 -c “echo msysFirstTerminal”
-              
-          }
-
-          # Even if gcc is already on the path, we install /
-          # make-sure-up-to-date the msys64-ucrt64 version and put
-          # that up-to-date gcc version first on the path. Otherwise
-          # (notably in Github's Windows Server 2019 image) we may
-          # have an older version of gcc that causes build problems,
-          # specifically i) afunix.h missing; and ii) syntax errors in
-          # compiling <filesystem> (std::filesystem) header.
-
-          if (Get-Command gcc.exe -errorAction SilentlyContinue) {
-              Write-Host "May override gcc that's already on the path";
-              Write-Host "gcc to be overridden:";
-              gcc.exe --version
-          }
-
-          if (Test-Path -Path "$msys64_dir\ucrt64\bin\gcc.exe") {
-              Write-Host "Running gcc upgrade";
-              & $msys64_dir\msys2_shell.cmd -defterm -here -no-start -ucrt64 -c "pacman --noconfirm -S -u mingw-w64-ucrt-x86_64-gcc"
-          }
-          else {
-              Write-Host "Running gcc install";
-              & $msys64_dir\msys2_shell.cmd -defterm -here -no-start -ucrt64 -c "pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc"
-              
-          }
-          if (! (Test-Path -Path "$msys64_dir\ucrt64\bin\gcc.exe")) {
-              Write-Error("gcc didn't install in msys as expected?")
-          }
-          $env:PATH="$msys64_dir\ucrt64\bin;$env:PATH";
-          Write-Host "gcc installed/upgraded in msys-ucrt:";
-          gcc.exe --version
-
-          if (! (Get-Command mc.exe -errorAction SilentlyContinue)) {
-              if (Test-Path -Path "$env:ProgramFiles\Windows Kits") {
-                  $win_sdk_found=1;
-                  cd "$env:ProgramFiles\Windows Kits";
-                  $mc_exes_found=Get-ChildItem -Path "mc.exe" -Recurse |
-                    Sort-Object -Descending -Property LastWriteTime;
-                  foreach ($mc_exe_found in $mc_exes_found) {
-                      if ($mc_exe_found -like "*\x64\mc*") {
-                          $mc_exe = $mc_exe_found;
-                          break;
-                      }
-                      if ((! ($mc_exe)) -and ($mc_exe_found -like "*\x86\mc*")) {        
-                          $mc_exe = $mc_exe_found
-                      }
-                  }
-              }
-
-              if (! ($mc_exe)) {
-                  if (Test-Path -Path "${env:ProgramFiles(x86)}\Windows Kits") {
-                      $win_sdk_found=1;
-                      cd "${env:ProgramFiles(x86)}\Windows Kits";
-                      $mc_exes_found=Get-ChildItem -Path "mc.exe" -Recurse |
-                        Sort-Object -Descending -Property LastWriteTime;
-                      foreach ($mc_exe_found in $mc_exes_found) {
-                          if ($mc_exe_found -like "*\x64\mc*") {
-                              $mc_exe = $mc_exe_found;
-                              break;
-                          }
-                          if ((! ($mc_exe)) -and ($mc_exe_found -like "*\x86\mc*")) {
-              	              $mc_exe = $mc_exe_found
-          	          }
-                      }
-                  }
-              }
-
-              if (! ($win_sdk_found)) {
-                  Write-Error "Unable to find Windows Kits (SDKs) folder"
-              }
-              if (! ($mc_exe)) {
-                  Write-Error "Unable to find mc.exe in Windows Kits (SDKs)"
-              }
-              $mc_exe_dir = Split-Path -Path $mc_exe;
-              $env:PATH="$env:PATH;$mc_exe_dir"
-          }
-        } # end of 'if ($env:mtrx_compiler -eq "gcc")';
-          # more gcc-specific stuff (for ninja) after VCPKG is set up
-          
-        cd ~
-          
-        if (($env:VCPKG_INSTALLATION_ROOT) -and (Test-Path "$env:VCPKG_INSTALLATION_ROOT")) {
-            $env:VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT
-        }
-        
-        if ($env:VCPKG_ROOT) {
-            $myobj = "" | Select "name", "val";
-            $myobj.name = "env:VCPKG_ROOT";
-            $myobj.val = $env:VCPKG_ROOT;
-            $csvarray += $myobj
-        }
-        
-        if ((! (Get-Command pkg-config -errorAction SilentlyContinue)) -or ((which pkg-config) -like "*Strawberry*"))
-        { # meson does not accept the version of pkg-config in Strawberry Perl
-        
-            if (Get-Command winget -errorAction SilentlyContinue)
-            { # winget exists on newer versions of Windows 10 and on
-              # Windows 11 and after. It is is not supported on Windows
-              # Server 2019, and is experimental only on Windows Server
-              # 2022.
-        
-                winget install bloodrock.pkg-config-lite # For pkg-config
-        
-                # winget install Python # Already installed
-            }
-            else
-            {
-                vcpkg install pkgconf
-            
-            }
-        }
-        
-        $old_pkg_config_path=$env:PKG_CONFIG_PATH;
-        $env:PKG_CONFIG_PATH="$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows\lib\pkgconfig";
-        if ($old_pkg_config_path) {
-            $env:PKG_CONFIG_PATH="$env:PKG_CONFIG_PATH;$old_pkg_config_path"
-        }
-        
-        if (($env:VCPKG_INSTALLATION_ROOT) -And
-            (Test-Path -Path "$env:VCPKG_INSTALLATION_ROOT\installed")) {
-            # We add the ...\vcpkg\installed\...\bin dir to the path
-    
-            cd "$env:VCPKG_INSTALLATION_ROOT\installed"
-            # Find ...\installed\...\bin directory. Choose shortest path
-            # if more than one
-            
-            $vcpkg_installed_bin_dir=Get-ChildItem -Path "bin" -Recurse |
-              Select -ExpandProperty "FullName" | Sort-Object { $_.Length } |
-              Select -Index 0;
-            if (($vcpkg_installed_bin_dir) -And
-              (Test-Path -Path $vcpkg_installed_bin_dir)) {
-                  $env:Path="$vcpkg_installed_bin_dir;$env:Path"
-            }
-            else {
-                Write-Error "...\vcpkg\installed\...\bin directory not found"
-            }
-
-            $vcpkg_installed_pkgconf_dir=Get-ChildItem -Path "pkgconf.exe" -Recurse |
-              Select -ExpandProperty "FullName" | Sort-Object { $_.Length } |
-              Select -Index 0 | Split-Path;
-            if (($vcpkg_installed_pkgconf_dir) -And
-              (Test-Path -Path $vcpkg_installed_pkgconf_dir)) {
-                  $env:Path="$vcpkg_installed_pkgconf_dir;$env:Path"
-                  # Puts pkgconf.exe on the Path
-
-                  if ((! (Get-Command pkg-config.exe -errorAction SilentlyContinue)) -or ((which pkg-config) -like "*Strawberry*"))
-                  {
-                      New-Item -ItemType SymbolicLink -Path "$vcpkg_installed_pkgconf_dir\pkg-config.exe" -Target "$vcpkg_installed_pkgconf_dir\pkgconf.exe"
-                  }
-            }
-
-            cd ~
-        }
-
-        if (! (Get-Command meson -errorAction SilentlyContinue)) {
-            pip3 install --user meson
-        }
-
-        if (! (Get-Command ninja -errorAction SilentlyContinue)) {
-          if ($env:mtrx_compiler -eq "msvc") {
-            # Try looking in known places in Microsoft Visual Studio
-            
-            if (Test-Path -Path "$env:ProgramFiles/Microsoft Visual Studio") {
-                cd "$env:ProgramFiles/Microsoft Visual Studio";
-                $dirents=Get-ChildItem -Filter "????" -Name | Sort-Object -Descending -Property Name;
-                foreach ($itm in $dirents) {
-                    if ("$itm" -match "^\d+$") {
-                        $itm_as_num=$itm/1;
-                        if ($itm_as_num -gt 1970) {
-                            if (Test-Path "$itm/Enterprise/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe") {
-                            $script:ninja_dir="$pwd\$itm\Enterprise\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja";
-                            break
-                            }
-                            elseif (Test-Path "$itm/Professional/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe") {
-                                $script:ninja_dir="$pwd\$itm\Professional\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja";
-                                break
-                            }
-                            elseif (Test-Path "$itm/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe") {
-                                $script:ninja_dir="$pwd\$itm\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja";
-                                break
-                            }
-                        }
-                    }
-                }
-            }
-
-            if ((! ($ninja_dir)) -or (! (Test-Path -Path $ninja_dir))) {
-                # Try looking in known places in 32-bit Microsoft Visual Studio
-                
-                if (Test-Path -Path "${env:ProgramFiles(x86)}/Microsoft Visual Studio") {
-                    cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio";
-                        $dirents=Get-ChildItem -Filter "????" -Name | Sort-Object -Descending -Property Name;
-                    foreach ($itm in $dirents) {
-                        if ("$itm" -match "^\d+$") {
-                            $itm_as_num=$itm/1;
-                            if ($itm_as_num -gt 1970) {
-                                if (Test-Path "$itm/Enterprise/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe") {
-                                $script:ninja_dir="$pwd\$itm\Enterprise\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja";
-                                break
-                                }
-                                elseif (Test-Path "$itm/Professional/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe") {
-                                    $script:ninja_dir="$pwd\$itm\Professional\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja";
-                                    break
-                                }
-                                elseif (Test-Path "$itm/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe") {
-                                    $script:ninja_dir="$pwd\$itm\Community\Common7\IDE\CommonExtensions\Microsoft\CMake\Ninja";
-                                    break
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if ((! ($ninja_dir)) -or (! (Test-Path -Path $ninja_dir))) {
-                # Try looking anywhere in 64-bit Microsoft Visual Studio
-                if (Test-Path -Path "$env:ProgramFiles/Microsoft Visual Studio") {
-                    cd "$env:ProgramFiles/Microsoft Visual Studio";
-                    $script:ninja_dir = Get-ChildItem -Path "ninja.exe" -Recurse |
-                      Sort-Object -Descending -Property LastWriteTime |
-                      Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
-                }
-            }
-
-            if ((! ($ninja_dir)) -or (! (Test-Path -Path $ninja_dir))) {
-                # Try looking anywhere in 32-bit Microsoft Visual Studio
-                
-                if (Test-Path -Path "${env:ProgramFiles(x86)}/Microsoft Visual Studio") {
-                    cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio";
-                    $script:ninja_dir = Get-ChildItem -Path "ninja.exe" -Recurse |
-                        Sort-Object -Descending -Property LastWriteTime |
-                        Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
-                }
-            }
-          }
-          if ((! ($ninja_dir)) -or (! (Test-Path -Path $ninja_dir))) {
-              # Can't find ninja in Microsoft Visual Studio, or not using VS;
-              # Install it instead
-            
-              if (Get-Command winget -errorAction SilentlyContinue)
-              {
-                  winget install "Ninja-build.Ninja";
-              }
-              else
-              {
-                  vcpkg install vcpkg-tool-ninja
-
-                  if (($env:VCPKG_INSTALLATION_ROOT) -And
-                      (Test-Path -Path "$env:VCPKG_INSTALLATION_ROOT\installed")) {
-
-                      cd "$env:VCPKG_INSTALLATION_ROOT\installed"
-    
-                      $script:ninja_dir=Get-ChildItem -Path "ninja.exe" -Recurse |
-                        Select -ExpandProperty "FullName" | Sort-Object { $_.Length } |
-                        Select -Index 0 | Split-Path;
-                  }
-              }
-          }
-
-          if (($ninja_dir) -And (Test-Path -Path $ninja_dir)) {
-              $env:Path="$ninja_dir;$env:Path"
-          }
-
-          cd ~
-        }
-
-        vcpkg install curl[openssl]
-        # See https://github.com/openssl/openssl/issues/25520 for now
-        # As and when the issue is fixed, just do "vcpkg install
-        # curl", which installs default curl that, on Windows, use
-        # S-Channel not openssl.
-
-        vcpkg install openssl # This can take some time
-        
-        vcpkg install libevent
-
-        git clone https://github.com/google/googletest.git;
-        cd googletest;
-        mkdir build;
-        cd build;
-        cmake ..;
-        cmake --build .;
-        cmake --install . --config Debug;
-        cd ~
-
-        # Possible need to install powershell 7 (for pwsh.exe)
-        # Or already installed?
-
-        # Skip rapidjson which fails to build in one of the MSVC
-        # cases. It's available as a subproject anyhow.
-        # git clone https://github.com/Tencent/rapidjson/;
-        # cd rapidjson/;
-        # mkdir build;
-        # cd build;
-        # cmake ..;
-        # cmake --build . --config Release;
-        # cmake --install . --config Release
-
-        vcpkg.exe install date # Howard-Hinnant-Date
-
-        Invoke-WebRequest -Uri https://zlib.net/current/zlib.tar.gz -OutFile zlib.tar.gz;
-        tar -xvzf .\zlib.tar.gz;
-        cd "zlib*" # Adjusts to whatever we downloaded, e.g. zlib-1.3.1
-        
-        mkdir build;
-        cd build;
-        cmake ..;
-        cmake --build . --config Release;
-        cmake --install . --config Release
-
-        if (! (Get-Command doxygen -errorAction SilentlyContinue)) {
-            if (Get-Command winget -errorAction SilentlyContinue)
-            { 
-                winget install doxygen
-            }
-            else
-            {
-                cd ~;
-                Invoke-WebRequest -Uri https://www.doxygen.nl/files/doxygen-1.12.0.windows.x64.bin.zip -OutFile doxygen.bin.zip;
-                Expand-Archive doxygen.bin.zip -DestinationPath doxygen.bin;
-                $env:Path="$env:Path;$env:USERPROFILE\doxygen.bin"
-            }
-        }
-
-        if ($env:mtrx_compiler -eq "msvc") {
-            $env:CXX="cl";
-            $env:CC=$env:CXX
-        }
-        elseif ($env:mtrx_compiler -eq "gcc") {
-            $env:CXX="g++";
-            $env:CC="gcc"
+          $env:force_msys_gcc = "Y";
+          . winscripts\gccsetup.ps1
         }
         else { # Use clang with MSVC (MSVC's stdlib etc.)
 
-            $env:CXX="clang-cl";
-            $env:CXX_LD="lld";
-            $env:CC=$env:CXX
+          $env:CXX="clang-cl";
+          $env:CXX_LD="lld";
+          $env:CC=$env:CXX
         }
         
-
         if ($env:CXX) {
             $myobj = "" | Select "name", "val";
             $myobj.name = "env:CXX";
@@ -611,83 +130,10 @@ jobs:
             $csvarray += $myobj
         }
 
-        if (! (Get-Command meson -errorAction SilentlyContinue)) {
-            if (Test-Path "~/AppData/Local/Packages") {
-              cd "~/AppData/Local/Packages";
-              $meson_exe_path = Get-ChildItem -Path "meson.exe" -Recurse |
-                  Sort-Object -Descending -Property LastWriteTime |  
-                  Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
-            }
-
-            if (((! ($meson_exe_path)) -or (! (Test-Path -Path $meson_exe_path))) -and (Test-Path "~/AppData/Roaming/Python")) {
-              cd "~/AppData/Roaming/Python";
-              $meson_exe_path = Get-ChildItem -Path "meson.exe" -Recurse |
-                  Sort-Object -Descending -Property LastWriteTime |
-                  Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
-            }
-
-            if (((! ($meson_exe_path)) -or (! (Test-Path -Path $meson_exe_path))) -and (Test-Path "~/AppData")) {
-              cd "~/AppData";
-              $meson_exe_path = Get-ChildItem -Path "meson.exe" -Recurse |
-                  Sort-Object -Descending -Property LastWriteTime |
-                  Select -Index 0 | Select -ExpandProperty "FullName" | Split-Path
-            }
-
-            if (($meson_exe_path) -And (Test-Path -Path $meson_exe_path)) {
-                $env:Path="$env:Path;$meson_exe_path"
-            }
-            else {
-                Write-Host "WARNING: meson.exe directory not added to path"
-            }
-        }
-
-        # For pkg-config, we put the path segment for pkg-config.exe
-        # at the head of the path, so meson finds our installed
-        # pkg-config; whereas otherwise meson seems to find
-        # C:\Strawberry\perl\bin\pkg-config.BAT first, and then meson
-        # says "but it is Strawberry Perl and thus
-        # broken. Ignoring...", and fails to find our pkg-config.
-
-        if (($env:VCPKG_INSTALLATION_ROOT) -And
-            (Test-Path -Path "$env:VCPKG_INSTALLATION_ROOT\installed")) {
-            # We add the ...\vcpkg\installed\...\bin directory to the
-            # path. Not only does this mean that executables can be executed
-            # from that directory, it also allows DLLS to be loaded from that
-            # bin directory (since Windows DLL loader checks path), notably
-            # event_core.dll from libevent.
-    
-            cd "$env:VCPKG_INSTALLATION_ROOT\installed"
-            # Find ...\installed\...\bin directory. Choose shortest path
-            # if more than one
-            
-            $vcpkg_installed_bin_dir=Get-ChildItem -Path "bin" -Recurse |
-              Select -ExpandProperty "FullName" | Sort-Object { $_.Length } |
-              Select -Index 0;
-            if (($vcpkg_installed_bin_dir) -And
-              (Test-Path -Path $vcpkg_installed_bin_dir)) {
-                  $env:Path="$vcpkg_installed_bin_dir;$env:Path"
-            }
-            else {
-                Write-Error "...\vcpkg\installed\...\bin directory not found"
-            }
-
-            $vcpkg_installed_pkgconf_dir=Get-ChildItem -Path "pkgconf.exe" -Recurse |
-              Select -ExpandProperty "FullName" | Sort-Object { $_.Length } |
-              Select -Index 0 | Split-Path;
-            if (($vcpkg_installed_pkgconf_dir) -And
-              (Test-Path -Path $vcpkg_installed_pkgconf_dir)) {
-                  $env:Path="$vcpkg_installed_pkgconf_dir;$env:Path"
-                  # Puts pkgconf.exe on the Path
-
-                }
-
-            cd "$savedpwd"
-        }
-
         if (Test-Path -Path "$env:USERPROFILE\doxygen.bin") {
             $env:Path="$env:Path;$env:USERPROFILE\doxygen.bin"
         }
-        
+
         if ($env:PKG_CONFIG_PATH) {
             $myobj = "" | Select "name", "val";
             $myobj.name = "env:PKG_CONFIG_PATH";
@@ -701,18 +147,13 @@ jobs:
             $myobj.val = $env:Path;
             $csvarray += $myobj
         }
-        
+
         # Save vars for use in later steps
         
         cd ~;
         $csvarray | export-csv "tmpvars.csv"
         
         cat "tmpvars.csv"
-        
-
-    - uses: actions/checkout@v4
-      with:
-        submodules: true
 
     - name: Configure Meson
       env:
