@@ -667,7 +667,8 @@ namespace Pistache::Tcp
             }
 #endif
         }
-        else
+
+        if (it_second_ssl_is_null)
         {
             PST_DBG_DECL_SE_ERR_256_P_16;
             PS_LOG_DEBUG_ARGS("getsockopt failed for fd %p, actual fd %d, "
