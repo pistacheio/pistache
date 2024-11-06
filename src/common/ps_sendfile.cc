@@ -7,6 +7,7 @@
 // Defines a Linux-style ps_sendfile when in an OS that does not provide one
 // natively (BSD) or with a different interface (Windows)
 
+#include <pistache/pist_syslog.h>
 #include <pistache/ps_sendfile.h>
 
 /* ------------------------------------------------------------------------- */
@@ -21,7 +22,6 @@
 
 #include <algorithm> // for std::min
 
-#include <pistache/pist_syslog.h>
 /* ------------------------------------------------------------------------- */
 
 extern "C" PST_SSIZE_T ps_sendfile(em_socket_t out_fd, int in_fd,
