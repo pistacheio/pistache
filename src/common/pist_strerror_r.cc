@@ -6,10 +6,13 @@
 
 // Defines a pist_strerror_r for use in Windows
 
+#include <pistache/winornix.h>
 #include <pistache/pist_strerror_r.h>
 
 #include <string.h>
 #include <algorithm>
+
+#include PIST_QUOTE(PST_ERRNO_HDR)
 
 /* ------------------------------------------------------------------------- */
 
@@ -260,7 +263,7 @@ extern "C" char * pist_strerror_r(int errnum, char *buf, size_t buflen)
 
 /* ------------------------------------------------------------------------- */
 
-#elif !defined(__GNUC__) || defined(__clang__)
+#elif !defined(__GNUC__) || defined(__clang__) || defined(__NetBSD__)
 
 #include <pistache/ps_strl.h>
 

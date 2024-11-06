@@ -15,7 +15,8 @@
 
 /* ------------------------------------------------------------------------- */
 
-#if defined _IS_WINDOWS || !defined(__GNUC__) || defined(__clang__)
+#if defined _IS_WINDOWS || !defined(__GNUC__) || defined(__clang__)     \
+    || defined(__NetBSD__)
 
 /* ------------------------------------------------------------------------- */
 // Note: We use the GNU-specific definition (which returns char *), not the

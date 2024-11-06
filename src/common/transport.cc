@@ -14,10 +14,19 @@
 #include <pistache/eventmeth.h>
 
 #ifdef _USE_LIBEVENT_LIKE_APPLE
-#if !defined(_IS_WINDOWS) && !defined(__NetBSD__)
+
+#ifdef __NetBSD__
+// For TCP_NODELAY
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#else
+#ifndef _IS_WINDOWS
 // There is no TCP_NOPUSH/TCP_CORK in Windows or NetBSD
 #include <netinet/tcp.h> // for TCP_NOPUSH
 #endif
+#endif // of ifdef __NetBSD__ ... else ...
+
 #endif // of ifdef _USE_LIBEVENT_LIKE_APPLE
 
 // ps_sendfile.h includes sys/uio.h in macOS, and sys/sendfile.h in Linux

@@ -178,7 +178,8 @@ typedef int PST_SOCK_OPT_VAL_T;
 
 // Use #include PIST_QUOTE(PST_STRERROR_R_HDR)
 // mingw gcc doesn't define strerror_r (Oct/2024)
-#if defined(__GNUC__) && (!defined(__MINGW32__)) && (!defined(__clang__))
+#if defined(__GNUC__) && (!defined(__MINGW32__)) && (!defined(__clang__)) \
+    && (!defined(__NetBSD__))
 #define PST_STRERROR_R_HDR string.h
 #define PST_STRERROR_R strerror_r // returns char *
 #else
