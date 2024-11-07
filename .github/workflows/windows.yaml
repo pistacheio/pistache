@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022 Andrea Pappacoda
+# SPDX-FileCopyrightText: 2024 Duncan Greatwood
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -51,7 +51,7 @@ jobs:
         submodules: true
 
         # For Windows, we check out first, before installing
-        # dpendencies, so we can use the Pistache scripts
+        # dependencies, so we can use the Pistache scripts
         # msvcsetup.ps1 and gccsetup.ps1 for dependency installation
 
     - name: Install dependencies (Windows)
@@ -345,5 +345,65 @@ jobs:
         meson test --no-rebuild -C build --verbose
         # Use the following to run just a single test (e.g. http_server_test)
         #   build/tests/run_http_server_test
+
+    - name: Install
+      env:
+        mtrx_compiler: ${{ matrix.compiler }}
+        mtrx_def_debug: ${{ matrix.def_debug }}
+      run: >
+        $savedpwd=$pwd
+
+        cd ~;
+        $impcsv = import-csv -Path "tmpvars.csv";
+        foreach ($impobj in $impcsv) {
+            $impobj_name=$impobj.name;
+            $impobj_val=$impobj.val;
+            $assign_cmd=-join('$', "$impobj_name", '="', "$impobj_val", '"');
+            echo "assign_cmd is $assign_cmd";
+            Invoke-Expression "$assign_cmd"
+        }
+
+        if ($env:mtrx_compiler -eq "msvc") {
+          # Start a Visual Studio Developer Prompt
+
+          if (($dev_shell_path) -and (Test-Path -Path $dev_shell_path)) {
+              Write-Host "Doing Import-Module and Enter-VsDevShell";
+              Import-Module "$dev_shell_path";
+              $env:VSCMD_DEBUG=1;
+              Enter-VsDevShell -VsInstanceId $vs_instance_id -SkipAutomaticLocation -DevCmdDebugLevel Basic -DevCmdArguments '-arch=x64'
+          }
+          elseif (($launch_vs_dev_shell_dir) -and (Test-Path -Path $launch_vs_dev_shell_dir)) {
+              cd "$launch_vs_dev_shell_dir";
+              ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
+          }
+          else {
+              Write-Error
+                  "ERROR: Failed to start Visual Studio Developer Prompt"
+          }
+
+          # Import vars again in case starting dev prompt overwrote anything
+
+          cd ~;
+          $impcsv = import-csv -Path "tmpvars.csv";
+          foreach ($impobj in $impcsv) {
+              $impobj_name=$impobj.name;
+              $impobj_val=$impobj.val;
+              $assign_cmd=-join('$', "$impobj_name", '="', "$impobj_val", '"');
+              echo "assign_cmd is $assign_cmd";
+              Invoke-Expression "$assign_cmd"
+          }
+        }
+
+        cd "$savedpwd"
+
+        if (Test-Path -Path "$env:ProgramFiles\pistache_distribution\bin\pistachelog.dll") {
+            rm "$env:ProgramFiles\pistache_distribution\bin\pistachelog.dll"
+        }
+
+        meson install --no-rebuild -C build
+
+        if (! (Test-Path -Path "$env:ProgramFiles\pistache_distribution\bin\pistachelog.dll")) {
+            throw "pistachelog.dll not installed as expected"
+        }
 
     # No coverage analysis for Windows

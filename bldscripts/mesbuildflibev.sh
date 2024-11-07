@@ -13,7 +13,7 @@
 source bldscripts/mesflibevsetdirvars.sh
 source bldscripts/adjbuilddirformesbuild.sh
 
-if [ -e "./${MESON_BUILD_DIR}" ]
+if [ -e "${MESON_BUILD_DIR}" ]
 then
     echo "Using existing build dir ${MESON_BUILD_DIR}"
 else

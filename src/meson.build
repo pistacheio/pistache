@@ -332,27 +332,6 @@ if host_machine.system() == 'windows'
     deps_libpistache += gen_logging_txtfl_dep
 endif
 
-if get_option('PISTACHE_USE_CONTENT_ENCODING_BROTLI')
-	public_args += '-DPISTACHE_USE_CONTENT_ENCODING_BROTLI'
-endif
-
-if get_option('PISTACHE_USE_CONTENT_ENCODING_DEFLATE')
-	public_args += '-DPISTACHE_USE_CONTENT_ENCODING_DEFLATE'
-endif
-
-if get_option('PISTACHE_DEBUG')
-        add_project_arguments('-DDEBUG=1', language: 'cpp')
-endif
-
-if get_option('PISTACHE_LOG_AND_STDOUT')
-        add_project_arguments('-DPS_LOG_AND_STDOUT=true', language: 'cpp')
-endif
-
-if get_option('PISTACHE_FORCE_LIBEVENT')
-        add_project_arguments('-DPISTACHE_FORCE_LIBEVENT', language: 'cpp')
-endif
-
-
 libpistache = library(
 	'pistache',
 	sources: pistache_common_src + pistache_server_src + pistache_client_src + pistache_extra_src,

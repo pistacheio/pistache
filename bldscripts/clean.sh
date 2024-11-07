@@ -10,13 +10,13 @@
 #   bldscripts/clean.sh
 
 source bldscripts/messetdirvars.sh
-if [ -e "./${MESON_BUILD_DIR}" ]
+if [ -e "${MESON_BUILD_DIR}" ]
 then
     rm -rf ${MESON_BUILD_DIR}
 fi
 
 source bldscripts/mesdebugsetdirvars.sh
-if [ -e "./${MESON_BUILD_DIR}" ]
+if [ -e "${MESON_BUILD_DIR}" ]
 then
     rm -rf ${MESON_BUILD_DIR}
 fi
