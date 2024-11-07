@@ -25,9 +25,11 @@ if (($env:force_msys_gcc) -or `
       }
       else {
           cd ~
+          Write-Host "Downloading msys2-x86_64-latest.sfx.exe"
           Invoke-WebRequest -Uri `
             "https://repo.msys2.org/distrib/msys2-x86_64-latest.sfx.exe" `
             -Outfile "msys2-x86_64-latest.sfx.exe"
+          Write-Host "Self-extracting msys2-x86_64-latest.sfx.exe"
           .\msys2-x86_64-latest.sfx.exe -y -o$env:SYSTEMDRIVE\
           if (Test-Path -Path "$env:SYSTEMDRIVE\msys64") {
               $msys64_dir = "$env:SYSTEMDRIVE\msys64"
@@ -35,10 +37,12 @@ if (($env:force_msys_gcc) -or `
           else {
               throw "msys64 didn't install as expected?"
           }
+          Write-Host "Checking msys2 shell"
           & $msys64_dir\msys2_shell.cmd -defterm -here -no-start -ucrt64 -c “echo msysFirstTerminal”
       }
 
       if (! (Test-Path -Path "$msys64_dir\ucrt64\bin\gcc.exe")) {
+          Write-Host "Installing gcc"
           & $msys64_dir\msys2_shell.cmd -defterm -here -no-start -ucrt64 -c "pacman --noconfirm -S mingw-w64-ucrt-x86_64-gcc"
           if (! (Test-Path -Path "$msys64_dir\ucrt64\bin\gcc.exe")) {
               throw "gcc didn't install in msys as expected?"
@@ -46,6 +50,7 @@ if (($env:force_msys_gcc) -or `
       }
 
       if (! (Test-Path -Path "$msys64_dir\ucrt64\bin\gdb.exe")) {
+          Write-Host "Installing gdb"
           & $msys64_dir\msys2_shell.cmd -defterm -here -no-start -ucrt64 -c "pacman --noconfirm -S mingw-w64-ucrt-x86_64-gdb"
       }
 

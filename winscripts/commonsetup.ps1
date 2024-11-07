@@ -342,11 +342,11 @@ if (! (Get-Command doxygen -errorAction SilentlyContinue)) {
                         $ot_ver_with_underbars = $ot.Substring(8)
                         $ot_ver_with_dots = `
                           $ot_ver_with_underbars -replace "_", "."
-                        $latest_uri = `
+                        $download_uri = `
                           -join("https://www.doxygen.nl/files/doxygen-", `
                           $ot_ver_with_dots.TrimEnd(), ".windows.x64.bin.zip")
-                        Write-Host "doxygen: Fetching $latest_uri"
-                        Invoke-WebRequest -Uri $latest_uri `
+                        Write-Host "doxygen: Fetching $download_uri"
+                        Invoke-WebRequest -Uri $download_uri `
                           -OutFile doxygen.bin.zip
                         break
                     }
@@ -360,7 +360,26 @@ if (! (Get-Command doxygen -errorAction SilentlyContinue)) {
                 Write-Host "Fetching $download_uri"
                 Invoke-WebRequest -Uri $download_uri -OutFile doxygen.bin.zip
             }
-            Expand-Archive doxygen.bin.zip -DestinationPath doxygen.bin
+            try {
+                Expand-Archive doxygen.bin.zip -DestinationPath doxygen.bin
+            }
+            catch {
+                if ($download_uri) {
+                    # Occasionally (1 time in 100?) Expand-Archive
+                    # will fail, with an error like:
+                    #   New-Object : Exception calling ".ctor" with "3"...
+                    # Apparently, this happens when the downloaded zip
+                    # file was corrupt. We try downloading it again;
+                    # and apparently setting a different UserAgent may
+                    # help.
+                    Invoke-WebRequest -Uri $download_uri `
+                      -OutFile doxygen.bin.zip -UserAgent "NativeHost"
+                    Expand-Archive doxygen.bin.zip -DestinationPath doxygen.bin
+                }
+                else {
+                    throw "Unknown $download_uri for doxygen"
+                }
+            }
             $env:Path="$env:Path;$env:USERPROFILE\doxygen.bin"
         }
     }
