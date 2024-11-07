@@ -15,7 +15,9 @@ SPDX-License-Identifier: Apache-2.0
 
 Pistache is a modern and elegant HTTP and REST framework for C++. It is entirely written in pure-C++17[\*](#linux-only) and provides a clear and pleasant API.
 
-Pistache supports Linux and macOS. To use in macOS, see the file: *Building on macOS.txt*
+Pistache supports Linux, macOS, Windows and BSD (FreeBSD, OpenBSD, and
+NetBSD). To use in macOS, Windows, or BSD, see the respective files:
+*Building on macOS.txt*, *Building on Windows.txt* or *Building on BSD.txt*.
 
 ## Documentation
 
@@ -270,4 +272,4 @@ int main() {
 
 Pistache hasn't yet hit the 1.0 release. This means that the project is _unstable_ but not _unusable_. In fact, most of the code is production ready; you can use Pistache to develop a RESTful API without issues, but the HTTP client has a few issues in it that make it buggy.
 
-<b id="linux-only">\*</b> While most code uses modern C++, Pistache makes use of some Linux-specific APIs where the standard library doesn't provide alternatives, and works only on that OS. See [#6](https://github.com/pistacheio/pistache/issues/6#issuecomment-242398225) for details. If you know how to help, please contribute a PR to add support for your desired platform :)
+<b id="linux-only">\*</b> While most code uses modern C++, Pistache makes use of some platform-specific APIs where the standard library doesn't provide alternatives. If you know how to help, please contribute a PR to add support for your desired platform :)
