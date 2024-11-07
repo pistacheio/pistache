@@ -224,7 +224,7 @@ namespace Pistache::Tcp
             if (!(options.hasFlag(Options::ReuseAddr)))
             {
                 TRY(::setsockopt(actualFd, SOL_SOCKET,
-                             SO_REUSEADDR, &one, sizeof(one)));
+                                 SO_REUSEADDR, &one, sizeof(one)));
             }
 #else
             TRY(::setsockopt(actualFd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(one)));
@@ -237,7 +237,7 @@ namespace Pistache::Tcp
             opt.l_onoff  = 1;
             opt.l_linger = 1;
             TRY(::setsockopt(actualFd, SOL_SOCKET, SO_LINGER,
-                             reinterpret_cast<PST_SOCK_OPT_VAL_T *>(&opt),
+                             reinterpret_cast<PST_SOCK_OPT_VAL_T*>(&opt),
                              sizeof(opt)));
         }
 
@@ -377,7 +377,7 @@ namespace Pistache::Tcp
             PS_LOG_DEBUG_ARGS("::bind failed, actual_fd %d", actual_fd);
             PST_SOCK_CLOSE(actual_fd);
             errno = tmp_errno;
-            
+
             return false;
         }
 
@@ -403,9 +403,9 @@ namespace Pistache::Tcp
         // Use EVM_READ, as per call to addFd below
         Fd event_fd = TRY_NULL_RET(
             Polling::Epoll::em_event_new(actual_fd, // pre-allocated file desc
-                              EVM_READ | EVM_PERSIST |EVM_ET,
-                              F_SETFDL_NOTHING, // f_setfd_flags - don't change
-                              F_SETFDL_NOTHING // f_setfl_flags - don't change
+                                         EVM_READ | EVM_PERSIST | EVM_ET,
+                                         F_SETFDL_NOTHING, // f_setfd_flags - don't change
+                                         F_SETFDL_NOTHING // f_setfl_flags - don't change
                                          ));
 #else
         Fd event_fd = actual_fd;
@@ -534,7 +534,7 @@ namespace Pistache::Tcp
     void Listener::run()
     {
         PS_TIMEDBG_START;
-        
+
         if (!shutdownFd.isBound())
             shutdownFd.bind(poller);
         reactor_->run();
@@ -562,7 +562,7 @@ namespace Pistache::Tcp
 
                     if (event.flags.hasFlag(Polling::NotifyOn::Read))
                     {
-                        Fd fd = event.tag.value();
+                        Fd fd = static_cast<Fd>(event.tag.value());
                         if (fd == listen_fd)
                         {
                             try
@@ -590,15 +590,14 @@ namespace Pistache::Tcp
     void Listener::runThreaded()
     {
         PS_TIMEDBG_START;
-        
+
         shutdownFd.bind(poller);
         PS_LOG_DEBUG("shutdownFd.bind done");
-        
-        acceptThread = std::thread([=]()
-       {
-           PS_TIMEDBG_START;
-           this->run();
-       });
+
+        acceptThread = std::thread([=]() {
+            PS_TIMEDBG_START;
+            this->run();
+        });
     }
 
     void Listener::shutdown()
@@ -720,10 +719,10 @@ namespace Pistache::Tcp
                 timeout.tv_usec                  = static_cast<PST_SUSECONDS_T>(residual_microseconds.count());
 
                 TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_RCVTIMEO,
-                                 reinterpret_cast<PST_SOCK_OPT_VAL_T *>(&timeout),
+                                 reinterpret_cast<PST_SOCK_OPT_VAL_T*>(&timeout),
                                  sizeof(timeout)));
                 TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_SNDTIMEO,
-                                 reinterpret_cast<PST_SOCK_OPT_VAL_T *>(&timeout),
+                                 reinterpret_cast<PST_SOCK_OPT_VAL_T*>(&timeout),
                                  sizeof(timeout)));
             }
 
@@ -737,11 +736,11 @@ namespace Pistache::Tcp
                        // https://docs.openssl.org/3.1/man3/SSL_set_fd/
                        static_cast<int>(
 #endif
-                       actual_cli_fd
+                           actual_cli_fd
 #ifdef _IS_WINDOWS
                            )
 #endif
-                );
+            );
             SSL_set_accept_state(ssl_data);
 
             int ssl_accept_res = SSL_accept(ssl_data);
@@ -786,10 +785,10 @@ namespace Pistache::Tcp
                 timeout.tv_usec = 0;
 
                 TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_RCVTIMEO,
-                                 reinterpret_cast<PST_SOCK_OPT_VAL_T *>(&timeout),
+                                 reinterpret_cast<PST_SOCK_OPT_VAL_T*>(&timeout),
                                  sizeof(timeout)));
                 TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_SNDTIMEO,
-                                 reinterpret_cast<PST_SOCK_OPT_VAL_T *>(&timeout),
+                                 reinterpret_cast<PST_SOCK_OPT_VAL_T*>(&timeout),
                                  sizeof(timeout)));
             }
 
@@ -812,9 +811,9 @@ namespace Pistache::Tcp
         // sense to have it be able to read *or* write?
         Fd client_fd = TRY_NULL_RET(
             Polling::Epoll::em_event_new(actual_cli_fd, // pre-alloced file dsc
-                              EVM_READ | EVM_WRITE | EVM_PERSIST | EVM_ET,
-                              F_SETFDL_NOTHING, // f_setfd_flags - don't change
-                              F_SETFDL_NOTHING // f_setfl_flags - don't change
+                                         EVM_READ | EVM_WRITE | EVM_PERSIST | EVM_ET,
+                                         F_SETFDL_NOTHING, // f_setfd_flags - don't change
+                                         F_SETFDL_NOTHING // f_setfl_flags - don't change
                                          ));
 #else
         Fd client_fd = actual_cli_fd;

@@ -17,9 +17,9 @@
 
 #ifdef __NetBSD__
 // For TCP_NODELAY
-#include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <sys/socket.h>
 #else
 #ifndef _IS_WINDOWS
 // There is no TCP_NOPUSH/TCP_CORK in Windows or NetBSD
@@ -32,7 +32,7 @@
 // ps_sendfile.h includes sys/uio.h in macOS, and sys/sendfile.h in Linux
 #include <pistache/ps_sendfile.h>
 
-#include PIST_QUOTE(PST_MISC_IO_HDR)// unistd.h/lseek in BSD.
+#include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h/lseek in BSD.
 
 #include PIST_QUOTE(PIST_SOCKFNS_HDR) // socket read, write and close
 
@@ -135,7 +135,7 @@ namespace Pistache::Tcp
         if (!isInRightThread)
         {
             PS_LOG_DEBUG("Pushing to peersQueue");
-            
+
             PeerEntry entry(peer);
             peersQueue.push(std::move(entry));
         }
@@ -221,8 +221,7 @@ namespace Pistache::Tcp
             else if (entry.isReadable())
             {
                 auto tag = entry.getTag();
-                PS_LOG_DEBUG_ARGS("entry isReadable fd %"
-                                  PIST_QUOTE(PS_FD_PRNTFCD),
+                PS_LOG_DEBUG_ARGS("entry isReadable fd %" PIST_QUOTE(PS_FD_PRNTFCD),
                                   tag.value()); // TagValue type := Fd
 
                 if (isPeerFd(tag))
@@ -533,12 +532,10 @@ namespace Pistache::Tcp
                     PST_DBG_DECL_SE_ERR_256_P_16;
                     PS_LOG_DEBUG_ARGS("fd %" PIST_QUOTE(PS_FD_PRNTFCD) " errno %d %s",
                                       fd, errno, PST_STRERROR_R(errno, &se_err[0], 256));
-                    
 
                     if (errno == EAGAIN || errno == EWOULDBLOCK)
                     {
-                        auto bufferHolder =
-                            buffer.detach(static_cast<off_t>(totalWritten));
+                        auto bufferHolder = buffer.detach(static_cast<off_t>(totalWritten));
 
                         // pop_front kills buffer - so we cannot continue loop or use buffer
                         // after this point
@@ -604,7 +601,7 @@ namespace Pistache::Tcp
     void Transport::configureMsgMoreStyle(Fd fd, bool msg_more_style)
     {
         // PS_USE_TCP_NODELAY defined (or not) at top of file
-        
+
         int tcp_no_push  = 0;
         socklen_t len    = sizeof(tcp_no_push);
         int sock_opt_res = -1;
@@ -612,8 +609,8 @@ namespace Pistache::Tcp
 #ifdef PS_USE_TCP_NODELAY
         { // encapsulate
             PST_SOCK_OPT_VAL_T tcp_nodelay = 0;
-            sock_opt_res    = getsockopt(GET_ACTUAL_FD(fd), tcp_prot_num_,
-                                         TCP_NODELAY, &tcp_nodelay, &len);
+            sock_opt_res                   = getsockopt(GET_ACTUAL_FD(fd), tcp_prot_num_,
+                                                        TCP_NODELAY, &tcp_nodelay, &len);
             if (sock_opt_res == 0)
                 tcp_no_push = !tcp_nodelay;
         }
@@ -653,7 +650,7 @@ namespace Pistache::Tcp
 #elif defined __APPLE__ || defined _IS_BSD
                                           TCP_NOPUSH,
 #else
-                                          TCP_CORK,
+                                              TCP_CORK,
 #endif
                                           &optval, len);
                 if (sock_opt_res < 0)
@@ -667,8 +664,7 @@ namespace Pistache::Tcp
             }
 #endif
         }
-
-        if (it_second_ssl_is_null)
+        else
         {
             PST_DBG_DECL_SE_ERR_256_P_16;
             PS_LOG_DEBUG_ARGS("getsockopt failed for fd %p, actual fd %d, "
@@ -745,16 +741,16 @@ namespace Pistache::Tcp
                 // Windows and MSG_NOSIGNAL is not defined in Windows
                 PST_SOCK_SEND(GET_ACTUAL_FD(fd), buffer, len, flags);
 #else
-                PST_SOCK_SEND(GET_ACTUAL_FD(fd), buffer, len,
-                              flags | MSG_NOSIGNAL);
-                // MSG_NOSIGNAL is used to prevent SIGPIPE on client connection
-                // termination
+            PST_SOCK_SEND(GET_ACTUAL_FD(fd), buffer, len,
+                          flags | MSG_NOSIGNAL);
+        // MSG_NOSIGNAL is used to prevent SIGPIPE on client connection
+        // termination
 #endif
 #ifdef _USE_LIBEVENT_LIKE_APPLE
             PS_LOG_DEBUG_ARGS("bytesWritten = %d, msg_more_style = %s",
                               bytesWritten, msg_more_style ? "on" : "off");
 #else
-            PS_LOG_DEBUG_ARGS("bytesWritten = %d", bytesWritten);
+        PS_LOG_DEBUG_ARGS("bytesWritten = %d", bytesWritten);
 #endif
 
 #ifdef PS_USE_TCP_NODELAY
@@ -824,7 +820,7 @@ namespace Pistache::Tcp
             // See prior comment on why configureMsgMoreStyle is done after
             // "send" in TCP_NODELAY case.
             configureMsgMoreStyle(fd, false /*msg_more_style*/);
-            
+
             // !!!! Should we do configureMsgMoreStyle for SSL as well? And
             // same question in sendRawBuffer
 #endif
@@ -842,9 +838,9 @@ namespace Pistache::Tcp
             // position of "file", which is the same as the behavior described
             // in Linux sendfile man page
             int sendfile_res = PS_SENDFILE(file, GET_ACTUAL_FD(fd),
-                                          offset, &len_as_off_t,
-                                          NULL, // no new prefix/suffix content
-                                          0 /*reserved, must be zero*/);
+                                           offset, &len_as_off_t,
+                                           NULL, // no new prefix/suffix content
+                                           0 /*reserved, must be zero*/);
 
             if (sendfile_res == 0)
             {
@@ -857,14 +853,14 @@ namespace Pistache::Tcp
             }
 
 #else
-            bytesWritten = PS_SENDFILE(GET_ACTUAL_FD(fd), file, &offset, len);
+        bytesWritten = PS_SENDFILE(GET_ACTUAL_FD(fd), file, &offset, len);
 #endif
 #ifdef PS_USE_TCP_NODELAY
             // See prior comment on why configureMsgMoreStyle is done after
             // "send" in TCP_NODELAY case.
             configureMsgMoreStyle(fd, false /*msg_more_style*/);
 #endif
-            
+
             PS_LOG_DEBUG_ARGS(
                 "%s fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", bytesWritten %d",
                 sendfile_fn_name, fd, bytesWritten);

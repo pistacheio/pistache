@@ -305,8 +305,9 @@ typedef struct in_addr PST_IN_ADDR_T;
 #endif
 
 // Use #include PIST_QUOTE(PST_ERRNO_HDR)
-#ifdef _IS_WINDOWS
+#if defined(_IS_WINDOWS) || defined(__APPLE__)
 // pistache/pst_errno.h prevents mingw gcc's bad macro substitution on errno
+// Same issue with clang on macOS
 #define PST_ERRNO_HDR pistache/pst_errno.h
 #else
 #define PST_ERRNO_HDR sys/errno.h
