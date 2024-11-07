@@ -151,7 +151,7 @@ if host_machine.system() == 'windows'
     # install" expects the .lib file to exist, so we create it.
     pistachelog_implib_linkarg = 'NONE'
     if compiler.get_id() == 'gcc'
-        pistachelog_implib_linkarg = '-Wl,--out-implib=src\pistachelog.lib'
+        pistachelog_implib_linkarg = '-Wl,--out-implib=src/libpistachelog.dll.a'
     else
         # Using the /DEF: linker arg to create the import library (.lib)
         # pistachelog.def is an empty .def file provided in the source

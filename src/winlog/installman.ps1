@@ -7,8 +7,9 @@
 #
 
 # Usage:
-# installman.ps1 -inpstlogdll <pistachelog.dll path> -inpstman <manifest path>
-#                            -outpstmaninst <file into which date+time written>
+# installman.ps1 -dirinpstlogdll <dll path> -inpstlogdll <dll name> `
+#                -inpstman <manifest path> `
+#                -outpstmaninst <file into which date+time written>
 
 # This script is expected to be run at build time ("meson
 # compile..."), not at install time ("meson install..."). By
@@ -33,7 +34,7 @@ param (
 
 if (-Not (Test-Path -Path "$dirinpstlogdll"))
 {
-    throw "pistachelog.dll directory not found at $dirinpstlogdll"
+    throw "Directory $dirinpstlogdll not found"
 }
 
 $fpinpstlogdll = Join-Path -Path "$dirinpstlogdll" -ChildPath "$inpstlogdll"
@@ -41,10 +42,16 @@ $fpinpstlogdll = Join-Path -Path "$dirinpstlogdll" -ChildPath "$inpstlogdll"
 Write-Host "fpinpstlogdll is $fpinpstlogdll"
 if (-Not (Test-Path -Path "$fpinpstlogdll"))
 {
-    throw "pistachelog.dll not found at $fpinpstlogdll"
+    throw "DLL not found at $fpinpstlogdll"
 }
 
-if (-Not (Test-Path "$fpinpstlogdll"))
+$logdll_name = Split-Path -Path "$fpinpstlogdll" -Leaf
+if ("$logdll_name" -ne "pistachelog.dll")
+{
+    $alt_logdll_name = "pistachelog.dll"
+}
+
+if (-Not (Test-Path "$inpstman"))
 {
     throw "Pistache manifest file not found at $inpstman"
 }
@@ -67,7 +74,12 @@ if (-Not (Test-Path "$outpstmaninst"))
 rm "$outpstmaninst"
 
 cp "$fpinpstlogdll" "$env:ProgramFiles\pistache_distribution\bin\."
-
+if ($alt_logdll_name)
+{
+    cp "$fpinpstlogdll" `
+      "$env:ProgramFiles\pistache_distribution\bin\$alt_logdll_name"
+}
+    
 wevtutil um "$inpstman" # Uninstall - does nothing if not installed
 wevtutil im "$inpstman" # Install
 

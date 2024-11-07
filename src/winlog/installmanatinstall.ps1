@@ -37,6 +37,22 @@ if (-Not (Test-Path -Path "$pistwinlogman"))
 }
 
 $pistachelogdll="$pistinstbase\bin\pistachelog.dll"
+$pistacheloggccdll="$pistinstbase\bin\libpistachelog.dll"
+if (Test-Path -Path "$pistacheloggccdll")
+{
+    if (Test-Path -Path "$pistachelogdll")
+    {
+        $pistachelogdlldate = `
+          Get-Item "$pistachelogdll" | Foreach {$_.LastWriteTime}
+    }
+    if ((! ($pistachelogdlldate)) -or `
+      (Test-Path -Path "$pistacheloggccdll" -NewerThan "$pistachelogdlldate"))
+    {
+        cp "$pistacheloggccdll" "$pistachelogdll"
+        Write-Host "Copied $pistacheloggccdll to $pistachelogdll"
+    }
+}
+    
 if (-Not (Test-Path "$pistachelogdll"))
 {
     throw "pistachelog.dll not found at $pistachelogdll"

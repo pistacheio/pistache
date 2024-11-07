@@ -17,7 +17,7 @@ if (! (Get-Command git -errorAction SilentlyContinue)) {
     if ((Test-Path -Path "$env:ProgramFiles/Git/cmd/git.exe") -Or `
       (Test-Path -Path "$env:ProgramFiles/Git/bin/git.exe")) {
           $git_dir = "$env:ProgramFiles/Git"
-    }
+      }
     elseif ((Test-Path -Path "${env:ProgramFiles(x86)}/Git/cmd/git.exe") -Or `
       (Test-Path -Path "${env:ProgramFiles(x86)}/Git/bin/git.exe")) {
           $git_dir = "${env:ProgramFiles(x86)}/Git"
@@ -28,15 +28,16 @@ if (! (Get-Command git -errorAction SilentlyContinue)) {
         if (Get-Command winget -errorAction SilentlyContinue) {
             Invoke-WebRequest -Uri "https://git.io/JXGyd" -OutFile "git.inf"
             winget install Git.Git --override '/SILENT /LOADINF="git.inf"'
+            # Don't set $git_dir; winget takes care of path
         }
         else {
             $mingit_latest_url=(Invoke-WebRequest -Uri "https://raw.githubusercontent.com/git-for-windows/git-for-windows.github.io/refs/heads/main/latest-64-bit-mingit.url").Content
             Write-Host "Downloading mingit"
             Invoke-WebRequest -Uri "$mingit_latest_url" -Outfile "mingit_latest.zip"
             Expand-Archive -Path "mingit_latest.zip" -DestinationPath "$env:ProgramFiles/Git"
+            $git_dir = "$env:ProgramFiles/Git"
         }
-        $git_dir = "$env:ProgramFiles/Git"
-
+        
         Write-Host "git installed"
         Write-Host "You may want to configure git as well:"
         Write-Host '  git config --global user.email "you@somedomain.com"'
@@ -45,7 +46,9 @@ if (! (Get-Command git -errorAction SilentlyContinue)) {
         Write-Host '  etc.'
     }
 
-    $env:Path="$git_dir\cmd;$git_dir\mingw64\bin;$git_dir\usr\bin;$env:Path"
+    if ($git_dir) {
+      $env:Path="$git_dir\cmd;$git_dir\mingw64\bin;$git_dir\usr\bin;$env:Path"
+    }
 }
     
 
