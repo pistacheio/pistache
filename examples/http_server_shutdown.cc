@@ -40,7 +40,7 @@ static BOOL consoleCtrlHandler(DWORD dwCtrlType)
     if (lCtrlType == 0)
     {
         lCtrlType = dwCtrlType;
-        
+
         lSigBool = true;
         cv.notify_one();
     }
@@ -56,7 +56,7 @@ int main()
     // Note: SetConsoleCtrlHandler can be used for console apps or GUI apps;
     // for GUI apps, the notification from WM_QUERYENDSESSION _may_ arrive
     // before the call to consoleCtrlHandler
-    
+
     BOOL set_cch_res = SetConsoleCtrlHandler(consoleCtrlHandler,
                                              true /*Add*/);
     if (!set_cch_res)
@@ -86,7 +86,7 @@ int main()
     server.init(opts);
     server.setHandler(Http::make_handler<HelloHandler>());
     server.serveThreaded();
-    
+
 #ifdef _WIN32
     std::unique_lock<std::mutex> lock(lMutex);
     cv.wait(lock, [&] {return(lSigBool.load());});
@@ -108,22 +108,22 @@ int main()
             "ctrl-break received from keyboard or GenerateConsoleCtrlEvent" <<
             std::endl;
         break;
-        
+
     case CTRL_CLOSE_EVENT:
         std::cout <<
             "Attached console closed" << std::endl;
         break;
-        
+
     case CTRL_LOGOFF_EVENT:
         std::cout <<
             "User logging off" << std::endl;
         break;
-        
+
     case CTRL_SHUTDOWN_EVENT:
         std::cout <<
             "System shutting down" << std::endl;
         break;
-        
+
     default:
         perror("ctrl-type unknown");
         break;

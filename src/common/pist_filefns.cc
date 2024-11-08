@@ -96,7 +96,7 @@ extern "C" PST_SSIZE_T pist_pread(int fd, void *buf,
         errno = EIO;
         return(-1);
     }
-    
+
     return(num_bytes_read);
 }
 
@@ -105,7 +105,7 @@ extern "C" PST_SSIZE_T pist_pread(int fd, void *buf,
 int pist_open(const char *pathname, int flags)
 {
     // Regarding mode, Linux man page states:
-    // 
+    //
     // If neither O_CREAT nor O_TMPFILE is specified in flags, then mode is
     // ignored (and can thus be specified as 0, or simply omitted).  The mode
     // argument must be supplied if O_CREAT or O_TMPFILE is specified in flags

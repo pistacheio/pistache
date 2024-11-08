@@ -135,7 +135,7 @@ TEST(https_server_test, first_curl_global_init)
 // work in Windows which otherwise failed:
 //   https_server_test.basic_tls_request
 //   https_server_test.basic_tls_request_with_chained_server_cert
-//   https_server_test.basic_tls_request_with_servefile 
+//   https_server_test.basic_tls_request_with_servefile
 //   https_server_test.basic_tls_request_with_password_cert
 
 #define CSO_WIN_REVOKE_BEST_EFFORT                                      \
@@ -173,7 +173,7 @@ TEST(https_server_test, basic_tls_request)
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
     CSO_WIN_REVOKE_BEST_EFFORT;
-    
+
     // Skip hostname check
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 
@@ -219,7 +219,7 @@ TEST(https_server_test, basic_tls_request_with_chained_server_cert)
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
     CSO_WIN_REVOKE_BEST_EFFORT;
-    
+
     /* Skip hostname check */
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 

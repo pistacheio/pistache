@@ -44,7 +44,7 @@
                 <!--win:Critical, win:Error, win:Warning-->
                 <!--win:Informational, win:Verbose-->
                 <tasks>
-                    <task name="PSTCH" 
+                    <task name="PSTCH"
                           symbol="TASK_PSTCH"
                           value="1"
                           message="$(string.Task.PSTCH)"/>
@@ -131,7 +131,7 @@
                     <!-- No event value="101" -->
                     <!-- level="win:Verbose" cannot be used with -->
                     <!-- cadminbltin channel -->
-                    
+
                     <event value="102"
                         level="win:Informational"
                         task="PSTCH"

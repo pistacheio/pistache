@@ -228,7 +228,7 @@ namespace Pistache
 
 #ifdef _USE_LIBEVENT
             short events = static_cast<short>(epoll_fd->toEvEvents(interest));
-            
+
             if (mode == Mode::Edge)
                 events |= EVM_ET;
 
@@ -293,7 +293,6 @@ namespace Pistache
 
             if (mode == Mode::Edge)
                 events |= EVM_ET;
-            
             EventMethFns::setEmEventUserData(fd, tag.value_);
             TRY(epoll_fd->ctl(EvCtlAction::Mod,
                               fd, events, NULL /* time */));

@@ -36,4 +36,4 @@ extern "C" int pist_getrusage(int who, struct PST_RUSAGE * rusage);
 #endif // of ifdef _IS_WINDOWS
 
 /* ------------------------------------------------------------------------- */
-#endif // of ifndef _PIST_CLOCK_GETTIME_H_
+#endif // of ifndef _PIST_PIST_RESOURCE_H_

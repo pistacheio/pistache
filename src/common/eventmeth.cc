@@ -312,7 +312,7 @@ namespace Pistache
 
         int disarm();
         int close(); // disarms and closes
-        
+
         // In level-triggered systems, "deactivate" is used for a triggered
         // event, calling libevent's event_del and then event_add. event_del
         // causes the event to be inactive and non-pending, while event_add
@@ -323,7 +323,7 @@ namespace Pistache
         // Call only on OS where we don't have edge-trigger support (i.e. where
         // libevent does not have EV_FEATURE_ET)
         int deactivateAfterTriggerIfNeeded();
-        
+
 
         // Return -1 if there is no actual file descriptor
         static evutil_socket_t getActualFd(const EmEvent * em_ev);
@@ -2425,7 +2425,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
     int EmEvent::deactivate()
     {
         PS_TIMEDBG_START;
-        
+
         if (ev_ == NULL)
             return(0); // nothing to do
 
@@ -2456,7 +2456,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
     int EmEvent::deactivateAfterTriggerIfNeeded()
     {
         PS_TIMEDBG_START;
-        
+
         if (!(flags_ & EVM_ET))
         {
             if (!(flags_ & EVM_PERSIST))
@@ -2466,16 +2466,13 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
                 return(disarm());
             }
 
-            // Remove !!!!
-            PS_LOG_DEBUG("flags_ has EVM_PERSIST, but does not have EVM_ET");
-            
             return(0);
         }
 
         if (flags_ & EVM_PERSIST)
         {
             PS_LOG_DEBUG("Deactivate event");
-            
+
             // deactivates the libevent event and makes it pending
             return(deactivate());
         }
@@ -2559,7 +2556,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
                               "unexpectedly not in emee_cptr_set, "
                               "nulling out event_meth_epoll_equiv_impl_",
                 this, tmp_event_meth_epoll_equiv);
-            
+
             PS_LOG_DEBUG_ARGS("Setting EMEE null for EmEvent %p", this);
             event_meth_epoll_equiv_impl_ = NULL;
             return(NULL);
@@ -2582,7 +2579,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
     // libevent event_base class, which is in EventMethBase, which in turn is
     // in EventMethEpollEquiv. So if EventMethEpollEquiv goes out of scope,
     // then ev_ needs to be freed.
-    // 
+    //
     // Note that this uses event_free, not event_free_finalize; as such, it can
     // be safely called only after event_base_loopbreak or event_base_loopexit,
     // which guarantee that there will be no more event callbacks on the event
@@ -3514,11 +3511,11 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
         if (evm_events & EVM_SIGNAL)
         {
             // Signals in Windows vs. Linux:
-            // 
+            //
             // In Linux, signal constants can be found, for instance, in
             // include/asm-generic/signal.h. In Windows, e.g., in "C:\Program
             // Files (x86)\Windows Kits\10\Include\10.0.22621.0\ucrt\signal.h"
-            // 
+            //
             // SIGURG, SIGCONT, SIGCHLD, SIGIO, SIGWINCH are defined in the
             // Linux signal.h (as you'd expect) but not in Windows. The only
             // Windows signal not defined in Linux is SIGBREAK "Ctrl-Break

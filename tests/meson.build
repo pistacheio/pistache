@@ -79,7 +79,7 @@ if host_machine.system() == 'windows'
                               depends: [libpistache])
 
     unversioned_dll_cts += unversioned_dll_ct1
-    
+
     if compiler.get_id() == 'gcc'
         unversioned_dll_ct2 = custom_target('altname_dll',
                               input: [libpistache],
@@ -107,7 +107,7 @@ if host_machine.system() == 'windows' and compiler.get_id() == 'gcc'
     # Ref: https://learn.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-search-order
     # The alternative might be do it using DLL redirection (see
     # https://learn.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-redirection)
-    
+
     test_link_args += '-static-libgcc'
     test_link_args += '-static-libstdc++'
 endif

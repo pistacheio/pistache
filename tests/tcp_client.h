@@ -113,7 +113,7 @@ namespace Pistache
                     0;
 #else
                 MSG_NOSIGNAL; // Doesn't exist in Windows
-#endif                
+#endif
                 PST_SSIZE_T n = PST_SOCK_SEND(fd_, data + total, len - total, send_flags);
                 if (n == -1)
                 {

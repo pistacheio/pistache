@@ -37,7 +37,7 @@ inline SOCKET get_win_socket_from_em_socket_t(em_socket_t ems)
 static int WSAGetLastErrorSetErrno()
 {
     int wsa_last_err = WSAGetLastError();
-    
+
     switch(wsa_last_err)
     {
     case WSANOTINITIALISED:
@@ -216,7 +216,7 @@ class WsaStartupAndCleanup
 public:
     WsaStartupAndCleanup() : inited(true) {};
     ~WsaStartupAndCleanup();
-    
+
 private:
     bool inited;
 };
@@ -243,7 +243,7 @@ int pist_sock_startup_check()
     GUARD_AND_DBG_LOG(lWsaStartupDoneMutex);
     if (lWsaStartupDone)
         return(0);
-    
+
     const WORD version_required = (2 * 0x100) + 2; // version 2.2
     WSADATA wsadata;
     memset(&wsadata, 0, sizeof(wsadata));
@@ -261,33 +261,33 @@ int pist_sock_startup_check()
         PS_LOG_DEBUG("WSAStartup WSASYSNOTREADY");
         errno = ENETUNREACH;
         break;
-        
+
     case WSAVERNOTSUPPORTED:
         PS_LOG_DEBUG("WSAStartup WSAVERNOTSUPPORTED");
         errno = EOPNOTSUPP;
         break;
-        
+
     case WSAEINPROGRESS:
         PS_LOG_DEBUG("WSAStartup WSAEINPROGRESS");
         errno = EINPROGRESS;
         break;
-        
+
     case WSAEPROCLIM:
         PS_LOG_DEBUG("WSAStartup WSAEPROCLIM");
         errno = EMFILE; // too many files
         break;
-        
+
     case WSAEFAULT:
         PS_LOG_DEBUG("WSAStartup WSAEFAULT");
         errno = EFAULT;
         break;
-        
+
     default:
         PS_LOG_DEBUG_ARGS("Unexpected WSAStartup error %d:", wsastartup_res);
         errno = EIO;
         break;
     }
-    
+
     return(-1);
 }
 
@@ -296,7 +296,7 @@ WsaStartupAndCleanup::~WsaStartupAndCleanup() // DO NOT LOG
     // Since this is the destructor of what is in fact a static instance, we
     // are careful not log here (we just use std::cout instead); the logging
     // object may already have been destroyed before this destructor is called
-    
+
     if (!lWsaStartupDone)
         return;
 
@@ -320,9 +320,6 @@ WsaStartupAndCleanup::~WsaStartupAndCleanup() // DO NOT LOG
         wsa_cleanupres << std::endl;
     #endif
 }
-
-
-    
 
 /* ------------------------------------------------------------------------- */
 
@@ -581,7 +578,7 @@ int pist_sock_poll(PST_POLLFD_T * fds, PST_NFDS_T nfds, int timeout)
 
     return(WSAGetLastErrorSetErrno());
 }
-            
+
 /* ------------------------------------------------------------------------- */
 
 PST_SSIZE_T pist_sock_send(em_socket_t em_sock, const void *buf,
@@ -625,7 +622,7 @@ PST_SSIZE_T pist_sock_recv(em_socket_t em_sock, void * buf, size_t len,
 
     int recv_res = ::recv(win_sock, reinterpret_cast<char *>(buf),
                           static_cast<int>(len), flags);
-    
+
     if (recv_res != SOCKET_ERROR)
         return(recv_res); // success - ret number of bytes received
 

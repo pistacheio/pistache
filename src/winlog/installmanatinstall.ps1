@@ -12,9 +12,10 @@
 # MESON_INSTALL_PREFIX, which are set by "meson install...".
 #
 # This script doesn't copy pistachelog.dll (which will be put in place
-# by the normal "meson install..." mechanisms), it exists solely to
-# install the logging manifest file pist_winlog.man and set the
-# Windows Registry key property value
+# by the normal "meson install..." mechanisms - except with gcc, where
+# the file needs to be renamed due to gcc naming convention); this
+# script exists to install the logging manifest file pist_winlog.man
+# and set the Windows Registry key property value
 # HKCU:\Software\pistacheio\pistache\psLogToStdoutAsWell.
 
 $pistinstbase="$env:DESTDIR\$env:MESON_INSTALL_PREFIX"

@@ -187,7 +187,7 @@ $env:CC=$env:CXX
 
 if (! (Get-Command ninja -errorAction SilentlyContinue)) {
     # Try looking in Microsoft Visual Studio
-    
+
     if (Test-Path -Path "$env:ProgramFiles/Microsoft Visual Studio") {
         cd "$env:ProgramFiles/Microsoft Visual Studio"
         $ninja_dir = Get-ChildItem -Path "ninja.exe" -Recurse | `
@@ -197,7 +197,7 @@ if (! (Get-Command ninja -errorAction SilentlyContinue)) {
 
     if ((! ($ninja_dir)) -or (! (Test-Path -Path $ninja_dir))) {
         # Try looking in 32-bit Microsoft Visual Studio
-        
+
         if (Test-Path -Path `
           "${env:ProgramFiles(x86)}/Microsoft Visual Studio") {
             cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio"
@@ -268,6 +268,5 @@ if ((! ($env:plain_prompt)) -or ($env:plain_prompt -ne "Y"))
         function global:prompt {"MVS> "}
     }
 }
-        
-cd "$savedpwd"
 
+cd "$savedpwd"

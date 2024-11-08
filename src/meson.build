@@ -15,26 +15,26 @@ pistache_common_src = [
 	'common'/'net.cc',
 	'common'/'os.cc',
 	'common'/'peer.cc',
+	'common'/'pist_check.cc',
 	'common'/'pist_clock_gettime.cc',
-        'common'/'pist_fcntl.cc',
-        'common'/'pist_filefns.cc',
-        'common'/'pist_sockfns.cc',
-        'common'/'pist_ifaddrs.cc',
-        'common'/'pist_resource.cc',
-        'common'/'pist_strerror_r.cc',
-        'common'/'ps_basename.cc',
-        'common'/'ps_sendfile.cc',
-        'common'/'ps_strl.cc',
+	'common'/'pist_fcntl.cc',
+	'common'/'pist_filefns.cc',
+	'common'/'pist_sockfns.cc',
+	'common'/'pist_syslog.cc',
+	'common'/'pist_ifaddrs.cc',
+	'common'/'pist_resource.cc',
+	'common'/'pist_strerror_r.cc',
+	'common'/'pist_timelog.cc',
+	'common'/'ps_basename.cc',
+	'common'/'ps_sendfile.cc',
+	'common'/'ps_strl.cc',
 	'common'/'reactor.cc',
 	'common'/'stream.cc',
 	'common'/'string_logger.cc',
 	'common'/'tcp.cc',
 	'common'/'timer_pool.cc',
 	'common'/'transport.cc',
-	'common'/'utils.cc',
-        'common'/'pist_check.cc',   # Put back in correct order !!!!!!!!
-        'common'/'pist_timelog.cc', # Put back in correct order        
-        'common'/'pist_syslog.cc'   # Put back in correct order
+	'common'/'utils.cc'
 ]
 pistache_server_src = [
 	'server'/'endpoint.cc',
@@ -119,7 +119,7 @@ if host_machine.system() == 'windows'
     #                     |
     #                     pistachelog.dll
     #   mc.exe and rc.exe being utilities provided by Windows
-    
+
     mc_prog = find_program('mc.exe')
     if compiler.get_id() == 'gcc'
         rc_prog = find_program('windres.exe')
@@ -156,7 +156,7 @@ if host_machine.system() == 'windows'
         # Using the /DEF: linker arg to create the import library (.lib)
         # pistachelog.def is an empty .def file provided in the source
         # tree
-    
+
         if meson.version().version_compare('>=1.4.0')
             pistachelog_def_fl = files('winlog'/'pistachelog.def')
             pistachelog_implib_linkarg = '/DEF:' + pistachelog_def_fl[0].full_path()
@@ -164,7 +164,7 @@ if host_machine.system() == 'windows'
             pistachelog_implib_linkarg = '/DEF:' + meson.current_source_dir() + '/winlog/pistachelog.def'
         endif
     endif
-    
+
     pistachelog_linkargs = []
     if compiler.get_id() == 'msvc'
         pistachelog_linkargs += '/noentry'
@@ -236,7 +236,7 @@ if host_machine.system() == 'windows'
     gen_src_dump = custom_target('gen-pistachedump',
                              input: [libpistache_static], # src/libpistache.a
                              output: ['pistache.dump'],
-                             command: [dumpbin_prog, '/LINKERMEMBER', '@INPUT@', '/OUT:@OUTPUT0@'], 
+                             command: [dumpbin_prog, '/LINKERMEMBER', '@INPUT@', '/OUT:@OUTPUT0@'],
                              depends: [libpistache_static])
 
     gen_src_def = custom_target('gen-pistachedef',
@@ -261,7 +261,7 @@ if host_machine.system() == 'windows'
         libpistache_links_args += '-Wl,--export-all-symbols'
     endif
   endif
-    
+
     # To add symbols to release MSVC build in Windows:
     # libpistache_links_args += '/DEBUG'
     # libpistache_links_args += '/PDB:src/pistache-0.4.pdb'
@@ -283,7 +283,7 @@ if host_machine.system() == 'windows'
     # the risk of doing it prematurely i.e. at a time when there are
     # errors in the Pistache code that prevent compiling+linking from
     # completing successfully.
-    
+
     powershell_prog = find_program('powershell.exe')
     instl_log_scrpt = 'NONE'
     if meson.version().version_compare('>=1.4.0')

@@ -29,7 +29,7 @@
 extern "C" char * ps_basename_r(const char * path, char * bname)
 {
     int tmp_errno = errno; // preserve errno
-    
+
     if (!bname)
         return(NULL);
     bname[0] = 0;
@@ -43,7 +43,7 @@ extern "C" char * ps_basename_r(const char * path, char * bname)
     char drive[24]; drive[0] = 0;
 
     const size_t mpl = std::max<size_t>(path_len+16, PST_MAXPATHLEN+16);
-    
+
     std::vector<char> dirname_buff(mpl);
     dirname_buff[0] = 0;
 
@@ -96,9 +96,9 @@ extern "C" char * ps_basename_r(const char * path, char * bname)
 {
     if (!bname)
         return(NULL);
-        
+
     bname[0] = 0;
-    
+
     std::lock_guard<std::mutex> l_guard(ps_basename_r_mutex);
 
     char * path_copy = (char *) malloc((path ? strlen(path) : 0) + 6);

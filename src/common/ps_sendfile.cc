@@ -63,7 +63,7 @@ extern "C" PST_SSIZE_T ps_sendfile(em_socket_t out_fd, int in_fd,
     // course is why we set the file offset immediately above). The Windows
     // documentation is silent on whether the file offset is updated by
     // TransmitFile.
-    // 
+    //
     // Note: Per Linux documentation:
     //   1/ If offset ptr is NULL, then data will be read from in_fd starting
     //   at the file offset, and the file offset will be updated by the call.
@@ -89,7 +89,7 @@ extern "C" PST_SSIZE_T ps_sendfile(em_socket_t out_fd, int in_fd,
 
     DWORD num_bytes_transferred = 0;
     int last_err = -1;
-    
+
     if (res)
     {
         __int64 final_file_pos = in_fd_end_fl_pos;

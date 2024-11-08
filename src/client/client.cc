@@ -674,7 +674,7 @@ namespace Pistache::Http::Experimental
                         PS_LOG_DEBUG_ARGS("Passing %d totalBytes to "
                                           "handleResponsePacket",
                                           totalBytes);
-                        
+
                         connection->handleResponsePacket(buffer, totalBytes);
                     }
                     else

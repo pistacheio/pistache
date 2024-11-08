@@ -22,7 +22,7 @@ if (! (Get-Command git -errorAction SilentlyContinue)) {
       (Test-Path -Path "${env:ProgramFiles(x86)}/Git/bin/git.exe")) {
           $git_dir = "${env:ProgramFiles(x86)}/Git"
     }
-    
+
     if (! ($git_dir)) {
         Write-Host "git not found; will attempt to install git"
         if (Get-Command winget -errorAction SilentlyContinue) {
@@ -37,7 +37,7 @@ if (! (Get-Command git -errorAction SilentlyContinue)) {
             Expand-Archive -Path "mingit_latest.zip" -DestinationPath "$env:ProgramFiles/Git"
             $git_dir = "$env:ProgramFiles/Git"
         }
-        
+
         Write-Host "git installed"
         Write-Host "You may want to configure git as well:"
         Write-Host '  git config --global user.email "you@somedomain.com"'
@@ -50,7 +50,7 @@ if (! (Get-Command git -errorAction SilentlyContinue)) {
       $env:Path="$git_dir\cmd;$git_dir\mingw64\bin;$git_dir\usr\bin;$env:Path"
     }
 }
-    
+
 
 # Looking for vcpkg
 if (Test-Path -Path "$env:HOMEDRIVE\vcpkg\vcpkg.exe") {
@@ -133,19 +133,18 @@ if (($env:VCPKG_DIR) -And (Test-Path -Path "$env:VCPKG_DIR")) {
     $env:VCPKG_INSTALLATION_ROOT=$env:VCPKG_DIR # As per github Windows images
     $env:VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT
     $env:Path="$env:Path;$env:VCPKG_DIR"
-    
 }
 
 if ((! (Get-Command pkg-config -errorAction SilentlyContinue)) -or `
   ((where.exe pkg-config) -like "*Strawberry*")) {
       # meson does not accept the version of pkg-config in Strawberry Perl
-      
+
       if (Get-Command winget -errorAction SilentlyContinue)
       { # winget exists on newer versions of Windows 10 and on
         # Windows 11 and after. It is is not supported on Windows
         # Server 2019, and is experimental only on Windows Server
         # 2022.
-          
+
           winget install bloodrock.pkg-config-lite # For pkg-config
       }
       else
@@ -192,7 +191,7 @@ if ((! (Get-Command pkg-config -errorAction SilentlyContinue)) -or `
 
 if (($env:VCPKG_DIR) -And (Test-Path -Path "$env:VCPKG_DIR\installed")) {
     cd "$env:VCPKG_DIR\installed"
-    
+
     # We add the ...\vcpkg\installed\...\bin directory to the
     # path. Not only does this mean that executables can be executed
     # from that directory, it also allows DLLS to be loaded from that
@@ -327,7 +326,7 @@ if (! (Get-Command doxygen -errorAction SilentlyContinue)) {
     }
     else {
         if (Get-Command winget -errorAction SilentlyContinue)
-        { 
+        {
             winget install doxygen
         }
         else

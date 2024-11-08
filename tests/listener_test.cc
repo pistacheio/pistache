@@ -353,7 +353,7 @@ TEST(listener_test, listener_bind_unix_domain)
     // Avoid name conflict by binding within a fresh temporary directory.
 #ifdef _IS_WINDOWS
     // No mkdtemp or equivalent in Windows
-    
+
     const char * tmpDir = 0;
     std::string td_buf_sstr("C:\\temp\\bind_test_852823");
 
@@ -371,7 +371,7 @@ TEST(listener_test, listener_bind_unix_domain)
             std::mt19937 gen(rd()); // mersenne_twister_engine
             std::uniform_int_distribution<> distrib(100000, 999999);
             auto rnd_6_digits = distrib(gen);
-            
+
             td_buf_sstr = std::string(&(tmp_path[0])) + "bind_test_" +
                 std::to_string(rnd_6_digits);
         }
@@ -410,7 +410,7 @@ TEST(listener_test, listener_bind_unix_domain)
 // CLOEXEC doesn't exist on Windows, and forking is a lower-level system not
 // exposed to the user with documented APIs, so these are not really meaningful
 // Windows tests
-// 
+//
 // For more inform on the not-officially-documented Windows forking
 // capabilities, see:
 //   https://github.com/huntandhackett/process-cloning

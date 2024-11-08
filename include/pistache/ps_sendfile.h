@@ -7,7 +7,7 @@
 // Defines a Linux-style ps_sendfile when in an OS that does not provide one
 // natively (BSD) or with a different interface (Windows)
 //
-// 
+//
 //
 // #include <pistache/ps_sendfile.h>
 

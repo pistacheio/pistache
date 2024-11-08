@@ -146,7 +146,7 @@
   //        Then view dumpfile.xml in a text editor or XML viewer
   // Alternatively, you can have logman generate a CSV file instead of an .etl
   // by adding the "-f csv" option to the "logman start..." command.
-  // 
+  //
   // logman has many other options, do "logman -?" to see the list.
   //
   // To use logging, you must also:
@@ -355,7 +355,7 @@ static DWORD getAndInitPsLogToStdoutAsWellPrv()
 
             return(static_cast<DWORD>(val));
         }
-        
+
         if (get_val_res != ERROR_FILE_NOT_FOUND)
         {
             getPsLogToStdoutAsWellLogFailPrv(
@@ -366,7 +366,7 @@ static DWORD getAndInitPsLogToStdoutAsWellPrv()
     }
 
     // value didn't exist
-    
+
     BYTE data_to_set[8] = {0}; // bigger than it needs to be
     LSTATUS set_val_res = RegSetValueExA(lLogToStdOutAsWellInst.pistacheHkey,
                                          "psLogToStdoutAsWell", // val name
@@ -647,7 +647,7 @@ PSLogging::PSLogging()
 
     const wchar_t * pist_start_wmsg =
         L"Pistache start. INFO and up log messages visible in Event Viewer."
-        #ifdef DEBUG    
+        #ifdef DEBUG
          " See pist_syslog.cc comments to view DEBUG and up logging."
         #endif
         ;
@@ -902,7 +902,6 @@ static int logToStdOutMaybeErr(int _priority, bool _andPrintf,
         {
             struct tm this_tm;
             memset(&this_tm, 0, sizeof(this_tm));
-            
             struct tm * tm_ptr = PST_LOCALTIME_R(&t, &this_tm);
             if (tm_ptr)
             {
@@ -1104,7 +1103,7 @@ extern "C" void PSLogNoLocFn(int _pri, bool _andPrintf,
     else
         _andPrintf |= (log_to_stdout_as_well != 0);
     #endif
-    
+
     va_list ap;
     va_start(ap, _format);
     PSLogPrv(_pri, _andPrintf, _format, ap);

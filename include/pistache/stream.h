@@ -52,7 +52,7 @@ namespace Pistache
                 Base::pubimbue(dummy_loc);
             }
 #endif
-        
+
         void setArea(char* begin, char* current, char* end)
         {
             this->setg(begin, current, end);

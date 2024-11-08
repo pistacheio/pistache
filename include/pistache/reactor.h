@@ -23,9 +23,6 @@
 #include <pistache/os.h>
 #include <pistache/prototype.h>
 
-// #include <sys/resource.h>
-// #include <sys/time.h>
-
 #include <memory>
 #include <thread>
 #include <vector>

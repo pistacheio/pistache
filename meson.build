@@ -143,9 +143,9 @@ endif
 
 # Workaround https://github.com/pistacheio/pistache/issues/1068
 if compiler_id == 'gcc' and compiler.version().version_compare('<9.1') or compiler_id == 'clang'
-        cpp_fs_dep = compiler.find_library('stdc++fs', required: false)
+	cpp_fs_dep = compiler.find_library('stdc++fs', required: false)
 	if not cpp_fs_dep.found()
-                cpp_fs_dep = compiler.find_library('c++fs', required: false)
+		cpp_fs_dep = compiler.find_library('c++fs', required: false)
 	endif
 	if cpp_fs_dep.found()
 		deps_libpistache += cpp_fs_dep

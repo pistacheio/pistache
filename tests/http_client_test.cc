@@ -443,7 +443,7 @@ TEST(http_client_test, test_client_timeout)
 #endif
             },
             [&rejects_counter
-#ifdef DEBUG             
+#ifdef DEBUG
              , num = i
 #endif
                 ](std::exception_ptr)

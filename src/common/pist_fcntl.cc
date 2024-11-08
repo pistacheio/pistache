@@ -31,18 +31,18 @@ calls CreateProcess, it doesn't replace the parent program.
 So - FD_CLOEXEC is moot in Windows, and hence F_GETFD/SETFD is moot too
 */
 
-static int fcntl_getfd([[maybe_unused]] em_socket_t fd) 
+static int fcntl_getfd([[maybe_unused]] em_socket_t fd)
 {
     PS_TIMEDBG_START_ARGS("noop function, fd %d", fd);
-    
+
     // Return  (as  the function result) the file descriptor flags
     return(0);
 }
 
-static int fcntl_setfd([[maybe_unused]] em_socket_t fd, int arg) 
+static int fcntl_setfd([[maybe_unused]] em_socket_t fd, int arg)
 {
     PS_TIMEDBG_START_ARGS("fd %d, arg %d", fd, arg);
-    
+
     if ((arg != 0) && (arg != PST_FD_CLOEXEC))
     {
         PS_LOG_WARNING_ARGS("Unsupported fcntl F_SETFD arg %d", arg);
@@ -56,19 +56,19 @@ static int fcntl_setfd([[maybe_unused]] em_socket_t fd, int arg)
 
 /* ------------------------------------------------------------------------- */
 
-static int fcntl_getfl([[maybe_unused]] em_socket_t fd) 
+static int fcntl_getfl([[maybe_unused]] em_socket_t fd)
 {
     PS_TIMEDBG_START_ARGS("noop function, returns UNKNOWN, fd %d", fd);
-    
+
     // Return (as the function result) the file access mode and the file status
     // flags
     return(PST_FCNTL_GETFL_UNKNOWN);
 }
 
-static int fcntl_setfl(em_socket_t fd, int arg) 
+static int fcntl_setfl(em_socket_t fd, int arg)
 {
     PS_TIMEDBG_START_ARGS("fd %d, arg %d", fd, arg);
-    
+
     if ((arg != 0) && (arg != PST_O_NONBLOCK))
     {
         PS_LOG_WARNING_ARGS("Unsupported fcntl F_SETFL arg %d", arg);
@@ -106,7 +106,7 @@ static int fcntl_setfl(em_socket_t fd, int arg)
 extern "C" int PST_FCNTL(em_socket_t fd, int cmd, ... /* arg */ )
 {
     int res = 0;
-    
+
     va_list ptr;
     va_start(ptr, cmd);
 
@@ -137,7 +137,7 @@ extern "C" int PST_FCNTL(em_socket_t fd, int cmd, ... /* arg */ )
     default:
         PS_LOG_WARNING_ARGS("Unsupported fcntl cmd %d", cmd);
         PS_LOGDBG_STACK_TRACE;
-        
+
         errno = EINVAL;
         // Per Linux manpage, one meaning of EINVAL in fcntl is "The value
         // specified in cmd is not recognized by this kernel."

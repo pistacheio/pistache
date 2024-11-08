@@ -83,16 +83,16 @@ int main(int argc, char* argv[])
         std::wifstream infile(opts[1].c_str());
         std::string::size_type fnd_pos;
         std::wstring line;
-        
+
         unsigned int num_line = 0;
-        
+
         while (std::getline(infile, line))
         {
             num_line++;
 
             fnd_pos = line.find(L"public symbols");
             if (fnd_pos == std::string::npos) { continue; }
-            
+
             std::cout << "Public symbols line found" << std::endl;
 
             // Eat the whitespace after the table heading
@@ -153,7 +153,6 @@ int main(int argc, char* argv[])
         {
             outfile << L"\t" << (*it) << std::endl;
         }
-        
     }
     catch (const std::exception& ex)
     {
@@ -162,7 +161,7 @@ int main(int argc, char* argv[])
         std::cerr << std::endl;
 
         PrintHelpAndExit(1);
-    }   
+    }
 
     return 0;
 }

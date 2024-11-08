@@ -38,7 +38,7 @@ static int initInitialMonoValsIfNotInited()
 {
     if (lTimeAdjustmentInited)
         return(0);
-    
+
     std::lock_guard<std::mutex> lock(lTimeAdjustmentInitedMutex);
     if (lTimeAdjustmentInited)
         return(0);
@@ -134,17 +134,17 @@ extern "C" int PST_CLOCK_GETTIME(PST_CLOCK_ID_T clockid,
         { // Possibly because of access rights
           // The process handle must have PROCESS_QUERY_INFORMATION or
           // PROCESS_QUERY_LIMITED_INFORMATION
-            
+
             errno = ENOTSUP;
             return(-1);
         }
 
         __int64 wintime = win_kernel_time + win_user_time;
-        
+
         wintime      -=116444736000000000ll;           //1jan1601 to 1jan1970
         spec->tv_sec  =(long)(wintime / 10000000ll);   //seconds
         spec->tv_nsec =static_cast<long>(wintime % 10000000ll *100);
-        
+
         break;
         // Alternatively, we could use std::clock(), but GetProcessTimes seems
         // to ensure better precision
@@ -166,20 +166,20 @@ extern "C" int PST_CLOCK_GETTIME(PST_CLOCK_ID_T clockid,
         { // Possibly because of access rights
           // The thread handle must have THREAD_QUERY_INFORMATION or
           // THREAD_QUERY_LIMITED_INFORMATION
-            
+
             errno = ENOTSUP;
             return(-1);
         }
 
         __int64 wintime = win_kernel_time + win_user_time;
-        
+
         wintime      -=116444736000000000ll;           //1jan1601 to 1jan1970
         spec->tv_sec  =(long)(wintime / 10000000ll);   //seconds
         spec->tv_nsec = static_cast<long>(wintime % 10000000ll *100);
-        
+
         break;
     }
-    
+
     case PST_CLOCK_REALTIME:
     case PST_CLOCK_REALTIME_COARSE:
     {
@@ -195,7 +195,7 @@ extern "C" int PST_CLOCK_GETTIME(PST_CLOCK_ID_T clockid,
         wintime      -=116444736000000000ll;           //1jan1601 to 1jan1970
         spec->tv_sec  =(long)(wintime / 10000000ll);   //seconds
         spec->tv_nsec = static_cast<long>(wintime % 10000000ll *100);
-        
+
         break;
     }
 
@@ -209,7 +209,7 @@ extern "C" int PST_CLOCK_GETTIME(PST_CLOCK_ID_T clockid,
 
     return(0);
 }
-    
+
 /* ------------------------------------------------------------------------- */
 
 extern "C" struct tm *PST_GMTIME_R(const time_t *timep, struct tm *result)
@@ -247,7 +247,7 @@ extern "C" struct tm *PST_LOCALTIME_R(const time_t *timep, struct tm *result)
     }
 
     memset(result, 0, sizeof(*result));
-    
+
     errno_t res = localtime_s(result, timep);
     if (res == 0)
         return(result); // success

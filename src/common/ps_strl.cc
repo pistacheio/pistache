@@ -34,7 +34,7 @@ extern "C" size_t ps_strlcpy(char *dst, const char *src, size_t n)
     if (bytes_to_copy > n)
     {
         bytes_to_copy = n-1;
-        
+
         memcpy(dst, src, bytes_to_copy);
         dst[bytes_to_copy] = 0;
     }
@@ -46,7 +46,6 @@ extern "C" size_t ps_strlcpy(char *dst, const char *src, size_t n)
     return(bytes_to_copy);
 }
 
-    
 extern "C" size_t ps_strlcat(char *dst, const char *src, size_t n)
 {
     if ((!dst) || (!src) || (n <= 1))
@@ -109,7 +108,7 @@ extern "C" int ps_strncpy_s(char *strDest, size_t numberOfElements,
     memcpy(strDest, strSource, non_null_bytes_to_copy);
     strDest[non_null_bytes_to_copy] = 0;
     return(0);
-    
+
 #endif // of #ifdef _IS_WINDOWS
 }
 
@@ -122,6 +121,3 @@ extern "C" int ps_strncpy_s(char *strDest, size_t numberOfElements,
 
 
 /* ------------------------------------------------------------------------- */
-
-
-

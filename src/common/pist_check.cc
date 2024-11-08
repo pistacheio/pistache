@@ -54,13 +54,13 @@ static void logStackTrace(int pri)
 {
     PSLogNoLocFn(pri, PS_LOG_AND_STDOUT,
                  "%s", "Stack trace follows...");
-    
+
     HANDLE process = GetCurrentProcess(); // never fails, apparently
 
     if (!sym_system_inited)
     {
         std::lock_guard<std::mutex> lock(sym_system_inited_mutex);
-        
+
         if (!sym_system_inited)
         {
             BOOL syn_init_res = SymInitialize(process,
@@ -75,7 +75,7 @@ static void logStackTrace(int pri)
             if (!syn_init_res)
             {
                 DWORD last_err = GetLastError();
-        
+
                 PS_LOG_INFO_ARGS(
                     "SymInitialize fail, system error code (WinError.h) 0x%x",
                     static_cast<unsigned int>(last_err));
@@ -89,7 +89,7 @@ static void logStackTrace(int pri)
     SymSetOptions(SYMOPT_UNDNAME); // undecorated names. We call this each
                                    // time, in case some other part of the
                                    // process outside Pistache resets it
-    
+
     void         * stack[1024+16];
     unsigned short frames = CaptureStackBackTrace(2, // skip first 2 frames
                                                   1024, stack, NULL);
@@ -111,7 +111,7 @@ static void logStackTrace(int pri)
         unsigned char symbol_and_name[sizeof(SYMBOL_INFO) +
                                       (sym_max_size * sizeof(TCHAR)) + 16];
         memset(&(symbol_and_name[0]), 0, sizeof(symbol_and_name));
-        
+
         SYMBOL_INFO * symbol =
             reinterpret_cast<SYMBOL_INFO *>(&(symbol_and_name[0]));
         symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
@@ -126,7 +126,7 @@ static void logStackTrace(int pri)
             name = "{Unknown symbol - SymFromAddr failed}";
         else if (symbol->NameLen)
             name = &(symbol->Name[0]);
-        
+
         PSLogNoLocFn(pri, PS_LOG_AND_STDOUT, "  ST- %s", name);
     }
 }

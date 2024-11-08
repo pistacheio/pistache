@@ -28,4 +28,4 @@ extern "C" int PST_FCNTL(em_socket_t fd, int cmd, ... /* arg */ );
 #endif // of ifdef _IS_WINDOWS
 
 /* ------------------------------------------------------------------------- */
-#endif // of ifndef _PIST_CLOCK_GETTIME_H_
+#endif // of ifndef _PIST_FCNTL_H_

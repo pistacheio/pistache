@@ -36,11 +36,11 @@ unsigned __PS_TIMEDBG::getNextUniCounter()
 /* ------------------------------------------------------------------------- */
 
 // returns depth value after increment
-unsigned __PS_TIMEDBG::getThreadNextDepth() 
+unsigned __PS_TIMEDBG::getThreadNextDepth()
 {
     std::lock_guard<std::mutex> l_guard(gThreadMapMutex);
     PST_THREAD_ID pthread_id = PST_THREAD_ID_SELF();
-            
+
     std::map<PST_THREAD_ID, unsigned>::iterator it =
         gThreadMap.find(pthread_id);
     if (it == gThreadMap.end())
@@ -60,7 +60,7 @@ unsigned __PS_TIMEDBG::decrementThreadDepth()
 {
     std::lock_guard<std::mutex> l_guard(gThreadMapMutex);
     PST_THREAD_ID pthread_id = PST_THREAD_ID_SELF();
-            
+
     std::map<PST_THREAD_ID, unsigned>::iterator it =
         gThreadMap.find(pthread_id);
 

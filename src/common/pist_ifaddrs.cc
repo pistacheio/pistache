@@ -58,7 +58,7 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
     if (gaa_res == ERROR_BUFFER_OVERFLOW)
     {
         fst_adap_addr = (PIP_ADAPTER_ADDRESSES)(buff_try2_vec.data());
-        
+
         gaa_res = GetAdaptersAddresses(
             AF_UNSPEC, // IP4 and IP6
             GAA_FLAG_INCLUDE_ALL_INTERFACES |
@@ -67,7 +67,7 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
             fst_adap_addr,
             &buff_len);
     }
-    
+
     if (gaa_res != ERROR_SUCCESS)
     {
         PS_LOG_INFO_ARGS("GetAdaptersAddresses failed, gaa_res %d", gaa_res);
@@ -79,7 +79,7 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
         case ERROR_BUFFER_OVERFLOW:
             errno = EOVERFLOW;
             break;
-            
+
         case ERROR_NOT_ENOUGH_MEMORY:
             errno = ENOMEM;
             break;
@@ -140,7 +140,7 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
 
     #define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
     #define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
-    
+
     unsigned int i = 0;
     for (PIP_ADAPTER_ADDRESSES adap_addr = fst_adap_addr; adap_addr;
          adap_addr = adap_addr->Next)
@@ -184,21 +184,21 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
                        PST_IFF_BROADCAST : 0);
         adap_flags |= ((adap_addr->IfType == IF_TYPE_SOFTWARE_LOOPBACK) ?
                        PST_IFF_LOOPBACK:0);
-        
+
         // "Point-to-point link" usually maeans two machines linked with a
         // single wire and no other devices on the wire. GetAdaptersAddresses
         // doesn't seem to distinguish that from unicast
-        
+
         adap_flags |= ((adap_addr->OperStatus == IfOperStatusUp) ?
                   PST_IFF_RUNNING : 0);
 
         adap_flags |= ((adap_addr->Flags & IP_ADAPTER_NO_MULTICAST) ?
                   0 : PST_IFF_MULTICAST);
-        
+
         adap_flags |=
             ((adap_addr->ConnectionType == NET_IF_CONNECTION_DEDICATED) ?
              PST_IFF_AUTOMEDIA : 0);
-        
+
         // IFF_NOARP, IFF_PROMISC, IFF_NOTRAILERS, IFF_ALLMULTI, IFF_MASTER,
         // IFF_SLAVE, IFF_PORTSEL, IFF_DYNAMIC, IFF_LOWER_UP, IFF_DORMANT and
         // IFF_ECHO don't seem supported in GetAdaptersAddresses
@@ -242,7 +242,7 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
 
             *sock_addr = *win_sock_addr;
             this_ifaddrs.ifa_addr = sock_addr;
-                
+
             if (unicast_addr->OnLinkPrefixLength)
             {
                 if (win_sock_addr->sa_family == AF_INET)

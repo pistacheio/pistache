@@ -169,7 +169,6 @@ private:
     void setMarkerChars(char * marker_chars, char the_marker,
                         unsigned call_depth)
         {
-            
             if (call_depth > 20)
             {
                 for(unsigned int i=0; i<10; i++)
@@ -177,7 +176,6 @@ private:
 
                 PS_STRLCPY(&(marker_chars[10]), "...", 4);
                 marker_chars += (10 + 3);
-                
                 for(unsigned int i=0; i<10; i++)
                     marker_chars[i] = the_marker;
                 marker_chars[10] = 0;

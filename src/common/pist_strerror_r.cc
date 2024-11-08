@@ -67,12 +67,10 @@ extern "C" char * pist_strerror_r(int errnum, char *buf, size_t buflen)
             // Windows such as 2019.
             // 
             // See: https://learn.microsoft.com/en-us/cpp/c-runtime-library/errno-constants?view=msvc-170
-            
 
             const char * str = NULL;
             switch(errnum)
             {
-                
             case EADDRINUSE:
                 str = "Address in use";
                 break;
@@ -256,7 +254,6 @@ extern "C" char * pist_strerror_r(int errnum, char *buf, size_t buflen)
 
         PS_STRLCPY(buf, dumb_err, buflen);
     }
-    
 
     return(buf);
 }

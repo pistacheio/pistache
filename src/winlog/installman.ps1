@@ -79,7 +79,7 @@ if ($alt_logdll_name)
     cp "$fpinpstlogdll" `
       "$env:ProgramFiles\pistache_distribution\bin\$alt_logdll_name"
 }
-    
+
 wevtutil um "$inpstman" # Uninstall - does nothing if not installed
 wevtutil im "$inpstman" # Install
 

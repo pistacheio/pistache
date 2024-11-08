@@ -56,7 +56,7 @@ if (($env:force_msys_gcc) -or `
 
       $env:PATH="$msys64_dir\ucrt64\bin;$env:PATH"
   }
-    
+
 $env:CXX="g++"
 $env:CC="gcc"
 
@@ -121,7 +121,7 @@ if (! (Get-Command ninja -errorAction SilentlyContinue)) {
 
     if ((! ($ninja_dir)) -or (! (Test-Path -Path $ninja_dir))) {
         # Can't find ninja in "$env:VCPKG_DIR\installed"; install it now
-        
+
         if (Get-Command winget -errorAction SilentlyContinue) {
             winget install "Ninja-build.Ninja";
             # Don't set ninja_dir - leaving it empty will mean it
@@ -152,7 +152,7 @@ if (! (Get-Command ninja -errorAction SilentlyContinue)) {
     if (($ninja_dir) -And (Test-Path -Path $ninja_dir)) {
         $env:Path="$ninja_dir;$env:Path" # Add ninja.exe to Path
     }
-    
+
     cd "$savedpwd"
 }
 
@@ -172,7 +172,7 @@ if ((! ($env:plain_prompt)) -or ($env:plain_prompt -ne "Y"))
         function global:prompt {"GCC> "}
     }
 }
-        
+
 cd "$savedpwd"
 
 Write-Host "SUCCESS: gcc.exe, mc.exe and ninja.exe set up"

@@ -85,7 +85,7 @@ TEST(stream, test_file_buffer)
         std::cerr << "No suitable filename can be generated!" << std::endl;
     }
 #endif
-        
+
     std::cout << "Temporary file name: " << fileName << std::endl;
 
     const std::string dataToWrite("Hello World!");

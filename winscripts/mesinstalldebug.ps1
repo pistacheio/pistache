@@ -34,5 +34,5 @@ if ($instimeouted)
 }
 elseif ($insproc.ExitCode -ne 0)
 {
-    Write-Error "Error: meson install returned error"    
+    Write-Error "Error: meson install returned error"
 }
