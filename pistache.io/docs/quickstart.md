@@ -37,7 +37,9 @@ meson setup build
 meson install -C build
 ```
 
-Also, Pistache does not support Windows yet, but should work fine under [WSL](https://docs.microsoft.com/windows/wsl/about).
+Pistache can run natively under Windows (see "Building on Windows.txt") or should work fine under [WSL](https://docs.microsoft.com/windows/wsl/about).
+
+For macOS, see "Building on macOS.txt". For BSD, see "Building on BSD - FreeBSD, OpenBSD and NetBSD.txt".
 
 ## Serving requests
 
