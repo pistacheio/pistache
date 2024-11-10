@@ -53,6 +53,8 @@ namespace Pistache::Http::Header
             return "gzip";
         case Encoding::Br:
             return "br";
+        case Encoding::Zstd:
+            return "zstd";
         case Encoding::Compress:
             return "compress";
         case Encoding::Deflate:
@@ -72,6 +74,11 @@ namespace Pistache::Http::Header
         if (str.empty())
         {
             return Encoding::Unknown;
+        }
+
+        if (!strncasecmp(str.data(), "zstd", str.length()))
+        {
+            return Encoding::Zstd;
         }
 
         if (!strncasecmp(str.data(), "gzip", str.length()))
@@ -108,6 +115,11 @@ namespace Pistache::Http::Header
     {
         switch (encoding)
         {
+
+#ifdef PISTACHE_USE_CONTENT_ENCODING_ZSTD
+        case Encoding::Zstd:
+            /* @fallthrough@ */
+#endif
 #ifdef PISTACHE_USE_CONTENT_ENCODING_BROTLI
         case Encoding::Br:
             /* @fallthrough@ */

@@ -48,6 +48,10 @@
 #include <zlib.h>
 #endif
 
+#ifdef PISTACHE_USE_CONTENT_ENCODING_ZSTD
+#include <zstd.h>
+#endif
+
 namespace Pistache
 {
     namespace Tcp
@@ -530,6 +534,14 @@ namespace Pistache
                 contentEncodingBrotliLevel_ = _contentEncodingBrotliLevel;
             }
 #endif
+#ifdef PISTACHE_USE_CONTENT_ENCODING_ZSTD
+
+            void setCompressionZstdLevel(const int contentEncodingZstdLevel)
+            {
+                contentEncodingZstdLevel_ = contentEncodingZstdLevel;
+            }
+
+#endif
 
 #ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
             // Set the compression level for deflate algorithm. Defaults to
@@ -560,6 +572,10 @@ namespace Pistache
 
 #ifdef PISTACHE_USE_CONTENT_ENCODING_BROTLI
             int contentEncodingBrotliLevel_ = BROTLI_DEFAULT_QUALITY;
+#endif
+
+#ifdef PISTACHE_USE_CONTENT_ENCODING_ZSTD
+            int contentEncodingZstdLevel_ = ZSTD_defaultCLevel();
 #endif
 
 #ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE

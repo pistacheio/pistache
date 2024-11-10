@@ -10,6 +10,7 @@
    Http layer implementation
 */
 
+#include <pistache/http_header.h>
 #include <pistache/config.h>
 #include <pistache/eventmeth.h>
 #include <pistache/http.h>
@@ -929,6 +930,33 @@ namespace Pistache::Http
         }
 #endif
 
+#ifdef PISTACHE_USE_CONTENT_ENCODING_ZSTD
+
+        case Http::Header::Encoding::Zstd: {
+            // Get max compressed size
+            size_t estimated_size = ZSTD_compressBound(size);
+            // Allocate a smart buffer to contain compressed data...
+            std::unique_ptr compressedData = std::make_unique<std::byte[]>(estimated_size);
+
+            // Compress data using default compression level: https://raw.githack.com/facebook/zstd/release/doc/zstd_manual.html#Chapter3
+            auto compress_size = ZSTD_compress(reinterpret_cast<void*>(compressedData.get()), estimated_size,
+                                               data, size, ZSTD_defaultCLevel());
+            if (ZSTD_isError(compress_size))
+            {
+                throw std::runtime_error(
+                    std::string("failed to compress data to ZSTD on ZSTD_compress(), returning: ") + std::to_string(compress_size));
+            }
+            headers().add<Http::Header::ContentEncoding>(
+                Http::Header::Encoding::Zstd);
+
+            // Send compressed data back to client...
+            return putOnWire(
+                reinterpret_cast<const char*>(compressedData.get()),
+                compress_size);
+        }
+
+#endif
+
 #ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
         // User requested deflate compression...
         case Http::Header::Encoding::Deflate: {
@@ -1088,6 +1116,12 @@ namespace Pistache::Http
         // Application requested Brotli compression...
         case Http::Header::Encoding::Br:
             contentEncoding_ = Http::Header::Encoding::Br;
+            break;
+#endif
+
+#ifdef PISTACHE_USE_CONTENT_ENCODING_ZSTD
+        case Http::Header::Encoding::Zstd:
+            contentEncoding_ = Http::Header::Encoding::Zstd;
             break;
 #endif
 
