@@ -79,7 +79,7 @@ jobs:
       if: contains(matrix.os, 'redhat')
       run: |
         if [ ${{ matrix.compiler }} = gcc ]; then compiler=gcc-c++; else compiler=llvm-toolset; fi
-        microdnf -y install $compiler pkgconf cmake openssl-devel zlib-devel libcurl-devel git python3-pip unzip
+        microdnf -y install $compiler lld pkgconf cmake openssl-devel zlib-devel libcurl-devel git python3-pip unzip
         curl -LO https://github.com/ninja-build/ninja/releases/latest/download/ninja-linux.zip
         unzip ninja-linux.zip
         mv ninja /usr/local/bin
