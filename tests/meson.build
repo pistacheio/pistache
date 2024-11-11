@@ -7,6 +7,7 @@ gtest_main_dep = dependency('gtest', main: true, fallback: ['gtest', 'gtest_main
 gmock_dep = dependency('gmock', version: '>=1.11.0', fallback: ['gtest', 'gmock_dep'])
 cpp_httplib_dep = dependency('cpp-httplib', fallback: ['cpp-httplib', 'cpp_httplib_dep'])
 brotli_dep = dependency('', required: false)
+zstd_dep = dependency('', required: false)
 
 subdir('helpers')
 
@@ -54,6 +55,10 @@ endif
 # If built with Brotli compression support enable decoder for unit testing...
 if get_option('PISTACHE_USE_CONTENT_ENCODING_BROTLI')
     brotli_dep = dependency('libbrotlidec')
+endif
+
+if get_option('PISTACHE_USE_CONTENT_ENCODING_ZSTD')
+    zstd_dep = dependency('libzstd')
 endif
 
 # In Windows, when one of the test programs runs, it looks for
@@ -134,7 +139,8 @@ foreach test_name : pistache_test_files
 				gmock_dep,
 				curl_dep,
 				cpp_httplib_dep,
-				brotli_dep
+				brotli_dep,
+				zstd_dep
 			]
 		),
                 depends: unversioned_dll_cts,

@@ -23,8 +23,8 @@ else
     -DPISTACHE_BUILD_TESTS=true \
     -DPISTACHE_BUILD_DOCS=false \
     -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true \
+    -DPISTACHE_USE_CONTENT_ENCODING_ZSTD=true \
     --prefix="${MESON_PREFIX_DIR}"
-
 fi
 
 meson compile -C ${MESON_BUILD_DIR}
