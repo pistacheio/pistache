@@ -161,7 +161,10 @@ if ((! ($env:plain_prompt)) -or ($env:plain_prompt -ne "Y"))
     $prompt_existing = (Get-Command prompt).ScriptBlock
     if ($prompt_existing) {
         $prompt_current=(prompt)
-        if (! ($prompt_current.SubString(0, 3) -eq "GCC")) {
+        if ((!$prompt_current) -or ($prompt_current.length -lt 3)) {
+            function global:prompt {"MVS> "}
+        }
+        elseif (! ($prompt_current.SubString(0, 3) -eq "GCC")) {
             $prompt_new = "`"GCC `" + " + $prompt_existing
             $def_fn_prompt_new = `
               "function global:prompt { " + $prompt_new + " }"
