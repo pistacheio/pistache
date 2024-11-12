@@ -41,6 +41,9 @@ Pistache has the following third party dependencies
 - [OpenSSL](https://www.openssl.org/)
 - [RapidJSON](https://rapidjson.org/)
 - [Hinnant Date](https://github.com/HowardHinnant/date)
+- [brotli](https://www.brotli.org/)
+- [zstd](https://github.com/facebook/zstd)
+- [libevent](https://libevent.org/)
 
 ## Contributing
 

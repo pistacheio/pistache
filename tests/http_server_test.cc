@@ -1399,6 +1399,12 @@ struct ContentEncodingHandler : public Http::Handler
     }
 };
 
+#define DECLARE_ORIGINAL_UNCOMPRESSED_DATA                              \
+    std::vector<std::byte> originalUncompressedData(                    \
+        reinterpret_cast<std::byte *>(originalUncDataAsUs.data()),      \
+        reinterpret_cast<std::byte *>(originalUncDataAsUs.data() +      \
+                                      originalUncDataAsUs.size()));
+
 #ifdef PISTACHE_USE_CONTENT_ENCODING_ZSTD
 TEST(http_server_test, server_with_content_encoding_zstd)
 {
@@ -1425,9 +1431,7 @@ TEST(http_server_test, server_with_content_encoding_zstd)
             std::end(originalUncDataAsUs),
             [&randomEngine]() { return (randomEngine()); });
 
-        std::vector<std::byte> originalUncompressedData(
-            reinterpret_cast<std::byte *>(&(*std::begin(originalUncDataAsUs))),
-            reinterpret_cast<std::byte *>(&(*std::end(originalUncDataAsUs))));
+        DECLARE_ORIGINAL_UNCOMPRESSED_DATA;
 
         // Bind server to localhost on a random port...
         const Pistache::Address address("localhost", Pistache::Port(0));
@@ -1601,9 +1605,7 @@ TEST(http_server_test, server_with_content_encoding_brotli)
         std::end(originalUncDataAsUs),
         [&randomEngine]() { return (randomEngine()); });
 
-    std::vector<std::byte> originalUncompressedData(
-        reinterpret_cast<std::byte *>(&(*std::begin(originalUncDataAsUs))),
-        reinterpret_cast<std::byte *>(&(*std::end(originalUncDataAsUs))));
+    DECLARE_ORIGINAL_UNCOMPRESSED_DATA;
 
     // Bind server to localhost on a random port...
     const Pistache::Address address("localhost", Pistache::Port(0));
@@ -1776,9 +1778,7 @@ TEST(http_server_test, server_with_content_encoding_deflate)
         std::end(originalUncDataAsUs),
         [&randomEngine]() { return (randomEngine()); });
 
-    std::vector<std::byte> originalUncompressedData(
-        reinterpret_cast<std::byte *>(&(*std::begin(originalUncDataAsUs))),
-        reinterpret_cast<std::byte *>(&(*std::end(originalUncDataAsUs))));
+    DECLARE_ORIGINAL_UNCOMPRESSED_DATA;
 
     // Bind server to localhost on a random port...
     const Pistache::Address address("localhost", Pistache::Port(0));
