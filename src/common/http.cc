@@ -12,10 +12,10 @@
 
 #include <pistache/winornix.h>
 
-#include <pistache/http_header.h>
 #include <pistache/config.h>
 #include <pistache/eventmeth.h>
 #include <pistache/http.h>
+#include <pistache/http_header.h>
 #include <pistache/net.h>
 #include <pistache/peer.h>
 #include <pistache/transport.h>

@@ -521,8 +521,6 @@ namespace Pistache
                 return nullptr;
             }
 
-
-            
             // Compress using the requested content encoding, if supported,
             //  before sending bits to client. Content-Encoding header will be
             //  automatically set to the requested encoding, if supported...
