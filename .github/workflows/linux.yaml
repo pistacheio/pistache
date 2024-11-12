@@ -79,7 +79,7 @@ jobs:
       if: contains(matrix.os, 'redhat')
       run: |
         if [ ${{ matrix.compiler }} = gcc ]; then compiler=gcc-c++; else compiler=llvm-toolset; fi
-        microdnf -y install $compiler lld pkgconf cmake brotli libbrotli zstd libzstd openssl-devel zlib-devel libcurl-devel git python3-pip unzip
+        microdnf -y install $compiler lld pkgconf cmake brotli brotli-devel openssl-devel zlib-devel libcurl-devel git python3-pip unzip
         curl -LO https://github.com/ninja-build/ninja/releases/latest/download/ninja-linux.zip
         unzip ninja-linux.zip
         mv ninja /usr/local/bin
@@ -94,8 +94,9 @@ jobs:
       run: |
         if [ ${{ matrix.compiler }} = gcc ]; then CXX=g++; else CXX=clang++ CXX_LD=lld; fi
         export CXX CXX_LD
+        if [[ ${{ matrix.os }} == *redhat* ]]; then PST_USE_ZSTD=false; else PST_USE_ZSTD=true; fi
         meson setup build \
-          -DPISTACHE_BUILD_TESTS=true -DPISTACHE_USE_SSL=${{ matrix.tls }} -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true -DPISTACHE_USE_CONTENT_ENCODING_BROTLI=true -DPISTACHE_USE_CONTENT_ENCODING_ZSTD=true \
+          -DPISTACHE_BUILD_TESTS=true -DPISTACHE_USE_SSL=${{ matrix.tls }} -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true -DPISTACHE_USE_CONTENT_ENCODING_BROTLI=true -DPISTACHE_USE_CONTENT_ENCODING_ZSTD=$PST_USE_ZSTD \
           --buildtype=debug -Db_coverage=true -Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false \
           || (cat build/meson-logs/meson-log.txt ; false)
       env:
