@@ -933,14 +933,12 @@ namespace Pistache::Http
 #ifdef PISTACHE_USE_CONTENT_ENCODING_ZSTD
 
         case Http::Header::Encoding::Zstd: {
-            // Get max compressed size
             size_t estimated_size = ZSTD_compressBound(size);
             // Allocate a smart buffer to contain compressed data...
             std::unique_ptr compressedData = std::make_unique<std::byte[]>(estimated_size);
 
-            // Compress data using default compression level: https://raw.githack.com/facebook/zstd/release/doc/zstd_manual.html#Chapter3
             auto compress_size = ZSTD_compress(reinterpret_cast<void*>(compressedData.get()), estimated_size,
-                                               data, size, ZSTD_defaultCLevel());
+                                               data, size, contentEncodingZstdLevel_);
             if (ZSTD_isError(compress_size))
             {
                 throw std::runtime_error(
