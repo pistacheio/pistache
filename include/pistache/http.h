@@ -521,6 +521,8 @@ namespace Pistache
                 return nullptr;
             }
 
+
+            
             // Compress using the requested content encoding, if supported,
             //  before sending bits to client. Content-Encoding header will be
             //  automatically set to the requested encoding, if supported...
@@ -535,7 +537,8 @@ namespace Pistache
             }
 #endif
 #ifdef PISTACHE_USE_CONTENT_ENCODING_ZSTD
-
+            // Set the compression level for zstandard algorithm. Defaults to
+            //  ZSTD_CLEVEL_DEFAULT = 3...
             void setCompressionZstdLevel(const int contentEncodingZstdLevel)
             {
                 contentEncodingZstdLevel_ = contentEncodingZstdLevel;
@@ -575,7 +578,9 @@ namespace Pistache
 #endif
 
 #ifdef PISTACHE_USE_CONTENT_ENCODING_ZSTD
-            int contentEncodingZstdLevel_ = ZSTD_defaultCLevel();
+
+            // Value 0 means default, which is controlled by ZSTD_CLEVEL_DEFAULT = 3
+            int contentEncodingZstdLevel_ = 0;
 #endif
 
 #ifdef PISTACHE_USE_CONTENT_ENCODING_DEFLATE
