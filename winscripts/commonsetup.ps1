@@ -189,6 +189,9 @@ if ((! (Get-Command pkg-config -errorAction SilentlyContinue)) -or `
       }
   }
 
+if (! (vcpkg list "brotli")) { vcpkg install brotli }
+if (! (vcpkg list "zstd")) { vcpkg install zstd }
+
 if (($env:VCPKG_DIR) -And (Test-Path -Path "$env:VCPKG_DIR\installed")) {
     cd "$env:VCPKG_DIR\installed"
 
@@ -440,14 +443,3 @@ if (! ((Test-Path -Path "$env:ProgramFiles/Microsoft Visual Studio") -or `
 
 
 cd $savedpwd
-
-
-
-
-
-
-
-
-
-
-

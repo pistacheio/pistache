@@ -68,6 +68,8 @@ jobs:
         brew install rapidjson
         # brew install libevent # Already installed in base image
         brew install howard-hinnant-date
+        brew install brotli
+        brew install zstd
 
     - uses: actions/checkout@v4
       with:
@@ -78,7 +80,7 @@ jobs:
         if [ ${{ matrix.compiler }} = gcc ]; then CXX=g++; else CXX=clang++; fi
         export CXX
         meson setup build \
-          -DPISTACHE_BUILD_TESTS=true -DPISTACHE_DEBUG=${{ matrix.def_debug }} -DPISTACHE_USE_SSL=${{ matrix.tls }} -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_DOCS=false -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true \
+          -DPISTACHE_BUILD_TESTS=true -DPISTACHE_DEBUG=${{ matrix.def_debug }} -DPISTACHE_USE_SSL=${{ matrix.tls }} -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_DOCS=false -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true -DPISTACHE_USE_CONTENT_ENCODING_BROTLI=true -DPISTACHE_USE_CONTENT_ENCODING_ZSTD=true \
           --buildtype=debug -Db_coverage=true -Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false \
           || (cat build/meson-logs/meson-log.txt ; false)
       env:
@@ -115,4 +117,3 @@ jobs:
         sha256sum --check codecov.SHA256SUM
         chmod +x codecov
         ./codecov
-

@@ -27,10 +27,11 @@ else {
     -DPISTACHE_BUILD_TESTS=true `
     -DPISTACHE_BUILD_DOCS=false `
     -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true `
+    -DPISTACHE_USE_CONTENT_ENCODING_BROTLI=true `
+    -DPISTACHE_USE_CONTENT_ENCODING_ZSTD=true `
     -DPISTACHE_DEBUG=true `
     --prefix="${MESON_PREFIX_DIR}"
 
 }
 
 meson compile -C ${MESON_BUILD_DIR} # "...compile -v -C ..." for verbose
-

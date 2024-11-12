@@ -175,6 +175,8 @@ If installing dependencies by hand, install the following:
   howard-hinnant-date
   libevent
   curl[openssl]
+  brotli (library)
+  zstd (library)
 
 Add the locations of the above utilities and libraries to
 $env:path. Note that $env:path is used by Windows to look for
@@ -216,16 +218,16 @@ For GCC debug builds, include in your launch.json entry:
   "miDebuggerPath": "C:\\msys64\\ucrt64\\bin\\gdb.exe",
   "environment": [
       {"name": "Path", "value":
-      "C:\\msys64\\ucrt64\\bin;${env:Path};<Pistache Build Directory>\\src;;C:\\vcpkg\\installed\\x64-windows\\bin;C:\\Program Files (x86)\\Windows Kits\\<Windows Version>\\bin\\<Windows SDK Version>\\x64"}, 
+      "C:\\msys64\\ucrt64\\bin;${env:Path};<Pistache Build Directory>\\src;;C:\\vcpkg\\installed\\x64-windows\\bin;C:\\Program Files (x86)\\Windows Kits\\<Windows Version>\\bin\\<Windows SDK Version>\\x64"},
                  ],
  (Substituting in your <Pistache Build Directory>, <Windows Version>
   and <Windows SDK Version>)
- 
+
 For Visual Studio debug builds, include in your launch.json entry:
   "type": "cppvsdbg",
   "environment": [
       {"name": "Path", "value":
-      "C:\\msys64\\ucrt64\\bin;${env:Path};<Pistache Build Directory>\\src;;C:\\vcpkg\\installed\\x64-windows\\bin;C:\\Program Files (x86)\\Windows Kits\\<Windows Version>\\bin\\<Windows SDK Version>\\x64"}, 
+      "C:\\msys64\\ucrt64\\bin;${env:Path};<Pistache Build Directory>\\src;;C:\\vcpkg\\installed\\x64-windows\\bin;C:\\Program Files (x86)\\Windows Kits\\<Windows Version>\\bin\\<Windows SDK Version>\\x64"},
                  ],
  (Substituting in your <Pistache Build Directory>, <Windows Version>
   and <Windows SDK Version>)

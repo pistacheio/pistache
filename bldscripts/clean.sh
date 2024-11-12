@@ -10,12 +10,15 @@
 #   bldscripts/clean.sh
 
 source bldscripts/messetdirvars.sh
+source bldscripts/adjbuilddirformesbuild.sh
+
 if [ -e "${MESON_BUILD_DIR}" ]
 then
     rm -rf ${MESON_BUILD_DIR}
 fi
 
 source bldscripts/mesdebugsetdirvars.sh
+source bldscripts/adjbuilddirformesbuild.sh
 if [ -e "${MESON_BUILD_DIR}" ]
 then
     rm -rf ${MESON_BUILD_DIR}
