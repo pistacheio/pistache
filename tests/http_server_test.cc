@@ -1535,31 +1535,25 @@ TEST(http_server_test, server_with_content_encoding_zstd)
         std::vector<std::byte> newlyDecompressedData(
             originalUncompressedData.size());
 
-        // Size of destination buffer, but will be updated by uncompress() to
-        //  actual size used...
-        size_t destinationLength = originalUncompressedData.size();
-
         // Decompress...
-        auto compressedSzFromFrame = ZSTD_getFrameContentSize(newlyDecompressedData.data(), newlyDecompressedData.size());
-        if (ZSTD_isError(compressedSzFromFrame))
+        auto decompressedSzFromFrame = ZSTD_getFrameContentSize(newlyCompressedResponse.data(), newlyCompressedResponse.size());
+        if (ZSTD_isError(decompressedSzFromFrame))
         {
             LOGGER("test", "getFrameContentSize result: " <<
-                   ((compressedSzFromFrame == ZSTD_CONTENTSIZE_UNKNOWN) ?
+                   ((decompressedSzFromFrame == ZSTD_CONTENTSIZE_UNKNOWN) ?
                     "Content Size Unknown" :
-                    (compressedSzFromFrame == ZSTD_CONTENTSIZE_ERROR) ?
+                    (decompressedSzFromFrame == ZSTD_CONTENTSIZE_ERROR) ?
                     "Content Size Error" : "Other"));
-            compressedSzFromFrame = newlyCompressedResponse.size();
+            decompressedSzFromFrame = newlyDecompressedData.size();
         }
 
-        ASSERT_LE(compressedSzFromFrame, newlyCompressedResponse.size());
-
-        const auto decompressed_size = ZSTD_decompress(reinterpret_cast<void*>(newlyDecompressedData.data()), newlyDecompressedData.size(), newlyCompressedResponse.data(), compressedSzFromFrame);
+        const auto decompressed_size = ZSTD_decompress(reinterpret_cast<void*>(newlyDecompressedData.data()), decompressedSzFromFrame, newlyCompressedResponse.data(), newlyCompressedResponse.size());
 
         ASSERT_EQ(ZSTD_isError(decompressed_size), 0u);
 
         // The sizes of both the original uncompressed data we sent the server
         //  and the result of decompressing what it sent back should match...
-        ASSERT_EQ(originalUncompressedData.size(), destinationLength);
+        ASSERT_EQ(originalUncompressedData.size(), decompressed_size);
 
         // Check to ensure the compressed data received back from server after
         //  decompression matches exactly what we originally sent it...
