@@ -44,7 +44,7 @@ namespace Pistache
             return(httpAddr(view, 0/*default port*/));
         }
     } // namespace helpers
-    
+
     Port::Port(uint16_t port)
         : port(port)
     { }
@@ -86,7 +86,7 @@ namespace Pistache
             (&reinterpret_cast<struct sockaddr_in*>(&addr_)->sin_addr.s_addr);
 
         static_assert(sizeof(buff) == sizeof(*in_addr));
-        memcpy(in_addr, buff, sizeof(*in_addr));
+        std::memcpy(in_addr, buff, sizeof(*in_addr));
     }
 
     IP::IP(uint16_t a, uint16_t b, uint16_t c, uint16_t d, uint16_t e, uint16_t f,
@@ -105,12 +105,12 @@ namespace Pistache
         }
         else
         {
-            memcpy(remap, buff, sizeof(remap));
+            std::memcpy(remap, buff, sizeof(remap));
         }
         auto& in6_addr = reinterpret_cast<struct sockaddr_in6*>(&addr_)->sin6_addr.s6_addr;
 
         static_assert(sizeof(in6_addr) == sizeof(remap));
-        memcpy(in6_addr, remap, sizeof(in6_addr));
+        std::memcpy(in6_addr, remap, sizeof(in6_addr));
     }
 
     IP::IP(const struct sockaddr* addr)
@@ -134,7 +134,7 @@ namespace Pistache
             ss_in_addr->sin6_family   = in_addr->sin6_family;
             ss_in_addr->sin6_port     = in_addr->sin6_port;
             ss_in_addr->sin6_flowinfo = in_addr->sin6_flowinfo; /* Should be 0 per RFC 3493 */
-            memcpy(ss_in_addr->sin6_addr.s6_addr, in_addr->sin6_addr.s6_addr, sizeof(ss_in_addr->sin6_addr.s6_addr));
+            std::memcpy(ss_in_addr->sin6_addr.s6_addr, in_addr->sin6_addr.s6_addr, sizeof(ss_in_addr->sin6_addr.s6_addr));
         }
         else if (addr->sa_family == AF_UNIX)
         {
@@ -142,7 +142,7 @@ namespace Pistache
             struct sockaddr_un* ss_un_addr    = reinterpret_cast<struct sockaddr_un*>(&addr_);
 
             ss_un_addr->sun_family = un_addr->sun_family;
-            memcpy(ss_un_addr->sun_path, un_addr->sun_path, sizeof(ss_un_addr->sun_path));
+            std::memcpy(ss_un_addr->sun_path, un_addr->sun_path, sizeof(ss_un_addr->sun_path));
         }
         else
         {
@@ -225,7 +225,7 @@ namespace Pistache
         char buff[INET6_ADDRSTRLEN];
         const auto* addr_sa = reinterpret_cast<const struct sockaddr*>(&addr_);
         int err             = getnameinfo(
-                        addr_sa, sizeof(addr_), buff, sizeof(buff), NULL, 0, NI_NUMERICHOST);
+                        addr_sa, sizeof(addr_), buff, sizeof(buff), nullptr, 0, NI_NUMERICHOST);
         if (err) /* [[unlikely]] */
         {
             throw std::runtime_error(gai_strerror(err));
@@ -343,9 +343,16 @@ namespace Pistache
             }
 
             // Check if port_ is a valid number
-            char* tmp2;
-            std::strtol(port_.c_str(), &tmp2, 10);
-            hasNumericPort_ = *tmp2 == '\0';
+            char* tmp2 = nullptr;
+            long strtol_res = std::strtol(port_.c_str(), &tmp2, 10);
+            if ((strtol_res < 0) || (!tmp2))
+            {
+                PS_LOG_DEBUG_ARGS("strtol failed for port_ %s, "
+                                  "throwing \"Invalid port\"",
+                                  port_.c_str());
+                throw std::invalid_argument("Invalid port");
+            }
+            hasNumericPort_ = (*tmp2 == '\0');
         }
     }
 
@@ -421,7 +428,7 @@ namespace Pistache
     {
         init(addr, 0 /*default port*/);
     }
-    
+
     void Address::init(const std::string& addr, Port default_port)
     {
         // Handle unix domain addresses separately.
@@ -547,11 +554,11 @@ namespace Pistache
 
     Error Error::system(const char* message)
     {
-        char se_err[256+16];
+        PST_DECL_SE_ERR_P_EXTRA;
 
         std::string str(message);
         str += ": ";
-        str += PST_STRERROR_R(errno, &se_err[0], 256);
+        str += PST_STRERROR_R_ERRNO;
 
         return Error(std::move(str));
     }

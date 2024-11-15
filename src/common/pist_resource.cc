@@ -13,6 +13,8 @@
 
 #ifdef _IS_WINDOWS
 
+#include <cstring>
+
 #include <pistache/pist_resource.h>
 
 #include <minwinbase.h> // for FILETIME
@@ -39,12 +41,12 @@ extern "C" int pist_getrusage(int who, struct PST_RUSAGE * rusage)
         return -1;
     }
 
-    if (rusage == (struct PST_RUSAGE *) NULL)
+    if (!rusage)
     {
         errno = EFAULT;
         return -1;
     }
-    memset(rusage, 0, sizeof(struct PST_RUSAGE));
+    std::memset(rusage, 0, sizeof(struct PST_RUSAGE));
     if (GetProcessTimes(GetCurrentProcess(),
                         &starttime, &exittime, &kerneltime, &usertime) == 0)
     {
@@ -53,14 +55,14 @@ extern "C" int pist_getrusage(int who, struct PST_RUSAGE * rusage)
     }
 
     /* Convert FILETIMEs (0.1 us) to struct timeval */
-    memcpy(&li, &kerneltime, sizeof(FILETIME));
+    std::memcpy(&li, &kerneltime, sizeof(FILETIME));
     li.QuadPart /= 10L;            /* Convert to microseconds */
-    rusage->ru_stime.tv_sec = (long) (li.QuadPart / 1000000L);
+    rusage->ru_stime.tv_sec = static_cast<long>(li.QuadPart / 1000000L);
     rusage->ru_stime.tv_usec = static_cast<long int>(li.QuadPart % 1000000L);
 
-    memcpy(&li, &usertime, sizeof(FILETIME));
+    std::memcpy(&li, &usertime, sizeof(FILETIME));
     li.QuadPart /= 10L;            /* Convert to microseconds */
-    rusage->ru_utime.tv_sec = (long) (li.QuadPart / 1000000L);
+    rusage->ru_utime.tv_sec = static_cast<long>(li.QuadPart / 1000000L);
     rusage->ru_utime.tv_usec = static_cast<long int>(li.QuadPart % 1000000L);
 
     return(0); // success

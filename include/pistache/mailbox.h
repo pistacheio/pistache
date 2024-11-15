@@ -420,12 +420,10 @@ namespace Pistache
                         }
                         else
                         {
-#ifdef DEBUG
-                            char se_err[256+16];
-#endif
+                            PST_DBG_DECL_SE_ERR_P_EXTRA;
                             PS_LOG_DEBUG_ARGS("Unimplemented errno %d %s",
                                               errno,
-                                              PST_STRERROR_R(errno, &se_err[0], 256));
+                                              PST_STRERROR_R_ERRNO);
                             // TODO
                         }
                     }

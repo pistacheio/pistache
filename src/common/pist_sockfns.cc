@@ -557,7 +557,7 @@ int pist_sock_poll(PST_POLLFD_T * fds, PST_NFDS_T nfds, int timeout)
     }
 
     std::vector<WSAPOLLFD> win_fds_vec(nfds);
-    for(unsigned int i=0; i<nfds; i++)
+    for(unsigned int i=0; i<nfds; ++i)
     {
         win_fds_vec[i].fd = get_win_socket_from_em_socket_t(fds[i].fd);
         win_fds_vec[i].events = fds[i].events;
@@ -570,7 +570,7 @@ int pist_sock_poll(PST_POLLFD_T * fds, PST_NFDS_T nfds, int timeout)
 
     if (win_poll_res > 0)
     {
-        for(unsigned int i=0; i<nfds; i++)
+        for(unsigned int i=0; i<nfds; ++i)
             fds[i].revents = win_fds_vec[i].revents;
 
         return(win_poll_res); // Success, ret number of events with revent set
@@ -596,7 +596,7 @@ PST_SSIZE_T pist_sock_send(em_socket_t em_sock, const void *buf,
 
     int send_res = ::send(win_sock, reinterpret_cast<const char *>(buf),
                           static_cast<int>(len), flags);
-    
+
     if (send_res != SOCKET_ERROR)
         return(send_res); // success - ret number of bytes sent
 

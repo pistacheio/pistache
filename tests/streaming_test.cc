@@ -257,7 +257,7 @@ TEST_F(StreamingTests, ChunkedStream)
     PS_TIMEDBG_START;
 
     { // encapsulate
-    
+
     SyncContext ctx;
 
     // force unbuffered
@@ -328,7 +328,7 @@ TEST(StreamingTest, ClientDisconnect)
     DBG_LOG_ALL_EMEVENTS;
 
     { // encapsulate
-        
+
     Http::Endpoint endpoint(Address(IP::loopback(), Port(0)));
     endpoint.init(Http::Endpoint::options().flags(Tcp::Options::ReuseAddr));
     endpoint.setHandler(Http::make_handler<ClientDisconnectHandler>());
@@ -361,7 +361,7 @@ TEST(StreamingTest, ClientDisconnect)
         curl_multi_perform(curlm, &still_running);
         if (still_running)
         {
-            curl_multi_wait(curlm, NULL, 0, 1000, NULL);
+            curl_multi_wait(curlm, nullptr, 0, 1000, nullptr);
             curl_multi_perform(curlm, &still_running);
         }
 

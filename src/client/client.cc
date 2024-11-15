@@ -51,7 +51,7 @@ namespace Pistache::Http::Experimental
         // if https_out is non null, then *https_out is set to true if URL
         // starts with "https://" and false otherwise
         std::pair<std::string_view, std::string_view> splitUrl(
-            const std::string& url, bool* https_out = NULL)
+            const std::string& url, bool* https_out = nullptr)
         {
             RawStreamBuf<char> buf(const_cast<char*>(url.data()), url.size());
             StreamCursor cursor(&buf);
@@ -218,7 +218,7 @@ namespace Pistache::Http::Experimental
                 , connection(connection)
                 , addr_len(_addr_len)
             {
-                memcpy(&addr, _addr, addr_len);
+                std::memcpy(&addr, _addr, addr_len);
             }
 
             const sockaddr* getAddr() const
@@ -341,7 +341,7 @@ namespace Pistache::Http::Experimental
     void Transport::unregisterPoller(Polling::Epoll& poller)
     {
 #ifdef _USE_LIBEVENT
-        epoll_fd = NULL;
+        epoll_fd = nullptr;
 #endif
 
         connectionsQueue.unbind(poller);
@@ -492,12 +492,11 @@ namespace Pistache::Http::Experimental
             PS_LOG_DEBUG_ARGS("Calling ::connect fs %d", GET_ACTUAL_FD(fd));
 
             int res = PST_SOCK_CONNECT(GET_ACTUAL_FD(fd), data->getAddr(), data->addr_len);
-            PST_DBG_DECL_SE_ERR_256_P_16;
+            PST_DBG_DECL_SE_ERR_P_EXTRA;
             PS_LOG_DEBUG_ARGS("::connect res %d, errno on fail %d (%s)",
                               res, (res < 0) ? errno : 0,
                               (res < 0) ?
-                              PST_STRERROR_R(errno, &se_err[0], 256) :
-                              "success");
+                              PST_STRERROR_R_ERRNO : "success");
 
             if ((res == 0) || ((res == -1) && (errno == EINPROGRESS))
                 #ifdef _IS_WINDOWS
@@ -505,7 +504,7 @@ namespace Pistache::Http::Experimental
                 // In Linux, EWOULDBLOCK can be set by ::connect, but only for
                 // Unix domain sockets (i.e. sockets being used for
                 // inter-process communication) which is not our situation
-                // 
+                //
                 // In Windows, EWOULDBLOCK is typically set here for
                 // non-blocking sockets
                 #endif
@@ -684,9 +683,8 @@ namespace Pistache::Http::Experimental
                 }
                 else
                 {
-                    char se_err[256 + 16];
-                    const char * err_msg = PST_STRERROR_R(errno,
-                                                          &se_err[0], 256);
+                    PST_DECL_SE_ERR_P_EXTRA;
+                    const char * err_msg = PST_STRERROR_R_ERRNO;
                     PS_LOG_DEBUG_ARGS("recv err, errno %d %s", errno, err_msg);
 
                     connection->handleError(err_msg);
@@ -712,7 +710,7 @@ namespace Pistache::Http::Experimental
             {
                 auto new_max_buffer = (max_buffer * 2);
                 char * new_buffer = 0;
-                if ((new_max_buffer > 268435456) || // new_max_buffer > 256MB ?
+                if ((new_max_buffer > (8*1024*1024)) ||//new_max_buffer > 8MB ?
                     (0 == (new_buffer = new char[new_max_buffer+16])))
                 {
                     if (new_max_buffer > 268435456)

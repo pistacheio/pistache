@@ -574,7 +574,7 @@ TEST(http_server_test, server_with_static_file)
 #ifdef _IS_WINDOWS
     // Note there is no mkstemp on Windows
 
-    const char * fileName = 0;
+    const char * fileName = nullptr;
     std::string fn_buf_sstr("C:\\temp\\pistacheio76191");
 
     { // encapsulate

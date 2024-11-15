@@ -68,7 +68,7 @@ extern "C" char *__unDName(char*, const char*, int, void*, void*, int);
 
 #define PS_TIMEDBG_START_W_DELIMIT_CH(PSDBG_DELIMIT_CH)                 \
     __PS_TIMEDBG __ps_timedbg(PSDBG_DELIMIT_CH,                         \
-                                  __FILE__, __LINE__, __FUNCTION__, NULL);
+                                  __FILE__, __LINE__, __FUNCTION__, nullptr);
 
 #define PS_TIMEDBG_START_ARGS(__fmt, ...)                               \
     char ps_timedbg_buff[2048];                                         \
@@ -103,19 +103,19 @@ extern "C" char *__unDName(char*, const char*, int, void*, void*, int);
     char * __ptst_demangled = __unDName(&(ptst_undecorated_name[0]),    \
         typeid(*this).name(), 2048, reinterpret_cast<void *>(malloc),        \
         reinterpret_cast<void *>(free), 0x2800);
-    // Note: __ptst_demangled will point to ptst_undecorated_name; 
+    // Note: __ptst_demangled will point to ptst_undecorated_name;
     // Do not free
 #else
 #define GET__PTST_DEMANGLED                                             \
     char * __ptst_demangled = abi::__cxa_demangle(                      \
-        typeid(*this).name(), NULL, NULL, &__ptst_dem_status);          \
+        typeid(*this).name(), nullptr, nullptr, &__ptst_dem_status);          \
     __ptst_demangled_to_free = __ptst_demangled;
 #endif // of ifdef _IS_WINDOWS ... else ...
 
 // Same as PS_TIMEDBG_START but logs class name and "this" value
 #define PS_TIMEDBG_START_THIS                                           \
     int __ptst_dem_status = 0;                                          \
-    char * __ptst_demangled_to_free = NULL;                             \
+    char * __ptst_demangled_to_free = nullptr;                             \
     GET__PTST_DEMANGLED;                                                \
     char ps_timedbg_this_buff[2048];                                    \
     if ((__ptst_demangled) && (__ptst_dem_status == 0))                 \
@@ -139,24 +139,24 @@ extern "C" char *__unDName(char*, const char*, int, void*, void*, int);
         free(__ptst_demangled_to_free);                                 \
     PS_TIMEDBG_START_ARGS("%s", &(ps_timedbg_this_buff[0]));
 
-    
+
 #define PS_TIMEDBG_START_STR(__str)                                     \
     PS_TIMEDBG_START_ARGS("%s", __str)
 
 #define PS_TIMEDBG_GET_CTR                                              \
     (__ps_timedbg.getCounter())
-    
+
 // ---------------------------------------------------------------------------
 
 class __PS_TIMEDBG
 {
 private:
     const char mMarkerChar;
-    
+
     const char * mFileName;
     int mLineNum;
     const char * mFnName;
-    
+
     struct PST_TIMESPEC mPsTimedbg;
     struct PST_TIMESPEC mPsTimeCPUdbg;
 
@@ -165,24 +165,24 @@ private:
 
     unsigned getThreadNextDepth(); // returns depth value after increment
     unsigned decrementThreadDepth(); // returns depth value before decrement
-    
+
     void setMarkerChars(char * marker_chars, char the_marker,
                         unsigned call_depth)
         {
             if (call_depth > 20)
             {
-                for(unsigned int i=0; i<10; i++)
+                for(unsigned int i=0; i<10; ++i)
                     marker_chars[i] = the_marker;
 
                 PS_STRLCPY(&(marker_chars[10]), "...", 4);
                 marker_chars += (10 + 3);
-                for(unsigned int i=0; i<10; i++)
+                for(unsigned int i=0; i<10; ++i)
                     marker_chars[i] = the_marker;
                 marker_chars[10] = 0;
             }
             else
             {
-                for(unsigned int i=0; i<call_depth; i++)
+                for(unsigned int i=0; i<call_depth; ++i)
                     marker_chars[i] = the_marker;
                 marker_chars[call_depth] = 0;
             }
@@ -214,27 +214,27 @@ private:
                 return(the_marker);
             }
         }
-    
-                
-    
-    
+
+
+
+
 
 public:
     static const char * getInf(char * _buff, unsigned _buffSize,
                                const char * _format, ...)
         {
             if (!_format)
-                return(NULL);
+                return(nullptr);
 
             if ((!_buff) || (_buffSize < 6))
-                return(NULL);
+                return(nullptr);
 
             unsigned int sizeof_buf = _buffSize - 6;
             char * buf_ptr = &(_buff[0]);
-            
+
             va_list ap;
             va_start(ap, _format);
-            
+
             // Temporarily disable -Wformat-nonliteral
             #ifdef __clang__
             #pragma clang diagnostic push
@@ -244,7 +244,7 @@ public:
             #ifdef __clang__
             #pragma clang diagnostic pop
             #endif
-            
+
             va_end(ap);
 
             if (ln >= (static_cast<int>(sizeof_buf)))
@@ -252,7 +252,7 @@ public:
 
             return(buf_ptr);
         }
-    
+
 public:
     __PS_TIMEDBG(char marker_ch,
                  const char * f, int l, const char * m, const char * _inf) :
@@ -274,9 +274,9 @@ public:
             {
                 struct tm pstm;
                 const time_t ps_timedbg_sec = mPsTimedbg.tv_sec;
-                if (PST_GMTIME_R(&ps_timedbg_sec, &pstm)!= NULL)
+                if (PST_GMTIME_R(&ps_timedbg_sec, &pstm)!= nullptr)
                 {
-                    if (PST_ASCTIME_R(&pstm, pschbuff) != NULL)
+                    if (PST_ASCTIME_R(&pstm, pschbuff) != nullptr)
                     {
                         size_t pschbuff_len = strlen(pschbuff);
                         while((pschbuff_len > 0) &&
@@ -294,7 +294,7 @@ public:
             char marker_chars[64];
             unsigned call_depth = getThreadNextDepth();
             setMarkerChars(&(marker_chars[0]), mMarkerChar, call_depth);
-            
+
             if (_inf)
                 PSLogFn(LOG_DEBUG, PS_LOG_AND_STDOUT,
                         mFileName, mLineNum, mFnName,
@@ -326,9 +326,9 @@ public:
             {
                 struct tm pstm;
                 const time_t latest_ps_timedbg_sec = latest_ps_timedbg.tv_sec;
-                if (PST_GMTIME_R(&latest_ps_timedbg_sec, &pstm) != NULL)
+                if (PST_GMTIME_R(&latest_ps_timedbg_sec, &pstm) != nullptr)
                 {
-                    if (PST_ASCTIME_R(&pstm, pschbuff) != NULL)
+                    if (PST_ASCTIME_R(&pstm, pschbuff) != nullptr)
                     {
                         size_t pschbuff_len = strlen(pschbuff);
                         while((pschbuff_len > 0) &&
@@ -367,11 +367,11 @@ public:
                                                             (diff_nsec / 1000);
                         diff_msec = diff_usec / 1000;
                         long diff_ms_thousandths = diff_usec % 1000;
-                            
+
                         snprintf(&(ps_diff_chbuff[0]),
                              sizeof(ps_diff_chbuff) - 1,
                                  "%ld.%03ldms", diff_msec,diff_ms_thousandths);
-                        
+
                     }
                     else
                     {
@@ -379,7 +379,7 @@ public:
                                  sizeof(ps_diff_chbuff) - 1,
                                  "%ldms", diff_msec);
                     }
-                    
+
                     ps_diff_time_str = &(ps_diff_chbuff[0]);
                 }
             }
@@ -388,7 +388,7 @@ public:
             unsigned call_depth = decrementThreadDepth();
             setMarkerChars(&(marker_chars[0]), reverseMarkerChar(mMarkerChar),
                            call_depth);
-            
+
             PSLogFn(LOG_DEBUG, PS_LOG_AND_STDOUT,
                 mFileName, mLineNum, mFnName,
                 "%s diff=%s ctr:%u%s", ps_time_str, ps_diff_time_str, mCounter,
@@ -404,7 +404,7 @@ public:
 
 #define PS_TIMEDBG_START_W_DELIMIT_CH(PSDBG_DELIMIT_CH)
 
-#define PS_TIMEDBG_START_ARGS(__fmt, ...) 
+#define PS_TIMEDBG_START_ARGS(__fmt, ...)
 
 #define PS_TIMEDBG_START_THIS
 
@@ -415,4 +415,3 @@ public:
 #endif // of ifndef INCLUDED_PS_TIMELOG_H
 
 // ---------------------------------------------------------------------------
-

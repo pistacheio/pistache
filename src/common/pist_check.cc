@@ -6,7 +6,7 @@
 
 /******************************************************************************
  * pist_check.cc
- * 
+ *
  * Debugging breakpoints
  *
  */
@@ -64,7 +64,7 @@ static void logStackTrace(int pri)
         if (!sym_system_inited)
         {
             BOOL syn_init_res = SymInitialize(process,
-                                  NULL, // symbol search path. Use CWD,
+                                  nullptr, // symbol search path. Use CWD,
                                         // _NT_SYMBOL_PATH environment
                                         // variable, and then
                                         // _NT_ALTERNATE_SYMBOL_PATH
@@ -92,7 +92,7 @@ static void logStackTrace(int pri)
 
     void         * stack[1024+16];
     unsigned short frames = CaptureStackBackTrace(2, // skip first 2 frames
-                                                  1024, stack, NULL);
+                                                  1024, stack, nullptr);
 
     if (frames  == 0)
     {
@@ -145,7 +145,7 @@ static void logStackTrace(int pri)
 
     Dl_info info;
     // Start from 1, not 0 since everyone knows we are in PS_Break()
-    for (size_t i = 1; i < size; ++i) 
+    for (size_t i = 1; i < size; ++i)
     {
         if (!(stack[i]))
         {
@@ -153,15 +153,15 @@ static void logStackTrace(int pri)
                          "%s", "  ST- [Null Stack entry] ");
             continue;
         }
-        
-        if (dladdr(stack[i], &info) != 0) 
+
+        if (dladdr(stack[i], &info) != 0)
         {
             int status = 0;
 
             // See pist_timelog.h for usage
 
-            char* realname = abi::__cxa_demangle(info.dli_sname, NULL,
-                                                 NULL, &status);
+            char* realname = abi::__cxa_demangle(info.dli_sname, nullptr,
+                                                 nullptr, &status);
 
             if (realname && (realname[0]) && status == 0)
             {
@@ -203,7 +203,7 @@ static void logStackTrace(int pri)
             // -1: A memory allocation failure occurred.
             if (realname && status != -1)
                 free(realname);
-        } 
+        }
         else
         {
             PSLogNoLocFn(pri, PS_LOG_AND_STDOUT,
@@ -221,7 +221,7 @@ int PS_LogWoBreak(int pri, const char *p,
     int ln = 0;
     const char * p_prequote_symbol = (p && (strlen(p))) ? "\"" : "";
     const char * p_postquote_symbol = (p && (strlen(p))) ? "\" @" : "";
-    
+
     if (m)
         ln = snprintf(buf, sizeof(buf),
                       "PS_LogPt: %s%s%s %s:%d in %s()\n",
@@ -231,7 +231,7 @@ int PS_LogWoBreak(int pri, const char *p,
         ln = snprintf(buf, sizeof(buf), "PS_LogPt: %s%s%s %s:%d\n",
                        p_prequote_symbol, p, p_postquote_symbol,
                       f, l);
-    
+
     // Print it
     if (ln >= (static_cast<int>(sizeof(buf))))
     {
@@ -241,7 +241,7 @@ int PS_LogWoBreak(int pri, const char *p,
     }
 
     logStackTrace(pri);
-    
+
     if ((pri == LOG_EMERG) || (pri == LOG_ALERT) || (pri == LOG_CRIT) ||
         (pri == LOG_ERR))
     {
@@ -277,5 +277,3 @@ GuardAndDbgLog::~GuardAndDbgLog()
 }
 
 #endif
-
-

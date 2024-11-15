@@ -10,7 +10,7 @@
 
 $savedpwd=$pwd
 
-. $PSScriptRoot/commonsetup.ps1
+. $PSScriptRoot/helpers/commonsetup.ps1
 
 # Set $env:force_msys_gcc if you want to force the use of msys64's gcc
 # even if a different gcc is already installed. (Note:
@@ -73,7 +73,7 @@ if (! (Get-Command mc.exe -errorAction SilentlyContinue)) {
                 $mc_exe = $mc_exe_found
                 break
             }
-            if ((! ($mc_exe)) -and ($mc_exe_found -like "*\x86\mc*")) {        
+            if ((! ($mc_exe)) -and ($mc_exe_found -like "*\x86\mc*")) {
 	        $mc_exe = $mc_exe_found
 	    }
         }
@@ -135,7 +135,7 @@ if (! (Get-Command ninja -errorAction SilentlyContinue)) {
                 if (($env:VCPKG_DIR) -And `
                   (Test-Path -Path "$env:VCPKG_DIR\installed")) {
                       cd "$env:VCPKG_DIR\installed"
-                      
+
                       $ninja_dir = Get-ChildItem -Path "ninja.exe" -Recurse | `
                         Select -ExpandProperty "FullName" | `
                         Sort-Object { $_.Length } | Select -Index 0 `

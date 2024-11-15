@@ -134,7 +134,7 @@ namespace Pistache::Tcp
                 }
             }
 
-            if (cb != NULL)
+            if (cb != nullptr)
             {
                 /* Use the user-defined callback for password if provided */
                 SSL_CTX_set_default_passwd_cb(GetSSLContext(ctx), cb);
@@ -484,8 +484,8 @@ namespace Pistache::Tcp
         //
         if (!found)
         {
-            char se_err[256 + 16];
-            throw std::runtime_error(PST_STRERROR_R(errno, &se_err[0], 256));
+            PST_DECL_SE_ERR_P_EXTRA;
+            throw std::runtime_error(PST_STRERROR_R_ERRNO);
         }
     }
 
@@ -889,12 +889,12 @@ namespace Pistache::Tcp
 
         if (client_actual_fd < 0)
         {
-            char se_err[256 + 16];
+            PST_DECL_SE_ERR_P_EXTRA;
 
             if (errno == EBADF || errno == ENOTSOCK)
-                throw ServerError(PST_STRERROR_R(errno, &se_err[0], 256));
+                throw ServerError(PST_STRERROR_R_ERRNO);
             else
-                throw SocketError(PST_STRERROR_R(errno, &se_err[0], 256));
+                throw SocketError(PST_STRERROR_R_ERRNO);
         }
 
         LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(client_actual_fd);
@@ -906,10 +906,10 @@ namespace Pistache::Tcp
         int fcntl_res = PST_FCNTL(client_actual_fd, PST_F_SETFD, PST_FD_CLOEXEC);
         if (fcntl_res == -1)
         {
-            PST_DBG_DECL_SE_ERR_256_P_16;
+            PST_DBG_DECL_SE_ERR_P_EXTRA;
             PS_LOG_DEBUG_ARGS("fcntl F_SETFD fail for fd %d, errno %d %s",
                               client_actual_fd, errno,
-                              PST_STRERROR_R(errno, &se_err[0], 256));
+                              PST_STRERROR_R_ERRNO);
 
             PST_SOCK_CLOSE(client_actual_fd);
             PS_LOG_DEBUG_ARGS("::close actual_fd %d", client_actual_fd);
@@ -920,10 +920,10 @@ namespace Pistache::Tcp
         fcntl_res = PST_FCNTL(client_actual_fd, PST_F_SETFL, 0 /*clear everything*/);
         if (fcntl_res == -1)
         {
-            PST_DBG_DECL_SE_ERR_256_P_16;
+            PST_DBG_DECL_SE_ERR_P_EXTRA;
             PS_LOG_DEBUG_ARGS("fcntl F_SETFL fail for fd %d, errno %d %s",
                               client_actual_fd, errno,
-                              PST_STRERROR_R(errno, &se_err[0], 256));
+                              PST_STRERROR_R_ERRNO);
 
             PST_SOCK_CLOSE(client_actual_fd);
             PS_LOG_DEBUG_ARGS("::close actual_fd %d", client_actual_fd);
@@ -977,7 +977,11 @@ namespace Pistache::Tcp
         // actual_fd in Windows seems to be a multiple of 4, so we'll fail to
         // use a bunch of handlers if we just do "idx = actual_fd %
         // handlers.size()". For instance, if handlers.size() is 4, idx will
-        // always be zero
+        // always be zero. We use a monotonic and atomic counter here instead
+        // of the file handle divided by 4, since there is no guarantee that
+        // the Windows file handle will always be a multiple of 4, and indeed
+        // it appears it is sometimes not a multiple of 4 in Windows Server
+        // 2019.
 
         { // encapsulate
             auto this_ctr = (idxCtr_++);
@@ -1013,12 +1017,12 @@ namespace Pistache::Tcp
 
     void Listener::setupSSLAuth(const std::string& ca_file,
                                 const std::string& ca_path,
-                                int (*cb)(int, void*) = NULL)
+                                int (*cb)(int, void*) = nullptr)
     {
         PS_TIMEDBG_START_THIS;
 
-        const char* __ca_file = NULL;
-        const char* __ca_path = NULL;
+        const char* __ca_file = nullptr;
+        const char* __ca_path = nullptr;
 
         if (ssl_ctx_ == nullptr)
         {

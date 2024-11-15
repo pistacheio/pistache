@@ -208,7 +208,7 @@ namespace Pistache
             EventMethFns::setEmEventUserData(fd, tag.value_);
 
             TRY(epoll_fd->ctl(EvCtlAction::Add,
-                              fd, events, NULL /* time */));
+                              fd, events, nullptr /* time */));
 
 #else
             struct epoll_event ev;
@@ -242,7 +242,7 @@ namespace Pistache
 
             EventMethFns::setEmEventUserData(fd, tag.value_);
             TRY(epoll_fd->ctl(EvCtlAction::Add,
-                              fd, events, NULL /* time */));
+                              fd, events, nullptr /* time */));
 #else
             struct epoll_event ev;
             ev.events = toEpollEvents(interest);
@@ -261,7 +261,7 @@ namespace Pistache
 
 #ifdef _USE_LIBEVENT
             TRY(epoll_fd->ctl(EvCtlAction::Del,
-                              fd, 0 /* events */, NULL /* time */));
+                              fd, 0 /* events */, nullptr /* time */));
 #else
             struct epoll_event ev;
             TRY(epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, &ev));
@@ -295,7 +295,7 @@ namespace Pistache
                 events |= EVM_ET;
             EventMethFns::setEmEventUserData(fd, tag.value_);
             TRY(epoll_fd->ctl(EvCtlAction::Mod,
-                              fd, events, NULL /* time */));
+                              fd, events, nullptr /* time */));
 
 #else
             struct epoll_event ev;
@@ -377,7 +377,7 @@ namespace Pistache
             PS_TIMEDBG_START_ARGS("epoll on EMEE (epoll_fd) %d",
                                   epoll_fd);
 #endif
-            
+
 #ifdef _USE_LIBEVENT
             std::set<Fd> ready_evm_events;
             int ready_evs = -1;

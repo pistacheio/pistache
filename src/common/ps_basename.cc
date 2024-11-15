@@ -31,7 +31,7 @@ extern "C" char * ps_basename_r(const char * path, char * bname)
     int tmp_errno = errno; // preserve errno
 
     if (!bname)
-        return(NULL);
+        return(nullptr);
     bname[0] = 0;
 
     if (!path)
@@ -65,7 +65,7 @@ extern "C" char * ps_basename_r(const char * path, char * bname)
         // Don't log, since this function called by logging
 
         errno = tmp_errno;
-        return(NULL);
+        return(nullptr);
     }
 
     PS_STRLCPY(bname, fname_buff.data(), PST_MAXPATHLEN);
@@ -95,13 +95,14 @@ static std::mutex ps_basename_r_mutex;
 extern "C" char * ps_basename_r(const char * path, char * bname)
 {
     if (!bname)
-        return(NULL);
+        return(nullptr);
 
     bname[0] = 0;
 
     std::lock_guard<std::mutex> l_guard(ps_basename_r_mutex);
 
-    char * path_copy = (char *) malloc((path ? strlen(path) : 0) + 6);
+    char * path_copy =
+        reinterpret_cast<char *>(malloc((path ? strlen(path) : 0) + 6));
     strcpy(path_copy, path); // since basename may change path contents
 
     char * bname_res = basename(path_copy);

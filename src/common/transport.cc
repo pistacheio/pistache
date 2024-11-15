@@ -118,7 +118,7 @@ namespace Pistache::Tcp
         PS_TIMEDBG_START_THIS;
 
 #ifdef _USE_LIBEVENT
-        epoll_fd = NULL;
+        epoll_fd = nullptr;
 #endif
 
         notifier.unbind(poller);
@@ -169,7 +169,7 @@ namespace Pistache::Tcp
         str += ss.str();
 #endif
 
-        const char* flag_str = NULL;
+        const char* flag_str = nullptr;
 
         if (entry.isReadable())
             flag_str = " readable";
@@ -313,7 +313,7 @@ namespace Pistache::Tcp
             PST_SSIZE_T bytes;
 
 #ifdef PISTACHE_USE_SSL
-            if (peer->ssl() != NULL)
+            if (peer->ssl() != nullptr)
             {
                 PS_LOG_DEBUG("SSL_read");
 
@@ -331,16 +331,13 @@ namespace Pistache::Tcp
             }
 #endif /* PISTACHE_USE_SSL */
 
-#ifdef DEBUG
-            char se_err[256 + 16];
-            se_err[0] = 0;
-#endif
+            PST_DBG_DECL_SE_ERR_P_EXTRA;
             PS_LOG_DEBUG_ARGS("Fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", "
                                                                "bytes read %d, totalBytes %d, "
                                                                "err %d %s",
                               peer->fd(), bytes, totalBytes,
                               (bytes < 0) ? errno : 0,
-                              (bytes < 0) ? (PST_STRERROR_R(errno, &se_err[0], 256)) : "");
+                              (bytes < 0) ? (PST_STRERROR_R_ERRNO) : "");
 
             if (bytes == -1)
             {
@@ -529,9 +526,9 @@ namespace Pistache::Tcp
                 }
                 if (bytesWritten < 0)
                 {
-                    PST_DBG_DECL_SE_ERR_256_P_16;
+                    PST_DBG_DECL_SE_ERR_P_EXTRA;
                     PS_LOG_DEBUG_ARGS("fd %" PIST_QUOTE(PS_FD_PRNTFCD) " errno %d %s",
-                                      fd, errno, PST_STRERROR_R(errno, &se_err[0], 256));
+                                      fd, errno, PST_STRERROR_R_ERRNO);
 
                     if (errno == EAGAIN || errno == EWOULDBLOCK)
                     {
@@ -666,11 +663,11 @@ namespace Pistache::Tcp
         }
         else
         {
-            PST_DBG_DECL_SE_ERR_256_P_16;
+            PST_DBG_DECL_SE_ERR_P_EXTRA;
             PS_LOG_DEBUG_ARGS("getsockopt failed for fd %p, actual fd %d, "
                               "errno %d, err %s",
                               fd, GET_ACTUAL_FD(fd), errno,
-                              PST_STRERROR_R(errno, &se_err[0], 256));
+                              PST_STRERROR_R_ERRNO);
 
             throw std::runtime_error("getsockopt failed");
         }
@@ -700,7 +697,7 @@ namespace Pistache::Tcp
                 throw std::runtime_error(
                     "No peer found for fd: " + to_string(fd));
 
-            it_second_ssl_is_null = (it_->second->ssl() == NULL);
+            it_second_ssl_is_null = (it_->second->ssl() == nullptr);
 
             if (!it_second_ssl_is_null)
             {
@@ -794,7 +791,7 @@ namespace Pistache::Tcp
                 throw std::runtime_error(
                     "No peer found for fd: " + to_string(fd));
             }
-            it_second_ssl_is_null = (it_->second->ssl() == NULL);
+            it_second_ssl_is_null = (it_->second->ssl() == nullptr);
 
             if (!it_second_ssl_is_null)
             {
@@ -838,9 +835,9 @@ namespace Pistache::Tcp
             // position of "file", which is the same as the behavior described
             // in Linux sendfile man page
             int sendfile_res = PS_SENDFILE(file, GET_ACTUAL_FD(fd),
-                                           offset, &len_as_off_t,
-                                           NULL, // no new prefix/suffix content
-                                           0 /*reserved, must be zero*/);
+                                       offset, &len_as_off_t,
+                                       nullptr, // no new prefix/suffix content
+                                       0 /*reserved, must be zero*/);
 
             if (sendfile_res == 0)
             {
@@ -948,9 +945,9 @@ namespace Pistache::Tcp
 #endif
         if (res == -1)
         {
-            PST_DBG_DECL_SE_ERR_256_P_16;
-            PS_LOG_DEBUG_ARGS("Fd %" PIST_QUOTE(PS_FD_PRNTFCD) ",  ernno %d %s",
-                              entry.fd, errno, PST_STRERROR_R(errno, &se_err[0], 256));
+            PST_DBG_DECL_SE_ERR_P_EXTRA;
+            PS_LOG_DEBUG_ARGS("Fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", ernno %d %s",
+                              entry.fd, errno, PST_STRERROR_R_ERRNO);
 
             entry.deferred.reject(Pistache::Error::system("Could not set timer time"));
             return;
@@ -1108,11 +1105,7 @@ namespace Pistache::Tcp
     {
         PS_TIMEDBG_START_THIS;
 
-        // Cast away const so we can lock the mutex. Nonetheless, this function
-        // overall locks then unlocks the mutex, leaving it unchanged
-        Transport* non_const_this = const_cast<Transport*>(this);
-
-        std::lock_guard<std::mutex> l_guard(non_const_this->peers_mutex_);
+        std::lock_guard<std::mutex> l_guard(peers_mutex_);
         return (isPeerFdNoPeersMutexLock(fdconst));
     }
 

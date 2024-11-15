@@ -10,8 +10,8 @@
 #   winscripts/mesbuild.ps1
 
 # Use "dot source" to include another file
-. winscripts/messetdirvars.ps1
-. winscripts/adjbuilddirformesbuild.ps1
+. $PSScriptRoot/helpers/messetdirvars.ps1
+. $PSScriptRoot/helpers/adjbuilddirformesbuild.ps1
 
 if (($MESON_PREFIX_DIR) -and (-not (Test-Path -Path "$MESON_PREFIX_DIR"))) `
     {mkdir "$MESON_PREFIX_DIR"}

@@ -131,7 +131,7 @@ namespace Pistache
             int fd = dup((int)j);
             if (fd < 0)
                 continue;
-            n++;
+            ++n;
             close(fd);
         }
 

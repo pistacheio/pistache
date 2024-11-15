@@ -34,7 +34,7 @@ extern "C" char * pist_strerror_r(int errnum, char *buf, size_t buflen)
 {
     if ((!buf) || (buflen <= 1))
     {
-        if (strcmp(&(bad_strerror_parms_buff[0]), const_bad_strerror_parms))
+        if (::strcmp(&(bad_strerror_parms_buff[0]), const_bad_strerror_parms))
             PS_STRLCPY(&(bad_strerror_parms_buff[0]),
                     const_bad_strerror_parms, 128);
 
@@ -46,12 +46,12 @@ extern "C" char * pist_strerror_r(int errnum, char *buf, size_t buflen)
     errno_t res_strerror_s = strerror_s(buf, buflen, errnum);
     if (res_strerror_s == 0)
     {
-        if ((errnum >= 100) && ((strncmp(&(buf[0]), "Unknown error",
-                                         sizeof("Unknown error")) == 0) ||
-                                (strncmp(&(buf[0]), "Unknown Error",
-                                         sizeof("Unknown Error")) == 0) ||
-                                (strncmp(&(buf[0]), "unknown error",
-                                         sizeof("unknown error")) == 0)))
+        if ((errnum >= 100) && ((::strncmp(&(buf[0]), "Unknown error",
+                                           sizeof("Unknown error")) == 0) ||
+                                (::strncmp(&(buf[0]), "Unknown Error",
+                                           sizeof("Unknown Error")) == 0) ||
+                                (::strncmp(&(buf[0]), "unknown error",
+                                           sizeof("unknown error")) == 0)))
         {
             // In Windows Server 2019 with Visual Studio 2019, the debug
             // runtime generates a real error message ("address in use") for
@@ -65,10 +65,10 @@ extern "C" char * pist_strerror_r(int errnum, char *buf, size_t buflen)
             // the release runtime manages to produce real error messages for
             // errno 100; so this is presumably an issue with older versions of
             // Windows such as 2019.
-            // 
+            //
             // See: https://learn.microsoft.com/en-us/cpp/c-runtime-library/errno-constants?view=msvc-170
 
-            const char * str = NULL;
+            const char * str = nullptr;
             switch(errnum)
             {
             case EADDRINUSE:

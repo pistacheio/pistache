@@ -11,8 +11,10 @@
 # Execute this script from the parent directory by invoking:
 #   bldscripts/mestestdebug.sh
 
-source bldscripts/mesdebugsetdirvars.sh
-source bldscripts/adjbuilddirformesbuild.sh
+MY_SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+source $MY_SCRIPT_DIR/helpers/mesdebugsetdirvars.sh
+source $MY_SCRIPT_DIR/helpers/adjbuilddirformesbuild.sh
 
 if [ -e "${MESON_BUILD_DIR}" ]
 then
@@ -22,5 +24,3 @@ else
     echo "Build dir ${MESON_BUILD_DIR} doesn't exist"
     exit 1
 fi
-
-

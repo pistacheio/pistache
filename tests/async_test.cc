@@ -293,8 +293,8 @@ TEST(async_test, when_any)
                            [](double val) { return -val; });
     auto p2 = doAsyncTimed(std::chrono::seconds(1), std::string("Hello"),
                            [](std::string val) {
-                               std::transform(std::begin(val),
-                                              std::end(val), std::begin(val),
+                               std::transform(std::cbegin(val),
+                                              std::cend(val), std::begin(val),
                                               [](const char ch)
                                               {
                                                   const unsigned char uch =

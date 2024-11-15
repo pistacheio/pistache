@@ -12,7 +12,9 @@
 # To install (must be run from build.debug directory):
 #   sudo make install
 
-source bldscripts/cmkdebugsetdirvars.sh
+MY_SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+source $MY_SCRIPT_DIR/helpers/cmkdebugsetdirvars.sh
 
 if [ -e "./${CMAKE_BUILD_DIR}" ]
 then

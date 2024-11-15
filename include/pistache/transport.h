@@ -291,7 +291,7 @@ namespace Pistache::Tcp
         // Peer per request; it fails when two of the requests are using the
         // same Peer. Which appears to happen when the peers_ unordered_map
         // gets messed up due to a threading issue.
-        std::mutex peers_mutex_;
+        mutable std::mutex peers_mutex_;
         std::unordered_map<Fd, std::shared_ptr<Peer>> peers_;
 
     private:

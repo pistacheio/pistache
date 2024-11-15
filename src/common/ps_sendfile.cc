@@ -72,7 +72,7 @@ extern "C" PST_SSIZE_T ps_sendfile(em_socket_t out_fd, int in_fd,
     //   to the offset of the byte following the last byte that was read, and
     //   sendfile() does NOT modify the file offset of in_fd.
 
-    HANDLE in_fd_handle = (HANDLE) _get_osfhandle(in_fd);
+    HANDLE in_fd_handle = reinterpret_cast<HANDLE>(_get_osfhandle(in_fd));
     if (in_fd_handle == INVALID_HANDLE_VALUE)
     {
         PS_LOG_INFO_ARGS("Invalid file descriptor %d", in_fd);
@@ -81,10 +81,10 @@ extern "C" PST_SSIZE_T ps_sendfile(em_socket_t out_fd, int in_fd,
     }
 
     BOOL res = TransmitFile(out_fd, in_fd_handle,
-                            (DWORD) count, // 0 => transmit whole file
+                            static_cast<DWORD>(count), // 0 => whole file
                             0, // nNumberOfBytesPerSend => use default
-                            NULL, // no "overlapped"
-                            NULL, // lpTransmitBuffers => no pre/suffix buffs
+                            nullptr, // no "overlapped"
+                            nullptr, // lpTransmitBuffers => no pre/suffix buffs
                             0); // flags
 
     DWORD num_bytes_transferred = 0;
@@ -196,7 +196,7 @@ PST_SSIZE_T ps_sendfile(int out_fd, int in_fd, off_t* offset, size_t count)
             {
                 PS_LOG_DEBUG("read-interrupted error");
 
-                read_errors++;
+                ++read_errors;
                 if (read_errors < 256)
                     continue;
 
@@ -234,7 +234,7 @@ PST_SSIZE_T ps_sendfile(int out_fd, int in_fd, off_t* offset, size_t count)
                 {
                     PS_LOG_DEBUG("write-interrupted error");
 
-                    write_errors++;
+                    ++write_errors;
                     if (write_errors < 256)
                         continue;
 

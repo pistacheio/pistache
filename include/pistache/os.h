@@ -105,7 +105,7 @@ namespace Pistache
                 actualFdU64Value() const
             {
 #ifdef _USE_LIBEVENT
-                if (value_ == NULL)
+                if (value_ == nullptr)
                     return (static_cast<uint64_t>(-1));
                 em_socket_t actual_fd = GET_ACTUAL_FD(value_);
                 return (static_cast<uint64_t>(actual_fd));

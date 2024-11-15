@@ -13,6 +13,7 @@
 
 #include <errno.h>
 #include <string.h> // for memcpy
+#include <cstring>
 #include <algorithm> // for std::min
 
 #if defined(_IS_WINDOWS) || defined(__linux__)
@@ -35,12 +36,12 @@ extern "C" size_t ps_strlcpy(char *dst, const char *src, size_t n)
     {
         bytes_to_copy = n-1;
 
-        memcpy(dst, src, bytes_to_copy);
+        std::memcpy(dst, src, bytes_to_copy);
         dst[bytes_to_copy] = 0;
     }
     else
     {
-        memcpy(dst, src, bytes_to_copy);
+        std::memcpy(dst, src, bytes_to_copy);
     }
 
     return(bytes_to_copy);
@@ -51,11 +52,11 @@ extern "C" size_t ps_strlcat(char *dst, const char *src, size_t n)
     if ((!dst) || (!src) || (n <= 1))
         return(0);
 
-    size_t dst_len= strlen(dst);
+    const size_t dst_len= strlen(dst);
     if ((n+1) <= dst_len)
         return(dst_len); // no space to add onto dst
 
-    size_t len_added = ps_strlcpy(dst+dst_len, src, (n - dst_len));
+    const size_t len_added = ps_strlcpy(dst+dst_len, src, (n - dst_len));
     return(dst_len+len_added);
 }
 
@@ -105,7 +106,7 @@ extern "C" int ps_strncpy_s(char *strDest, size_t numberOfElements,
         return(-1);
     }
 
-    memcpy(strDest, strSource, non_null_bytes_to_copy);
+    std::memcpy(strDest, strSource, non_null_bytes_to_copy);
     strDest[non_null_bytes_to_copy] = 0;
     return(0);
 

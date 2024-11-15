@@ -168,7 +168,7 @@ SocketWrapper bind_free_port_helper(int ai_family)
         }
         throw std::runtime_error("failed to bind");
     }
-    
+
     return SocketWrapper(sockfd);
 }
 
@@ -181,7 +181,7 @@ SocketWrapper bind_free_port()
     // IPv4 when available. However, in FreeBSD, it causes us to use IPv6 when
     // available. Since Pistache itself defaults to IPv4, we try IPv4 first for
     // bind_free_port_helper, and only try AF_UNSPEC if IPv4 fails.
-    
+
     try
     {
         return(bind_free_port_helper(AF_INET/*IPv4*/));
@@ -284,21 +284,26 @@ TEST(listener_test, listener_bind_port_not_free_throw_runtime)
 
         std::cout << err.what() << std::endl;
         int flag = 0;
-        // GNU libc
-        if (strncmp(err.what(), "Address already in use",
-                    sizeof("Address already in use"))
-            == 0)
+
+        PST_DECL_SE_ERR_P_EXTRA;
+        char * desired_str = // Try strerror_r in case str affected by locale
+            PST_STRERROR_R(EADDRINUSE, &se_err[0], sizeof(se_err)-16);
+        if ((desired_str) && (strlen(desired_str)) &&
+            (strncmp(err.what(), desired_str, strlen(desired_str)) == 0))
         {
             flag = 1;
         }
-        // Musl libc
-        if (strncmp(err.what(), "Address in use", sizeof("Address in use")) == 0)
-        {
+        else if (strncmp(err.what(), "Address already in use",
+                    sizeof("Address already in use")) == 0)
+        { // GNU libc
             flag = 1;
         }
-        // MSVS
-        if (strncmp(err.what(), "address in use", sizeof("address in use")) == 0)
-        {
+        else if (strncmp(err.what(), "Address in use", sizeof("Address in use")) == 0)
+        { // Musl libc
+            flag = 1;
+        }
+        else if (strncmp(err.what(), "address in use", sizeof("address in use")) == 0)
+        { // MSVS
             flag = 1;
         }
         ASSERT_EQ(flag, 1);
@@ -402,8 +407,8 @@ TEST(listener_test, listener_bind_unix_domain)
     endpoint.shutdown();
 
     // Clean up.
-    (void)PST_UNLINK(sockName.c_str());
-    (void)PST_RMDIR(tmpDir);
+    std::ignore = PST_UNLINK(sockName.c_str());
+    std::ignore = PST_RMDIR(tmpDir);
 }
 
 #ifndef _WIN32

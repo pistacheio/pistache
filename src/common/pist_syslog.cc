@@ -192,7 +192,7 @@ public:
 
     ~LogToStdPutAsWell()
         {
-            for(unsigned int i=0; i<2; i++)
+            for(unsigned int i=0; i<2; ++i)
             {
                 if (logToStdoutAsWellMonitorThread[i])
                 {
@@ -231,12 +231,12 @@ static void getPsLogToStdoutAsWellLogFailPrv(const wchar_t * msg_prefix,
 
     TCHAR err_msg_buff_tch[2048+16];
     DWORD err_msg_res = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,
-                                      NULL, // no msg source string
+                                      nullptr, // no msg source string
                                       err_code,
                                       0, // unspecified language
                                       &(err_msg_buff_tch[0]),
                                       2048, // buff size
-                                      NULL); // msg arguments
+                                      nullptr); // msg arguments
     if (err_msg_res == 0)
     {
         err_wostringstream << L". <FormatMessage Failed>.";
@@ -257,8 +257,8 @@ static void getPsLogToStdoutAsWellLogFailPrv(const wchar_t * msg_prefix,
                                         -1, // msg_w is null-terminated
                                         &(msg_buf_chs[0]),
                                         2048,
-                                        NULL, // ptr to ch for invalid char
-                                        NULL); // any invalid char?
+                                        nullptr, // ptr to ch for invalid char
+                                        nullptr); // any invalid char?
     if (wctmb_res <= 0)
     {
         EventWritePSTCH_CBLTIN_ALERT_NL_AssumeEnabled(
@@ -311,10 +311,10 @@ static DWORD getAndInitPsLogToStdoutAsWellPrv()
         "pistacheio\\pistache", // will create both "pistacheio" and
                                           // "pistache" if needed
         0,
-        NULL, // lpClass
+        nullptr, // lpClass
         0, // default flags
         KEY_QUERY_VALUE | KEY_SET_VALUE | KEY_NOTIFY, // reqd rights
-        NULL, // don't allow child process to inherit
+        nullptr, // don't allow child process to inherit
         &lLogToStdOutAsWellInst.pistacheHkey, // HKEY result
         &dw_disposition);
     // Note: if the key already exists, RegCreateKeyExA opens it
@@ -341,13 +341,14 @@ static DWORD getAndInitPsLogToStdoutAsWellPrv()
     {
         uint64_t val = 0; // only needs to be DWORD, but just in case
         DWORD val_size = sizeof(DWORD);
-        LSTATUS get_val_res = RegGetValueA(lLogToStdOutAsWellInst.pistacheHkey,
-                                           NULL, // subkey - none
-                                           "psLogToStdoutAsWell", // val name
-                                           RRF_RT_REG_DWORD, // type REG_DWORD
-                                           NULL, // out type
-                                           &val, // out data
-                                           &val_size);  // out data size
+        const LSTATUS get_val_res =
+            RegGetValueA(lLogToStdOutAsWellInst.pistacheHkey,
+                         nullptr, // subkey - none
+                         "psLogToStdoutAsWell", // val name
+                         RRF_RT_REG_DWORD, // type REG_DWORD
+                         nullptr, // out type
+                         &val, // out data
+                         &val_size);  // out data size
         if (get_val_res == ERROR_SUCCESS)
         {
             if ((val != 10) && (val != 0) && (val != 1))
@@ -400,11 +401,11 @@ static DWORD getLogToStdoutAsWellAndMonitorPrv()
 
     bool we_set_l_log_to_stdout_as_well = false;
 
-    HANDLE h_event= CreateEventA(NULL, // handle not inherited by child process
+    HANDLE h_event= CreateEventA(nullptr, // handle not inherited by child
                                  FALSE,// auto-set to non-signaled after signal
                                  FALSE,// initial state is non-signaled
-                                 NULL);// Null = event name
-    if (h_event == NULL)
+                                 nullptr);// Null = event name
+    if (h_event == nullptr)
     {
         DWORD err_code = GetLastError();
         getPsLogToStdoutAsWellLogFailPrv(
@@ -443,7 +444,7 @@ static DWORD getLogToStdoutAsWellAndMonitorPrv()
 
                 // Effectively, delete the std::thread instance
                 lLogToStdOutAsWellInst.
-                      logToStdoutAsWellMonitorThread[thread_to_use_idx] = NULL;
+                   logToStdoutAsWellMonitorThread[thread_to_use_idx] = nullptr;
             }
 
             lLogToStdOutAsWellInst.
@@ -484,7 +485,7 @@ static DWORD getLogToStdoutAsWellAndMonitorPrv()
                 reg_notify_res);
         }
     }
-    
+
     if (!we_set_l_log_to_stdout_as_well)
         lLogToStdOutAsWellInst.logToStdoutAsWell = log_to_stdout_as_well;
     return(log_to_stdout_as_well);
@@ -565,21 +566,21 @@ static std::string getLogIdent()
 {
     char prog_path[PST_MAXPATHLEN+6];
     prog_path[0] = 0;
-    
+
     #ifdef __APPLE__
     uint32_t bufsize = PST_MAXPATHLEN;
     if (_NSGetExecutablePath(&(prog_path[0]), &bufsize) != 0)
         return(std::string());
     #elif defined _IS_WINDOWS
-    if (GetModuleFileNameA(NULL, // NULL->executable file of current process
+    if (GetModuleFileNameA(nullptr, // NULL->executable file of current process
                            &(prog_path[0]), PST_MAXPATHLEN) == 0)
         return(std::string()); // GetModuleFileNameA returns strlen on success
     #else
     if (readlink("/proc/self/exe", &(prog_path[0]), PST_MAXPATHLEN) == -1)
-        return(std::string());   
+        return(std::string());
     #endif
 
-    size_t prog_path_len = strlen(&(prog_path[0]));
+    const size_t prog_path_len = strlen(&(prog_path[0]));
     if (!prog_path_len)
         return(std::string());
 
@@ -596,7 +597,7 @@ static std::string getLogIdent()
 
     std::string prog_name_raw(prog_name);
     std::string prog_name_no_punct;
-    std::remove_copy_if(prog_name_raw.begin(), prog_name_raw.end(),            
+    std::remove_copy_if(prog_name_raw.begin(), prog_name_raw.end(),
           std::back_inserter(prog_name_no_punct), my_is_punct);
 
     if ((prog_name_no_punct.size() >= 3) && (prog_name_no_punct.size() <= 5))
@@ -612,9 +613,9 @@ static std::string getLogIdent()
 }
 
 
-    
-    
-    
+
+
+
 
 PSLogging::PSLogging()
 {
@@ -625,7 +626,7 @@ PSLogging::PSLogging()
                                            gLogEntryPrefix : log_ident.c_str(),
                    PST_MAXPATHLEN);
     }
-    
+
     #ifdef PIST_USE_OS_LOG
 
     // Instead of syslog, on apple should likely be using os_log (and possibly
@@ -654,19 +655,19 @@ PSLogging::PSLogging()
     EventWritePSTCH_CBLTIN_INFO_NL_AssumeEnabled(pist_start_wmsg);
 
     #else
-    
+
     if (!gSetPsLogCategoryCalledWithNull)
     {
-        
+
         int log_opts = (LOG_NDELAY | LOG_PID);
-        #ifdef DEBUG    
+        #ifdef DEBUG
         log_opts |= LOG_CONS; // send to console if syslog not working
         // OR with LOG_PERROR to send every log message to stdout
         #endif
 
         openlog(&(gIdentBuff[0]), log_opts, LOG_USER);
     }
-    
+
     #endif // of not ifdef PIST_USE_OS_LOG
 }
 
@@ -690,9 +691,9 @@ static int snprintProcessAndThread(char * _buff, size_t _buffSize)
         return(-1);
     if (!_buffSize)
         return(-1);
-    
+
     PST_THREAD_ID pt = PST_THREAD_ID_SELF(); // This function always succeeds
-    
+
     unsigned char *ptc =
         reinterpret_cast<unsigned char*>((reinterpret_cast<void*>(&pt)));
     int buff_would_have_been_len = 0;
@@ -701,7 +702,7 @@ static int snprintProcessAndThread(char * _buff, size_t _buffSize)
     // Skip leading 0s to make str shorter (but don't reduce to zero len)
     size_t size_pt = sizeof(pt);
     unsigned int ch_to_skip = 0;
-    for(;(ch_to_skip+1) < size_pt; ch_to_skip++)
+    for(;(ch_to_skip+1) < size_pt; ++ch_to_skip)
     {
         if (ptc[ch_to_skip])
             break;
@@ -710,13 +711,13 @@ static int snprintProcessAndThread(char * _buff, size_t _buffSize)
     size_pt -= ch_to_skip;
 
     // Skip trailing 0s to make str shorter (but don't reduce to zero len)
-    for(; size_pt>1; size_pt--)
+    for(; size_pt>1; --size_pt)
     {
         if (ptc[size_pt-1])
             break;
     }
-    
-    for (int i=((static_cast<int>(size_pt))-1); i>=0; i--) // little endian, if it matters
+
+    for (int i=((static_cast<int>(size_pt))-1); i>=0; --i) // little endian, if it matters
     {
         buff_would_have_been_len =
             snprintf(_buff, _buffSize, "%02x", static_cast<unsigned>(ptc[i]));
@@ -777,10 +778,10 @@ static int snprintProcessAndThread(char * _buff, size_t _buffSize)
 {                                                                       \
     std::wstring dummy_buff_as_wstr(L"MultiByteToWideChar Fail");       \
     std::wstring buff_as_wstr;                                          \
-    const wchar_t * buff_as_wstr_data = NULL;                           \
+    const wchar_t * buff_as_wstr_data = nullptr;                           \
                                                                         \
     int convert_result = MultiByteToWideChar(CP_UTF8, 0, POL_ARG,       \
-                           static_cast<int>(strlen(POL_ARG)), NULL, 0); \
+                           static_cast<int>(strlen(POL_ARG)), nullptr, 0); \
     if (convert_result <= 0)                                            \
     {                                                                   \
         buff_as_wstr_data = dummy_buff_as_wstr.data();                  \
@@ -850,21 +851,21 @@ static int snprintProcessAndThread(char * _buff, size_t _buffSize)
 
 static const char * levelCStr(int _pri)
 {
-    const char * res = NULL;
+    const char * res = nullptr;
     switch(_pri)
     {
     case LOG_ALERT:
         res = "ALERT";
         break;
-        
+
     case LOG_WARNING:
         res = "WRN";
         break;
-        
+
     case LOG_INFO:
         res = "INF";
         break;
-        
+
     case LOG_DEBUG:
         res = "DBG";
         break;
@@ -872,7 +873,7 @@ static const char * levelCStr(int _pri)
     case LOG_ERR:
         res = "ERR";
         break;
-        
+
     default:
         res = "UNKNOWN";
         break;
@@ -886,7 +887,7 @@ static int logToStdOutMaybeErr(int _priority, bool _andPrintf,
 {
     if (!_str)
         _str = "";
-    
+
     char dAndT[256];
     dAndT[0] = 0;
     if ((_andPrintf)
@@ -897,7 +898,7 @@ static int logToStdOutMaybeErr(int _priority, bool _andPrintf,
     {
         PS_STRLCPY(&(dAndT[0]), "<No Timestamp>", sizeof(dAndT));
 
-        time_t t = time(NULL);
+        time_t t = time(nullptr);
         if (t >= 0)
         {
             struct tm this_tm;
@@ -911,8 +912,8 @@ static int logToStdOutMaybeErr(int _priority, bool _andPrintf,
             }
         }
     }
-    
-    
+
+
     int print_res = 0;
 
     if (_andPrintf)
@@ -922,7 +923,7 @@ static int logToStdOutMaybeErr(int _priority, bool _andPrintf,
     #ifndef DEBUG
     if (_priority >= LOG_WARNING)
     {
-        int stderr_print_res = 
+        int stderr_print_res =
             fprintf(stderr, "%s %s: %s\n",
                     &(dAndT[0]), levelCStr(_priority), _str);
         if (!_andPrintf)
@@ -978,7 +979,7 @@ void PSLogging::log(int _priority, bool _andPrintf,
           // messed up in a way that both stops vsnprintf from working above,
           // and will stop os_log from working when using _format as a string
           // here
-          OS_LOG_BY_PRIORITY_FORMAT_ARG("%s", 
+          OS_LOG_BY_PRIORITY_FORMAT_ARG("%s",
                                         "Unable to log, vsnprintf failed");
           if (_format)
               OS_LOG_BY_PRIORITY_FORMAT_ARG(
@@ -1022,16 +1023,16 @@ void PSLogging::log(int _priority, bool _andPrintf, const char * _str)
         PS_STRLCAT(&(buff[0]), " ", sizeof(buff)-8);
     PS_STRLCAT(&(buff[0]), gLogEntryPrefix, sizeof(buff)-8);
     PS_STRLCAT(&(buff[0]), ") ", sizeof(buff)-8);
-    
+
     char * remaining_buff = &(buff[0]) + strlen(buff);
     size_t remaining_buff_size = sizeof(buff) - strlen(buff);
-    
+
     int res = snprintf(remaining_buff, remaining_buff_size-2, "%s", _str);
     if ((res < 0) && (_priority >= LOG_WARNING))
     {
         logToStdOutMaybeErr(LOG_ALERT, _andPrintf,
                             "snprintf failed for log in PSLogging::log");
-        
+
         #ifdef PIST_USE_OS_LOG
           OS_LOG_BY_PRIORITY_FORMAT_ARG("%s", _str);
         #elif defined _IS_WINDOWS
@@ -1039,7 +1040,7 @@ void PSLogging::log(int _priority, bool _andPrintf, const char * _str)
         #else
           syslog(_priority, "%s", _str);
         #endif
-          
+
         logToStdOutMaybeErr(_priority, _andPrintf, _str);
     }
     else
@@ -1067,7 +1068,7 @@ static void PSLogPrv(int _priority, bool _andPrintf,
     #endif
     if (!_format)
         return;
-    
+
     PSLogging::getPSLogging()->log(_priority, _andPrintf, _format, _ap);
 }
 
@@ -1079,7 +1080,7 @@ static void PSLogStrPrv(int _priority, bool _andPrintf, const char * _str)
     #endif
     if (!_str)
         return;
-    
+
     PSLogging::getPSLogging()->log(_priority, _andPrintf, _str);
 }
 
@@ -1097,7 +1098,7 @@ extern "C" void PSLogNoLocFn(int _pri, bool _andPrintf,
     // getLogToStdoutAsWell reads the
     // "HKCU:\Software\pistacheio\pistache\psLogToStdoutAsWell" property from
     // the Windows registry.
-    DWORD log_to_stdout_as_well = getLogToStdoutAsWell();
+    const DWORD log_to_stdout_as_well = getLogToStdoutAsWell();
     if (log_to_stdout_as_well == 10)
         _andPrintf = false;
     else
@@ -1123,7 +1124,7 @@ extern "C" void PSLogFn(int _pri, bool _andPrintf,
     // getLogToStdoutAsWell reads the
     // "HKCU:\Software\pistacheio\pistache\psLogToStdoutAsWell" property from
     // the Windows registry.
-    DWORD log_to_stdout_as_well = getLogToStdoutAsWell();
+    const DWORD log_to_stdout_as_well = getLogToStdoutAsWell();
     if (log_to_stdout_as_well == 10)
         _andPrintf = false;
     else
@@ -1148,7 +1149,7 @@ extern "C" void PSLogFn(int _pri, bool _andPrintf,
     const unsigned int form_and_args_buf_size = 2048;
     char form_and_args_buf[form_and_args_buf_size + 6];
     form_and_args_buf[0] = 0;
-    
+
     { // encapsulate
         va_list ap;
         va_start(ap, _format);
@@ -1162,7 +1163,7 @@ extern "C" void PSLogFn(int _pri, bool _andPrintf,
         #ifdef __clang__
         #pragma clang diagnostic pop
         #endif
-        
+
         va_end(ap);
         if (pos >= (int) form_and_args_buf_size)
             PS_STRLCAT(&(form_and_args_buf[0]), "...", form_and_args_buf_size);
@@ -1210,7 +1211,7 @@ extern "C" void PSLogFn(int _pri, bool _andPrintf,
 // anything then the _category string will be passed to openlog as the "ident"
 // parm upon the first pistachio log; or if setPsLogCategory is not called,
 // then pistachio will assign a 5-letter ident based on the executable name.
-// 
+//
 // Note that if (and this is NOT RECOMMENDED - instead get the app to call
 // openlog itself before anything is logged) setPsLogCategory is called with
 // NULL or empty string, but then pistachio logs something before the
@@ -1247,4 +1248,3 @@ extern "C" void setPsLogCategory(const char * _category)
 // https://stackoverflow.com/questions/13703823/a-custom-ostream
 // Create a streambuf with it's own sync function, initiatize ostream with the
 // streambuf
-    

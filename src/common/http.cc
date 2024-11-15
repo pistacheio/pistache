@@ -1161,8 +1161,8 @@ namespace Pistache::Http
         int fd = PST_FILE_OPEN(fileName.c_str(), PST_O_RDONLY);
         if (fd == -1)
         {
-            char se_err[256 + 16];
-            std::string str_error(PST_STRERROR_R(errno, &se_err[0], 256));
+            PST_DECL_SE_ERR_P_EXTRA;
+            std::string str_error(PST_STRERROR_R_ERRNO);
             if (errno == ENOENT)
             {
                 throw HttpError(Http::Code::Not_Found, std::move(str_error));

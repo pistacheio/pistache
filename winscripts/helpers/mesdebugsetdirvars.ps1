@@ -8,9 +8,9 @@
 # Sets MESON_BUILD_DIR and MESON_PREFIX_DIR
 #
 # Use by:
-#   . winscripts/mesdebugsetdirvars.sh
+#   . $PSScriptRoot/helpers/mesdebugsetdirvars.sh
 
-. winscripts/messetdirvars.ps1
+. $PSScriptRoot/messetdirvars.ps1
 
 $MESON_BUILD_DIR="$MESON_BUILD_DIR.debug"
 $MESON_PREFIX_DIR="$MESON_PREFIX_DIR.debug"

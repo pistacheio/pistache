@@ -115,7 +115,7 @@ if host_machine.system() == 'windows'
     #         |
     #         pist_winlog.rc + pist_winlog.h
     #               |
-    #            *rc.exe*
+    #            *rc.exe* or (if using gcc) windres.exe
     #               |
     #               pist_winlog.res
     #                     |
@@ -253,11 +253,13 @@ if host_machine.system() == 'windows'
     deps_libpistache += gen_src_def_dep # DLL is dependent on .def file
 
     libpistache_links_args += '/DEF:src/pistache.def'
-    libpistache_links_args += '/IGNORE:4102'
+    libpistache_links_args += '/IGNORE:4102' # label defined but not referenced
 
     # Take DLL library name from the linker cmd line, not from
     # .def/.exp file Alternately, could fix this in dump2def
-    # (LIBRARY statement)
+    # (LIBRARY statement).
+    # Error LNK4070: /OUT:filename directive in .EXP differs from
+    # output filename 'filename'; ignoring directive
     libpistache_links_args += '/IGNORE:4070'
 
   else # Not MSVC
@@ -363,12 +365,42 @@ if meson.version().version_compare('>=0.54.0')
 	meson.override_dependency('libpistache', pistache_dep)
 endif
 
-import('pkgconfig').generate(
-	libpistache,
-	name: 'Pistache',
-	description: 'An elegant C++ REST framework',
-	url: 'https://pistacheio.github.io/pistache/',
-	version: '@0@-git@1@'.format(version_str, version_git_date),
-	filebase: 'libpistache',
-	extra_cflags: public_args
-)
+if host_machine.system() == 'windows'
+    if compiler.get_id() == 'gcc'
+        my_filebase = 'libpistache'
+    else
+        my_filebase = 'pistache'
+    endif
+
+    import('pkgconfig').generate(
+            libpistache,
+            # libraries: 'pistachelog',
+            #
+            # I think pistachelog can be ommitted, since per meson
+            # "dependencies of built libraries will be automatically
+            # added... custom_target() objects are supported as long
+            # as they are linkable", and pistachelog.dll is a
+            # dependency of libpistache. In fact, adding pistachelog
+            # to libraries may be harmful since it makes pistachelog
+            # appear on the .pc file's "Libs" line, and we don't
+            # actually want applications to try and link with
+            # pistachelog.
+            # ref: https://mesonbuild.com/Pkgconfig-module.html
+            name: 'Pistache',
+            description: 'An elegant C++ REST framework',
+            url: 'https://pistacheio.github.io/pistache/',
+            version: '@0@-git@1@'.format(version_str, version_git_date),
+            filebase: my_filebase,
+            extra_cflags: public_args
+    )
+else
+    import('pkgconfig').generate(
+            libpistache,
+            name: 'Pistache',
+            description: 'An elegant C++ REST framework',
+            url: 'https://pistacheio.github.io/pistache/',
+            version: '@0@-git@1@'.format(version_str, version_git_date),
+            filebase: 'libpistache',
+            extra_cflags: public_args
+    )
+endif

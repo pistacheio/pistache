@@ -599,7 +599,7 @@ namespace Pistache::Rest
         const auto sanitized = SegmentTreeNode::sanitizeResource(resource);
         std::shared_ptr<char> ptr(new char[sanitized.length()],
                                   std::default_delete<char[]>());
-        memcpy(ptr.get(), sanitized.data(), sanitized.length());
+        std::memcpy(ptr.get(), sanitized.data(), sanitized.length());
         const std::string_view path { ptr.get(), sanitized.length() };
         r.addRoute(path, handler, ptr);
     }

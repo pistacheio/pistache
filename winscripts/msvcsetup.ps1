@@ -10,7 +10,7 @@
 
 $savedpwd=$pwd
 
-. $PSScriptRoot/commonsetup.ps1
+. $PSScriptRoot/helpers/commonsetup.ps1
 
 if (Get-Command cl.exe -errorAction SilentlyContinue) {
     Write-Host "WARNING: MSVC's cl.exe already setup? Skipping MSVC prompt"

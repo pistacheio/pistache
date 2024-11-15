@@ -35,7 +35,7 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
         errno = EINVAL;
         return(-1);
     }
-    *ifap = NULL;
+    *ifap = nullptr;
 
     ULONG buff_len = sizeof(IP_ADAPTER_ADDRESSES);
     std::vector<unsigned char> buff_try1_vec(buff_len+16);
@@ -48,7 +48,7 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
     ULONG gaa_res1 = GetAdaptersAddresses(
         AF_UNSPEC, // IP4 and IP6
         GAA_FLAG_INCLUDE_ALL_INTERFACES | GAA_FLAG_INCLUDE_TUNNEL_BINDINGORDER,
-        NULL, // reserved
+        nullptr, // reserved
         fst_adap_addr,
         &buff_len);
     ULONG gaa_res = gaa_res1;
@@ -63,7 +63,7 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
             AF_UNSPEC, // IP4 and IP6
             GAA_FLAG_INCLUDE_ALL_INTERFACES |
                 GAA_FLAG_INCLUDE_TUNNEL_BINDINGORDER,
-            NULL, // reserved
+            nullptr, // reserved
             fst_adap_addr,
             &buff_len);
     }
@@ -117,7 +117,7 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
                                                 adap_addr->FirstUnicastAddress;
         while(unicast_addr)
         {
-            num_adap_addr++;
+            ++num_adap_addr;
             unicast_addr = unicast_addr->Next;
         };
     }
@@ -205,7 +205,7 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
 
         // We already checked that first unicast_addr is non null
         do {
-            LPSOCKADDR win_sock_addr = unicast_addr->Address.lpSockaddr;
+            const LPSOCKADDR win_sock_addr = unicast_addr->Address.lpSockaddr;
             int win_sock_addr_len = unicast_addr->Address.iSockaddrLength;
             if ((!win_sock_addr) || (!win_sock_addr_len))
                 continue;
@@ -216,7 +216,7 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
             if (adap_addr->AdapterName)
             {
                 size_t name_len = strlen(adap_addr->AdapterName);
-                this_ifaddrs.ifa_name = (char *) MALLOC(name_len+1);
+                this_ifaddrs.ifa_name = reinterpret_cast<char *>(MALLOC(name_len+1));
                 if (!this_ifaddrs.ifa_name)
                 {
                     PS_LOG_WARNING("Name MALLOC failed");
@@ -231,7 +231,7 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
 
             this_ifaddrs.ifa_flags = adap_flags;
 
-            LPSOCKADDR sock_addr = (LPSOCKADDR) MALLOC(sizeof(SOCKADDR));
+            LPSOCKADDR sock_addr = reinterpret_cast<LPSOCKADDR>(MALLOC(sizeof(SOCKADDR)));
             if (!sock_addr)
             {
                 PS_LOG_WARNING("MALLOC failed");
@@ -246,7 +246,7 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
             if (unicast_addr->OnLinkPrefixLength)
             {
                 if (win_sock_addr->sa_family == AF_INET)
-                { // IPv4 
+                { // IPv4
                     ULONG mask = 0;
                     if ((ConvertLengthToIpv4Mask(
                              unicast_addr->OnLinkPrefixLength,
@@ -272,7 +272,7 @@ extern "C" int PST_GETIFADDRS(struct PST_IFADDRS **ifap)
                 }
             }
 
-            i++;
+            ++i;
             if (i >= num_adap_addr)
                 break;
 
@@ -316,4 +316,3 @@ extern "C" void PST_FREEIFADDRS(struct PST_IFADDRS *ifa)
 /* ------------------------------------------------------------------------- */
 
 #endif // of ifdef _IS_WINDOWS
-

@@ -8,7 +8,7 @@
 # Sets MESON_BUILD_DIR and MESON_PREFIX_DIR
 #
 # Use by:
-#   . winscripts/messetdirvars.ps1
+#   . $PSScriptRoot/helpers/messetdirvars.ps1
 
 # To see available properties:
 #   (Get-CIMClass -classname "CIM_Processor").CimClassProperties | ft -wrap -autosize
@@ -57,4 +57,3 @@ else {
     $MESON_BUILD_DIR="build$MY_ARCH_NM.mes.w32"
     $MESON_PREFIX_DIR="$env:ProgramFiles\pistache_distribution"
 }
-

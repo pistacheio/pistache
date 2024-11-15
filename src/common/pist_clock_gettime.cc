@@ -34,7 +34,7 @@ static ULONGLONG lInitialMsSinceSystemStart = 0ull;
 static struct PST_TIMESPEC lInitialTimespec = {0};
 
 // rets 0 on success, -1 with errno on fail
-static int initInitialMonoValsIfNotInited() 
+static int initInitialMonoValsIfNotInited()
 {
     if (lTimeAdjustmentInited)
         return(0);
@@ -111,7 +111,7 @@ extern "C" int PST_CLOCK_GETTIME(PST_CLOCK_ID_T clockid,
         if (new_tv_nsec >= 1000000000l)
         {
             new_tv_nsec -= 1000000000l;
-            spec->tv_sec++;
+            ++spec->tv_sec;
         }
         spec->tv_nsec = new_tv_nsec;
 
@@ -220,7 +220,7 @@ extern "C" struct tm *PST_GMTIME_R(const time_t *timep, struct tm *result)
         return(result);
 
     errno = res;
-    return(NULL);
+    return(nullptr);
 }
 
 
@@ -233,7 +233,7 @@ extern "C" char *PST_ASCTIME_R(const struct tm *tm, char *buf)
         return(buf);
 
     errno = EOVERFLOW;
-    return(NULL);
+    return(nullptr);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -243,7 +243,7 @@ extern "C" struct tm *PST_LOCALTIME_R(const time_t *timep, struct tm *result)
     if (!result)
     {
         errno = EINVAL;
-        return(NULL);
+        return(nullptr);
     }
 
     memset(result, 0, sizeof(*result));
@@ -253,7 +253,7 @@ extern "C" struct tm *PST_LOCALTIME_R(const time_t *timep, struct tm *result)
         return(result); // success
 
     errno = res;
-    return(NULL);
+    return(nullptr);
 }
 
 /* ------------------------------------------------------------------------- */

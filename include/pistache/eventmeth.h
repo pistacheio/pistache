@@ -48,7 +48,7 @@
 
 // WRITE_EFD and READ_EFD are for eventfd/EmEventFd Fds
 // They return 0 on success, and -1 on fail
-  
+
 #ifdef _USE_LIBEVENT
 // Returns -1 if __fd__ not EmEventFd
 #define WRITE_EFD(__fd__, __val__)              \
@@ -176,7 +176,7 @@ namespace Pistache
       class EmEvent;
       class EmEventFd;
       class EmEventTmrFd;
-    
+
       using Fd = EmEvent *;
       using FdConst = const EmEvent *;
 
@@ -308,7 +308,7 @@ namespace Pistache
         // otherwise. emee_cptr_set_mutex_ is locked inside the function.
         EventMethEpollEquiv * getEventMethEpollEquivFromEmeeSet(
                                                    EventMethEpollEquiv * emee);
-        
+
         em_socket_t getActualFd(const EmEvent * em_event);
 
         // efd should be a pointer to EmEventFd - does dynamic cast
@@ -326,21 +326,21 @@ namespace Pistache
         void setEmEventUserData(EmEvent * fd, Fd user_data);
 
         // For EmEventTmrFd, settime is analagous to timerfd_settime in linux
-        // 
+        //
         // The linux flags TFD_TIMER_ABSTIME and TFD_TIMER_CANCEL_ON_SET are
         // not supported
         //
         // Since pistache doesn't use the "struct itimerspec * old_value"
         // feature of timerfd_settime, we haven't implemented that feature.
-        // 
+        //
         // If the EventMethEpollEquiv was not specified already (e.g. at
         // make_new), the it must be specified here
-        // 
+        //
         // Note: settime is in EmEvent rather than solely in EmEventTmrFd since
         // any kind of event may have a timeout set, not only timer events
         int setEmEventTime(EmEvent * fd,
-                            const std::chrono::milliseconds * new_timeval_cptr,
-                            EventMethEpollEquiv * emee = NULL/*may be NULL*/);
+                           const std::chrono::milliseconds * new_timeval_cptr,
+                           EventMethEpollEquiv * emee = nullptr);
 
         EmEventType getEmEventType(EmEvent * fd);
 
@@ -367,9 +367,9 @@ namespace Pistache
 
     class EventMethEpollEquiv
     { // See man epoll, epoll_create, epoll_ctl, epl_wait
-        
+
     public:
-        
+
         // Add to interest list
         // Returns 0 for success, on error -1 with errno set
         int ctl(EvCtlAction op, // add, mod, or del
@@ -386,7 +386,7 @@ namespace Pistache
         // "timeout" is in milliseconds, or -1 means wait indefinitely
         // Returns number of ready events being returned; or 0 if timed-out
         // without an event becoming ready; or -1, with errno set, on error
-        // 
+        //
         // NOTE: Caller must call unlockInterestMutexIfLocked after
         // getReadyEmEvents has returned and after the caller has finished
         // processing any Fds in ready_evm_events_out. getReadyEmEvents returns
@@ -407,12 +407,12 @@ namespace Pistache
     private:
         // Allow create to call the constructor
         friend std::shared_ptr<EventMethEpollEquiv> EventMethFns::create(int);
-        
+
         EventMethEpollEquiv(int size);
 
         friend EventMethEpollEquivImpl * EventMethFns::getEMEEImpl(
                                                         EventMethEpollEquiv *);
-        
+
         std::unique_ptr<EventMethEpollEquivImpl> impl_;
     };
 

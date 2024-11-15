@@ -10,8 +10,10 @@
 # Execute this script from the parent directory by invoking:
 #   bldscripts/mesinstallflibevdebug.sh
 
-source bldscripts/mesdebugflibevsetdirvars.sh
-source bldscripts/adjbuilddirformesbuild.sh
+MY_SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+source $MY_SCRIPT_DIR/helpers/mesdebugflibevsetdirvars.sh
+source $MY_SCRIPT_DIR/helpers/adjbuilddirformesbuild.sh
 
 # Installs to /usr/local
 

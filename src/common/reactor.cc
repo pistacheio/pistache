@@ -37,16 +37,16 @@
 #endif
 
 #ifdef _IS_WINDOWS
-std::atomic_bool lLoggedSetThreadDescriptionFail = false;
+static std::atomic_bool lLoggedSetThreadDescriptionFail = false;
 #ifdef __MINGW32__
 
 #include <windows.h>
 #include <libloaderapi.h> // for GetProcAddress and GetModuleHandleA
 typedef HRESULT (WINAPI *TSetThreadDescription)(HANDLE, PCWSTR);
 
-std::atomic_bool lSetThreadDescriptionLoaded = false;
-std::mutex lSetThreadDescriptionLoadMutex;
-TSetThreadDescription lSetThreadDescriptionPtr = NULL;
+static std::atomic_bool lSetThreadDescriptionLoaded = false;
+static std::mutex lSetThreadDescriptionLoadMutex;
+static TSetThreadDescription lSetThreadDescriptionPtr = nullptr;
 
 TSetThreadDescription getSetThreadDescriptionPtr()
 {
@@ -64,7 +64,7 @@ TSetThreadDescription getSetThreadDescriptionPtr()
         PS_LOG_WARNING(
             "Failed to get KernelBase.dll for SetThreadDescription");
         lSetThreadDescriptionLoaded = true;
-        return(NULL);
+        return(nullptr);
     }
 
     FARPROC set_thread_desc_fpptr =
@@ -179,7 +179,7 @@ namespace Pistache::Aio
             PS_TIMEDBG_START_THIS;
 
             handler->unregisterPoller(poller);
-            handler->reactor_ = NULL;
+            handler->reactor_ = nullptr;
         }
 
         void detachAndRemoveAllHandlers() override
@@ -425,7 +425,7 @@ namespace Pistache::Aio
             void removeAll()
             {
                 index_ = 0;
-                handlers.fill(NULL);
+                handlers.fill(nullptr);
             }
 
             // poller.reg_unreg_mutex_ must be locked before calling
@@ -718,10 +718,10 @@ namespace Pistache::Aio
                     {
                         PS_LOG_DEBUG("Setting thread name/description");
 #ifdef _IS_WINDOWS
-                        std::string threads_name(threadsName_.substr(0, 15));
-                        std::wstring temp(threads_name.begin(),
+                        const std::string threads_name(threadsName_.substr(0, 15));
+                        const std::wstring temp(threads_name.begin(),
                                           threads_name.end());
-                        LPCWSTR wide_threads_name = temp.c_str();
+                        const LPCWSTR wide_threads_name = temp.c_str();
 
                         HRESULT hr = E_NOTIMPL;
 #ifdef __MINGW32__

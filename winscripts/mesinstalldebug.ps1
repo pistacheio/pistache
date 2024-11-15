@@ -10,8 +10,8 @@
 #   winscripts/mesinstalldebug.ps1
 
 # Use "dot source" to include another file
-. winscripts/mesdebugsetdirvars.ps1
-. winscripts/adjbuilddirformesbuild.ps1
+. $PSScriptRoot/helpers/mesdebugsetdirvars.ps1
+. $PSScriptRoot/helpers/adjbuilddirformesbuild.ps1
 
 Write-Host "Using debug build dir $MESON_BUILD_DIR"
 

@@ -31,7 +31,7 @@ PST_SSIZE_T SSL_sendfile(SSL* out, int in, off_t* offset, size_t count)
 
     to_read = sizeof(buffer) > count ? count : sizeof(buffer);
 
-    if (offset != NULL)
+    if (offset != nullptr)
         ret = PST_FILE_PREAD(in, buffer, to_read, *offset);
     else
         ret = PST_FILE_READ(in, buffer, to_read);
@@ -40,7 +40,7 @@ PST_SSIZE_T SSL_sendfile(SSL* out, int in, off_t* offset, size_t count)
         return -1;
 
     written = SSL_write(out, buffer, static_cast<int>(ret));
-    if (offset != NULL)
+    if (offset != nullptr)
         *offset += (static_cast<off_t>(written));
 
     return written;

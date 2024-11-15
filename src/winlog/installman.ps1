@@ -6,6 +6,9 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+# installman.ps1 is used by the build process under Windows to install
+# pistachelog.dll and the Pistache logging manifest
+
 # Usage:
 # installman.ps1 -dirinpstlogdll <dll path> -inpstlogdll <dll name> `
 #                -inpstman <manifest path> `
@@ -112,9 +115,3 @@ if (-Not ($key2.Property -contains "psLogToStdoutAsWell"))
 # Finally we create the 'out' marker file
 "At $(Get-Date):`r`n  $inpstlogdll copied to $env:ProgramFiles\pistache_distribution\bin\.`r`n  $inpstman logging manifest installed" `
 | out-file -Encoding utf8 -width 2560 -filepath "$outpstmaninst"
-
-
-
-
-
-

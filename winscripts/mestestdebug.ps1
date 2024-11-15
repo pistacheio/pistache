@@ -11,8 +11,8 @@
 # Execute this script from the parent directory by invoking:
 #   winscripts/mestestdebug.ps1
 
-. winscripts/mesdebugsetdirvars.ps1
-. winscripts/adjbuilddirformesbuild.ps1
+. $PSScriptRoot/helpers/mesdebugsetdirvars.ps1
+. $PSScriptRoot/helpers/adjbuilddirformesbuild.ps1
 
 if (($MESON_PREFIX_DIR) -and (-not (Test-Path -Path "$MESON_PREFIX_DIR")))
    {mkdir "$MESON_PREFIX_DIR"}

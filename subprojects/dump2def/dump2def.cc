@@ -88,7 +88,7 @@ int main(int argc, char* argv[])
 
         while (std::getline(infile, line))
         {
-            num_line++;
+            ++num_line;
 
             fnd_pos = line.find(L"public symbols");
             if (fnd_pos == std::string::npos) { continue; }
@@ -111,7 +111,7 @@ int main(int argc, char* argv[])
                     continue;
             }
 
-            num_sym_found++;
+            ++num_sym_found;
 
             std::wistringstream iss(line);
             std::wstring address, symbol;

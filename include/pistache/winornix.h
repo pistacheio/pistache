@@ -187,13 +187,16 @@ typedef int PST_SOCK_OPT_VAL_T;
 #define PST_STRERROR_R pist_strerror_r // returns char *
 #endif
 
-// Conveinence mcaros to declare se_err for use by PST_STRERROR_R
-#define PST_DECL_SE_ERR_256_P_16                \
-    char se_err[256 + 16]
+// Convenience macros to declare se_err for PST_STRERROR_R/PST_STRERROR_R_ERRNO
+#define PST_DECL_SE_ERR_P_EXTRA                \
+    char se_err[PST_MAXPATHLEN+16]; se_err[0] = 0
+
+#define PST_STRERROR_R_ERRNO                    \
+    PST_STRERROR_R(errno, &se_err[0], PST_MAXPATHLEN)
 #ifdef DEBUG
-#define PST_DBG_DECL_SE_ERR_256_P_16 PST_DECL_SE_ERR_256_P_16
+#define PST_DBG_DECL_SE_ERR_P_EXTRA PST_DECL_SE_ERR_P_EXTRA
 #else
-#define PST_DBG_DECL_SE_ERR_256_P_16
+#define PST_DBG_DECL_SE_ERR_P_EXTRA
 #endif
 
 // Use #include PIST_QUOTE(PST_FCNTL_HDR)
@@ -400,7 +403,7 @@ typedef struct in_addr PST_IN_ADDR_T;
 #define PST_SOCK_RECV ::recv
 
 #define PST_SOCK_POLL ::poll
-#define PST_POLLFD pollfd
+#define PST_POLLFD pollfd // Note - this is a type, not a function
 typedef struct PST_POLLFD PST_POLLFD_T;
 #define PST_NFDS_T nfds_t
 
@@ -511,7 +514,7 @@ typedef int pst_mode_t;
 // See GetCurrentThreadId
 // Note: The PST_THREAD_ID is the unique system-wide thread id. A Windows
 // thread HANDLE can be derived from the id if needed by calling OpenThread
-typedef uint32_t pst_thread_id; // DWORD := uint32_t 
+typedef uint32_t pst_thread_id; // DWORD := uint32_t
 #define PST_THREAD_ID pst_thread_id
 
 #define PST_THREAD_ID_SELF GetCurrentThreadId

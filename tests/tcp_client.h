@@ -33,8 +33,8 @@ namespace Pistache
             if (errno)                                                  \
             {                                                           \
                 lastErrno_ = errno;                                     \
-                char se_err[256 + 16];                                  \
-                const char * se = PST_STRERROR_R(errno, &se_err[0], 256); \
+                PST_DECL_SE_ERR_P_EXTRA;                                  \
+                const char * se = PST_STRERROR_R_ERRNO; \
                 if (se)                                                 \
                     lastError_ = std::string(se);                       \
                 if (errno != lastErrno_)                                \
@@ -146,8 +146,8 @@ namespace Pistache
 
             if (ret < 0)
             {
-                char se_err[256 + 16];
-                const char * se = PST_STRERROR_R(errno, &se_err[0], 256);
+                PST_DECL_SE_ERR_P_EXTRA;
+                const char * se = PST_STRERROR_R_ERRNO;
                 if (se)
                     lastError_ = std::string(se);
                 return false;
@@ -167,8 +167,8 @@ namespace Pistache
             auto res = PST_SOCK_READ(fd_, buffer, size);
             if (res < 0)
             {
-                char se_err[256 + 16];
-                const char * se = PST_STRERROR_R(errno, &se_err[0], 256);
+                PST_DECL_SE_ERR_P_EXTRA;
+                const char * se = PST_STRERROR_R_ERRNO;
                 if (se)
                     lastError_ = std::string(se);
                 return false;
