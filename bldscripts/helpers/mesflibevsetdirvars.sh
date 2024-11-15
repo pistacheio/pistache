@@ -10,6 +10,8 @@
 # Use by:
 #   source helpers/mesflibevsetdirvars.sh
 
+MY_HELPER_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 source $MY_HELPER_DIR/messetdirvarsfinish.sh
 
 if [ "$(uname)" == "Darwin" ]; then

@@ -176,6 +176,10 @@ typedef int PST_SOCK_OPT_VAL_T;
 #define PST_MAXPATHLEN MAXPATHLEN
 #endif
 
+// Do this so the PST_DECL_SE_ERR_P_EXTRA / PST_STRERROR_R_ERRNO macros have
+// PST_MAXPATHLEN fully defined
+#include PIST_QUOTE(PST_MAXPATH_HDR)
+
 // Use #include PIST_QUOTE(PST_STRERROR_R_HDR)
 // mingw gcc doesn't define strerror_r (Oct/2024)
 #if defined(__linux__) || (defined(__GNUC__) && (!defined(__MINGW32__)) && \
