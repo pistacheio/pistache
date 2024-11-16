@@ -338,7 +338,22 @@ if host_machine.system() == 'windows'
     deps_libpistache += gen_logging_txtfl_dep
 endif
 
-libpistache = library(
+if host_machine.system() == 'windows' and compiler.get_id() == 'msvc'
+    libpistache = library(
+	'pistache',
+	sources: pistache_common_src + pistache_server_src + pistache_client_src + pistache_extra_src,
+	cpp_args: public_args,
+	include_directories: incl_pistache,
+	dependencies: deps_libpistache,
+	link_args: libpistache_links_args,
+	install: get_option('PISTACHE_INSTALL'),
+	soversion: version_major + '.' + version_minor,
+	version: version_str,
+        vs_module_defs: gen_src_def,
+	pic: get_option('b_staticpic')
+    )
+else # No vs_module_defs
+    libpistache = library(
 	'pistache',
 	sources: pistache_common_src + pistache_server_src + pistache_client_src + pistache_extra_src,
 	cpp_args: public_args,
@@ -349,7 +364,8 @@ libpistache = library(
 	soversion: version_major + '.' + version_minor,
 	version: version_str,
 	pic: get_option('b_staticpic')
-)
+    )
+endif
 
 
 

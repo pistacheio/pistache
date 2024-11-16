@@ -68,8 +68,8 @@ jobs:
         brew install rapidjson
         # brew install libevent # Already installed in base image
         brew install howard-hinnant-date
-        brew install brotli
-        brew install zstd
+        if ! brew list brotli &>/dev/null; then brew install brotli; fi
+        if ! brew list zstd &>/dev/null; then brew install zstd; fi
 
     - uses: actions/checkout@v4
       with:
