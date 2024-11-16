@@ -72,5 +72,7 @@ repeatx86_*.sh
 !/subprojects/cpp-httplib
 !/subprojects/hinnant-date
 *.*~
+*.bak
+\#*\#
 
 /How To Run All Tests (README).txt
