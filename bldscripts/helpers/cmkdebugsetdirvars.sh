@@ -8,7 +8,7 @@
 # Sets CMAKE_BUILD_DIR and CMAKE_PREFIX_DIR
 #
 # Use by:
-#   source bldscripts/cmksetdirvars.sh
+#   source helpers/cmkdebugsetdirvars.sh
 
 
 MY_ARCH_NM=x86
@@ -19,13 +19,12 @@ else
         MY_ARCH_NM=a64
     fi
 fi
-    
+
 
 if [ "$(uname)" == "Darwin" ]; then
-    CMAKE_BUILD_DIR=build${MY_ARCH_NM}.cmk.mac
+    CMAKE_BUILD_DIR=build${MY_ARCH_NM}.cmk.mac.debug
     CMAKE_PREFIX_DIR=/usr/local
 else
-    CMAKE_BUILD_DIR=build${MY_ARCH_NM}.cmk
+    CMAKE_BUILD_DIR=build${MY_ARCH_NM}.cmk.debug
     CMAKE_PREFIX_DIR=/usr/local
 fi
-

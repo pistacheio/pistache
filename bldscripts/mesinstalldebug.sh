@@ -10,7 +10,10 @@
 # Execute this script from the parent directory by invoking:
 #   bldscripts/mesinstalldebug.sh
 
-source bldscripts/mesdebugsetdirvars.sh
+MY_SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+source $MY_SCRIPT_DIR/helpers/mesdebugsetdirvars.sh
+source $MY_SCRIPT_DIR/helpers/adjbuilddirformesbuild.sh
 
 # Installs to /usr/local
 

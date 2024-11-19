@@ -306,7 +306,7 @@ TEST(http_server_test,
 #endif
 
     { // encapsulate
-        
+
     const Pistache::Address address("localhost", Pistache::Port(0));
 
     Http::Endpoint server(address);
@@ -385,7 +385,7 @@ TEST(
     ASSERT_EQ(counter, 0);
 
     } // end encapsulate
-    
+
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 #ifdef DEBUG
     const int em_event_count_after = EventMethFns::getEmEventCount();
@@ -442,7 +442,7 @@ TEST(http_server_test, multiple_client_with_requests_to_multithreaded_server)
     ASSERT_EQ(res2, SECOND_CLIENT_REQUEST_SIZE);
 
     } // end encapsulate
-    
+
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 #ifdef DEBUG
     const int em_event_count_after = EventMethFns::getEmEventCount();
@@ -499,7 +499,7 @@ TEST(http_server_test, many_client_with_requests_to_multithreaded_server)
     ASSERT_EQ(res2, SECOND_CLIENT_REQUEST_SIZE);
 
     } // end encapsulate
-    
+
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 #ifdef DEBUG
     const int em_event_count_after = EventMethFns::getEmEventCount();
@@ -564,7 +564,7 @@ TEST(http_server_test,
     }
 
     } // end encapsulate
-    
+
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 #ifdef DEBUG
     const int em_event_count_after = EventMethFns::getEmEventCount();
@@ -647,7 +647,7 @@ TEST(http_server_test, server_with_static_file)
     ASSERT_EQ(data, resultData);
 
     } // end encapsulate
-    
+
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 #ifdef DEBUG
     const int em_event_count_after = EventMethFns::getEmEventCount();
@@ -719,7 +719,7 @@ TEST(http_server_test, server_request_copies_address)
     }
 
     } // end encapsulate
-    
+
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 #ifdef DEBUG
     const int em_event_count_after = EventMethFns::getEmEventCount();
@@ -828,7 +828,7 @@ TEST(http_server_test, response_size_captured)
     ASSERT_EQ(rcode, Http::Code::Ok);
 
     } // end encapsulate
-    
+
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 #ifdef DEBUG
     const int em_event_count_after = EventMethFns::getEmEventCount();
@@ -883,7 +883,7 @@ TEST(http_server_test, client_request_timeout_on_only_connect_raises_http_408)
     server.shutdown();
 
     } // end encapsulate
-    
+
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 #ifdef DEBUG
     const int em_event_count_after = EventMethFns::getEmEventCount();
@@ -945,7 +945,7 @@ TEST(http_server_test, client_request_timeout_on_delay_in_header_send_raises_htt
     server.shutdown();
 
     } // end encapsulate
-    
+
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 #ifdef DEBUG
     const int em_event_count_after = EventMethFns::getEmEventCount();
@@ -1018,7 +1018,7 @@ TEST(http_server_test, client_request_timeout_on_delay_in_request_line_send_rais
     server.shutdown();
 
     } // end encapsulate
-    
+
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 #ifdef DEBUG
     const int em_event_count_after = EventMethFns::getEmEventCount();
@@ -1078,7 +1078,7 @@ TEST(http_server_test, client_request_timeout_on_delay_in_body_send_raises_http_
     server.shutdown();
 
     } // end encapsulate
-    
+
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 #ifdef DEBUG
     const int em_event_count_after = EventMethFns::getEmEventCount();
@@ -1144,7 +1144,7 @@ TEST(http_server_test, client_request_no_timeout)
     server.shutdown();
 
     } // end encapsulate
-    
+
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 #ifdef DEBUG
     const int em_event_count_after = EventMethFns::getEmEventCount();
@@ -1261,7 +1261,7 @@ TEST(http_server_test, client_multiple_requests_disconnects_handled)
     ASSERT_EQ(result, true);
 
     } // end encapsulate
-    
+
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 #ifdef DEBUG
     const int em_event_count_after = EventMethFns::getEmEventCount();
@@ -1462,7 +1462,7 @@ TEST(http_server_test, server_with_content_encoding_zstd)
 
         const auto decompressed_size = ZSTD_decompress((void*)newlyDecompressedData.data(), compressionStatus, newlyCompressedResponse.data(), newlyCompressedResponse.size());
 
-        ASSERT_EQ(ZSTD_isError(decompressed_size), 0);
+        ASSERT_EQ(ZSTD_isError(decompressed_size), 0u);
 
         // The sizes of both the original uncompressed data we sent the server
         //  and the result of decompressing what it sent back should match...
@@ -1628,7 +1628,7 @@ TEST(http_server_test, server_with_content_encoding_brotli)
     ASSERT_EQ(originalUncompressedData, newlyDecompressedData);
 
     } // end encapsulate
-    
+
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 #ifdef DEBUG
     const int em_event_count_after = EventMethFns::getEmEventCount();
@@ -1794,7 +1794,7 @@ TEST(http_server_test, server_with_content_encoding_deflate)
     ASSERT_EQ(originalUncompressedData, newlyDecompressedData);
 
     } // end encapsulate
-    
+
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 #ifdef DEBUG
     const int em_event_count_after = EventMethFns::getEmEventCount();

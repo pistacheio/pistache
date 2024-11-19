@@ -5,6 +5,7 @@
 # Build files
 /*build*/
 /tests/build*/
+/googletest/
 
 # Soft links to favorite build convenience files
 /build.sh
