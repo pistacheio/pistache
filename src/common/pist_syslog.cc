@@ -69,7 +69,12 @@
 
   #ifdef __MAC_OS_X_VERSION_MIN_REQUIRED
     #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1012
-      #define PIST_USE_OS_LOG 1
+      #if __has_builtin(__builtin_os_log_format)
+        // Homebrew gcc 14.2.0 doesn't appear to have __builtin_os_log_format
+        // which prevents us from using os/log.h (Nov/2024). Note: gcc 10
+        // supports __has_builtin.
+        #define PIST_USE_OS_LOG 1
+      #endif
     #endif
   #endif
 #endif
@@ -1020,7 +1025,7 @@ void PSLogging::log(int _priority, bool _andPrintf, const char * _str)
     buff[0] = '(';
     if (snprintProcessAndThread(&(buff[1]),
                                 sizeof(buff)-3-strlen(gLogEntryPrefix)) >= 0)
-        PS_STRLCAT(&(buff[0]), " ", sizeof(buff)-8);
+    PS_STRLCAT(&(buff[0]), " ", sizeof(buff)-8);
     PS_STRLCAT(&(buff[0]), gLogEntryPrefix, sizeof(buff)-8);
     PS_STRLCAT(&(buff[0]), ") ", sizeof(buff)-8);
 
@@ -1239,6 +1244,33 @@ extern "C" void setPsLogCategory(const char * _category)
     gSetPsLogCategoryCalledWithNull = false;
     PS_STRLCPY(&(gIdentBuff[0]), _category, PST_MAXPATHLEN);
 }
+
+// ---------------------------------------------------------------------------
+
+#ifndef __APPLE__
+static std::mutex ps_basename_r_mutex;
+extern "C" char * ps_basename_r(const char * path, char * bname)
+{
+    if (!bname)
+        return(NULL);
+
+    bname[0] = 0;
+
+    std::lock_guard<std::mutex> l_guard(ps_basename_r_mutex);
+
+    char * path_copy = (char *) malloc((path ? strlen(path) : 0) + 6);
+    strcpy(path_copy, path); // since basename may change path contents
+
+    char * bname_res = basename(path_copy);
+
+    if (bname_res)
+       strcpy(&(bname[0]), bname_res);
+
+    free(path_copy);
+    return(bname);
+}
+#endif // ifndef __APPLE__
+
 
 // ---------------------------------------------------------------------------
 

@@ -142,12 +142,14 @@ namespace Pistache::Tcp
 
 /* Function introduced in 1.0.2 */
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
-#ifdef __MINGW32__
+#ifdef __GNUC__
 #pragma GCC diagnostic push
+            // Ignore this warning which is otherwise generated in
+            // openssl/ssl.h for gcc on macOS
 #pragma GCC diagnostic ignored "-Wunused-value"
 #endif
             SSL_CTX_set_ecdh_auto(GetSSLContext(ctx), 1);
-#ifdef __MINGW32__
+#ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
 #endif /* OPENSSL_VERSION_NUMBER */
