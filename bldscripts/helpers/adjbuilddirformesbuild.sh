@@ -15,6 +15,9 @@
 # this way, if desired we can keep the build dir well away from the
 # sources.
 
+# On macOS, it also checks if we're building with gcc, and, if we are,
+# it appends ".gcc" to MESON_BUILD_DIR.
+
 if [ ! "x$HOME" = "x" ]; then
     if [ -d "$HOME/mesbuild" ]; then
         gitprojroot=$(git rev-parse --show-toplevel)
@@ -30,3 +33,10 @@ if [ ! "x$HOME" = "x" ]; then
     fi
 fi
 
+if [ "$(uname)" = "Darwin" ]; then
+    if ! [ "x$CXX" = "x" ] && [ ${#CXX} -ge 6 ]; then
+        if [ ${CXX:0:4} = g++- ] || [ ${CXX:0:4} = gcc- ]; then
+            MESON_BUILD_DIR="$MESON_BUILD_DIR.gcc"
+        fi
+    fi
+fi

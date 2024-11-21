@@ -16,7 +16,7 @@ follow the Homebrew instructions to install:
 Then, install the necessary brew packages via terminal command line:
   brew install meson
   brew install doxygen
-  brew install googletest
+  brew install googletest (skip this if installing with gcc - see later)
   brew install openssl
   brew install rapidjson
   brew install howard-hinnant-date
@@ -51,3 +51,16 @@ The meaning of each convenience script is as follows:
   mesinstallflibevdebug.sh - install debug ver using meson with libevnet use
 
   clean.sh - remove build directories
+
+
+Building with GCC
+-----------------
+
+By default, Pistache on macOS builds with clang, which is the default
+Apple compiler. If you prefer to use gcc, you can utilize the
+gccmacsetup.sh script provided by Pistache before doing the build,
+like this:
+  source bldscripts/gccmacsetup.sh
+  bldscripts/mesbuild.sh
+  bldscripts/mestest.sh
+  bldscripts/mesinstall.sh

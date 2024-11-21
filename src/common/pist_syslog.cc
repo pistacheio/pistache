@@ -69,7 +69,12 @@
 
   #ifdef __MAC_OS_X_VERSION_MIN_REQUIRED
     #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1012
-      #define PIST_USE_OS_LOG 1
+      #if __has_builtin(__builtin_os_log_format)
+        // Homebrew gcc 14.2.0 doesn't appear to have __builtin_os_log_format
+        // which prevents us from using os/log.h (Nov/2024). Note: gcc 10
+        // supports __has_builtin.
+        #define PIST_USE_OS_LOG 1
+      #endif
     #endif
   #endif
 #endif
@@ -717,7 +722,8 @@ static int snprintProcessAndThread(char * _buff, size_t _buffSize)
             break;
     }
 
-    for (int i=((static_cast<int>(size_pt))-1); i>=0; --i) // little endian, if it matters
+    // little endian, if it matters
+    for (int i=((static_cast<int>(size_pt))-1); i>=0; --i)
     {
         buff_would_have_been_len =
             snprintf(_buff, _buffSize, "%02x", static_cast<unsigned>(ptc[i]));
@@ -1020,7 +1026,7 @@ void PSLogging::log(int _priority, bool _andPrintf, const char * _str)
     buff[0] = '(';
     if (snprintProcessAndThread(&(buff[1]),
                                 sizeof(buff)-3-strlen(gLogEntryPrefix)) >= 0)
-        PS_STRLCAT(&(buff[0]), " ", sizeof(buff)-8);
+    PS_STRLCAT(&(buff[0]), " ", sizeof(buff)-8);
     PS_STRLCAT(&(buff[0]), gLogEntryPrefix, sizeof(buff)-8);
     PS_STRLCAT(&(buff[0]), ") ", sizeof(buff)-8);
 
