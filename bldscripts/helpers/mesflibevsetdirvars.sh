@@ -8,7 +8,11 @@
 # Sets MESON_BUILD_DIR and MESON_PREFIX_DIR
 #
 # Use by:
-#   source bldscripts/mesdebugflibevsetdirvars.sh
+#   source helpers/mesflibevsetdirvars.sh
+
+MY_HELPER_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+source $MY_HELPER_DIR/messetdirvarsfinish.sh
 
 if [ "$(uname)" == "Darwin" ]; then
     echo "Error: Don't force libevent on macOS, libevent is on by default"
@@ -25,5 +29,5 @@ if [ "$(uname)" == "NetBSD" ]; then
     exit 1
 fi
 
-PST_DIR_SUFFIX=".flibev.debug"
-source bldscripts/messetdirvarsfinish.sh
+PST_DIR_SUFFIX=".flibev"
+source $MY_HELPER_DIR/messetdirvarsfinish.sh

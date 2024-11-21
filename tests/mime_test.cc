@@ -62,7 +62,24 @@ void parse(const char* str, std::function<void(const MediaType&)> testFunc)
 
 TEST(mime_test, valid_parsing_test)
 {
-    std::locale::global(std::locale(""));
+    std::unique_ptr<std::locale> my_locale;
+    try {
+        my_locale = std::make_unique<std::locale>("");
+    }
+    catch(...)
+    {
+        // This happens with gcc in macOS Nov/2024. Normally, std::locale("")
+        // uses a locale based on an environment variable, often LANG or
+        // LC_ALL. On my Mac, LANG=en_US.UTF-8. "en_US.UTF-8" is a valid locale
+        // (see: locale -a | grep "en_US.UTF-8"), however sure enough
+        // std::locale("en_US.UTF-8") throws an exception for gcc-on-macOS. So
+        // we are using this workaround of reverting to the "C" (classic)
+        // locale in the event of an exception.
+        std::cout << "std::locale(\"\") threw exception, " <<
+            "using \"C\" instead" << std::endl;
+        my_locale = std::make_unique<std::locale>("C");
+    }
+    std::locale::global(*my_locale);
 
     parse("application/json", [](const MediaType& m1) {
         ASSERT_EQ(m1, MIME(Application, Json));

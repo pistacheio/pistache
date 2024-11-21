@@ -56,7 +56,12 @@
 
   #ifdef __MAC_OS_X_VERSION_MIN_REQUIRED
     #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1012
-      #define PIST_USE_OS_LOG 1
+      #if __has_builtin(__builtin_os_log_format)
+        // Homebrew gcc 14.2.0 doesn't appear to have __builtin_os_log_format
+        // which prevents us from using os/log.h (Nov/2024). Note: gcc 10
+        // supports __has_builtin.
+        #define PIST_USE_OS_LOG 1
+      #endif
     #endif
   #endif
 #endif
@@ -136,14 +141,14 @@ static std::string getLogIdent()
 {
     char prog_path[PATH_MAX+6];
     prog_path[0] = 0;
-    
+
     #ifdef __APPLE__
     uint32_t bufsize = PATH_MAX;
     if (_NSGetExecutablePath(&(prog_path[0]), &bufsize) != 0)
-        return(std::string());        
+        return(std::string());
     #else
     if (readlink("/proc/self/exe", &(prog_path[0]), PATH_MAX) == -1)
-        return(std::string());   
+        return(std::string());
     #endif
 
     if (!strlen(&(prog_path[0])))
@@ -158,7 +163,7 @@ static std::string getLogIdent()
 
     std::string prog_name_raw(prog_name);
     std::string prog_name_no_punct;
-    std::remove_copy_if(prog_name_raw.begin(), prog_name_raw.end(),            
+    std::remove_copy_if(prog_name_raw.begin(), prog_name_raw.end(),
           std::back_inserter(prog_name_no_punct), my_is_punct);
 
     if ((prog_name_no_punct.size() >= 3) && (prog_name_no_punct.size() <= 5))
@@ -174,9 +179,9 @@ static std::string getLogIdent()
 }
 
 
-    
-    
-    
+
+
+
 
 PSLogging::PSLogging()
 {
@@ -186,7 +191,7 @@ PSLogging::PSLogging()
         strcpy(&(gIdentBuff[0]), log_ident.empty() ?
                                           gLogEntryPrefix : log_ident.c_str());
     }
-    
+
     #ifdef PIST_USE_OS_LOG
 
     // Instead of syslog, on apple should likely be using os_log (and possibly
@@ -196,19 +201,19 @@ PSLogging::PSLogging()
     pist_os_log_ref = os_log_create("com.github.pistacheio.pistache",
                                     &(gIdentBuff[0]));
     #else
-    
+
     if (!gSetPsLogCategoryCalledWithNull)
     {
-        
+
         int log_opts = (LOG_NDELAY | LOG_PID);
-        #ifdef DEBUG    
+        #ifdef DEBUG
         log_opts |= LOG_CONS; // send to console if syslog not working
         // OR with LOG_PERROR to send every log message to stdout
         #endif
 
         openlog(&(gIdentBuff[0]), log_opts, LOG_USER);
     }
-    
+
     #endif // of not ifdef PIST_USE_OS_LOG
 }
 
@@ -227,9 +232,9 @@ static int snprintProcessAndThread(char * _buff, size_t _buffSize)
         return(-1);
     if (!_buffSize)
         return(-1);
-    
+
     pthread_t pt = pthread_self(); // This function always succeeds
-    
+
     unsigned char *ptc = (unsigned char*)(void*)(&pt);
     int buff_would_have_been_len = 0;
     _buff[0] = 0;
@@ -251,7 +256,7 @@ static int snprintProcessAndThread(char * _buff, size_t _buffSize)
         if (ptc[size_pt-1])
             break;
     }
-    
+
     for (int i=(((int)size_pt)-1); i>=0; i--) // little endian, if it matters
     {
         buff_would_have_been_len =
@@ -317,15 +322,15 @@ static const char * levelCStr(int _pri)
     case LOG_ALERT:
         res = "ALERT";
         break;
-        
+
     case LOG_WARNING:
         res = "WRN";
         break;
-        
+
     case LOG_INFO:
         res = "INF";
         break;
-        
+
     case LOG_DEBUG:
         res = "DBG";
         break;
@@ -333,7 +338,7 @@ static const char * levelCStr(int _pri)
     case LOG_ERR:
         res = "ERR";
         break;
-        
+
     default:
         res = "UNKNOWN";
         break;
@@ -347,7 +352,7 @@ static int logToStdOutMaybeErr(int _priority, bool _andPrintf,
 {
     if (!_str)
         _str = "";
-    
+
     char dAndT[256];
     dAndT[0] = 0;
     if ((_andPrintf)
@@ -370,8 +375,8 @@ static int logToStdOutMaybeErr(int _priority, bool _andPrintf,
             }
         }
     }
-    
-    
+
+
     int print_res = 0;
 
     if (_andPrintf)
@@ -381,7 +386,7 @@ static int logToStdOutMaybeErr(int _priority, bool _andPrintf,
     #ifndef DEBUG
     if (_priority >= LOG_WARNING)
     {
-        int stderr_print_res = 
+        int stderr_print_res =
             fprintf(stderr, "%s %s: %s\n",
                     &(dAndT[0]), levelCStr(_priority), _str);
         if (!_andPrintf)
@@ -437,7 +442,7 @@ void PSLogging::log(int _priority, bool _andPrintf,
           // messed up in a way that both stops vsnprintf from working above,
           // and will stop os_log from working when using _format as a string
           // here
-          OS_LOG_BY_PRIORITY_FORMAT_ARG("%s", 
+          OS_LOG_BY_PRIORITY_FORMAT_ARG("%s",
                                         "Unable to log, vsnprintf failed");
           if (_format)
               OS_LOG_BY_PRIORITY_FORMAT_ARG(
@@ -474,22 +479,22 @@ void PSLogging::log(int _priority, bool _andPrintf, const char * _str)
         strcat(&(buff[0]), " ");
     strcat(&(buff[0]), gLogEntryPrefix);
     strcat(&(buff[0]), ") ");
-    
+
     char * remaining_buff = &(buff[0]) + strlen(buff);
     size_t remaining_buff_size = sizeof(buff) - strlen(buff);
-    
+
     int res = snprintf(remaining_buff, remaining_buff_size-2, "%s", _str);
     if ((res < 0) && (_priority >= LOG_WARNING))
     {
         logToStdOutMaybeErr(LOG_ALERT, _andPrintf,
                             "snprintf failed for log in PSLogging::log");
-        
+
         #ifdef PIST_USE_OS_LOG
           OS_LOG_BY_PRIORITY_FORMAT_ARG("%s", _str);
         #else
           syslog(_priority, "%s", _str);
         #endif
-          
+
         logToStdOutMaybeErr(_priority, _andPrintf, _str);
     }
     else
@@ -515,7 +520,7 @@ static void PSLogPrv(int _priority, bool _andPrintf,
     #endif
     if (!_format)
         return;
-    
+
     PSLogging::getPSLogging()->log(_priority, _andPrintf, _format, _ap);
 }
 
@@ -527,7 +532,7 @@ static void PSLogStrPrv(int _priority, bool _andPrintf, const char * _str)
     #endif
     if (!_str)
         return;
-    
+
     PSLogging::getPSLogging()->log(_priority, _andPrintf, _str);
 }
 
@@ -573,7 +578,7 @@ extern "C" void PSLogFn(int _pri, bool _andPrintf,
     const unsigned int form_and_args_buf_size = 2048;
     char form_and_args_buf[form_and_args_buf_size + 6];
     form_and_args_buf[0] = 0;
-    
+
     { // encapsulate
         va_list ap;
         va_start(ap, _format);
@@ -587,7 +592,7 @@ extern "C" void PSLogFn(int _pri, bool _andPrintf,
         #ifdef __clang__
         #pragma clang diagnostic pop
         #endif
-        
+
         va_end(ap);
         if (pos >= (int) form_and_args_buf_size)
             strcat(&(form_and_args_buf[0]), "...");
@@ -635,7 +640,7 @@ extern "C" void PSLogFn(int _pri, bool _andPrintf,
 // anything then the _category string will be passed to openlog as the "ident"
 // parm upon the first pistachio log; or if setPsLogCategory is not called,
 // then pistachio will assign a 5-letter ident based on the executable name.
-// 
+//
 // Note that if (and this is NOT RECOMMENDED - instead get the app to call
 // openlog itself before anything is logged) setPsLogCategory is called with
 // NULL or empty string, but then pistachio logs something before the
@@ -672,9 +677,9 @@ extern "C" char * ps_basename_r(const char * path, char * bname)
 {
     if (!bname)
         return(NULL);
-        
+
     bname[0] = 0;
-    
+
     std::lock_guard<std::mutex> l_guard(ps_basename_r_mutex);
 
     char * path_copy = (char *) malloc((path ? strlen(path) : 0) + 6);
@@ -699,4 +704,3 @@ extern "C" char * ps_basename_r(const char * path, char * bname)
 // https://stackoverflow.com/questions/13703823/a-custom-ostream
 // Create a streambuf with it's own sync function, initiatize ostream with the
 // streambuf
-    

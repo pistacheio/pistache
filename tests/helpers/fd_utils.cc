@@ -69,7 +69,7 @@ namespace Pistache
                     "buf_used not a multiple of sizeof(proc_fdinfo)");
 #endif
 
-            int num_fds = (buf_used / sizeof(proc_fdinfo));
+            int num_fds = (buf_used / static_cast<int>(sizeof(proc_fdinfo)));
 
             if ((num_fds + 1) >= max_fds)
                 throw std::runtime_error("num_fds insanely large?");

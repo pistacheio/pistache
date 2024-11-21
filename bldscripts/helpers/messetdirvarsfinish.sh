@@ -11,7 +11,7 @@
 # ... has been set
 #
 # Use by:
-#   source bldscripts/messetdirvarsfinish.sh
+#   source helpers/messetdirvarsfinish.sh
 
 MY_ARCH_NM=x86
 if [ "$(uname -m)" == "arm64" ]; then
@@ -21,7 +21,7 @@ else
         MY_ARCH_NM=a64
     fi
 fi
-    
+
 
 if [ "$(uname)" == "Darwin" ]; then
     MESON_BUILD_DIR=build${MY_ARCH_NM}.mes.mac${PST_DIR_SUFFIX}
@@ -45,4 +45,3 @@ else
         fi
     fi
 fi
-
