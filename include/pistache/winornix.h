@@ -182,8 +182,9 @@ typedef int PST_SOCK_OPT_VAL_T;
 
 // Use #include PIST_QUOTE(PST_STRERROR_R_HDR)
 // mingw gcc doesn't define strerror_r (Oct/2024)
+// gcc on macOS does define strerror_r, but the XSI version not the POSIX one
 #if defined(__linux__) || (defined(__GNUC__) && (!defined(__MINGW32__)) && \
-                           (!defined(__clang__)) && (!defined(__NetBSD__)))
+      (!defined(__clang__)) && (!defined(__NetBSD__)) && (!defined(__APPLE__)))
 #define PST_STRERROR_R_HDR string.h
 #define PST_STRERROR_R strerror_r // returns char *
 #else
@@ -312,9 +313,9 @@ typedef struct in_addr PST_IN_ADDR_T;
 #endif
 
 // Use #include PIST_QUOTE(PST_ERRNO_HDR)
-#if defined(_IS_WINDOWS) || defined(__APPLE__)
+#ifndef __linux__
 // pistache/pst_errno.h prevents mingw gcc's bad macro substitution on errno
-// Same issue with clang on macOS
+// Same issue with clang on macOS and gcc on OpenBSD
 #define PST_ERRNO_HDR pistache/pst_errno.h
 #else
 #define PST_ERRNO_HDR sys/errno.h

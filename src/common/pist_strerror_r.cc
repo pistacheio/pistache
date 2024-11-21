@@ -261,7 +261,7 @@ extern "C" char * pist_strerror_r(int errnum, char *buf, size_t buflen)
 /* ------------------------------------------------------------------------- */
 
 #elif !defined(__linux__) && ((!defined(__GNUC__)) || (defined(__MINGW32__)) \
-                             || (defined(__clang__)) || (defined(__NetBSD__)))
+      || (defined(__clang__)) || (defined(__NetBSD__)) || (defined(__APPLE__)))
 
 #include <pistache/ps_strl.h>
 
@@ -270,8 +270,7 @@ extern "C" char * pist_strerror_r(int errnum, char *buf, size_t buflen)
 // Note: We use the GNU-specific definition (which returns char *), not the
 // XSI-compliant definition (which returns int) even in the non-GNU case.
 
-// Since this is not GNUC, we assume native strerror_r is the XSI form
-// (returns int)
+// Here, we assume native strerror_r is the XSI form (returns int)
 
 static const char * const_bad_strerror_parms = "{Invalid strerror_r parms}";
 static char bad_strerror_parms_buff[128];
