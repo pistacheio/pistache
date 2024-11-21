@@ -15,12 +15,12 @@
 
 /* ------------------------------------------------------------------------- */
 
-#if defined _IS_WINDOWS || !defined(__GNUC__) || defined(__clang__)     \
-    || defined(__NetBSD__)
+#if !defined(__linux__) && ((!defined(__GNUC__)) || (defined(__MINGW32__)) \
+      || (defined(__clang__)) || (defined(__NetBSD__)) || (defined(__APPLE__)))
 
 /* ------------------------------------------------------------------------- */
-// Note: We use the GNU-specific definition (which returns char *), not the
-// XSI-compliant definition (which returns int) even in the non-GNU case.
+// Note: We provide the GNU-specific/POSIX style (which returns char *), not
+// the XSI-compliant definition (which returns int) even in the non-GNU case.
 
 extern "C" char * pist_strerror_r(int errnum, char *buf, size_t buflen);
 
