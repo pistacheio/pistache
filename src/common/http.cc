@@ -1223,7 +1223,7 @@ namespace Pistache::Http
 
         PST_OUT(writeHeaders(writer.headers(), *buf));
 
-        const size_t len = sb.st_size;
+        const size_t len = static_cast<size_t>(sb.st_size);
 
         PST_OUT(writeHeader<Header::ContentLength>(os, len));
 
