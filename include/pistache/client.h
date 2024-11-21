@@ -186,6 +186,8 @@ namespace Pistache::Http::Experimental
         RequestBuilder& cookie(const Cookie& cookie);
         RequestBuilder& body(const std::string& val);
         RequestBuilder& body(std::string&& val);
+        std::size_t bodySize() { return(request_.body().size()); }
+
         RequestBuilder& timeout(std::chrono::milliseconds val);
 
         Async::Promise<Response> send();
