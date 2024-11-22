@@ -1,0 +1,213 @@
+<!--SPDX-FileCopyrightText: 2024 Duncan Greatwood-->
+<!--SPDX-License-Identifier: Apache-2.0-->
+<!-- -->
+<!--XML file to define Pistache Windows logging events-->
+<!--https://learn.microsoft.com/en-us/windows/win32/wes/writing-an-instrumentation-manifest?source=recommendations-->
+<!--https://kallanreed.com/2016/05/28/creating-an-etw-provider-step-by-step/-->
+<!--https://github.com/microsoft/Windows-classic-samples/tree/main/Samples/Win7Samples/winbase/Eventing/Provider/Simple/CPP-->
+<instrumentationManifest
+    xmlns="http://schemas.microsoft.com/win/2004/08/events" 
+    xmlns:win="http://manifests.microsoft.com/win/2004/08/windows/events"
+    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    >
+
+    <instrumentation>
+        <events>
+            <provider name="Pistache-Provider"
+                guid="{cb8de796-f9ba-4712-a13f-99bdf30e06aa}"
+                symbol="PISTACHE_GUID"
+                resourceFileName="%ProgramFiles%\pistache_distribution\bin\pistachelog.dll"
+                messageFileName="%ProgramFiles%\pistache_distribution\bin\pistachelog.dll"
+                message="$(string.Provider.Name)">
+                <channels>
+                    <importChannel
+                             chid="cadminbltin"
+                             name="Application"/>
+                    <channel chid="cadmin"
+                             name="Pistache-BaseProvider/Admin"
+                             symbol="CHAN_PSTCHPROVIDER_ADMIN"
+                             type="Admin"/>
+                    <channel chid="coperl"
+                             name="Pistache-BaseProvider/Operational"
+                             symbol="CHAN_PSTCHPROVIDER_OPERATIONAL"
+                             type="Operational"/>
+                    <channel chid="canalc"
+                             name="Pistache-BaseProvider/Analytic"
+                             symbol="CHAN_PSTCHPROVIDER_ANALYTIC"
+                             type="Analytic"/>
+                    <channel chid="cdebug"
+                             name="Pistache-BaseProvider/Debug"
+                             symbol="CHAN_PSTCHPROVIDER_DEBUG"
+                             type="Debug"/>
+                </channels>
+                <!--We don't define new levels but use the predefined ones-->
+                <!--win:Critical, win:Error, win:Warning-->
+                <!--win:Informational, win:Verbose-->
+                <tasks>
+                    <task name="PSTCH"
+                          symbol="TASK_PSTCH"
+                          value="1"
+                          message="$(string.Task.PSTCH)"/>
+                </tasks>
+                <!--Winmeta.xml has predefined opcodes, including win:Info"-->
+                <!--Winmeta.xml has predefined keywords e.g. win:AnyKeyword"-->
+                <!--Filters are optional-->
+                <templates>
+                    <template tid="t2">
+                        <data name="Msg" inType="win:UnicodeString"/>
+                    </template>
+                    <template tid="t3">
+                        <data name="File" inType="win:UnicodeString"/>
+                        <data name="Line" inType="win:Int32"/>
+                        <data name="Function" inType="win:UnicodeString"/>
+                        <data name="Msg" inType="win:UnicodeString"/>
+                    </template>
+                </templates>
+                <events>
+                    <event value="1"
+                        level="win:Verbose"
+                        task="PSTCH"
+                        template="t2"
+                        channel="cdebug"
+                        symbol="PSTCH_DEBUG_NL"
+                        message ="$(string.Event.PstchDebug)"/>
+
+                    <event value="2"
+                        level="win:Informational"
+                        task="PSTCH"
+                        template="t2"
+                        channel="canalc"
+                        symbol="PSTCH_INFO_NL"
+                        message ="$(string.Event.PstchInfo)"/>
+
+                    <event value="3"
+                        level="win:Informational"
+                        task="PSTCH"
+                        template="t2"
+                        channel="canalc"
+                        symbol="PSTCH_NOTICE_NL"
+                        message ="$(string.Event.PstchNotice)"/>
+
+                    <event value="4"
+                        level="win:Warning"
+                        task="PSTCH"
+                        template="t2"
+                        channel="coperl"
+                        symbol="PSTCH_WARNING_NL"
+                        message ="$(string.Event.PstchWarning)"/>
+
+                    <event value="5"
+                        level="win:Error"
+                        task="PSTCH"
+                        template="t2"
+                        channel="coperl"
+                        symbol="PSTCH_ERR_NL"
+                        message ="$(string.Event.PstchErr)"/>
+
+                    <event value="6"
+                        level="win:Critical"
+                        task="PSTCH"
+                        template="t2"
+                        channel="cadmin"
+                        symbol="PSTCH_CRIT_NL"
+                        message ="$(string.Event.PstchCrit)"/>
+
+                    <event value="7"
+                        level="win:Critical"
+                        task="PSTCH"
+                        template="t2"
+                        channel="cadmin"
+                        symbol="PSTCH_ALERT_NL"
+                        message ="$(string.Event.PstchAlert)"/>
+
+                    <event value="8"
+                        level="win:Critical"
+                        task="PSTCH"
+                        template="t2"
+                        channel="cadmin"
+                        symbol="PSTCH_EMERG_NL"
+                        message ="$(string.Event.PstchEmerg)"/>
+
+                    <!-- No event value="101" -->
+                    <!-- level="win:Verbose" cannot be used with -->
+                    <!-- cadminbltin channel -->
+
+                    <event value="102"
+                        level="win:Informational"
+                        task="PSTCH"
+                        template="t2"
+                        channel="cadminbltin"
+                        symbol="PSTCH_CBLTIN_INFO_NL"
+                        message ="$(string.Event.PstchInfo)"/>
+
+                    <event value="103"
+                        level="win:Informational"
+                        task="PSTCH"
+                        template="t2"
+                        channel="cadminbltin"
+                        symbol="PSTCH_CBLTIN_NOTICE_NL"
+                        message ="$(string.Event.PstchNotice)"/>
+
+                    <event value="104"
+                        level="win:Warning"
+                        task="PSTCH"
+                        template="t2"
+                        channel="cadminbltin"
+                        symbol="PSTCH_CBLTIN_WARNING_NL"
+                        message ="$(string.Event.PstchWarning)"/>
+
+                    <event value="105"
+                        level="win:Error"
+                        task="PSTCH"
+                        template="t2"
+                        channel="cadminbltin"
+                        symbol="PSTCH_CBLTIN_ERR_NL"
+                        message ="$(string.Event.PstchErr)"/>
+
+                    <event value="106"
+                        level="win:Critical"
+                        task="PSTCH"
+                        template="t2"
+                        channel="cadminbltin"
+                        symbol="PSTCH_CBLTIN_CRIT_NL"
+                        message ="$(string.Event.PstchCrit)"/>
+
+                    <event value="107"
+                        level="win:Critical"
+                        task="PSTCH"
+                        template="t2"
+                        channel="cadminbltin"
+                        symbol="PSTCH_CBLTIN_ALERT_NL"
+                        message ="$(string.Event.PstchAlert)"/>
+
+                    <event value="108"
+                        level="win:Critical"
+                        task="PSTCH"
+                        template="t2"
+                        channel="cadminbltin"
+                        symbol="PSTCH_CBLTIN_EMERG_NL"
+                        message ="$(string.Event.PstchEmerg)"/>
+
+
+                </events>
+            </provider>
+        </events>
+    </instrumentation>
+
+    <localization>
+        <resources culture="en-US">
+            <stringTable>
+                <string id="Provider.Name" value="Pistache"/>
+                <string id="Task.PSTCH" value="PSTCH"/>
+                <string id="Event.PstchDebug" value="DEBUG %1"/>
+                <string id="Event.PstchInfo" value="INFO %1"/>
+                <string id="Event.PstchNotice" value="NOTICE %1"/>
+                <string id="Event.PstchWarning" value="WARNING %1"/>
+                <string id="Event.PstchErr" value="ERR %1"/>
+                <string id="Event.PstchCrit" value="CRIT %1"/>
+                <string id="Event.PstchAlert" value="ALERT %1"/>
+                <string id="Event.PstchEmerg" value="EMERG %1"/>
+            </stringTable>
+        </resources>
+    </localization>
+</instrumentationManifest>

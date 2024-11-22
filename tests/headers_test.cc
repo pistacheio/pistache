@@ -513,12 +513,12 @@ TEST(headers_test, connection)
 
     for (auto test : tests)
     {
-        Pistache::Http::Header::Connection connection;
+        Pistache::Http::Header::Connection this_conn;
         std::ostringstream oss;
-        connection.parse(test.data);
-        connection.write(oss);
+        this_conn.parse(test.data);
+        this_conn.write(oss);
 
-        ASSERT_EQ(connection.control(), test.expected);
+        ASSERT_EQ(this_conn.control(), test.expected);
         ASSERT_EQ(oss.str(), test.expected_string);
     }
 }
@@ -573,6 +573,8 @@ TEST(headers_test, date_test_ostream)
     const char* cstr_to_compare = "Fri, 25 Jan 2019 21:04:45."
 #if defined __clang__ && !defined __linux__
                                   "000000"
+#elif defined _MSC_VER // Microsoft Visual Compiler
+                                  "0000000"
 #else
                                   "000000000"
 #endif

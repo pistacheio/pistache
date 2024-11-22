@@ -14,6 +14,8 @@
 #ifndef _EMOSANDLIBEVDEFS_H_
 #define _EMOSANDLIBEVDEFS_H_
 
+#include <pistache/winornix.h>
+
 /* ------------------------------------------------------------------------- */
 
 #ifdef PISTACHE_FORCE_LIBEVENT
@@ -44,8 +46,11 @@
   #ifndef _USE_LIBEVENT_LIKE_APPLE
     #define _USE_LIBEVENT_LIKE_APPLE 1
   #endif
-#elif defined(_WIN32) // Defined for both 32-bit and 64-bit environments
+#elif defined(_IS_WINDOWS)
   #define _USE_LIBEVENT 1
+  #ifndef _USE_LIBEVENT_LIKE_APPLE
+    #define _USE_LIBEVENT_LIKE_APPLE 1
+  #endif
 #elif defined(__unix__) || !defined(__APPLE__) && defined(__MACH__)
     #include <sys/param.h>
     #if defined(BSD)

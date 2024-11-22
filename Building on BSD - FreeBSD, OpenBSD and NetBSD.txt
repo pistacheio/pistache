@@ -26,6 +26,8 @@ You will need the following Pistache-dependencies installed:
   rapidjson (*)
   howard-hinnant-date (*)
   libevent
+  brotli libbrotli-dev (presuming you want to include)
+  zstd libzstd-dev (presuming you want to include)
  See BSD-type-specific notes below regarding installing these
  dependencies.
 

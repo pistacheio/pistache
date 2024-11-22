@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <pistache/winornix.h>
+
 #include <pistache/common.h>
 #include <pistache/config.h>
 #include <pistache/eventmeth.h>
@@ -23,14 +25,12 @@
 #include <mutex>
 #include <vector>
 
-#include <sched.h>
-
 namespace Pistache
 {
     // Note: Fd is defined in eventmeth.h
 
-    uint hardware_concurrency();
-    bool make_non_blocking(int fd);
+    unsigned int hardware_concurrency();
+    bool make_non_blocking(em_socket_t fd);
 
     class CpuSet
     {
@@ -96,7 +96,8 @@ namespace Pistache
             { }
 
             constexpr TagValue value() const { return value_; }
-            uint64_t valueU64() const { return ((uint64_t)value_); }
+            uint64_t valueU64() const { return (static_cast<uint64_t>
+                                 (reinterpret_cast<std::uintptr_t>(value_))); }
 #ifndef _USE_LIBEVENT
             constexpr
 #endif
@@ -104,10 +105,10 @@ namespace Pistache
                 actualFdU64Value() const
             {
 #ifdef _USE_LIBEVENT
-                if (value_ == NULL)
-                    return ((uint64_t)((int)-1));
+                if (value_ == nullptr)
+                    return (static_cast<uint64_t>(-1));
                 em_socket_t actual_fd = GET_ACTUAL_FD(value_);
-                return ((uint64_t)actual_fd);
+                return (static_cast<uint64_t>(actual_fd));
 #else
                 return (value_);
 #endif
@@ -138,13 +139,14 @@ namespace Pistache
             Epoll();
             ~Epoll();
 
-            void addFd(Fd fd, Flags<NotifyOn> interest, Tag tag, Mode mode = Mode::Level);
+            void addFd(Fd fd, Flags<NotifyOn> interest, Tag tag,
+                       [[maybe_unused]] Mode mode = Mode::Level);
             void addFdOneShot(Fd fd, Flags<NotifyOn> interest, Tag tag,
                               Mode mode = Mode::Level);
 
             void removeFd(Fd fd);
             void rearmFd(Fd fd, Flags<NotifyOn> interest, Tag tag,
-                         Mode mode = Mode::Level);
+                         [[maybe_unused]] Mode mode = Mode::Level);
 
             int poll(std::vector<Event>& events, const std::chrono::milliseconds timeout = std::chrono::milliseconds(-1)) const;
 
@@ -171,7 +173,7 @@ namespace Pistache
                 int f_setfl_flags // e.g. O_NONBLOCK
             );
 
-            Fd em_timer_new(clockid_t clock_id,
+            Fd em_timer_new(PST_CLOCK_ID_T clock_id,
                             // For setfd and setfl arg:
                             //   F_SETFDL_NOTHING - change nothing
                             //   Zero or pos number that is not

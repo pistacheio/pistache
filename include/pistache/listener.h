@@ -12,6 +12,8 @@
 
 #pragma once
 
+#include <pistache/winornix.h>
+
 #include <pistache/async.h>
 #include <pistache/config.h>
 #include <pistache/flags.h>
@@ -22,7 +24,7 @@
 #include <pistache/ssl_wrappers.h>
 #include <pistache/tcp.h>
 
-#include <sys/resource.h>
+#include PIST_QUOTE(PST_SYS_RESOURCE_HDR)
 
 #include <memory>
 #include <thread>
@@ -49,7 +51,7 @@ namespace Pistache::Tcp
             double global;
             std::vector<double> workers;
 
-            std::vector<rusage> raw;
+            std::vector<PST_RUSAGE> raw;
             TimePoint tick;
         };
 
@@ -117,9 +119,12 @@ namespace Pistache::Tcp
         bool bindListener(const struct addrinfo* addr);
 
         void handleNewConnection();
-        int acceptConnection(struct sockaddr_storage& peer_addr) const;
+        em_socket_t acceptConnection(struct sockaddr_storage& peer_addr) const;
         void dispatchPeer(const std::shared_ptr<Peer>& peer);
 
+#ifdef _IS_WINDOWS
+        std::atomic<em_socket_t> idxCtr_ = 1;
+#endif
         bool useSSL_            = false;
         ssl::SSLCtxPtr ssl_ctx_ = nullptr;
 

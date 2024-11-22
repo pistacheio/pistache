@@ -76,10 +76,10 @@ bool matchSplat(const SegmentTreeNode& routes, const std::string& req,
         return false;
 
     size_t i = 0;
-    for (const auto& s : list)
+    for (const auto& an_s : list)
     {
         auto splat = splats[i].as<std::string>();
-        if (splat != s)
+        if (splat != an_s)
             return false;
         ++i;
     }

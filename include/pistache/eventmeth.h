@@ -10,6 +10,8 @@
 #ifndef _EVENTMETH_H_
 #define _EVENTMETH_H_
 
+#include <pistache/winornix.h>
+
 /* ------------------------------------------------------------------------- */
 
 #include <pistache/emosandlibevdefs.h>
@@ -20,14 +22,7 @@
 
 /* ------------------------------------------------------------------------- */
 
-// A type wide enough to hold the output of "socket()" or "accept()".  On
-// Windows, this is an intptr_t; elsewhere, it is an int.
-// Note: Mapped directly from evutil_socket_t in libevent's event2/util.h
-#ifdef _WIN32
-#define em_socket_t SOCKET
-#else
-#define em_socket_t int
-#endif
+#include <pistache/em_socket_t.h>
 
 #ifndef _USE_LIBEVENT
 #include <sys/eventfd.h>
@@ -53,7 +48,7 @@
 
 // WRITE_EFD and READ_EFD are for eventfd/EmEventFd Fds
 // They return 0 on success, and -1 on fail
-  
+
 #ifdef _USE_LIBEVENT
 // Returns -1 if __fd__ not EmEventFd
 #define WRITE_EFD(__fd__, __val__)              \
@@ -91,6 +86,42 @@
 #else
 #define PS_FD_PRNTFCD d
 #endif
+
+#ifdef _USE_LIBEVENT
+// PS_FD_CAST_TO_UNUM / PS_FD_CAST_TO_SNUM are used to cast Fd to numeric type
+// E.g.:
+//    Fd fd;
+//    ...
+//    uint64_t n = PS_FD_CAST_TO_UNUM(uint64_t, fd);
+#define PS_FD_CAST_TO_UNUM(__T, __N)                            \
+    (static_cast<__T>(reinterpret_cast<std::uintptr_t>(__N)))
+#define PS_FD_CAST_TO_SNUM(__T, __N)                            \
+    (static_cast<__T>(reinterpret_cast<std::intptr_t>(__N)))
+#else
+#define PS_FD_CAST_TO_UNUM(__T, __N)            \
+    (static_cast<__T>(__N))
+#define PS_FD_CAST_TO_SNUM(__T, __N)            \
+    (static_cast<__T>(__N))
+#endif
+
+#ifdef _USE_LIBEVENT
+// PS_NUM_CAST_TO_FD/PS_NUM_CAST_TO_FDCONST casts a numeric type to Fd/FdConst
+// PS_CAST_AWAY_CONST_FD casts an FdConst to type Fd
+#define PS_NUM_CAST_TO_FD(__N)                                          \
+    (reinterpret_cast<Fd>(static_cast<std::uintptr_t>(__N)))
+#define PS_NUM_CAST_TO_FDCONST(__N)                                     \
+    (reinterpret_cast<const Fd>(static_cast<std::uintptr_t>(__N)))
+#define PS_CAST_AWAY_CONST_FD(__fdconst)        \
+    (const_cast<Fd>(__fdconst))
+#else
+#define PS_NUM_CAST_TO_FD(__N)                  \
+    (static_cast<Fd>(__N))
+#define PS_NUM_CAST_TO_FDCONST(__N)             \
+    PS_NUM_CAST_TO_FD(__N)
+#define PS_CAST_AWAY_CONST_FD(__fdconst)        \
+    (__fdconst)
+#endif
+
 
 #ifdef _USE_LIBEVENT
 // Note - closeEvent calls delete __ev__;
@@ -145,7 +176,7 @@ namespace Pistache
       class EmEvent;
       class EmEventFd;
       class EmEventTmrFd;
-    
+
       using Fd = EmEvent *;
       using FdConst = const EmEvent *;
 
@@ -178,7 +209,7 @@ namespace Pistache
 #include <map>
 #include <condition_variable>
 
-#include <fcntl.h> // For FD_CLOEXEC and O_NONBLOCK
+#include PIST_QUOTE(PST_FCNTL_HDR) // For FD_CLOEXEC and O_NONBLOCK
 
 /* ------------------------------------------------------------------------- */
 
@@ -224,7 +255,7 @@ namespace Pistache
         std::shared_ptr<EventMethEpollEquiv> create(int size);
 
 
-        #define F_SETFDL_NOTHING ((int)((unsigned) 0x8A82))
+        #define F_SETFDL_NOTHING (static_cast<int>(0x8A82u))
         Fd em_event_new(em_socket_t actual_fd,//file desc, signal, or -1
                         short flags, // EVM_... flags
                         // For setfd and setfl arg:
@@ -241,7 +272,7 @@ namespace Pistache
 
         // If emee is NULL here, it will need to be supplied when settime is
         // called
-        Fd em_timer_new(clockid_t clock_id,
+        Fd em_timer_new(PST_CLOCK_ID_T clock_id,
                                // For setfd and setfl arg:
                                //   F_SETFDL_NOTHING - change nothing
                                //   Zero or pos number that is not
@@ -277,15 +308,15 @@ namespace Pistache
         // otherwise. emee_cptr_set_mutex_ is locked inside the function.
         EventMethEpollEquiv * getEventMethEpollEquivFromEmeeSet(
                                                    EventMethEpollEquiv * emee);
-        
-        int getActualFd(const EmEvent * em_event);
+
+        em_socket_t getActualFd(const EmEvent * em_event);
 
         // efd should be a pointer to EmEventFd - does dynamic cast
-        ssize_t writeEfd(EmEvent * efd, const uint64_t val);
-        ssize_t readEfd(EmEvent * efd, uint64_t * val_out_ptr);
+        PST_SSIZE_T writeEfd(EmEvent * efd, const uint64_t val);
+        PST_SSIZE_T readEfd(EmEvent * efd, uint64_t * val_out_ptr);
 
-        ssize_t read(EmEvent * fd, void * buf, size_t count);
-        ssize_t write(EmEvent * fd, const void * buf, size_t count);
+        PST_SSIZE_T read(EmEvent * fd, void * buf, size_t count);
+        PST_SSIZE_T write(EmEvent * fd, const void * buf, size_t count);
 
         EmEvent * getAsEmEvent(EmEventFd * efd);
 
@@ -295,21 +326,21 @@ namespace Pistache
         void setEmEventUserData(EmEvent * fd, Fd user_data);
 
         // For EmEventTmrFd, settime is analagous to timerfd_settime in linux
-        // 
+        //
         // The linux flags TFD_TIMER_ABSTIME and TFD_TIMER_CANCEL_ON_SET are
         // not supported
         //
         // Since pistache doesn't use the "struct itimerspec * old_value"
         // feature of timerfd_settime, we haven't implemented that feature.
-        // 
+        //
         // If the EventMethEpollEquiv was not specified already (e.g. at
         // make_new), the it must be specified here
-        // 
+        //
         // Note: settime is in EmEvent rather than solely in EmEventTmrFd since
         // any kind of event may have a timeout set, not only timer events
         int setEmEventTime(EmEvent * fd,
-                            const std::chrono::milliseconds * new_timeval_cptr,
-                            EventMethEpollEquiv * emee = NULL/*may be NULL*/);
+                           const std::chrono::milliseconds * new_timeval_cptr,
+                           EventMethEpollEquiv * emee = nullptr);
 
         EmEventType getEmEventType(EmEvent * fd);
 
@@ -319,7 +350,7 @@ namespace Pistache
                                     EventMethEpollEquiv * emee/*may be NULL*/);
 
     #ifdef DEBUG
-        std::string getActFdAndFdlFlagsAsStr(int actual_fd);
+        std::string getActFdAndFdlFlagsAsStr(em_socket_t actual_fd);
         // See also macro LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(__ACTUAL_FD__)
     #endif
 
@@ -336,9 +367,9 @@ namespace Pistache
 
     class EventMethEpollEquiv
     { // See man epoll, epoll_create, epoll_ctl, epl_wait
-        
+
     public:
-        
+
         // Add to interest list
         // Returns 0 for success, on error -1 with errno set
         int ctl(EvCtlAction op, // add, mod, or del
@@ -355,7 +386,7 @@ namespace Pistache
         // "timeout" is in milliseconds, or -1 means wait indefinitely
         // Returns number of ready events being returned; or 0 if timed-out
         // without an event becoming ready; or -1, with errno set, on error
-        // 
+        //
         // NOTE: Caller must call unlockInterestMutexIfLocked after
         // getReadyEmEvents has returned and after the caller has finished
         // processing any Fds in ready_evm_events_out. getReadyEmEvents returns
@@ -376,12 +407,12 @@ namespace Pistache
     private:
         // Allow create to call the constructor
         friend std::shared_ptr<EventMethEpollEquiv> EventMethFns::create(int);
-        
+
         EventMethEpollEquiv(int size);
 
         friend EventMethEpollEquivImpl * EventMethFns::getEMEEImpl(
                                                         EventMethEpollEquiv *);
-        
+
         std::unique_ptr<EventMethEpollEquivImpl> impl_;
     };
 

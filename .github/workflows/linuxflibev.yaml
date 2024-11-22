@@ -46,13 +46,13 @@ jobs:
       run: |
         if [ ${{ matrix.compiler }} = gcc ]; then compiler=g++; else compiler="clang lld ?exact-name(libclang-rt-dev)"; fi
         apt -y update
-        apt -y install $compiler meson pkg-config cmake rapidjson-dev libssl-dev libevent-dev netbase '?exact-name(libhowardhinnant-date-dev)' '?exact-name(libgmock-dev) (?version([1-9]\.[1-9][1-9]) | ?version([1-9]\.[2-9][0-9]))' '?exact-name(libcpp-httplib-dev)' libcurl4-openssl-dev git ca-certificates curl gpg gpgv gpg-agent lcov llvm-dev --no-install-recommends
+        apt -y install $compiler meson pkg-config cmake brotli libbrotli-dev zstd libzstd-dev rapidjson-dev libssl-dev libevent-dev netbase '?exact-name(libhowardhinnant-date-dev)' '?exact-name(libgmock-dev) (?version([1-9]\.[1-9][1-9]) | ?version([1-9]\.[2-9][0-9]))' '?exact-name(libcpp-httplib-dev)' libcurl4-openssl-dev git ca-certificates curl gpg gpgv gpg-agent lcov llvm-dev --no-install-recommends
 
     - name: Install dependencies (Red Hat)
       if: contains(matrix.os, 'redhat')
       run: |
         if [ ${{ matrix.compiler }} = gcc ]; then compiler=gcc-c++; else compiler=llvm-toolset; fi
-        microdnf -y install $compiler pkgconf cmake openssl-devel zlib-devel libcurl-devel git python3-pip unzip
+        microdnf -y install $compiler pkgconf cmake brotli libbrotli zstd libzstd openssl-devel zlib-devel libcurl-devel git python3-pip unzip
         curl -LO https://github.com/ninja-build/ninja/releases/latest/download/ninja-linux.zip
         unzip ninja-linux.zip
         mv ninja /usr/local/bin
@@ -68,7 +68,7 @@ jobs:
         if [ ${{ matrix.compiler }} = gcc ]; then CXX=g++; else CXX=clang++ CXX_LD=lld; fi
         export CXX CXX_LD
         meson setup build \
-          -DPISTACHE_BUILD_TESTS=true -DPISTACHE_DEBUG=${{ matrix.def_debug }} -DPISTACHE_USE_SSL=${{ matrix.tls }} -DPISTACHE_FORCE_LIBEVENT=${{ matrix.flibev }} -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true \
+          -DPISTACHE_BUILD_TESTS=true -DPISTACHE_DEBUG=${{ matrix.def_debug }} -DPISTACHE_USE_SSL=${{ matrix.tls }} -DPISTACHE_FORCE_LIBEVENT=${{ matrix.flibev }} -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true -DPISTACHE_USE_CONTENT_ENCODING_BROTLI=true -DPISTACHE_USE_CONTENT_ENCODING_ZSTD=true \
           --buildtype=debug -Db_coverage=true -Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false \
           || (cat build/meson-logs/meson-log.txt ; false)
       env:

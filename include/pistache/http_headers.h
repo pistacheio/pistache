@@ -199,9 +199,9 @@ namespace Pistache::Http::Header
 #define CAT(a, b) CAT_I(a, b)
 #define CAT_I(a, b) a##b
 
-#define UNIQUE_NAME(base) CAT(base, __LINE__)
+#define PST_UNIQUE_NAME(base) CAT(base, __LINE__)
 
 #define RegisterHeader(Header) \
-    Registrar<Header> UNIQUE_NAME(CAT(CAT_I(__, Header), __))
+    Registrar<Header> PST_UNIQUE_NAME(CAT(CAT_I(__, Header), __))
 
 } // namespace Pistache::Http::Header

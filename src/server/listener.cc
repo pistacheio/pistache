@@ -9,6 +9,8 @@
 
 */
 
+#include <pistache/winornix.h>
+
 #include <pistache/common.h>
 #include <pistache/errors.h>
 #include <pistache/listener.h>
@@ -17,27 +19,22 @@
 #include <pistache/ssl_wrappers.h>
 #include <pistache/transport.h>
 
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
+#include PIST_QUOTE(PST_ARPA_INET_HDR)
+#include PIST_QUOTE(PST_NETDB_HDR)
+#include PIST_QUOTE(PST_NETINET_IN_HDR)
+#include PIST_QUOTE(PST_NETINET_TCP_HDR)
 
 #include <pistache/eventmeth.h>
 
-#ifndef _USE_LIBEVENT_LIKE_APPLE
-#include <unistd.h>
-#endif
-#include <fcntl.h>
+#include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h e.g. close
+#include PIST_QUOTE(PST_FCNTL_HDR)
+#include PIST_QUOTE(PIST_SOCKFNS_HDR) // socket read, write and close
 
 #ifndef _USE_LIBEVENT
 #include <sys/epoll.h>
 #endif
 
-#ifdef _USE_LIBEVENT_LIKE_APPLE
-#include <netdb.h> // for getprotobyname
-#endif
-
-#include <sys/socket.h>
+#include PIST_QUOTE(PST_SOCKET_HDR)
 
 #ifndef _USE_LIBEVENT_LIKE_APPLE
 // Note: sys/timerfd.h is linux-only (and certainly POSIX only)
@@ -137,7 +134,7 @@ namespace Pistache::Tcp
                 }
             }
 
-            if (cb != NULL)
+            if (cb != nullptr)
             {
                 /* Use the user-defined callback for password if provided */
                 SSL_CTX_set_default_passwd_cb(GetSSLContext(ctx), cb);
@@ -191,18 +188,18 @@ namespace Pistache::Tcp
     }
 #endif /* PISTACHE_USE_SSL */
 
-    void setSocketOptions(int actualFd, Flags<Options> options)
+    void setSocketOptions(em_socket_t actualFd, Flags<Options> options)
     {
         PS_TIMEDBG_START;
 
 #ifdef _USE_LIBEVENT_LIKE_APPLE
         if (options.hasFlag(Options::CloseOnExec))
         {
-            int f_setfd_flags = fcntl(actualFd, F_GETFD, (int)0);
-            if (!(f_setfd_flags & FD_CLOEXEC))
+            int f_setfd_flags = PST_FCNTL(actualFd, PST_F_GETFD, 0);
+            if (!(f_setfd_flags & PST_FD_CLOEXEC))
             {
-                f_setfd_flags |= FD_CLOEXEC;
-                int fcntl_res = fcntl(actualFd, F_SETFD, f_setfd_flags);
+                f_setfd_flags |= PST_FD_CLOEXEC;
+                int fcntl_res = PST_FCNTL(actualFd, PST_F_SETFD, f_setfd_flags);
                 if (fcntl_res == -1)
                     throw std::runtime_error("fcntl set failed");
             }
@@ -213,15 +210,27 @@ namespace Pistache::Tcp
         {
             PS_LOG_DEBUG("Set SO_REUSEADDR");
 
-            int one = 1;
+            PST_SOCK_OPT_VAL_T one = 1;
+            // Note: TRY also invokes PST_SOCK_STARTUP_CHECK
             TRY(::setsockopt(actualFd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one)));
         }
 
         if (options.hasFlag(Options::ReusePort))
         {
             PS_LOG_DEBUG("Set SO_REUSEPORT");
-            int one = 1;
+            PST_SOCK_OPT_VAL_T one = 1;
+#ifdef _IS_WINDOWS
+            // Note: Windows doesn't have SO_REUSEPORT, but if caller has
+            // requested Options::ReusePort, but not Options::ReuseAddr, then
+            // in Windows we set SO_REUSEADDR here
+            if (!(options.hasFlag(Options::ReuseAddr)))
+            {
+                TRY(::setsockopt(actualFd, SOL_SOCKET,
+                                 SO_REUSEADDR, &one, sizeof(one)));
+            }
+#else
             TRY(::setsockopt(actualFd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(one)));
+#endif
         }
 
         if (options.hasFlag(Options::Linger))
@@ -229,7 +238,9 @@ namespace Pistache::Tcp
             struct linger opt;
             opt.l_onoff  = 1;
             opt.l_linger = 1;
-            TRY(::setsockopt(actualFd, SOL_SOCKET, SO_LINGER, &opt, sizeof(opt)));
+            TRY(::setsockopt(actualFd, SOL_SOCKET, SO_LINGER,
+                             reinterpret_cast<PST_SOCK_OPT_VAL_T*>(&opt),
+                             sizeof(opt)));
         }
 
 #ifdef _USE_LIBEVENT_LIKE_APPLE
@@ -247,13 +258,13 @@ namespace Pistache::Tcp
 
         if (options.hasFlag(Options::FastOpen))
         {
-            int hint = 5;
+            PST_SOCK_OPT_VAL_T hint = 5;
             TRY(::setsockopt(actualFd, tcp_prot_num,
                              TCP_FASTOPEN, &hint, sizeof(hint)));
         }
         if (options.hasFlag(Options::NoDelay))
         {
-            int one = 1;
+            PST_SOCK_OPT_VAL_T one = 1;
             TRY(::setsockopt(actualFd, tcp_prot_num,
                              TCP_NODELAY, &one, sizeof(one)));
         }
@@ -340,12 +351,14 @@ namespace Pistache::Tcp
 // SOCK_CLOEXEC not defined in macOS Nov 2023
 // In the _USE_LIBEVENT_LIKE_APPLE case, we set FD_CLOEXEC using fcntl
 // in the setSocketOptions function that is invoked below
+// It also doesn't exist for Windows (Windows sets _USE_LIBEVENT_LIKE_APPLE)
 #ifndef _USE_LIBEVENT_LIKE_APPLE
         if (options_.hasFlag(Options::CloseOnExec))
             socktype |= SOCK_CLOEXEC;
 #endif
 
-        int actual_fd = ::socket(addr->ai_family, socktype, addr->ai_protocol);
+        em_socket_t actual_fd = PST_SOCK_SOCKET(addr->ai_family, socktype,
+                                                addr->ai_protocol);
         PS_LOG_DEBUG_ARGS("::socket actual_fd %d", actual_fd);
 
         if (actual_fd < 0)
@@ -360,16 +373,19 @@ namespace Pistache::Tcp
 
         LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(actual_fd);
 
-        if (::bind(actual_fd, addr->ai_addr, addr->ai_addrlen) < 0)
+        if (PST_SOCK_BIND(actual_fd, addr->ai_addr, addr->ai_addrlen) < 0)
         {
+            auto tmp_errno = errno; // in case sock-close changes errno
             PS_LOG_DEBUG_ARGS("::bind failed, actual_fd %d", actual_fd);
-            close(actual_fd);
+            PST_SOCK_CLOSE(actual_fd);
+            errno = tmp_errno;
+
             return false;
         }
 
         LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(actual_fd);
 
-        TRY(::listen(actual_fd, backlog_));
+        TRY(PST_SOCK_LISTEN(actual_fd, backlog_));
 
         LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(actual_fd);
 
@@ -389,7 +405,7 @@ namespace Pistache::Tcp
         // Use EVM_READ, as per call to addFd below
         Fd event_fd = TRY_NULL_RET(
             Polling::Epoll::em_event_new(actual_fd, // pre-allocated file desc
-                                         EVM_READ | EVM_PERSIST,
+                                         EVM_READ | EVM_PERSIST | EVM_ET,
                                          F_SETFDL_NOTHING, // f_setfd_flags - don't change
                                          F_SETFDL_NOTHING // f_setfl_flags - don't change
                                          ));
@@ -470,7 +486,8 @@ namespace Pistache::Tcp
         //
         if (!found)
         {
-            throw std::runtime_error(strerror(errno));
+            PST_DECL_SE_ERR_P_EXTRA;
+            throw std::runtime_error(PST_STRERROR_R_ERRNO);
         }
     }
 
@@ -495,7 +512,7 @@ namespace Pistache::Tcp
         socklen_t addrlen                 = sizeof(sock_addr);
         auto* sock_addr_alias             = reinterpret_cast<struct sockaddr*>(&sock_addr);
 
-        if (-1 == getsockname(GET_ACTUAL_FD(listen_fd), sock_addr_alias, &addrlen))
+        if (-1 == PST_SOCK_GETSOCKNAME(GET_ACTUAL_FD(listen_fd), sock_addr_alias, &addrlen))
         {
             return Port();
         }
@@ -518,6 +535,8 @@ namespace Pistache::Tcp
 
     void Listener::run()
     {
+        PS_TIMEDBG_START;
+
         if (!shutdownFd.isBound())
             shutdownFd.bind(poller);
         reactor_->run();
@@ -526,6 +545,7 @@ namespace Pistache::Tcp
         {
             { // encapsulate l_guard(poller.reg_unreg_mutex_)
               // See comment in class Epoll regarding reg_unreg_mutex_
+                PS_TIMEDBG_START;
 
                 std::mutex& poller_reg_unreg_mutex(poller.reg_unreg_mutex_);
                 GUARD_AND_DBG_LOG(poller_reg_unreg_mutex);
@@ -544,7 +564,7 @@ namespace Pistache::Tcp
 
                     if (event.flags.hasFlag(Polling::NotifyOn::Read))
                     {
-                        Fd fd = (Fd)event.tag.value();
+                        Fd fd = static_cast<Fd>(event.tag.value());
                         if (fd == listen_fd)
                         {
                             try
@@ -571,8 +591,15 @@ namespace Pistache::Tcp
 
     void Listener::runThreaded()
     {
+        PS_TIMEDBG_START;
+
         shutdownFd.bind(poller);
-        acceptThread = std::thread([=]() { this->run(); });
+        PS_LOG_DEBUG("shutdownFd.bind done");
+
+        acceptThread = std::thread([=]() {
+            PS_TIMEDBG_START;
+            this->run();
+        });
     }
 
     void Listener::shutdown()
@@ -595,7 +622,7 @@ namespace Pistache::Tcp
 
         auto handlers = reactor_->handlers(transportKey);
 
-        std::vector<Async::Promise<rusage>> loads;
+        std::vector<Async::Promise<PST_RUSAGE>> loads;
         for (const auto& handler : handlers)
         {
             auto transport = std::static_pointer_cast<Transport>(handler);
@@ -604,7 +631,7 @@ namespace Pistache::Tcp
 
         return Async::whenAll(std::begin(loads), std::end(loads))
             .then(
-                [=](const std::vector<rusage>& usages) {
+                [=](const std::vector<PST_RUSAGE>& usages) {
                     PS_TIMEDBG_START;
                     Load res;
                     res.raw = usages;
@@ -618,7 +645,7 @@ namespace Pistache::Tcp
                     else
                     {
 
-                        auto totalElapsed = [](rusage usage) {
+                        auto totalElapsed = [](PST_RUSAGE usage) {
                             return static_cast<double>((usage.ru_stime.tv_sec * 1000000 + usage.ru_stime.tv_usec) + (usage.ru_utime.tv_sec * 1000000 + usage.ru_utime.tv_usec));
                         };
 
@@ -657,7 +684,7 @@ namespace Pistache::Tcp
         PS_TIMEDBG_START_THIS;
 
         struct sockaddr_storage peer_addr;
-        int actual_cli_fd = acceptConnection(peer_addr);
+        em_socket_t actual_cli_fd = acceptConnection(peer_addr);
 
         void* ssl = nullptr;
 
@@ -671,7 +698,7 @@ namespace Pistache::Tcp
             {
                 PS_LOG_DEBUG("SSL_new failed");
 
-                close(actual_cli_fd);
+                PST_SOCK_CLOSE(actual_cli_fd);
                 std::string err = "SSL error - cannot create SSL connection: "
                     + ssl_print_errors_to_string();
                 throw ServerError(err.c_str());
@@ -688,16 +715,34 @@ namespace Pistache::Tcp
 
                 struct timeval timeout;
 
-                timeout.tv_sec = std::chrono::duration_cast<std::chrono::seconds>(sslHandshakeTimeout_).count();
+                timeout.tv_sec = static_cast<PST_TIMEVAL_S_T>(std::chrono::duration_cast<std::chrono::seconds>(sslHandshakeTimeout_).count());
 
                 const auto residual_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(sslHandshakeTimeout_) - std::chrono::duration_cast<std::chrono::seconds>(sslHandshakeTimeout_);
-                timeout.tv_usec                  = (suseconds_t)(residual_microseconds.count());
+                timeout.tv_usec                  = static_cast<PST_SUSECONDS_T>(residual_microseconds.count());
 
-                TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)));
-                TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)));
+                TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_RCVTIMEO,
+                                 reinterpret_cast<PST_SOCK_OPT_VAL_T*>(&timeout),
+                                 sizeof(timeout)));
+                TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_SNDTIMEO,
+                                 reinterpret_cast<PST_SOCK_OPT_VAL_T*>(&timeout),
+                                 sizeof(timeout)));
             }
 
-            SSL_set_fd(ssl_data, actual_cli_fd);
+            SSL_set_fd(ssl_data,
+#ifdef _IS_WINDOWS
+                       // SSL_set_fd takes type int for the FD parm, resulting
+                       // in a compiler warning since em_socket_t (and Windows'
+                       // SOCKET) may be wider than "int". However, according
+                       // to the SLL documentation, the warning can be
+                       // suppressed / ignored. @Aug/2024, see 'NOTES' in:
+                       // https://docs.openssl.org/3.1/man3/SSL_set_fd/
+                       static_cast<int>(
+#endif
+                           actual_cli_fd
+#ifdef _IS_WINDOWS
+                           )
+#endif
+            );
             SSL_set_accept_state(ssl_data);
 
             int ssl_accept_res = SSL_accept(ssl_data);
@@ -725,7 +770,7 @@ namespace Pistache::Tcp
 
                 PISTACHE_LOG_STRING_INFO(logger_, err);
                 SSL_free(ssl_data);
-                close(actual_cli_fd);
+                PST_SOCK_CLOSE(actual_cli_fd);
                 return;
             }
 
@@ -741,8 +786,12 @@ namespace Pistache::Tcp
                 timeout.tv_sec  = 0;
                 timeout.tv_usec = 0;
 
-                TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)));
-                TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)));
+                TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_RCVTIMEO,
+                                 reinterpret_cast<PST_SOCK_OPT_VAL_T*>(&timeout),
+                                 sizeof(timeout)));
+                TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_SNDTIMEO,
+                                 reinterpret_cast<PST_SOCK_OPT_VAL_T*>(&timeout),
+                                 sizeof(timeout)));
             }
 
             ssl = static_cast<void*>(ssl_data);
@@ -763,8 +812,8 @@ namespace Pistache::Tcp
         // Since we're accepting a remote connection here, presumably it makes
         // sense to have it be able to read *or* write?
         Fd client_fd = TRY_NULL_RET(
-            Polling::Epoll::em_event_new(actual_cli_fd, // pre-allocated file dsc
-                                         EVM_READ | EVM_WRITE | EVM_PERSIST,
+            Polling::Epoll::em_event_new(actual_cli_fd, // pre-alloced file dsc
+                                         EVM_READ | EVM_WRITE | EVM_PERSIST | EVM_ET,
                                          F_SETFDL_NOTHING, // f_setfd_flags - don't change
                                          F_SETFDL_NOTHING // f_setfl_flags - don't change
                                          ));
@@ -791,13 +840,13 @@ namespace Pistache::Tcp
         dispatchPeer(peer);
     }
 
-    int Listener::acceptConnection(struct sockaddr_storage& peer_addr) const
+    em_socket_t Listener::acceptConnection(struct sockaddr_storage& peer_addr) const
     {
         PS_TIMEDBG_START_THIS;
 
         socklen_t peer_addr_len = sizeof(peer_addr);
 
-        int listen_fd_actual = GET_ACTUAL_FD(listen_fd);
+        em_socket_t listen_fd_actual = GET_ACTUAL_FD(listen_fd);
 
         PS_LOG_DEBUG_ARGS("listen_fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", "
                                                                   "listen_fd_actual %d",
@@ -806,11 +855,11 @@ namespace Pistache::Tcp
         LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(listen_fd_actual);
 
         // Do not share open FD with forked processes
-        int client_actual_fd =
+        em_socket_t client_actual_fd =
 #ifdef _USE_LIBEVENT_LIKE_APPLE
-            ::accept(listen_fd_actual,
-                     reinterpret_cast<struct sockaddr*>(&peer_addr),
-                     &peer_addr_len);
+            PST_SOCK_ACCEPT(listen_fd_actual,
+                            reinterpret_cast<struct sockaddr*>(&peer_addr),
+                            &peer_addr_len);
 // Note: macOS doesn't support accept4 nor SOCK_CLOEXEC as of Nov-2023
 // accept4 is an extended form of "accept" with additional flags
 
@@ -842,10 +891,12 @@ namespace Pistache::Tcp
 
         if (client_actual_fd < 0)
         {
+            PST_DECL_SE_ERR_P_EXTRA;
+
             if (errno == EBADF || errno == ENOTSOCK)
-                throw ServerError(strerror(errno));
+                throw ServerError(PST_STRERROR_R_ERRNO);
             else
-                throw SocketError(strerror(errno));
+                throw SocketError(PST_STRERROR_R_ERRNO);
         }
 
         LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(client_actual_fd);
@@ -854,25 +905,29 @@ namespace Pistache::Tcp
         // We set CLOEXEC and unset all other flags to exactly match what
         // happens in Linux with accept4 (see comment to "::accept" above)
 
-        int fcntl_res = fcntl(client_actual_fd, F_SETFD, FD_CLOEXEC);
+        int fcntl_res = PST_FCNTL(client_actual_fd, PST_F_SETFD, PST_FD_CLOEXEC);
         if (fcntl_res == -1)
         {
+            PST_DBG_DECL_SE_ERR_P_EXTRA;
             PS_LOG_DEBUG_ARGS("fcntl F_SETFD fail for fd %d, errno %d %s",
-                              client_actual_fd, errno, strerror(errno));
+                              client_actual_fd, errno,
+                              PST_STRERROR_R_ERRNO);
 
-            ::close(client_actual_fd);
+            PST_SOCK_CLOSE(client_actual_fd);
             PS_LOG_DEBUG_ARGS("::close actual_fd %d", client_actual_fd);
 
             return (fcntl_res);
         }
 
-        fcntl_res = fcntl(client_actual_fd, F_SETFL, 0 /*clear everything*/);
+        fcntl_res = PST_FCNTL(client_actual_fd, PST_F_SETFL, 0 /*clear everything*/);
         if (fcntl_res == -1)
         {
+            PST_DBG_DECL_SE_ERR_P_EXTRA;
             PS_LOG_DEBUG_ARGS("fcntl F_SETFL fail for fd %d, errno %d %s",
-                              client_actual_fd, errno, strerror(errno));
+                              client_actual_fd, errno,
+                              PST_STRERROR_R_ERRNO);
 
-            ::close(client_actual_fd);
+            PST_SOCK_CLOSE(client_actual_fd);
             PS_LOG_DEBUG_ARGS("::close actual_fd %d", client_actual_fd);
 
             return (fcntl_res);
@@ -902,7 +957,7 @@ namespace Pistache::Tcp
         // To guard against that, we simply need to check for an invalid Fd. We
         // also check for an invalid actual-fd for safety's sake.
 
-        int actual_fd = -1;
+        em_socket_t actual_fd = -1;
         try
         {
             actual_fd = peer->actualFd();
@@ -919,8 +974,32 @@ namespace Pistache::Tcp
             return;
         }
 
+        em_socket_t input_for_idx = 0;
+#ifdef _IS_WINDOWS
+        // actual_fd in Windows seems to be a multiple of 4, so we'll fail to
+        // use a bunch of handlers if we just do "idx = actual_fd %
+        // handlers.size()". For instance, if handlers.size() is 4, idx will
+        // always be zero. We use a monotonic and atomic counter here instead
+        // of the file handle divided by 4, since there is no guarantee that
+        // the Windows file handle will always be a multiple of 4, and indeed
+        // it appears it is sometimes not a multiple of 4 in Windows Server
+        // 2019.
+
+        { // encapsulate
+            auto this_ctr = (idxCtr_++);
+            if (!this_ctr)
+            {
+                PS_LOG_WARNING("Apparent idxCtr overflow");
+                this_ctr = (idxCtr_++);
+            }
+            input_for_idx = this_ctr;
+        }
+#else
+        input_for_idx = actual_fd;
+#endif
+
         auto handlers  = reactor_->handlers(transportKey);
-        auto idx       = actual_fd % handlers.size();
+        auto idx       = input_for_idx % handlers.size();
         auto transport = std::static_pointer_cast<Transport>(handlers[idx]);
 
         transport->handleNewPeer(peer);
@@ -940,12 +1019,12 @@ namespace Pistache::Tcp
 
     void Listener::setupSSLAuth(const std::string& ca_file,
                                 const std::string& ca_path,
-                                int (*cb)(int, void*) = NULL)
+                                int (*cb)(int, void*) = nullptr)
     {
         PS_TIMEDBG_START_THIS;
 
-        const char* __ca_file = NULL;
-        const char* __ca_path = NULL;
+        const char* __ca_file = nullptr;
+        const char* __ca_path = nullptr;
 
         if (ssl_ctx_ == nullptr)
         {
@@ -979,7 +1058,7 @@ namespace Pistache::Tcp
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || defined(LIBRESSL_VERSION_NUMBER)
                            (int (*)(int, X509_STORE_CTX*))cb
 #else
-                           (SSL_verify_cb)cb
+                           reinterpret_cast<SSL_verify_cb>(cb)
 #endif /* OPENSSL_VERSION_NUMBER */
         );
     }

@@ -10,13 +10,17 @@
    Http layer implementation
 */
 
-#include <pistache/http_header.h>
+#include <pistache/winornix.h>
+
 #include <pistache/config.h>
 #include <pistache/eventmeth.h>
 #include <pistache/http.h>
+#include <pistache/http_header.h>
 #include <pistache/net.h>
 #include <pistache/peer.h>
 #include <pistache/transport.h>
+
+#include PIST_QUOTE(PST_STRERROR_R_HDR)
 
 #include <charconv>
 #include <cstring>
@@ -28,10 +32,14 @@
 #include <string>
 #include <unordered_map>
 
-#include <fcntl.h>
+#include <fcntl.h> // for file-constants (_O_RDONLY etc.) in Windows
+#include PIST_QUOTE(PST_FCNTL_HDR) // for function fcntl()
+
+#include PIST_QUOTE(PST_MISC_IO_HDR) // for _close (io.h / unistd.h)
+#include PIST_QUOTE(PIST_FILEFNS_HDR) // for "open"
+
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>
 
 namespace Pistache::Http
 {
@@ -54,7 +62,7 @@ namespace Pistache::Http
     {
         bool writeStatusLine(Version version, Code code, DynamicStreamBuf& buf)
         {
-#define OUT(...)          \
+#define PST_OUT(...)      \
     do                    \
     {                     \
         __VA_ARGS__;      \
@@ -64,20 +72,20 @@ namespace Pistache::Http
 
             std::ostream os(&buf);
 
-            OUT(os << version << " ");
-            OUT(os << static_cast<int>(code));
-            OUT(os << ' ');
-            OUT(os << code);
-            OUT(os << crlf);
+            PST_OUT(os << version << " ");
+            PST_OUT(os << static_cast<int>(code));
+            PST_OUT(os << ' ');
+            PST_OUT(os << code);
+            PST_OUT(os << crlf);
 
             return true;
 
-#undef OUT
+#undef PST_OUT
         }
 
         bool writeHeaders(const Header::Collection& headers, DynamicStreamBuf& buf)
         {
-#define OUT(...)          \
+#define PST_OUT(...)      \
     do                    \
     {                     \
         __VA_ARGS__;      \
@@ -89,19 +97,19 @@ namespace Pistache::Http
 
             for (const auto& header : headers.list())
             {
-                OUT(os << header->name() << ": ");
-                OUT(header->write(os));
-                OUT(os << crlf);
+                PST_OUT(os << header->name() << ": ");
+                PST_OUT(header->write(os));
+                PST_OUT(os << crlf);
             }
 
             return true;
 
-#undef OUT
+#undef PST_OUT
         }
 
         bool writeCookies(const CookieJar& cookies, DynamicStreamBuf& buf)
         {
-#define OUT(...)          \
+#define PST_OUT(...)      \
     do                    \
     {                     \
         __VA_ARGS__;      \
@@ -112,14 +120,14 @@ namespace Pistache::Http
             std::ostream os(&buf);
             for (const auto& cookie : cookies)
             {
-                OUT(os << "Set-Cookie: ");
-                OUT(os << cookie);
-                OUT(os << crlf);
+                PST_OUT(os << "Set-Cookie: ");
+                PST_OUT(os << cookie);
+                PST_OUT(os << crlf);
             }
 
             return true;
 
-#undef OUT
+#undef PST_OUT
         }
 
         using HttpMethods = std::unordered_map<std::string, Method>;
@@ -434,15 +442,17 @@ namespace Pistache::Http
             if (bytesRead > 0)
             {
                 // How many bytes do we still need to read ?
-                const size_t remaining = contentLength - bytesRead;
+                const size_t remaining = static_cast<size_t>(
+                    contentLength - bytesRead);
                 if (!readBody(remaining))
                     return State::Again;
             }
             // This is the first time we are reading the payload
             else
             {
-                message->body_.reserve(contentLength);
-                if (!readBody(contentLength))
+                message->body_.reserve(
+                    static_cast<unsigned int>(contentLength));
+                if (!readBody(static_cast<size_t>(contentLength)))
                     return State::Again;
             }
 
@@ -485,7 +495,7 @@ namespace Pistache::Http
 
             message->body_.reserve(size);
             StreamCursor::Token chunkData(cursor);
-            const ssize_t available = cursor.remaining();
+            const PST_SSIZE_T available = cursor.remaining();
 
             if (available + alreadyAppendedChunkBytes < size + 2)
             {
@@ -537,7 +547,8 @@ namespace Pistache::Http
             {
                 raise("Unsupported Transfer-Encoding", Code::Not_Implemented);
             }
-            return State::Done;
+            // raise defined with [[noreturn]], so compiler knows we cannot
+            // reach here
         }
 
         ParserBase::ParserBase(size_t maxDataSize)
@@ -833,7 +844,7 @@ namespace Pistache::Http
         }
     }
 
-    Async::Promise<ssize_t> ResponseWriter::sendMethodNotAllowed(
+    Async::Promise<PST_SSIZE_T> ResponseWriter::sendMethodNotAllowed(
         const std::vector<Http::Method>& supportedMethods)
     {
         response_.code_ = Http::Code::Method_Not_Allowed;
@@ -843,22 +854,22 @@ namespace Pistache::Http
         return putOnWire(body.c_str(), body.size());
     }
 
-    Async::Promise<ssize_t> ResponseWriter::send(Code code, const std::string& body,
-                                                 const Mime::MediaType& mime)
+    Async::Promise<PST_SSIZE_T> ResponseWriter::send(Code code, const std::string& body,
+                                                     const Mime::MediaType& mime)
     {
         return sendImpl(code, body.c_str(), body.size(), mime);
     }
 
-    Async::Promise<ssize_t> ResponseWriter::send(Code code, const char* data,
-                                                 const size_t size,
-                                                 const Mime::MediaType& mime)
+    Async::Promise<PST_SSIZE_T> ResponseWriter::send(Code code, const char* data,
+                                                     const size_t size,
+                                                     const Mime::MediaType& mime)
     {
         return sendImpl(code, data, size, mime);
     }
 
-    Async::Promise<ssize_t> ResponseWriter::sendImpl(Code code, const char* data,
-                                                     const size_t size,
-                                                     const Mime::MediaType& mime)
+    Async::Promise<PST_SSIZE_T> ResponseWriter::sendImpl(Code code, const char* data,
+                                                         const size_t size,
+                                                         const Mime::MediaType& mime)
     {
         if (!peer_.expired())
         {
@@ -961,7 +972,7 @@ namespace Pistache::Http
 
             // Compute upper bound on size of expected compressed data. This
             //  will be updated by compress2()...
-            uLongf compressedSize = ::compressBound(size);
+            uLongf compressedSize = static_cast<uLongf>(::compressBound(static_cast<uLong>(size)));
 
             // Allocate a smart buffer to contain compressed data...
             std::unique_ptr compressedData = std::make_unique<std::byte[]>(compressedSize);
@@ -971,7 +982,7 @@ namespace Pistache::Http
                 reinterpret_cast<unsigned char*>(compressedData.get()),
                 &compressedSize,
                 reinterpret_cast<const unsigned char*>(data),
-                size,
+                static_cast<uLong>(size),
                 contentEncodingDeflateLevel_);
 
             // Failed...
@@ -1039,41 +1050,41 @@ namespace Pistache::Http
 
     ResponseWriter ResponseWriter::clone() const { return ResponseWriter(*this); }
 
-    Async::Promise<ssize_t> ResponseWriter::putOnWire(const char* data,
-                                                      size_t len)
+    Async::Promise<PST_SSIZE_T> ResponseWriter::putOnWire(const char* data,
+                                                          size_t len)
     {
         try
         {
             std::ostream os(&buf_);
 
-#define OUT(...)                                         \
-    do                                                   \
-    {                                                    \
-        __VA_ARGS__;                                     \
-        if (!os)                                         \
-        {                                                \
-            return Async::Promise<ssize_t>::rejected(    \
-                Error("Response exceeded buffer size")); \
-        }                                                \
+#define PST_OUT(...)                                      \
+    do                                                    \
+    {                                                     \
+        __VA_ARGS__;                                      \
+        if (!os)                                          \
+        {                                                 \
+            return Async::Promise<PST_SSIZE_T>::rejected( \
+                Error("Response exceeded buffer size"));  \
+        }                                                 \
     } while (0);
 
-            OUT(writeStatusLine(response_.version(), response_.code(), buf_));
-            OUT(writeHeaders(response_.headers(), buf_));
-            OUT(writeCookies(response_.cookies(), buf_));
+            PST_OUT(writeStatusLine(response_.version(), response_.code(), buf_));
+            PST_OUT(writeHeaders(response_.headers(), buf_));
+            PST_OUT(writeCookies(response_.cookies(), buf_));
 
             /* @Todo @Major:
              * Correctly handle non-keep alive requests
              * Do not put Keep-Alive if version == Http::11 and request.keepAlive ==
              * true
              */
-            // OUT(writeHeader<Header::Connection>(os, ConnectionControl::KeepAlive));
-            OUT(writeHeader<Header::ContentLength>(os, len));
+            // PST_OUT(writeHeader<Header::Connection>(os, ConnectionControl::KeepAlive));
+            PST_OUT(writeHeader<Header::ContentLength>(os, len));
 
-            OUT(os << crlf);
+            PST_OUT(os << crlf);
 
             if (len > 0)
             {
-                OUT(os.write(data, len));
+                PST_OUT(os.write(data, len));
             }
 
             auto buffer = buf_.buffer();
@@ -1081,24 +1092,24 @@ namespace Pistache::Http
 
             timeout_.disarm();
 
-#undef OUT
+#undef PST_OUT
 
             auto fd = peer()->fd();
 
             return transport_->asyncWrite(fd, buffer)
-                .then<std::function<Async::Promise<ssize_t>(ssize_t)>,
+                .then<std::function<Async::Promise<PST_SSIZE_T>(PST_SSIZE_T)>,
                       std::function<void(std::exception_ptr&)>>(
-                    [=](ssize_t data) {
-                        return Async::Promise<ssize_t>::resolved(data);
+                    [=](PST_SSIZE_T data) {
+                        return Async::Promise<PST_SSIZE_T>::resolved(data);
                     },
 
                     [=](std::exception_ptr& eptr) {
-                        return Async::Promise<ssize_t>::rejected(eptr);
+                        return Async::Promise<PST_SSIZE_T>::rejected(eptr);
                     });
         }
         catch (const std::runtime_error& e)
         {
-            return Async::Promise<ssize_t>::rejected(e);
+            return Async::Promise<PST_SSIZE_T>::rejected(e);
         }
     }
 
@@ -1141,16 +1152,17 @@ namespace Pistache::Http
         }
     }
 
-    Async::Promise<ssize_t> serveFile(ResponseWriter& writer,
-                                      const std::string& fileName,
-                                      const Mime::MediaType& contentType)
+    Async::Promise<PST_SSIZE_T> serveFile(ResponseWriter& writer,
+                                          const std::string& fileName,
+                                          const Mime::MediaType& contentType)
     {
         struct stat sb;
 
-        int fd = open(fileName.c_str(), O_RDONLY);
+        int fd = PST_FILE_OPEN(fileName.c_str(), PST_O_RDONLY);
         if (fd == -1)
         {
-            std::string str_error(strerror(errno));
+            PST_DECL_SE_ERR_P_EXTRA;
+            std::string str_error(PST_STRERROR_R_ERRNO);
             if (errno == ENOENT)
             {
                 throw HttpError(Http::Code::Not_Found, std::move(str_error));
@@ -1167,7 +1179,7 @@ namespace Pistache::Http
 
         int res = ::fstat(fd, &sb);
 
-        close(fd); // Done with fd, close before error can be thrown
+        PST_FILE_CLOSE(fd); // Done with fd, close before error can be thrown
         if (res == -1)
         {
             throw HttpError(Code::Internal_Server_Error, "");
@@ -1177,15 +1189,15 @@ namespace Pistache::Http
 
         std::ostream os(buf);
 
-#define OUT(...)                                         \
-    do                                                   \
-    {                                                    \
-        __VA_ARGS__;                                     \
-        if (!os)                                         \
-        {                                                \
-            return Async::Promise<ssize_t>::rejected(    \
-                Error("Response exceeded buffer size")); \
-        }                                                \
+#define PST_OUT(...)                                      \
+    do                                                    \
+    {                                                     \
+        __VA_ARGS__;                                      \
+        if (!os)                                          \
+        {                                                 \
+            return Async::Promise<PST_SSIZE_T>::rejected( \
+                Error("Response exceeded buffer size"));  \
+        }                                                 \
     } while (0);
 
         auto setContentType = [&](const Mime::MediaType& contentType) {
@@ -1197,7 +1209,7 @@ namespace Pistache::Http
                 headers.add<Header::ContentType>(contentType);
         };
 
-        OUT(writeStatusLine(writer.response_.version(), Http::Code::Ok, *buf));
+        PST_OUT(writeStatusLine(writer.response_.version(), Http::Code::Ok, *buf));
         if (contentType.isValid())
         {
             setContentType(contentType);
@@ -1209,13 +1221,13 @@ namespace Pistache::Http
                 setContentType(mime);
         }
 
-        OUT(writeHeaders(writer.headers(), *buf));
+        PST_OUT(writeHeaders(writer.headers(), *buf));
 
         const size_t len = sb.st_size;
 
-        OUT(writeHeader<Header::ContentLength>(os, len));
+        PST_OUT(writeHeader<Header::ContentLength>(os, len));
 
-        OUT(os << crlf);
+        PST_OUT(os << crlf);
 
         auto* transport = writer.transport_;
         auto peer       = writer.peer();
@@ -1233,12 +1245,12 @@ namespace Pistache::Http
 #endif
                                      )
             .then(
-                [=](ssize_t) {
+                [=](PST_SSIZE_T) {
                     return transport->asyncWrite(sockFd, FileBuffer(fileName));
                 },
                 Async::Throw);
 
-#undef OUT
+#undef PST_OUT
     }
 
     Private::ParserImpl<Http::Request>::ParserImpl(size_t maxDataSize)

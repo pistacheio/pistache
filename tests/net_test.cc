@@ -7,15 +7,17 @@
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
+#include <pistache/winornix.h>
+
 #include <pistache/net.h>
 
 #include <iostream>
 #include <stdexcept>
 
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <sys/un.h>
+#include PIST_QUOTE(PST_ARPA_INET_HDR)
+#include PIST_QUOTE(PST_NETDB_HDR)
+#include PIST_QUOTE(PST_NETINET_IN_HDR)
+#include PIST_QUOTE(PST_SYS_UN_HDR)
 
 using namespace Pistache;
 using testing::Eq;

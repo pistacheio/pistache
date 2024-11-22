@@ -16,13 +16,12 @@
 
 #pragma once
 
+#include <pistache/winornix.h>
+
 #include <pistache/flags.h>
 #include <pistache/net.h>
 #include <pistache/os.h>
 #include <pistache/prototype.h>
-
-#include <sys/resource.h>
-#include <sys/time.h>
 
 #include <memory>
 #include <thread>
@@ -243,7 +242,7 @@ namespace Pistache::Aio
         //   Remove this line from reactor.cc:
         //     Reactor::~Reactor() = default;
         //   Replace with this line:
-        //     Reactor::~Reactor() {impl_ = NULL;}//impl_ is member of Reactor_
+        //     Reactor::~Reactor() {impl_ = nullptr;} //impl_ is in Reactor_
         // With this change, the test program run_http_server_test was creating
         // the same exception in macOS and Linux
         //

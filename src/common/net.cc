@@ -9,6 +9,8 @@
  * Mathieu Stefani, 12 August 2015
  */
 
+#include <pistache/winornix.h>
+
 #include <pistache/common.h>
 #include <pistache/config.h>
 #include <pistache/net.h>
@@ -22,10 +24,15 @@
 #include <cstdlib>
 #include <cstring>
 
-#include <arpa/inet.h>
-#include <ifaddrs.h>
-#include <netdb.h>
-#include <sys/socket.h>
+#include <pistache/ps_strl.h>
+
+#include PIST_QUOTE(PST_ARPA_INET_HDR)
+
+#include PIST_QUOTE(PST_IFADDRS_HDR)
+
+#include PIST_QUOTE(PST_NETDB_HDR)
+#include PIST_QUOTE(PST_SOCKET_HDR)
+
 #include <sys/types.h>
 
 namespace Pistache
@@ -37,7 +44,7 @@ namespace Pistache
             return(httpAddr(view, 0/*default port*/));
         }
     } // namespace helpers
-    
+
     Port::Port(uint16_t port)
         : port(port)
     { }
@@ -58,7 +65,6 @@ namespace Pistache
     bool Port::isUsed() const
     {
         throw std::runtime_error("Unimplemented");
-        return false;
     }
 
     std::string Port::toString() const { return std::to_string(port); }
@@ -70,12 +76,17 @@ namespace Pistache
 
     IP::IP(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
     {
-        addr_.ss_family      = AF_INET;
-        const uint8_t buff[] = { a, b, c, d };
-        in_addr_t* in_addr   = &reinterpret_cast<struct sockaddr_in*>(&addr_)->sin_addr.s_addr;
+        addr_.ss_family          = AF_INET;
+        const uint8_t buff[]     = { a, b, c, d };
+        // Note that in Windows in_addr is a union - effectively a "u_long"
+        // that can be accessed as 4 u_char, 2 u_short, or 1 u_long.
+        // Meanwhile, s_addr on the right-hand side is type ULONG. So both
+        // sides are effectively "ulong *" and the cast is valid
+        PST_IN_ADDR_T* in_addr   = reinterpret_cast<PST_IN_ADDR_T*>
+            (&reinterpret_cast<struct sockaddr_in*>(&addr_)->sin_addr.s_addr);
 
         static_assert(sizeof(buff) == sizeof(*in_addr));
-        memcpy(in_addr, buff, sizeof(*in_addr));
+        std::memcpy(in_addr, buff, sizeof(*in_addr));
     }
 
     IP::IP(uint16_t a, uint16_t b, uint16_t c, uint16_t d, uint16_t e, uint16_t f,
@@ -94,12 +105,12 @@ namespace Pistache
         }
         else
         {
-            memcpy(remap, buff, sizeof(remap));
+            std::memcpy(remap, buff, sizeof(remap));
         }
         auto& in6_addr = reinterpret_cast<struct sockaddr_in6*>(&addr_)->sin6_addr.s6_addr;
 
         static_assert(sizeof(in6_addr) == sizeof(remap));
-        memcpy(in6_addr, remap, sizeof(in6_addr));
+        std::memcpy(in6_addr, remap, sizeof(in6_addr));
     }
 
     IP::IP(const struct sockaddr* addr)
@@ -123,7 +134,7 @@ namespace Pistache
             ss_in_addr->sin6_family   = in_addr->sin6_family;
             ss_in_addr->sin6_port     = in_addr->sin6_port;
             ss_in_addr->sin6_flowinfo = in_addr->sin6_flowinfo; /* Should be 0 per RFC 3493 */
-            memcpy(ss_in_addr->sin6_addr.s6_addr, in_addr->sin6_addr.s6_addr, sizeof(ss_in_addr->sin6_addr.s6_addr));
+            std::memcpy(ss_in_addr->sin6_addr.s6_addr, in_addr->sin6_addr.s6_addr, sizeof(ss_in_addr->sin6_addr.s6_addr));
         }
         else if (addr->sa_family == AF_UNIX)
         {
@@ -131,7 +142,7 @@ namespace Pistache
             struct sockaddr_un* ss_un_addr    = reinterpret_cast<struct sockaddr_un*>(&addr_);
 
             ss_un_addr->sun_family = un_addr->sun_family;
-            memcpy(ss_un_addr->sun_path, un_addr->sun_path, sizeof(ss_un_addr->sun_path));
+            std::memcpy(ss_un_addr->sun_path, un_addr->sun_path, sizeof(ss_un_addr->sun_path));
         }
         else
         {
@@ -214,7 +225,7 @@ namespace Pistache
         char buff[INET6_ADDRSTRLEN];
         const auto* addr_sa = reinterpret_cast<const struct sockaddr*>(&addr_);
         int err             = getnameinfo(
-                        addr_sa, sizeof(addr_), buff, sizeof(buff), NULL, 0, NI_NUMERICHOST);
+                        addr_sa, sizeof(addr_), buff, sizeof(buff), nullptr, 0, NI_NUMERICHOST);
         if (err) /* [[unlikely]] */
         {
             throw std::runtime_error(gai_strerror(err));
@@ -222,13 +233,19 @@ namespace Pistache
         return std::string(buff);
     }
 
-    void IP::toNetwork(in_addr_t* out) const
+    void IP::toNetwork(PST_IN_ADDR_T* out) const
     {
         if (addr_.ss_family != AF_INET)
         {
             throw std::invalid_argument("Inapplicable or invalid address family");
         }
-        *out = reinterpret_cast<const struct sockaddr_in*>(&addr_)->sin_addr.s_addr;
+        // Note that in Windows in_addr is a union - effectively a "u_long"
+        // that can be accessed as 4 u_char, 2 u_short, or 1 u_long.
+        // Meanwhile, s_addr on the right-hand side is type ULONG. So both
+        // sides are effectively "ulong *" and the cast is valid
+        const PST_IN_ADDR_T* out_ptr   = reinterpret_cast<const PST_IN_ADDR_T*>
+            (&reinterpret_cast<const struct sockaddr_in*>(&addr_)->sin_addr.s_addr);
+        *out = *out_ptr;
     }
 
     void IP::toNetwork(struct in6_addr* out) const
@@ -242,12 +259,12 @@ namespace Pistache
 
     bool IP::supported()
     {
-        struct ifaddrs* ifaddr = nullptr;
-        struct ifaddrs* ifa    = nullptr;
+        struct PST_IFADDRS* ifaddr = nullptr;
+        struct PST_IFADDRS* ifa    = nullptr;
         int addr_family, n;
         bool supportsIpv6 = false;
 
-        if (getifaddrs(&ifaddr) == -1)
+        if (PST_GETIFADDRS(&ifaddr) == -1)
         {
             throw std::runtime_error("Call to getifaddrs() failed");
         }
@@ -267,7 +284,7 @@ namespace Pistache
             }
         }
 
-        freeifaddrs(ifaddr);
+        PST_FREEIFADDRS(ifaddr);
         return supportsIpv6;
     }
 
@@ -326,9 +343,16 @@ namespace Pistache
             }
 
             // Check if port_ is a valid number
-            char* tmp;
-            std::strtol(port_.c_str(), &tmp, 10);
-            hasNumericPort_ = *tmp == '\0';
+            char* tmp2 = nullptr;
+            long strtol_res = std::strtol(port_.c_str(), &tmp2, 10);
+            if ((strtol_res < 0) || (!tmp2))
+            {
+                PS_LOG_DEBUG_ARGS("strtol failed for port_ %s, "
+                                  "throwing \"Invalid port\"",
+                                  port_.c_str());
+                throw std::invalid_argument("Invalid port");
+            }
+            hasNumericPort_ = (*tmp2 == '\0');
         }
     }
 
@@ -404,7 +428,7 @@ namespace Pistache
     {
         init(addr, 0 /*default port*/);
     }
-    
+
     void Address::init(const std::string& addr, Port default_port)
     {
         // Handle unix domain addresses separately.
@@ -430,7 +454,7 @@ namespace Pistache
             {
                 addrLen_ = static_cast<socklen_t>(
                     offsetof(struct sockaddr_un, sun_path) + size);
-                std::strncpy(unAddr.sun_path, addr.c_str(), size);
+                PS_STRLCPY(unAddr.sun_path, addr.c_str(), size);
                 if (size == sizeof unAddr.sun_path)
                 {
                     unAddr.sun_path[size - 1] = '\0';
@@ -530,11 +554,11 @@ namespace Pistache
 
     Error Error::system(const char* message)
     {
-        const char* err = strerror(errno);
+        PST_DECL_SE_ERR_P_EXTRA;
 
         std::string str(message);
         str += ": ";
-        str += err;
+        str += PST_STRERROR_R_ERRNO;
 
         return Error(std::move(str));
     }

@@ -11,9 +11,15 @@
 #include <stdexcept>
 
 #include <array>
+
+#include <pistache/winornix.h>
+
+#include PIST_QUOTE(PST_STRERROR_R_HDR)
+
 #include <pistache/eventmeth.h>
 #include <pistache/pist_quote.h>
-#include <unistd.h>
+
+#include PIST_QUOTE(PIST_SOCKFNS_HDR)
 
 #include <pistache/common.h>
 #include <pistache/os.h>
@@ -92,7 +98,7 @@ namespace Pistache
 
 #ifdef _USE_LIBEVENT
 
-            FdEventFd emefd = TRY_NULL_RET(Epoll::em_eventfd_new(0, 0, O_NONBLOCK));
+            FdEventFd emefd = TRY_NULL_RET(Epoll::em_eventfd_new(0, 0, PST_O_NONBLOCK));
             event_fd        = EventMethFns::getAsEmEvent(emefd);
 
 #else
@@ -308,7 +314,7 @@ namespace Pistache
             }
 
 #ifdef _USE_LIBEVENT
-            FdEventFd emefd = TRY_NULL_RET(Epoll::em_eventfd_new(0, 0, O_NONBLOCK));
+            FdEventFd emefd = TRY_NULL_RET(Epoll::em_eventfd_new(0, 0, PST_O_NONBLOCK));
 
             event_fd = EventMethFns::getAsEmEvent(emefd);
 
@@ -414,8 +420,10 @@ namespace Pistache
                         }
                         else
                         {
+                            PST_DBG_DECL_SE_ERR_P_EXTRA;
                             PS_LOG_DEBUG_ARGS("Unimplemented errno %d %s",
-                                              errno, strerror(errno));
+                                              errno,
+                                              PST_STRERROR_R_ERRNO);
                             // TODO
                         }
                     }

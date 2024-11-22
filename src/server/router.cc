@@ -542,10 +542,10 @@ namespace Pistache::Rest
 
         for (const auto& handler : customHandlers)
         {
-            auto resp     = response.clone();
+            auto cloned_resp     = response.clone();
             auto handler1 = handler(
                 Request(req, std::vector<TypedParam>(), std::vector<TypedParam>()),
-                std::move(resp));
+                std::move(cloned_resp));
             if (handler1 == Route::Result::Ok)
                 return Route::Status::Match;
         }
@@ -599,7 +599,7 @@ namespace Pistache::Rest
         const auto sanitized = SegmentTreeNode::sanitizeResource(resource);
         std::shared_ptr<char> ptr(new char[sanitized.length()],
                                   std::default_delete<char[]>());
-        memcpy(ptr.get(), sanitized.data(), sanitized.length());
+        std::memcpy(ptr.get(), sanitized.data(), sanitized.length());
         const std::string_view path { ptr.get(), sanitized.length() };
         r.addRoute(path, handler, ptr);
     }

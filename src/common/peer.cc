@@ -9,12 +9,15 @@
 
 */
 
+#include <pistache/winornix.h>
+
 #include <iostream>
 #include <stdexcept>
 
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <sys/socket.h>
+#include PIST_QUOTE(PST_ARPA_INET_HDR)
+#include PIST_QUOTE(PST_NETDB_HDR)
+#include PIST_QUOTE(PST_SOCKET_HDR)
+
 #include <sys/types.h>
 
 #include <pistache/async.h>
@@ -126,7 +129,7 @@ namespace Pistache::Tcp
         return res_fd;
     }
 
-    int Peer::actualFd() const // can return -1
+    em_socket_t Peer::actualFd() const // can return -1
     {
         Fd this_fd(fd_);
 
@@ -195,7 +198,7 @@ namespace Pistache::Tcp
         return it->second;
     }
 
-    Async::Promise<ssize_t> Peer::send(const RawBuffer& buffer, int flags)
+    Async::Promise<PST_SSIZE_T> Peer::send(const RawBuffer& buffer, int flags)
     {
         return transport()->asyncWrite(fd_, buffer, flags);
     }

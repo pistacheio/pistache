@@ -25,11 +25,68 @@
 
 #ifdef _IS_BSD
 // For pthread_set_name_np
-#include <pthread.h>
+#include PIST_QUOTE(PST_THREAD_HDR)
 #ifndef __NetBSD__
 #include <pthread_np.h>
 #endif
 #endif
+
+#ifdef _IS_WINDOWS
+#include <windows.h> // Needed for PST_THREAD_HDR (processthreadsapi.h)
+#include PIST_QUOTE(PST_THREAD_HDR) // for SetThreadDescription
+#endif
+
+#ifdef _IS_WINDOWS
+static std::atomic_bool lLoggedSetThreadDescriptionFail = false;
+#ifdef __MINGW32__
+
+#include <windows.h>
+#include <libloaderapi.h> // for GetProcAddress and GetModuleHandleA
+typedef HRESULT (WINAPI *TSetThreadDescription)(HANDLE, PCWSTR);
+
+static std::atomic_bool lSetThreadDescriptionLoaded = false;
+static std::mutex lSetThreadDescriptionLoadMutex;
+static TSetThreadDescription lSetThreadDescriptionPtr = nullptr;
+
+TSetThreadDescription getSetThreadDescriptionPtr()
+{
+    if (lSetThreadDescriptionLoaded)
+        return(lSetThreadDescriptionPtr);
+
+    GUARD_AND_DBG_LOG(lSetThreadDescriptionLoadMutex);
+    if (lSetThreadDescriptionLoaded)
+        return(lSetThreadDescriptionPtr);
+
+    HMODULE hKernelBase = GetModuleHandleA("KernelBase.dll");
+
+    if (!hKernelBase)
+    {
+        PS_LOG_WARNING(
+            "Failed to get KernelBase.dll for SetThreadDescription");
+        lSetThreadDescriptionLoaded = true;
+        return(nullptr);
+    }
+
+    FARPROC set_thread_desc_fpptr =
+        GetProcAddress(hKernelBase, "SetThreadDescription");
+
+    // We do the cast in two steps, otherwise mingw-gcc complains about
+    // incompatible types
+    void * set_thread_desc_vptr =
+        reinterpret_cast<void *>(set_thread_desc_fpptr);
+    lSetThreadDescriptionPtr =
+        reinterpret_cast<TSetThreadDescription>(set_thread_desc_vptr);
+
+    lSetThreadDescriptionLoaded = true;
+    if (!lSetThreadDescriptionPtr)
+    {
+        PS_LOG_WARNING(
+            "Failed to get SetThreadDescription from KernelBase.dll");
+    }
+    return(lSetThreadDescriptionPtr);
+}
+#endif // of ifdef __MINGW32__
+#endif // of ifdef _IS_WINDOWS
 
 using namespace std::string_literals;
 
@@ -122,7 +179,7 @@ namespace Pistache::Aio
             PS_TIMEDBG_START_THIS;
 
             handler->unregisterPoller(poller);
-            handler->reactor_ = NULL;
+            handler->reactor_ = nullptr;
         }
 
         void detachAndRemoveAllHandlers() override
@@ -140,7 +197,7 @@ namespace Pistache::Aio
 
         std::shared_ptr<Handler> handler(const Reactor::Key& key) const
         {
-            return handlers_.at(key.data());
+            return handlers_.at(static_cast<size_t>(key.data()));
         }
 
         std::vector<std::shared_ptr<Handler>>
@@ -161,13 +218,13 @@ namespace Pistache::Aio
             ss << fd;
             str += ss.str();
 
-            if (((unsigned int)interest) & ((unsigned int)Polling::NotifyOn::Read))
+            if ((static_cast<unsigned int>(interest)) & (static_cast<unsigned int>(Polling::NotifyOn::Read)))
                 str += " read";
-            if (((unsigned int)interest) & ((unsigned int)Polling::NotifyOn::Write))
+            if ((static_cast<unsigned int>(interest)) & (static_cast<unsigned int>(Polling::NotifyOn::Write)))
                 str += " write";
-            if (((unsigned int)interest) & ((unsigned int)Polling::NotifyOn::Hangup))
+            if ((static_cast<unsigned int>(interest)) & (static_cast<unsigned int>(Polling::NotifyOn::Hangup)))
                 str += " hangup";
-            if (((unsigned int)interest) & ((unsigned int)Polling::NotifyOn::Shutdown))
+            if ((static_cast<unsigned int>(interest)) & (static_cast<unsigned int>(Polling::NotifyOn::Shutdown)))
                 str += " shutdown";
 
             PS_LOG_DEBUG_ARGS("%s", str.c_str());
@@ -218,11 +275,14 @@ namespace Pistache::Aio
 
         void runOnce() override
         {
+            PS_TIMEDBG_START;
+
             if (handlers_.empty())
                 throw std::runtime_error("You need to set at least one handler");
 
             for (;;)
             {
+                PS_TIMEDBG_START;
                 { // encapsulate l_guard(poller.reg_unreg_mutex_)
                   // See comment in class Epoll regarding reg_unreg_mutex_
 
@@ -240,10 +300,16 @@ namespace Pistache::Aio
                     case 0:
                         break;
                     default:
-                        if (shutdown_)
-                            return;
+                        {
+                            if (shutdown_)
+                                return;
 
-                        handleFds(std::move(events));
+                            GUARD_AND_DBG_LOG(shutdown_mutex_);
+                            if (shutdown_)
+                                return;
+
+                            handleFds(std::move(events));
+                        }
                     }
                 }
             }
@@ -251,6 +317,8 @@ namespace Pistache::Aio
 
         void run() override
         {
+            PS_TIMEDBG_START;
+
             // Note: poller_reg_unreg_mutex is already locked (by
             // Listener::run()) before calling here, so it is safe to call
             // handlers_.forEachHandler here
@@ -260,7 +328,10 @@ namespace Pistache::Aio
             });
 
             while (!shutdown_)
+            {
+                PS_TIMEDBG_START;
                 runOnce();
+            }
         }
 
         void shutdown() override
@@ -268,6 +339,8 @@ namespace Pistache::Aio
             PS_TIMEDBG_START_THIS;
 
             shutdown_.store(true);
+
+            GUARD_AND_DBG_LOG(shutdown_mutex_);
             shutdownFd.notify();
         }
 
@@ -352,7 +425,7 @@ namespace Pistache::Aio
             void removeAll()
             {
                 index_ = 0;
-                handlers.fill(NULL);
+                handlers.fill(nullptr);
             }
 
             // poller.reg_unreg_mutex_ must be locked before calling
@@ -381,8 +454,11 @@ namespace Pistache::Aio
                 // encode the index of the handler is that in the fast path, we
                 // won't need to shift the value to retrieve the fd if there is
                 // only one handler as all the bits will already be set to 0.
-                auto encodedValue                = (index << HandlerShift) | ((uint64_t)value);
-                Polling::TagValue encodedValueTV = ((Polling::TagValue)encodedValue);
+                auto encodedValue                =
+                    (index << HandlerShift) |
+                    PS_FD_CAST_TO_UNUM(uint64_t, static_cast<Fd>(value));
+                Polling::TagValue encodedValueTV =
+                    static_cast<Polling::TagValue>(PS_NUM_CAST_TO_FD(encodedValue));
                 return Polling::Tag(encodedValueTV);
             }
 
@@ -392,7 +468,8 @@ namespace Pistache::Aio
                 auto value                      = tag.valueU64();
                 size_t index                    = value >> HandlerShift;
                 uint64_t maskedValue            = value & DataMask;
-                Polling::TagValue maskedValueTV = ((Polling::TagValue)maskedValue);
+                Polling::TagValue maskedValueTV =
+                    static_cast<Polling::TagValue>(PS_NUM_CAST_TO_FD(maskedValue));
 
                 return std::make_pair(index, maskedValueTV);
             }
@@ -412,6 +489,7 @@ namespace Pistache::Aio
 
         HandlerList handlers_;
 
+        std::mutex shutdown_mutex_;
         std::atomic<bool> shutdown_;
         NotifyFd shutdownFd;
 
@@ -453,17 +531,21 @@ namespace Pistache::Aio
                   size_t threads, const std::string& threadsName)
             : Reactor::Impl(reactor)
         {
+            PS_TIMEDBG_START_THIS;
 
             if (threads > SyncImpl::MaxHandlers())
                 throw std::runtime_error("Too many worker threads requested (max "s + std::to_string(SyncImpl::MaxHandlers()) + ")."s);
 
             for (size_t i = 0; i < threads; ++i)
                 workers_.emplace_back(std::make_unique<Worker>(reactor, threadsName));
+            PS_LOG_DEBUG_ARGS("threads %d, workers_.size() %d",
+                              threads, workers_.size());
         }
 
         Reactor::Key addHandler(const std::shared_ptr<Handler>& handler,
                                 bool) override
         {
+            PS_TIMEDBG_START_THIS;
 
             std::array<Reactor::Key, SyncImpl::MaxHandlers()> keys;
 
@@ -529,6 +611,8 @@ namespace Pistache::Aio
                         Polling::Tag tag,
                         Polling::Mode mode = Polling::Mode::Level) override
         {
+            PS_TIMEDBG_START_THIS;
+
             dispatchCall(key, &SyncImpl::registerFd, fd, interest, tag, mode);
         }
 
@@ -536,6 +620,8 @@ namespace Pistache::Aio
                                Polling::NotifyOn interest, Polling::Tag tag,
                                Polling::Mode mode = Polling::Mode::Level) override
         {
+            PS_TIMEDBG_START_THIS;
+
             dispatchCall(key, &SyncImpl::registerFdOneShot, fd, interest, tag, mode);
         }
 
@@ -543,12 +629,14 @@ namespace Pistache::Aio
                       Polling::Tag tag,
                       Polling::Mode mode = Polling::Mode::Level) override
         {
+            PS_TIMEDBG_START_THIS;
+
             dispatchCall(key, &SyncImpl::modifyFd, fd, interest, tag, mode);
         }
 
         void removeFd(const Reactor::Key& key, Fd fd) override
         {
-            PS_TIMEDBG_START_ARGS("Reactor %p, Fd %" PIST_QUOTE(PS_FD_PRNTFCD),
+            PS_TIMEDBG_START_ARGS("this %p, Fd %" PIST_QUOTE(PS_FD_PRNTFCD),
                                   this, fd);
             dispatchCall(key, &SyncImpl::removeFd, fd);
         }
@@ -590,10 +678,14 @@ namespace Pistache::Aio
         template <typename Func, typename... Args>
         void dispatchCall(const Reactor::Key& key, Func func, Args&&... args) const
         {
+            PS_TIMEDBG_START_THIS;
+            PS_LOG_DEBUG_ARGS("workers_.size() %d", workers_.size());
+
             auto decoded    = decodeKey(key);
             const auto& wrk = workers_.at(decoded.second);
 
             Reactor::Key originalKey(decoded.first);
+
             CALL_MEMBER_FN(wrk->sync.get(), func)
             (originalKey, std::forward<Args>(args)...);
         }
@@ -617,9 +709,40 @@ namespace Pistache::Aio
 
             void run()
             {
+                PS_TIMEDBG_START;
+
                 thread = std::thread([=]() {
+                    PS_TIMEDBG_START;
+
                     if (!threadsName_.empty())
                     {
+                        PS_LOG_DEBUG("Setting thread name/description");
+#ifdef _IS_WINDOWS
+                        const std::string threads_name(threadsName_.substr(0, 15));
+                        const std::wstring temp(threads_name.begin(),
+                                          threads_name.end());
+                        const LPCWSTR wide_threads_name = temp.c_str();
+
+                        HRESULT hr = E_NOTIMPL;
+#ifdef __MINGW32__
+                        TSetThreadDescription set_thread_description_ptr =
+                            getSetThreadDescriptionPtr();
+                        if (set_thread_description_ptr)
+                        {
+                            hr = set_thread_description_ptr(
+                                GetCurrentThread(), wide_threads_name);
+                        }
+#else
+                        hr = SetThreadDescription(GetCurrentThread(),
+                                                  wide_threads_name);
+#endif
+                        if ((FAILED(hr)) && (!lLoggedSetThreadDescriptionFail))
+                        {
+                            lLoggedSetThreadDescriptionFail = true;
+                            // Log it just once
+                            PS_LOG_INFO("SetThreadDescription failed");
+                        }
+#else
 #if defined _IS_BSD && !defined __NetBSD__
                         pthread_set_name_np(
 #else
@@ -643,7 +766,9 @@ namespace Pistache::Aio
 #endif
                             threadsName_.substr(0, 15)
                                 .c_str());
+#endif // of ifdef _IS_WINDOWS... else...
                     }
+                    PS_LOG_DEBUG("Calling sync->run()");
                     sync->run();
                 });
             }
