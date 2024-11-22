@@ -150,7 +150,7 @@ namespace Pistache::Tcp
             bool isFile() const { return type == File; }
             bool isRaw() const { return type == Raw; }
             size_t size() const { return size_; }
-            size_t offset() const { return offset_; }
+            size_t offset() const { return static_cast<size_t>(offset_); }
 
             int fd() const
             {
@@ -171,7 +171,7 @@ namespace Pistache::Tcp
                 if (!isRaw())
                     return BufferHolder(_fd, size_, offset);
 
-                auto detached = _raw.copy(offset);
+                auto detached = _raw.copy(static_cast<size_t>(offset));
                 return BufferHolder(detached);
             }
 

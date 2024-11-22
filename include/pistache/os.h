@@ -96,8 +96,8 @@ namespace Pistache
             { }
 
             constexpr TagValue value() const { return value_; }
-            uint64_t valueU64() const { return (static_cast<uint64_t>
-                                 (reinterpret_cast<std::uintptr_t>(value_))); }
+            uint64_t valueU64() const { return (PS_FD_CAST_TO_UNUM(uint64_t, value_)); }
+
 #ifndef _USE_LIBEVENT
             constexpr
 #endif
