@@ -12,3 +12,6 @@ src/common/pist_check.cc
 include/pistache/pist_check.h
 src/common/pist_syslog.cc
 include/pistache/pist_syslog.h
+src/common/ps_strl.cc
+include/pistache/ps_strl.h
+include/pistache/winornix.h

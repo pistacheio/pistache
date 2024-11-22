@@ -20,6 +20,9 @@ Then, install the necessary brew packages via terminal command line:
   brew install openssl
   brew install rapidjson
   brew install howard-hinnant-date
+  brew install libevent
+  brew install brotli
+  brew install zstd
 (You may be able to skip howard-hinnant-date)
 
 Convenience shell scripts are provided to make the build. At terminal,

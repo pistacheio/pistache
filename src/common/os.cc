@@ -9,21 +9,25 @@
 
 */
 
+#include <pistache/winornix.h>
+#include <pistache/pist_quote.h>
+
 #include <pistache/common.h>
 #include <pistache/config.h>
 #include <pistache/os.h>
 
-#include <fcntl.h>
+#include PIST_QUOTE(PST_FCNTL_HDR)
+#include PIST_QUOTE(PIST_SOCKFNS_HDR)
 
 #include <pistache/pist_timelog.h>
 
 #include <pistache/eventmeth.h>
-#include <pistache/pist_quote.h>
+
 #ifndef _USE_LIBEVENT
 #include <sys/epoll.h>
 #endif
 
-#include <unistd.h>
+#include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h e.g. close
 
 #include <algorithm>
 #include <fstream>
@@ -32,21 +36,24 @@
 
 namespace Pistache
 {
-    uint hardware_concurrency() { return std::thread::hardware_concurrency(); }
+    unsigned int hardware_concurrency() { return std::thread::hardware_concurrency(); }
 
-    bool make_non_blocking(int fd)
+    bool make_non_blocking(em_socket_t fd)
     {
         PS_TIMEDBG_START;
 
-        int flags = fcntl(fd, F_GETFL, 0);
+        int flags = PST_FCNTL(fd, PST_F_GETFL, 0);
         if (flags == -1)
         {
             PS_LOG_WARNING_ARGS("make_non_blocking fail for fd %" PIST_QUOTE(PS_FD_PRNTFCD), fd);
             return false;
         }
 
-        flags |= O_NONBLOCK;
-        int ret = fcntl(fd, F_SETFL, flags);
+        if (flags == PST_FCNTL_GETFL_UNKNOWN)
+            flags = PST_O_NONBLOCK;
+        else
+            flags |= PST_O_NONBLOCK;
+        int ret = PST_FCNTL(fd, PST_F_SETFL, flags);
 #ifdef DEBUG
         if (ret == -1)
         {
@@ -187,12 +194,13 @@ namespace Pistache
 #endif
         }
 
-        void Epoll::addFd(Fd fd, Flags<NotifyOn> interest, Tag tag, Mode mode)
+        void Epoll::addFd(Fd fd, Flags<NotifyOn> interest, Tag tag,
+                          [[maybe_unused]] Mode mode)
         {
             PS_TIMEDBG_START_ARGS("fd %" PIST_QUOTE(PS_FD_PRNTFCD), fd);
 
 #ifdef _USE_LIBEVENT
-            short events = (short)epoll_fd->toEvEvents(interest);
+            short events = static_cast<short>(epoll_fd->toEvEvents(interest));
             events |= EVM_PERSIST; // since EPOLLONESHOT not to be set
 
             if (mode == Mode::Edge)
@@ -200,7 +208,7 @@ namespace Pistache
             EventMethFns::setEmEventUserData(fd, tag.value_);
 
             TRY(epoll_fd->ctl(EvCtlAction::Add,
-                              fd, events, NULL /* time */));
+                              fd, events, nullptr /* time */));
 
 #else
             struct epoll_event ev;
@@ -219,7 +227,8 @@ namespace Pistache
             PS_TIMEDBG_START_ARGS("fd %" PIST_QUOTE(PS_FD_PRNTFCD), fd);
 
 #ifdef _USE_LIBEVENT
-            short events = (short)epoll_fd->toEvEvents(interest);
+            short events = static_cast<short>(epoll_fd->toEvEvents(interest));
+
             if (mode == Mode::Edge)
                 events |= EVM_ET;
 
@@ -233,7 +242,7 @@ namespace Pistache
 
             EventMethFns::setEmEventUserData(fd, tag.value_);
             TRY(epoll_fd->ctl(EvCtlAction::Add,
-                              fd, events, NULL /* time */));
+                              fd, events, nullptr /* time */));
 #else
             struct epoll_event ev;
             ev.events = toEpollEvents(interest);
@@ -252,7 +261,7 @@ namespace Pistache
 
 #ifdef _USE_LIBEVENT
             TRY(epoll_fd->ctl(EvCtlAction::Del,
-                              fd, 0 /* events */, NULL /* time */));
+                              fd, 0 /* events */, nullptr /* time */));
 #else
             struct epoll_event ev;
             TRY(epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, &ev));
@@ -260,12 +269,12 @@ namespace Pistache
         }
 
         void Epoll::rearmFd(Fd fd, Flags<NotifyOn> interest, Tag tag,
-                            Mode mode)
+                            [[maybe_unused]] Mode mode)
         {
             PS_TIMEDBG_START_ARGS("fd %" PIST_QUOTE(PS_FD_PRNTFCD), fd);
 
 #ifdef _USE_LIBEVENT
-            short events = (short)epoll_fd->toEvEvents(interest);
+            short events = static_cast<short>(epoll_fd->toEvEvents(interest));
 
             // Why do we set EVM_PERSIST here? Since rearmFd is being called,
             // presumably fd was previously a one-shot event. You might think
@@ -286,7 +295,7 @@ namespace Pistache
                 events |= EVM_ET;
             EventMethFns::setEmEventUserData(fd, tag.value_);
             TRY(epoll_fd->ctl(EvCtlAction::Mod,
-                              fd, events, NULL /* time */));
+                              fd, events, nullptr /* time */));
 
 #else
             struct epoll_event ev;
@@ -328,13 +337,13 @@ namespace Pistache
             ss3 << fd;
             str += ss3.str();
 
-            if (((unsigned int)interest) & ((unsigned int)Polling::NotifyOn::Read))
+            if ((static_cast<unsigned int>(interest)) & (static_cast<unsigned int>(Polling::NotifyOn::Read)))
                 str += " read";
-            if (((unsigned int)interest) & ((unsigned int)Polling::NotifyOn::Write))
+            if ((static_cast<unsigned int>(interest)) & (static_cast<unsigned int>(Polling::NotifyOn::Write)))
                 str += " write";
-            if (((unsigned int)interest) & ((unsigned int)Polling::NotifyOn::Hangup))
+            if ((static_cast<unsigned int>(interest)) & (static_cast<unsigned int>(Polling::NotifyOn::Hangup)))
                 str += " hangup";
-            if (((unsigned int)interest) & ((unsigned int)Polling::NotifyOn::Shutdown))
+            if ((static_cast<unsigned int>(interest)) & (static_cast<unsigned int>(Polling::NotifyOn::Shutdown)))
                 str += " shutdown";
 
             PS_LOG_DEBUG_ARGS("%s", str.c_str());
@@ -342,14 +351,14 @@ namespace Pistache
 
 #ifdef _USE_LIBEVENT
 #define PS_LOG_DBG_FD_AND_NOTIFY logFdAndNotifyOn(i,                  \
-                                                  epoll_fd.get(),     \
-                                                  (Fd)tag.valueU64(), \
-                                                  event.flags)
+                                        epoll_fd.get(),               \
+                                        reinterpret_cast<Fd>(tag.valueU64()), \
+                                        event.flags)
 #else
 #define PS_LOG_DBG_FD_AND_NOTIFY logFdAndNotifyOn(i,                  \
-                                                  epoll_fd,           \
-                                                  (Fd)tag.valueU64(), \
-                                                  event.flags)
+                                     epoll_fd,                      \
+                                     static_cast<Fd>(tag.valueU64()), \
+                                     event.flags)
 #endif
 #else
 #define PS_LOG_DBG_FD_AND_NOTIFY
@@ -368,7 +377,7 @@ namespace Pistache
             PS_TIMEDBG_START_ARGS("epoll on EMEE (epoll_fd) %d",
                                   epoll_fd);
 #endif
-            
+
 #ifdef _USE_LIBEVENT
             std::set<Fd> ready_evm_events;
             int ready_evs = -1;
@@ -433,7 +442,7 @@ namespace Pistache
             if (ready_evm_events.empty())
                 return (0); // 0 FDs
 
-            return((int)events.size());
+            return(static_cast<int>(events.size()));
 
 #else // not ifdef _USE_LIBEVENT
 
@@ -484,7 +493,7 @@ namespace Pistache
                                                       f_setfd_flags, f_setfl_flags));
         }
 
-        Fd Epoll::em_timer_new(clockid_t clock_id,
+        Fd Epoll::em_timer_new(PST_CLOCK_ID_T clock_id,
                                // For setfd and setfl arg:
                                //   F_SETFDL_NOTHING - change nothing
                                //   Zero or pos number that is not
@@ -574,7 +583,7 @@ namespace Pistache
     {
 #ifdef _USE_LIBEVENT
         FdEventFd emefd = TRY_NULL_RET(Polling::Epoll::em_eventfd_new(
-            0, FD_CLOEXEC, O_NONBLOCK));
+            0, PST_FD_CLOEXEC, PST_O_NONBLOCK));
 
         event_fd = EventMethFns::getAsEmEvent(emefd);
 #else

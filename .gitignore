@@ -10,6 +10,7 @@
 # Soft links to favorite build convenience files
 /build.sh
 /builddebug.sh
+/builddebug.ps1
 /copyall.sh
 
 # Compiled Object files

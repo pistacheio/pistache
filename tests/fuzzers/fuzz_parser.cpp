@@ -117,7 +117,7 @@ void fuzz_router(const std::string& input)
 
         const auto sanitized = Pistache::Rest::SegmentTreeNode::sanitizeResource(path_input);
         std::shared_ptr<char> ptr(new char[sanitized.length()], std::default_delete<char[]>());
-        memcpy(ptr.get(), sanitized.data(), sanitized.length());
+        std::memcpy(ptr.get(), sanitized.data(), sanitized.length());
         const std::string_view path { ptr.get(), sanitized.length() };
 
         switch (test_case)
@@ -126,7 +126,7 @@ void fuzz_router(const std::string& input)
             ignoreExceptions([&] {
                 Pistache::Rest::Route::Handler handler = [](auto...) { return Pistache::Rest::Route::Result::Ok; };
                 std::shared_ptr<char> ptr(new char[sanitized.length()], std::default_delete<char[]>());
-                memcpy(ptr.get(), sanitized.data(), sanitized.length());
+                std::memcpy(ptr.get(), sanitized.data(), sanitized.length());
                 const std::string_view path { ptr.get(), sanitized.length() };
                 tree.addRoute(path, handler, ptr);
             });

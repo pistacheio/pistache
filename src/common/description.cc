@@ -236,9 +236,9 @@ namespace Pistache::Rest
                          std::move(description));
         }
 
-        SubPath SubPath::path(const std::string& prefix) const
+        SubPath SubPath::path(const std::string& pth_prefix) const
         {
-            return SubPath(this->prefix + prefix, paths);
+            return SubPath(this->prefix + pth_prefix, paths);
         }
 
         Parameter::Parameter(std::string name, std::string description)
@@ -466,13 +466,13 @@ namespace Pistache::Rest
                     return trailingSlashValue;
                 }
 
-                std::string join(const std::string& value) const
+                std::string join(const std::string& value_parm) const
                 {
                     std::string val;
-                    if (value[0] == '/')
-                        val = value.substr(1);
+                    if (value_parm[0] == '/')
+                        val = value_parm.substr(1);
                     else
-                        val = value;
+                        val = value_parm;
                     return trailingSlashValue + val;
                 }
 

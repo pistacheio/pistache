@@ -1,0 +1,407 @@
+# SPDX-FileCopyrightText: 2024 Duncan Greatwood
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# See:
+#   https://docs.github.com/en/actions/writing-workflows/choosing-where-your-workflow-runs/choosing-the-runner-for-a-job
+
+name: Windows
+
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+    branches:
+    - master
+
+defaults:
+  run:
+    shell: powershell
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Windows with Libevent
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ 'windows-2019', 'windows-latest' ] # Oct/2024, latest = 2022
+        compiler: [ 'msvc', 'gcc' ] # Could also add clang
+        sanitizer: [ 'address', 'none' ]
+        tls: [ 'true', 'false' ]
+        def_debug: [ 'true', 'false' ]
+        exclude:
+          # VS only supports address sanitizer as of Oct/2024
+          # mingw-gcc does not support any sanitizer as of Oct/2024
+          - compiler: gcc
+            sanitizer: address
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+        # For Windows, we check out first, before installing
+        # dependencies, so we can use the Pistache scripts
+        # msvcsetup.ps1 and gccsetup.ps1 for dependency installation
+
+    - name: Install dependencies (Windows)
+      env:
+        mtrx_compiler: ${{ matrix.compiler }}
+      if: contains(matrix.os, 'windows')
+      run: >
+        $savedpwd=$pwd
+
+        # Save variables that we store to a file to be restored on next step
+
+        $csvarray = @()
+
+        if ($env:mtrx_compiler -eq "msvc") {
+
+          . winscripts\msvcsetup.ps1
+
+          cd ~
+
+          $myobj = "" | Select "name", "val";
+          $myobj.name = "launch_vs_dev_shell_dir";
+          $myobj.val = $launch_vs_dev_shell_dir;
+          $csvarray += $myobj
+
+          if ($vs_instance_id) {
+              $myobj = "" | Select "name", "val";
+              $myobj.name = "vs_instance_id";
+              $myobj.val = $vs_instance_id;
+              $csvarray += $myobj
+          }
+
+          if ($dev_shell_path) {
+              $myobj = "" | Select "name", "val";
+              $myobj.name = "dev_shell_path";
+              $myobj.val = $dev_shell_path;
+              $csvarray += $myobj
+          }
+
+          if ($env:VSCMD_DEBUG) {
+              $myobj = "" | Select "name", "val";
+              $myobj.name = "env:VSCMD_DEBUG";
+              $myobj.val = $env:VSCMD_DEBUG;
+              $csvarray += $myobj
+          }
+        } # end 'if ($env:mtrx_compiler -eq "msvc") {...}'
+
+        elseif ($env:mtrx_compiler -eq "gcc") {
+          $env:force_msys_gcc = "Y";
+          . winscripts\gccsetup.ps1
+        }
+        else { # Use clang with MSVC (MSVC's stdlib etc.)
+
+          $env:CXX="clang-cl";
+          $env:CXX_LD="lld";
+          $env:CC=$env:CXX
+        }
+
+        if ($env:CXX) {
+            $myobj = "" | Select "name", "val";
+            $myobj.name = "env:CXX";
+            $myobj.val = $env:CXX;
+            $csvarray += $myobj
+        }
+
+        if ($env:CC) {
+            $myobj = "" | Select "name", "val";
+            $myobj.name = "env:CC";
+            $myobj.val = $env:CC;
+            $csvarray += $myobj
+        }
+
+        if ($env:CXX_LD) {
+            $myobj = "" | Select "name", "val";
+            $myobj.name = "env:CXX_LD";
+            $myobj.val = $env:CXX_LD;
+            $csvarray += $myobj
+        }
+
+        if (Test-Path -Path "$env:USERPROFILE\doxygen.bin") {
+            $env:Path="$env:Path;$env:USERPROFILE\doxygen.bin"
+        }
+
+        if ($env:PKG_CONFIG_PATH) {
+            $myobj = "" | Select "name", "val";
+            $myobj.name = "env:PKG_CONFIG_PATH";
+            $myobj.val = $env:PKG_CONFIG_PATH;
+            $csvarray += $myobj
+        }
+
+        if ($env:Path) {
+            $myobj = "" | Select "name", "val";
+            $myobj.name = "env:Path";
+            $myobj.val = $env:Path;
+            $csvarray += $myobj
+        }
+
+        # Save vars for use in later steps
+
+        cd ~;
+        $csvarray | export-csv "tmpvars.csv"
+
+        cat "tmpvars.csv"
+
+    - name: Configure Meson
+      env:
+        mtrx_compiler: ${{ matrix.compiler }}
+        mtrx_def_debug: ${{ matrix.def_debug }}
+        mtrx_tls: ${{ matrix.tls }}
+        mtrx_sanitizer: ${{ matrix.sanitizer }}
+      run: >
+        $savedpwd=$pwd
+
+        cd ~;
+        $impcsv = import-csv -Path "tmpvars.csv";
+        foreach ($impobj in $impcsv) {
+            $impobj_name=$impobj.name;
+            $impobj_val=$impobj.val;
+            $assign_cmd=-join('$', "$impobj_name", '="', "$impobj_val", '"');
+            echo "assign_cmd is $assign_cmd";
+            Invoke-Expression "$assign_cmd"
+        }
+
+        if ($env:mtrx_compiler -eq "msvc") {
+          # Start a Visual Studio Developer Prompt, for access to compiler "cl"
+
+          if (($dev_shell_path) -and (Test-Path -Path $dev_shell_path)) {
+              Write-Host "Doing Import-Module and Enter-VsDevShell";
+              Import-Module "$dev_shell_path";
+              $env:VSCMD_DEBUG=1;
+              Enter-VsDevShell -VsInstanceId $vs_instance_id -SkipAutomaticLocation -DevCmdDebugLevel Basic -DevCmdArguments '-arch=x64'
+          }
+          elseif (($launch_vs_dev_shell_dir) -and (Test-Path -Path $launch_vs_dev_shell_dir)) {
+              cd "$launch_vs_dev_shell_dir";
+              ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
+          }
+          else {
+              Write-Error
+                  "ERROR: Failed to start Visual Studio Developer Prompt"
+          }
+
+          # Import vars again in case starting dev prompt overwrote anything
+
+          cd ~;
+          $impcsv = import-csv -Path "tmpvars.csv";
+          foreach ($impobj in $impcsv) {
+              $impobj_name=$impobj.name;
+              $impobj_val=$impobj.val;
+              $assign_cmd=-join('$', "$impobj_name", '="', "$impobj_val", '"');
+              echo "assign_cmd is $assign_cmd";
+              Invoke-Expression "$assign_cmd"
+          }
+        }
+
+        cd "$savedpwd"
+
+        meson setup build -DPISTACHE_BUILD_TESTS=true -DPISTACHE_DEBUG="$env:mtrx_def_debug" -DPISTACHE_USE_SSL="$env:mtrx_tls" -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_DOCS=false -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true -DPISTACHE_USE_CONTENT_ENCODING_BROTLI=true -DPISTACHE_USE_CONTENT_ENCODING_ZSTD=true --buildtype=debug -Db_coverage=true -Db_sanitize="$env:mtrx_sanitizer" -Db_lundef=false --prefix="$env:ProgramFiles\pistache_distribution"
+
+        if (Test-Path -Path 'build/meson-logs/meson-log.txt') {
+            cat build/meson-logs/meson-log.txt
+        }
+        else {
+            Write-Error "ERROR: No meson output log found"
+        }
+
+    - name: Build
+      env:
+        mtrx_compiler: ${{ matrix.compiler }}
+      run: >
+        $savedpwd=$pwd
+
+        cd ~;
+        $impcsv = import-csv -Path "tmpvars.csv";
+        foreach ($impobj in $impcsv) {
+            $impobj_name=$impobj.name;
+            $impobj_val=$impobj.val;
+            $assign_cmd=-join('$', "$impobj_name", '="', "$impobj_val", '"');
+            echo "assign_cmd is $assign_cmd";
+            Invoke-Expression "$assign_cmd"
+        }
+
+        if ($env:mtrx_compiler -eq "msvc") {
+          # Start a Visual Studio Developer Prompt, for access to compiler "cl"
+
+          if (($dev_shell_path) -and (Test-Path -Path $dev_shell_path)) {
+              Write-Host "Doing Import-Module and Enter-VsDevShell";
+              Import-Module "$dev_shell_path";
+              $env:VSCMD_DEBUG=1;
+              Enter-VsDevShell -VsInstanceId $vs_instance_id -SkipAutomaticLocation -DevCmdDebugLevel Basic -DevCmdArguments '-arch=x64'
+          }
+          elseif (($launch_vs_dev_shell_dir) -and (Test-Path -Path $launch_vs_dev_shell_dir)) {
+              cd "$launch_vs_dev_shell_dir";
+              ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
+          }
+          else {
+              Write-Error
+                  "ERROR: Failed to start Visual Studio Developer Prompt"
+          }
+
+          # Import vars again in case starting dev prompt overwrote anything
+
+          cd ~;
+          $impcsv = import-csv -Path "tmpvars.csv";
+          foreach ($impobj in $impcsv) {
+              $impobj_name=$impobj.name;
+              $impobj_val=$impobj.val;
+              $assign_cmd=-join('$', "$impobj_name", '="', "$impobj_val", '"');
+              echo "assign_cmd is $assign_cmd";
+              Invoke-Expression "$assign_cmd"
+          }
+        }
+        cd "$savedpwd"
+
+        ninja -C build
+
+    - name: Test
+      env:
+        mtrx_compiler: ${{ matrix.compiler }}
+        mtrx_def_debug: ${{ matrix.def_debug }}
+      run: >
+        $savedpwd=$pwd
+
+        cd ~;
+        $impcsv = import-csv -Path "tmpvars.csv";
+        foreach ($impobj in $impcsv) {
+            $impobj_name=$impobj.name;
+            $impobj_val=$impobj.val;
+            $assign_cmd=-join('$', "$impobj_name", '="', "$impobj_val", '"');
+            echo "assign_cmd is $assign_cmd";
+            Invoke-Expression "$assign_cmd"
+        }
+
+        # To make log messages for the test executables go to stdout,
+        # we can set the registry value psLogToStdoutAsWell to 1, as below.
+
+        #if (($env:mtrx_compiler -eq "gcc") -and
+        #      ($env:mtrx_def_debug -eq "false")) {
+        #    $registryPath = "HKCU:\Software\pistacheio\pistache";
+        #    $valName = "psLogToStdoutAsWell";
+        #    if (! (Test-Path $registryPath)) {
+        #        Write-Error "pistache registry entry missing?"
+        #        }
+        #    else {
+        #        New-ItemProperty -Path $registryPath -Name $valName
+        #              -Value 1 -PropertyType DWORD -Force
+        #        }
+        #    }
+
+        # Alternatively, you could write the logging to a csv file. Do:
+        #   logman start -f csv -ets Pistache -p "Pistache-Provider" 0 0 -o pistachelog.csv
+        # Then after "meson test" has run:
+        #   logman stop Pistache -ets
+        #   cat pistachelog.csv
+        # or
+        #   logman stop Pistache -ets
+        #   $plogcsv = import-csv -Path "pistachelog.csv"
+        #   Write-Host $plogcsv
+
+        if ($env:mtrx_compiler -eq "msvc") {
+          # Start a Visual Studio Developer Prompt
+
+          if (($dev_shell_path) -and (Test-Path -Path $dev_shell_path)) {
+              Write-Host "Doing Import-Module and Enter-VsDevShell";
+              Import-Module "$dev_shell_path";
+              $env:VSCMD_DEBUG=1;
+              Enter-VsDevShell -VsInstanceId $vs_instance_id -SkipAutomaticLocation -DevCmdDebugLevel Basic -DevCmdArguments '-arch=x64'
+          }
+          elseif (($launch_vs_dev_shell_dir) -and (Test-Path -Path $launch_vs_dev_shell_dir)) {
+              cd "$launch_vs_dev_shell_dir";
+              ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
+          }
+          else {
+              Write-Error
+                  "ERROR: Failed to start Visual Studio Developer Prompt"
+          }
+
+          # Import vars again in case starting dev prompt overwrote anything
+
+          cd ~;
+          $impcsv = import-csv -Path "tmpvars.csv";
+          foreach ($impobj in $impcsv) {
+              $impobj_name=$impobj.name;
+              $impobj_val=$impobj.val;
+              $assign_cmd=-join('$', "$impobj_name", '="', "$impobj_val", '"');
+              echo "assign_cmd is $assign_cmd";
+              Invoke-Expression "$assign_cmd"
+          }
+        }
+
+        cd "$savedpwd"
+
+        meson test --no-rebuild -C build --verbose
+        # Use the following to run just a single test (e.g. http_server_test)
+        #   build/tests/run_http_server_test
+
+    - name: Install
+      env:
+        mtrx_compiler: ${{ matrix.compiler }}
+        mtrx_def_debug: ${{ matrix.def_debug }}
+      run: >
+        $savedpwd=$pwd
+
+        cd ~;
+        $impcsv = import-csv -Path "tmpvars.csv";
+        foreach ($impobj in $impcsv) {
+            $impobj_name=$impobj.name;
+            $impobj_val=$impobj.val;
+            $assign_cmd=-join('$', "$impobj_name", '="', "$impobj_val", '"');
+            echo "assign_cmd is $assign_cmd";
+            Invoke-Expression "$assign_cmd"
+        }
+
+        if ($env:mtrx_compiler -eq "msvc") {
+          # Start a Visual Studio Developer Prompt
+
+          if (($dev_shell_path) -and (Test-Path -Path $dev_shell_path)) {
+              Write-Host "Doing Import-Module and Enter-VsDevShell";
+              Import-Module "$dev_shell_path";
+              $env:VSCMD_DEBUG=1;
+              Enter-VsDevShell -VsInstanceId $vs_instance_id -SkipAutomaticLocation -DevCmdDebugLevel Basic -DevCmdArguments '-arch=x64'
+          }
+          elseif (($launch_vs_dev_shell_dir) -and (Test-Path -Path $launch_vs_dev_shell_dir)) {
+              cd "$launch_vs_dev_shell_dir";
+              ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64
+          }
+          else {
+              Write-Error
+                  "ERROR: Failed to start Visual Studio Developer Prompt"
+          }
+
+          # Import vars again in case starting dev prompt overwrote anything
+
+          cd ~;
+          $impcsv = import-csv -Path "tmpvars.csv";
+          foreach ($impobj in $impcsv) {
+              $impobj_name=$impobj.name;
+              $impobj_val=$impobj.val;
+              $assign_cmd=-join('$', "$impobj_name", '="', "$impobj_val", '"');
+              echo "assign_cmd is $assign_cmd";
+              Invoke-Expression "$assign_cmd"
+          }
+        }
+
+        cd "$savedpwd"
+
+        if (Test-Path -Path "$env:ProgramFiles\pistache_distribution\bin\pistachelog.dll") {
+            rm "$env:ProgramFiles\pistache_distribution\bin\pistachelog.dll"
+        }
+
+        meson install --no-rebuild -C build
+
+        if (! (Test-Path -Path "$env:ProgramFiles\pistache_distribution\bin\pistachelog.dll")) {
+            throw "pistachelog.dll not installed as expected"
+        }
+
+    # No coverage analysis for Windows

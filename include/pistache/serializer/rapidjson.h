@@ -110,7 +110,27 @@ namespace Pistache::Rest::Serializer
         std::string methodStr(methodString(path.method));
         // So it looks like Swagger requires method to be in lowercase
         std::transform(std::begin(methodStr), std::end(methodStr),
-                       std::begin(methodStr), ::tolower);
+                       std::begin(methodStr),
+                       [](const char ch)
+                       {
+                           const unsigned char uch =
+                               static_cast<unsigned char>(ch);
+                           auto ires = ::tolower(uch);
+                           return(static_cast<char>(ires));
+                       });
+        // Note re: the lambda function being used for std::transform
+        // above. Previously (before 10/2024), std::transform was simply being
+        // passed ::tolower/::toupper for the transformer function, but in fact
+        // we need to make two changes to that: i) we need to cast the input
+        // parm to "unsigned char" to avoid errors due to sign extension as
+        // explained on the Linux man page
+        // (e.g. https://www.man7.org/linux/man-pages/man3/toupper.3.html,
+        // Notes section); and ii) since the result of the transformer function
+        // is written into std::string, i.e. to a char, the transformer
+        // function needs to return a char, not (as ::tolower/::toupper does)
+        // an int, otherwise the compiler may complain about loss of integer
+        // size in writing the int to a char (and in fact MSVC was complaining
+        // in exactly this way).
 
         writer.String(methodStr.c_str());
         writer.StartObject();

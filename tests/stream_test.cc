@@ -16,6 +16,12 @@
 #include <iostream>
 #include <string>
 
+#ifdef _IS_WINDOWS
+#include <Windows.h>
+#include <fileapi.h> // for GetTempPathW
+#endif
+
+
 using namespace Pistache;
 
 TEST(stream, test_buffer)
@@ -43,11 +49,43 @@ TEST(stream, test_buffer)
 
 TEST(stream, test_file_buffer)
 {
-    char fileName[PATH_MAX] = "/tmp/pistacheioXXXXXX";
+    #ifdef _IS_WINDOWS
+    // Note there is no mkstemp on Windows
+
+    const char * fileName = 0;
+    std::string fn_buf_sstr("C:\\temp\\pistacheio76191");
+
+    { // encapsulate
+        TCHAR tmp_path[PST_MAXPATHLEN+16];
+        tmp_path[0] = 0;
+        DWORD gtp_res = GetTempPathA(PST_MAXPATHLEN, &(tmp_path[0]));
+        if ((!gtp_res) || (gtp_res > PST_MAXPATHLEN))
+        {
+            std::cerr << "No temp path found!" << std::endl;
+        }
+        else
+        {
+            TCHAR tmp_fn_buf[PST_MAXPATHLEN+16];
+            tmp_fn_buf[0] = 0;
+            UINT gtfn_res = GetTempFileNameA(&(tmp_path[0]),
+                                             "PST", // prefix
+                                                 0, // Windows chooses the name
+                                             &(tmp_fn_buf[0]));
+            if (!gtfn_res)
+                std::cerr << "No temp path found!" << std::endl;
+            else
+                fn_buf_sstr = std::string(&(tmp_fn_buf[0]));
+        }
+    }
+    fileName = fn_buf_sstr.c_str();
+#else
+    char fileName[PST_MAXPATHLEN] = "/tmp/pistacheioXXXXXX";
     if (!mkstemp(fileName))
     {
         std::cerr << "No suitable filename can be generated!" << std::endl;
     }
+#endif
+
     std::cout << "Temporary file name: " << fileName << std::endl;
 
     const std::string dataToWrite("Hello World!");

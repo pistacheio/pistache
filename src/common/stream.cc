@@ -9,6 +9,8 @@
 
 */
 
+#include <pistache/winornix.h>
+
 #include <pistache/stream.h>
 
 #include <algorithm>
@@ -16,10 +18,14 @@
 #include <iostream>
 #include <string>
 
-#include <fcntl.h>
+#include <fcntl.h> // Needs this as well in Windows for file-open constants
+
+#include PIST_QUOTE(PST_FCNTL_HDR)
+
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>
+#include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h e.g. close
+#include PIST_QUOTE(PIST_FILEFNS_HDR) // PST_FILE_OPEN
 
 namespace Pistache
 {
@@ -66,7 +72,7 @@ namespace Pistache
             throw std::runtime_error("Empty fileName");
         }
 
-        int fd = open(fileName.c_str(), O_RDONLY);
+        int fd = PST_FILE_OPEN(fileName.c_str(), PST_O_RDONLY);
         if (fd == -1)
         {
             throw std::runtime_error("Could not open file");
@@ -76,7 +82,7 @@ namespace Pistache
         int res = ::fstat(fd, &sb);
         if (res == -1)
         {
-            close(fd);
+            PST_FILE_CLOSE(fd);
             throw std::runtime_error("Could not get file stats");
         }
 
@@ -163,7 +169,7 @@ namespace Pistache
 
     bool StreamCursor::advance(size_t count)
     {
-        if (static_cast<ssize_t>(count) > buf->in_avail())
+        if (static_cast<PST_SSIZE_T>(count) > buf->in_avail())
             return false;
 
         for (size_t i = 0; i < count; ++i)
@@ -205,7 +211,7 @@ namespace Pistache
         return other.buf->position() - buf->position();
     }
 
-    size_t StreamCursor::remaining() const { return buf->in_avail(); }
+    size_t StreamCursor::remaining() const {return static_cast<size_t>(buf->in_avail());}
 
     void StreamCursor::reset() { buf->reset(); }
 

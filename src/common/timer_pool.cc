@@ -55,9 +55,9 @@ namespace Pistache
         {
 #ifdef _USE_LIBEVENT
             fd_ = TRY_NULL_RET(EventMethFns::em_timer_new(
-                CLOCK_MONOTONIC,
-                F_SETFDL_NOTHING, O_NONBLOCK,
-                NULL /* EventMethEpollEquiv ptr */));
+                PST_CLOCK_MONOTONIC,
+                F_SETFDL_NOTHING, PST_O_NONBLOCK,
+                nullptr /* EventMethEpollEquiv ptr */));
             // The EventMethEpollEquiv ptr gets set
             // later, when
             // TimerPool::Entry::registerReactor is
@@ -79,7 +79,7 @@ namespace Pistache
         }
 
 #ifdef _USE_LIBEVENT
-        TRY(EventMethFns::setEmEventTime(fd_, NULL));
+        TRY(EventMethFns::setEmEventTime(fd_, nullptr));
 #else
         itimerspec spec;
         spec.it_interval.tv_sec  = 0;

@@ -47,7 +47,7 @@ public:
         Rest::Swagger swagger(desc);
         swagger
             .uiPath("/doc")
-            .uiDirectory(filesystem::current_path() / "assets")
+            .uiDirectory((filesystem::current_path() / "assets").string())
             .apiPath("/banker-api.json")
             .serializer(&Rest::Serializer::rapidJson)
             .install(router);
@@ -70,47 +70,56 @@ TEST(rest_swagger_server_test, basic_test)
 {
     filesystem::create_directory("assets");
 
-    ofstream("assets/good.txt") << "good";
+    { // encapsulate
 
-    ofstream("bad.txt") << "bad";
+        ofstream("assets/good.txt") << "good";
+        ofstream("bad.txt") << "bad";
 
-    Address addr(Ipv4::loopback(), Port(0));
-    SwaggerEndpoint swagger(addr);
+        Address addr(Ipv4::loopback(), Port(0));
+        SwaggerEndpoint swagger(addr);
 
-    swagger.init();
-    thread t([&swagger]() {
-        while (swagger.getPort() == 0)
-        {
-            this_thread::yield();
-        }
+        swagger.init();
+        thread t([&swagger]() {
+            while (swagger.getPort() == 0)
+            {
+                this_thread::yield();
+            }
 
-        Port port = swagger.getPort();
+            Port port = swagger.getPort();
 
-        cout << "CWD = " << filesystem::current_path() << endl;
-        cout << "Port = " << port << endl;
+            cout << "CWD = " << filesystem::current_path() << endl;
+            cout << "Port = " << port << endl;
 
-        httplib::Client client("localhost", port);
+            httplib::Client client("localhost", port);
 
-        // Test if we have access to files inside the UI folder.
-        auto goodRes = client.Get("/doc/good.txt");
-        // Attempt to read file outside of the UI directory should fail even if
-        // the file exists.
-        client.set_connection_timeout(1000);
-        client.set_read_timeout(1000);
-        auto badRes = client.Get("/doc/../bad.txt");
-        // Ensure the server is shut down before calling asserts that could
-        // terminate the thread without cleaning up
-        swagger.shutdown();
+            // Test if we have access to files inside the UI folder.
+            auto goodRes = client.Get("/doc/good.txt");
+            // Attempt to read file outside of the UI directory should fail
+            // even if the file exists.
+            client.set_connection_timeout(1000);
+            client.set_read_timeout(1000);
+            auto badRes = client.Get("/doc/../bad.txt");
+            // Ensure the server is shut down before calling asserts that could
+            // terminate the thread without cleaning up
+            swagger.shutdown();
 
-        ASSERT_EQ(goodRes->status, 200);
-        ASSERT_EQ(goodRes->body, "good");
+            ASSERT_EQ(goodRes->status, 200);
+            ASSERT_EQ(goodRes->body, "good");
 
-        ASSERT_EQ(badRes->status, 404);
-        ASSERT_NE(badRes->body, "bad");
-    });
-    swagger.start();
+            ASSERT_EQ(badRes->status, 404);
+            ASSERT_NE(badRes->body, "bad");
+        });
+        swagger.start();
 
-    t.join();
-    filesystem::remove_all("assets");
-    filesystem::remove_all("bad.txt");
+        t.join();
+    }
+
+    try
+    {
+        filesystem::remove_all("assets");
+        filesystem::remove_all("bad.txt");
+    }
+    catch (...)
+    {
+    }
 }

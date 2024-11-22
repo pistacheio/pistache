@@ -312,11 +312,11 @@ namespace Pistache
                             "event_meth_epoll_equiv null");
 
                     timerFd = TRY_NULL_RET(EventMethFns::em_timer_new(
-                        CLOCK_MONOTONIC,
-                        F_SETFDL_NOTHING, O_NONBLOCK,
+                        PST_CLOCK_MONOTONIC,
+                        F_SETFDL_NOTHING, PST_O_NONBLOCK,
                         event_meth_epoll_equiv.get()));
 #else
-                    timerFd = TRY_RET(timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK));
+                    timerFd = TRY_RET(timerfd_create(PST_CLOCK_MONOTONIC, TFD_NONBLOCK));
 #endif
                     transport->armTimer(timerFd, duration, std::move(deferred));
                 });
@@ -435,7 +435,7 @@ namespace Pistache
         public:
             static constexpr size_t DefaultStreamSize = 512;
 
-            friend Async::Promise<ssize_t>
+            friend Async::Promise<PST_SSIZE_T>
             serveFile(ResponseWriter&, const std::string&, const Mime::MediaType&);
 
             friend class Handler;
@@ -464,22 +464,22 @@ namespace Pistache
              * - movedPermantly -> 301
              * - moved() -> 302
              */
-            Async::Promise<ssize_t>
+            Async::Promise<PST_SSIZE_T>
             sendMethodNotAllowed(const std::vector<Http::Method>& supportedMethods);
 
-            Async::Promise<ssize_t> send(Code code, const std::string& body = "",
-                                         const Mime::MediaType& mime = Mime::MediaType());
+            Async::Promise<PST_SSIZE_T> send(Code code, const std::string& body = "",
+                                             const Mime::MediaType& mime = Mime::MediaType());
 
             template <size_t N>
-            Async::Promise<ssize_t>
+            Async::Promise<PST_SSIZE_T>
             send(Code code, const char (&arr)[N],
                  const Mime::MediaType& mime = Mime::MediaType())
             {
                 return sendImpl(code, arr, N - 1, mime);
             }
 
-            Async::Promise<ssize_t> send(Code code, const char* data, const size_t size,
-                                         const Mime::MediaType& mime = Mime::MediaType());
+            Async::Promise<PST_SSIZE_T> send(Code code, const char* data, const size_t size,
+                                             const Mime::MediaType& mime = Mime::MediaType());
 
             ResponseStream stream(Code code, size_t streamSize = DefaultStreamSize);
 
@@ -501,7 +501,7 @@ namespace Pistache
 
             // Returns total count of HTTP bytes (headers, cookies, body) written when
             // sending the response.  Result valid AFTER ResponseWriter.send() is called.
-            ssize_t getResponseSize() const { return sent_bytes_; }
+            PST_SSIZE_T getResponseSize() const { return sent_bytes_; }
 
             // Returns HTTP result code that was sent with the response.
             Code getResponseCode() const { return response_.code(); }
@@ -521,8 +521,6 @@ namespace Pistache
                 return nullptr;
             }
 
-
-            
             // Compress using the requested content encoding, if supported,
             //  before sending bits to client. Content-Encoding header will be
             //  automatically set to the requested encoding, if supported...
@@ -558,18 +556,18 @@ namespace Pistache
         private:
             ResponseWriter(const ResponseWriter& other);
 
-            Async::Promise<ssize_t> sendImpl(Code code, const char* data,
-                                             const size_t size,
-                                             const Mime::MediaType& mime);
+            Async::Promise<PST_SSIZE_T> sendImpl(Code code, const char* data,
+                                                 const size_t size,
+                                                 const Mime::MediaType& mime);
 
-            Async::Promise<ssize_t> putOnWire(const char* data, size_t len);
+            Async::Promise<PST_SSIZE_T> putOnWire(const char* data, size_t len);
 
             Response response_;
             std::weak_ptr<Tcp::Peer> peer_;
             DynamicStreamBuf buf_;
             Tcp::Transport* transport_ = nullptr;
             Timeout timeout_;
-            ssize_t sent_bytes_ = 0;
+            PST_SSIZE_T sent_bytes_ = 0;
 
             Http::Header::Encoding contentEncoding_ = Http::Header::Encoding::Identity;
 
@@ -588,7 +586,7 @@ namespace Pistache
 #endif
         };
 
-        Async::Promise<ssize_t>
+        Async::Promise<PST_SSIZE_T>
         serveFile(ResponseWriter& writer, const std::string& fileName,
                   const Mime::MediaType& contentType = Mime::MediaType());
 
@@ -609,7 +607,7 @@ namespace Pistache
                 virtual StepId id() const                 = 0;
                 virtual State apply(StreamCursor& cursor) = 0;
 
-                static void raise(const char* msg, Code code = Code::Bad_Request);
+                [[noreturn]] static void raise(const char* msg, Code code = Code::Bad_Request);
 
             protected:
                 Message* message;
@@ -692,8 +690,8 @@ namespace Pistache
                 private:
                     Message* message;
                     size_t bytesRead;
-                    ssize_t size;
-                    ssize_t alreadyAppendedChunkBytes;
+                    PST_SSIZE_T size;
+                    PST_SSIZE_T alreadyAppendedChunkBytes;
                 };
 
                 State parseContentLength(StreamCursor& cursor,

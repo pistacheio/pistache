@@ -1,0 +1,8 @@
+;; SPDX-FileCopyrightText: 2024 Duncan Greatwood
+;;
+;; SPDX-License-Identifier: Apache-2.0
+
+LIBRARY pistachelog
+EXPORTS
+
+	;; 0 symbols

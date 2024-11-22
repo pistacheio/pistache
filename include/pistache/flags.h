@@ -17,6 +17,8 @@
 #include <iostream>
 #include <type_traits>
 
+#include <pistache/winornix.h>
+
 namespace Pistache
 {
 
@@ -161,7 +163,7 @@ std::ostream& operator<<(std::ostream& os, Pistache::Flags<T> flags)
     typedef typename Pistache::detail::UnderlyingType<T>::Type UnderlyingType;
 
     auto val = static_cast<UnderlyingType>(static_cast<T>(flags));
-    for (ssize_t i = (sizeof(UnderlyingType) * CHAR_BIT) - 1; i >= 0; --i)
+    for (PST_SSIZE_T i = (sizeof(UnderlyingType) * CHAR_BIT) - 1; i >= 0; --i)
     {
         os << ((val >> i) & 0x1);
     }
