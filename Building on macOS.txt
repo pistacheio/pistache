@@ -2,8 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-Making Pistache on macOS
-========================
+Pistache on macOS
+=================
 
 Apple's clang compiler must be installed. It comes as part of
 Xcode. If not already installed, at terminal command line do:
@@ -13,7 +13,22 @@ Homebrew (also known as "brew") is required. If not already installed,
 follow the Homebrew instructions to install:
   In your browser: https://brew.sh/
 
-Then, install the necessary brew packages via terminal command line:
+The simplest way to install Pistache on macOS is to use brew. For the
+latest version of Pistache, do:
+  brew install --HEAD pistache
+For the most recent officially designated release, do:
+  brew install pistache
+We normally suggest using the most recent ("HEAD") Pistache version.
+In case of difficultly, please see later Troubleshooting note.
+
+
+Building Pistache from Source on macOS
+======================================
+
+If you prefer not to install with brew, Pistache can be built from
+source.
+
+Install the necessary brew packages via terminal command line:
   brew install meson
   brew install doxygen
   brew install googletest (skip this if installing with gcc - see later)
@@ -33,24 +48,29 @@ To test:
 To install:
   bldscripts/mesinstall.sh
 
-The meaning of each convenience script is as follows:
-  mesbuild.sh - build release version using meson
-  mestest.sh - test release version using meson
-  mesinstall.sh - install release version using meson
+See later section for more details on teh conveinence scripts.
 
-  mesbuilddebug.sh - build debug version using meson
-  mestestdebug.sh - test debug version with meson
-  mesinstalldebug.sh - install debug version using meson
 
-  mesbuildflibev.sh - build version using meson forcing libevnet use
-  mestestflibev.sh - test version using meson with libevnet use
-  mesinstallflibev.sh - install version using meson with libevnet use
+Troubleshooting brew install on Intel Macs
+------------------------------------------
 
-  mesbuildflibevdebug.sh - build debug ver using meson forcing libevnet use
-  mestestflibevdebug.sh - test debug ver using meson with libevnet use
-  mesinstallflibevdebug.sh - install debug ver using meson with libevnet use
+On some Intel-based MACs, when installing Pistache with brew you may
+see errors like:
+    ==> meson setup build ...
+    Traceback (most recent call last):
+      File "/usr/local/opt/meson/bin/meson", line 5, in <module>
+        from mesonbuild.mesonmain import main
+    ModuleNotFoundError: No module named 'mesonbuild'
+    ...
+    Error: Testing requires the latest version of pistache
 
-  clean.sh - remove build directories
+This a problem installing Python3, a dependency of meson. We found it
+could be fixed by:
+  sudo mkdir /usr/local/Frameworks
+  sudo chown <your-user-name> /usr/local/Frameworks
+  (Substituting your own macOS username for <your-user-name>)
+NB: This applies solely to Intel-based Macs. Homebrew uses a different
+location for files on Apple-silicon("M")/Arm-based MACs.
 
 
 Building with GCC
@@ -64,3 +84,31 @@ like this:
   bldscripts/mesbuild.sh
   bldscripts/mestest.sh
   bldscripts/mesinstall.sh
+
+
+Convenience Scripts
+-------------------
+
+The following scripts cna be used in any environment except
+Windows. The meaning of each convenience script is as follows:
+  mesbuild.sh - build release version
+  mestest.sh - test release version
+  mesinstall.sh - install release version
+
+  mesbuilddebug.sh - build debug version
+  mestestdebug.sh - test debug version with meson
+  mesinstalldebug.sh - install debug version
+
+Linux-only scripts. Note - all environments except Linux use libevent
+by default. libevent is optional on Linux:
+  mesbuildflibev.sh - build version forcing libevent use
+  mestestflibev.sh - test version with libevent use
+  mesinstallflibev.sh - install version with libevent use
+
+  mesbuildflibevdebug.sh - build debug version forcing libevent use
+  mestestflibevdebug.sh - test debug version with libevent use
+  mesinstallflibevdebug.sh - install debug version with libevent use
+
+Also:
+  clean.sh - remove build directories
+  gccmacsetup.sh - configure for GCC build on macOS

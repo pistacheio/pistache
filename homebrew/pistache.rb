@@ -8,8 +8,8 @@ class Pistache < Formula
   desc "Modern, fast, elegant HTTP + REST C++17 framework with pleasant API"
   homepage "https://github.com/pistacheio/pistache"
   # !!!!!!!! CHANGE THIS to a https://github.com/pistacheio/pistache release
-  url "https://github.com/dgreatwood/pistachefork/archive/refs/tags/v0.4.22.tar.gz"
-  sha256 "4c7722b6cc2f37fb91e9f53d3834bd59d2e5097be9b2534f24c1d5512de58114"
+  url "https://github.com/dgreatwood/pistachefork/archive/refs/tags/v0.4.22b.tar.gz"
+  sha256 "1aee77ccde52096586dadea97a195b86f43717348bb26f372f8a512c4cec84bb"
   license "Apache-2.0"
   head "https://github.com/pistacheio/pistache.git", branch: "master"
 
