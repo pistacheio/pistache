@@ -46,7 +46,11 @@ vector<byte>::size_type Base64Decoder::CalculateDecodedSize() const
     //  without storing them, until we hit the first character we cannot decode.
     //  This should be the first padding character or end of string...
     while (DecodeCharacter(*EndIterator) < static_cast<byte>(64))
+    {
         ++EndIterator;
+        if (EndIterator == m_Base64EncodedString.end())
+            break;
+    }
 
     // The length of the encoded string is the distance from the beginning to
     //  the first non-decodable character, such as padding...

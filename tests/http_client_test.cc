@@ -377,6 +377,10 @@ TEST(
             [&](Http::Response rsp) {
                 if (rsp.code() == Http::Code::Ok)
                     ++response_counter;
+#ifdef DEBUG
+                else
+                    PS_LOG_WARNING_ARGS("Http failure code %d", rsp.code());
+#endif
             },
             Async::IgnoreException);
         responses.push_back(std::move(response));
@@ -427,10 +431,26 @@ TEST(http_client_test, test_client_timeout)
             [&res, num = i](Http::Response rsp) {
                 if (rsp.code() == Http::Code::Ok)
                 {
+                    PS_LOG_DEBUG_ARGS("Http::Response num %d", num);
                     res[num] = rsp.body();
                 }
+#ifdef DEBUG
+                else
+                {
+                     PS_LOG_DEBUG_ARGS("Http::Response num %d resp code %d",
+                                       num, rsp.code());
+                }
+#endif
             },
-            [&rejects_counter](std::exception_ptr) { ++rejects_counter; });
+            [&rejects_counter
+#ifdef DEBUG
+             , num = i
+#endif
+                ](std::exception_ptr)
+                {
+                     PS_LOG_DEBUG_ARGS("Http::Response reject num %d", num);
+                    ++rejects_counter;
+                });
         responses.push_back(std::move(response));
     }
 

@@ -10,15 +10,18 @@
 # Execute this script from the parent directory by invoking:
 #   bldscripts/mesbuildflibevdebug.sh
 
+MY_SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 if [ "$(uname)" == "Darwin" ]; then
-    source bldscripts/mesdebugsetdirvars.sh
+    source $MY_SCRIPT_DIR/helpers/mesdebugsetdirvars.sh
     PFLEV=""
 else
-    source bldscripts/mesdebugflibevsetdirvars.sh
+    source $MY_SCRIPT_DIR/helpers/mesdebugflibevsetdirvars.sh
     PFLEV="-DPISTACHE_FORCE_LIBEVENT=true"
 fi
+source $MY_SCRIPT_DIR/helpers/adjbuilddirformesbuild.sh
 
-if [ -e "./${MESON_BUILD_DIR}" ]
+if [ -e "${MESON_BUILD_DIR}" ]
 then
     echo "Using existing build dir ${MESON_BUILD_DIR}"
 else
@@ -29,6 +32,8 @@ else
     -DPISTACHE_BUILD_TESTS=true \
     -DPISTACHE_BUILD_DOCS=false \
     -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true \
+    -DPISTACHE_USE_CONTENT_ENCODING_BROTLI=true \
+    -DPISTACHE_USE_CONTENT_ENCODING_ZSTD=true \
     -DPISTACHE_DEBUG=true \
     --prefix="${MESON_PREFIX_DIR}" \
     $PFLEV
@@ -36,4 +41,3 @@ else
 fi
 
 meson compile -C ${MESON_BUILD_DIR}
-

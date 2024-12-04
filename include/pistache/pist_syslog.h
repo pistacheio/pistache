@@ -5,10 +5,12 @@
  */
 
 /******************************************************************************
- * PistSysLog.h
+ * pist_syslog.h
  *
  * Logging Facilities
  *
+ * #include <pistache/pist_syslog.h>
+ * 
  */
 
 
@@ -17,9 +19,54 @@
 
 /*****************************************************************************/
 
+#include <ostream>
+
+/*****************************************************************************/
+
+#include <pistache/winornix.h>
+
+#ifndef _IS_WINDOWS
+
 #include <syslog.h>
 
-#include <ostream>
+#else // This is for Windows
+
+// As per /usr/include/sys/syslog.h
+
+#ifndef LOG_EMERG
+#define LOG_EMERG       0       /* system is unusable */
+#endif
+
+#ifndef LOG_ALERT
+#define LOG_ALERT       1       /* action must be taken immediately */
+#endif
+
+#ifndef LOG_CRIT
+#define LOG_CRIT        2       /* critical conditions */
+#endif
+
+#ifndef LOG_ERR
+#define LOG_ERR         3       /* error conditions */
+#endif
+
+#ifndef LOG_WARNING
+#define LOG_WARNING     4       /* warning conditions */
+#endif
+
+#ifndef LOG_NOTICE
+#define LOG_NOTICE      5       /* normal but significant condition */
+#endif
+
+#ifndef LOG_INFO
+#define LOG_INFO        6       /* informational */
+#endif
+
+#ifndef LOG_DEBUG
+#define LOG_DEBUG       7       /* debug-level messages */
+#endif
+
+
+#endif
 
 /*****************************************************************************/
 // Following macros do a log message with current file location. If you want to
@@ -32,10 +79,24 @@
 #define PS_LOG_DEBUG(__str) PS_LOG_DEBUG_ARGS("%s", __str)
 
 // If PS_LOG_AND_STDOUT is true, all logging is sent to stdout in addition to
-// being sent to log file
-// 
+// being sent to log file (for Windows, note the additional comment below).
+//
 // You can define PS_LOG_AND_STDOUT to true using the meson build option
-// "PISTACHE_LOG_AND_STDOUT", or simple #define it here
+// "PISTACHE_LOG_AND_STDOUT", or simply comment in the #define below.
+//
+// Note that, in the Windows case, sending of log messages to stdout is
+// intended to be controlled principally not by the #define PS_LOG_AND_STDOUT
+// but by the Registry key HKCU:\Software\pistacheio\pistache property
+// psLogToStdoutAsWell; the Registry key property value can be set to 0 (off
+// unless PS_LOG_AND_STDOUT is #defined to be true in which case on), 1 (on) or
+// 10 (turn off even if PS_LOG_AND_STDOUT is #defined to be true). It defaults
+// to 0 (i.e. off unless overridden by PS_LOG_AND_STDOUT). Any Registry key
+// property value other than 0, 1 or 10 is treated like 1. Deleting the
+// property or key is treated like 0. If the property value is changed while
+// pistache.dll is running, the log output behavior will update dynamically.
+// 
+// #define PS_LOG_AND_STDOUT true
+
 #ifndef PS_LOG_AND_STDOUT
 #define PS_LOG_AND_STDOUT false
 #endif
@@ -104,16 +165,6 @@ extern "C" void PSLogNoLocFn(int _pri, bool _andPrintf,
 //
 // In either case, calling setPsLogCategory is optional
 extern "C" void setPsLogCategory(const char * _category);
-
-// ---------------------------------------------------------------------------
-
-#ifdef __APPLE__
-#define my_basename_r basename_r
-#include <libgen.h> // for basename_r
-#else
-#define my_basename_r ps_basename_r
-extern "C" char * ps_basename_r(const char * path, char * bname);
-#endif
 
 // ---------------------------------------------------------------------------
 

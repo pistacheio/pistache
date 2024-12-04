@@ -30,7 +30,18 @@ namespace filesystem = std::experimental::filesystem;
 //     buffersize - size of buffer
 //
 //   Return: if buffer non-null, number of proc_fdinfo written, -1 on fail
+#elif defined _WIN32
+#include <windows.h>
+#include <processthreadsapi.h> // for GetProcessHandleCount
+#elif !defined __linux__
+#include <unistd.h> // for sysconf
 
+// For getrlimit
+#include <sys/resource.h> // Required in FreeBSD+Open+NetBSD
+#include <sys/time.h> // recommended in FreeBSD, optional for Open+NetBSD
+#include <sys/types.h> // recommended in FreeBSD, optional for Open+NetBSD
+
+#include <string.h> // for memset
 #endif
 
 namespace Pistache
@@ -60,14 +71,14 @@ namespace Pistache
                     "buf_used not a multiple of sizeof(proc_fdinfo)");
 #endif
 
-            int num_fds = (buf_used / sizeof(proc_fdinfo));
+            int num_fds = (buf_used / static_cast<int>(sizeof(proc_fdinfo)));
 
             if ((num_fds + 1) >= max_fds)
                 throw std::runtime_error("num_fds insanely large?");
 
             return ((std::size_t)num_fds);
         }
-#else
+#elif defined __linux__
         using filesystem::directory_iterator;
         const filesystem::path fds_dir { "/proc/self/fd" };
 
@@ -78,8 +89,54 @@ namespace Pistache
 
         return std::distance(directory_iterator(fds_dir),
                              directory_iterator {});
+#elif defined _WIN32
+        DWORD dw_handle_count = 0;
+        BOOL gphc_res = GetProcessHandleCount(GetCurrentProcess(),
+                                              &dw_handle_count);
+        if (!gphc_res)
+            throw std::runtime_error("GetProcessHandleCount failed");
 
-#endif // of ifdef... else...  __APPLE__
+        return(static_cast<std::size_t>(dw_handle_count));
+
+#else // fallback case, e.g. *BSD
+#ifndef OPEN_MAX
+#define OPEN_MAX 4096
+#endif
+        // Be careful with portability here. rl.rlim_cur, of type rlim_t, seems
+        // to be an int on FreeBSD, but a wider data type on OpenBSD ("long
+        // long" ?). It is signed on FreeBSD and NetBSD, but unsigned on
+        // OpenBSD.
+        long maxfd;
+
+        maxfd = sysconf(_SC_OPEN_MAX);
+        if (maxfd < 0) // or if sysconf not defined at all
+        {
+            struct rlimit rl;
+            memset(&rl, 0, sizeof(rl));
+            int getrlimit_res = getrlimit(RLIMIT_NOFILE, &rl);
+            if (getrlimit_res == 0)
+            {
+                maxfd = (long)(rl.rlim_cur < 2 * OPEN_MAX) ? rl.rlim_cur : 2 * OPEN_MAX;
+                if (maxfd == 0)
+                    maxfd = -1;
+            }
+        }
+
+        if ((maxfd < 0) || (maxfd > 4 * OPEN_MAX))
+            maxfd = OPEN_MAX;
+
+        long j, n = 0;
+        for (j = 0; j < maxfd; j++)
+        {
+            int fd = dup((int)j);
+            if (fd < 0)
+                continue;
+            ++n;
+            close(fd);
+        }
+
+        return (n);
+#endif // of ifdef... elif... else...  __APPLE__
     }
 
 } // namespace Pistache

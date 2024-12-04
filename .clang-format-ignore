@@ -5,9 +5,13 @@
 subprojects/**
 src/common/eventmeth.cc
 include/pistache/eventmeth.h
+include/pistache/emosandlibevdefs.h
 src/common/pist_timelog.cc
 include/pistache/pist_timelog.h
 src/common/pist_check.cc
 include/pistache/pist_check.h
 src/common/pist_syslog.cc
 include/pistache/pist_syslog.h
+src/common/ps_strl.cc
+include/pistache/ps_strl.h
+include/pistache/winornix.h

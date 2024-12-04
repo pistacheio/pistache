@@ -145,7 +145,7 @@ namespace Pistache::Http
          * [2] https://en.wikipedia.org/wiki/CRIME
          */
         void useSSL(const std::string& cert, const std::string& key,
-                    bool use_compression = false, int (*cb_password)(char*, int, int, void*) = NULL);
+                    bool use_compression = false, int (*cb_password)(char*, int, int, void*) = nullptr);
 
         /*!
          * \brief Use SSL certificate authentication on this endpoint

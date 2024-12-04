@@ -256,14 +256,14 @@ namespace Pistache::Rest
 
         void addNotFoundHandler(Route::Handler handler);
         void addDisconnectHandler(Route::DisconnectHandler handler);
-        inline bool hasNotFoundHandler() { return notFoundHandler != nullptr; }
+        inline bool hasNotFoundHandler() const { return notFoundHandler != nullptr; }
         void invokeNotFoundHandler(const Http::Request& req,
                                    Http::ResponseWriter resp) const;
 
         void disconnectPeer(const std::shared_ptr<Tcp::Peer>& peer);
 
         Route::Status route(const Http::Request& request,
-                            Http::ResponseWriter response);
+                            Http::ResponseWriter response) const;
 
         Router()
             : routes()

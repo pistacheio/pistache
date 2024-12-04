@@ -293,10 +293,29 @@ TEST(async_test, when_any)
                            [](double val) { return -val; });
     auto p2 = doAsyncTimed(std::chrono::seconds(1), std::string("Hello"),
                            [](std::string val) {
-                               std::transform(std::begin(val), std::end(val),
-                                              std::begin(val), ::toupper);
+                               std::transform(std::cbegin(val),
+                                              std::cend(val), std::begin(val),
+                                              [](const char ch)
+                                              {
+                                                  const unsigned char uch =
+                                                      static_cast<unsigned char>(ch);
+                                                  auto ires = ::toupper(uch);
+                                                  return(static_cast<char>(ires));
+                                              });
                                return val;
                            });
+    // Note re: the lambda function being used for std::transform
+    // above. Previously (before 10/2024), std::transform was simply being
+    // passed ::tolower/::toupper for the transformer function, but in fact we
+    // need to make two changes to that: i) we need to cast the input parm to
+    // "unsigned char" to avoid errors due to sign extension as explained on
+    // the Linux man page
+    // (e.g. https://www.man7.org/linux/man-pages/man3/toupper.3.html, Notes
+    // section); and ii) since the result of the transformer function is
+    // written into std::string, i.e. to a char, the transformer function needs
+    // to return a char, not (as ::tolower/::toupper does) an int, otherwise
+    // the compiler may complain about loss of integer size in writing the int
+    // to a char (and in fact MSVC was complaining in exactly this way).
 
     bool resolved = false;
     Async::whenAny(p1, p2).then(

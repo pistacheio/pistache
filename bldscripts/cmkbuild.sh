@@ -12,7 +12,9 @@
 # To install (must be run from build directory):
 #   sudo make install
 
-source bldscripts/cmksetdirvars.sh
+MY_SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+source $MY_SCRIPT_DIR/helpers/cmksetdirvars.sh
 
 if [ -e "./${CMAKE_BUILD_DIR}" ]
 then

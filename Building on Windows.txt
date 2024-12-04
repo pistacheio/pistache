@@ -1,0 +1,247 @@
+# SPDX-FileCopyrightText: 2024 Duncan Greatwood
+#
+# SPDX-License-Identifier: Apache-2.0
+
+Building Pistache on Windows
+============================
+
+Pistache has been built and tested on Windows 11, Windows Server 2022
+and Windows Server 2019. It could perhaps be made to work on older
+Windows versions too, though going back before Windows 8 would
+be more difficult due to Windows API changes.
+
+Convenience scripts are provided to configure Pistache to be built
+either with GCC (MinGW-w64) or with Visual Studio. These scripts will
+download and install the needed dependencies on your Windows machine,
+if not already present.
+
+The following instructions assume you are at a PowerShell terminal
+prompt. The terminal prompt can be at the console of the target
+Windows machine, or via a remote SSH session. Just a regular
+PowerShell prompt is needed - you do NOT need to use a preconfigured
+"Developer PowerShell" prompt, and in fact the Pistache configuration
+scripts will configure a Developer prompt for you if required.
+
+To begin - clone, fork or download and expand the zip of Pistache to
+fetch Pistache to your Windows machine:
+  To get Pistache using "git clone":
+    If you don't already have git, but do have winget on your machine:
+      Invoke-WebRequest -Uri "https://git.io/JXGyd" -OutFile "git.inf"
+      winget install Git.Git --override '/SILENT /LOADINF="git.inf"'
+    Or to install git without using winget:
+      $mingit_latest_url=(Invoke-WebRequest -Uri "https://raw.githubusercontent.com/git-for-windows/git-for-windows.github.io/refs/heads/main/latest-64-bit-mingit.url").Content
+      Invoke-WebRequest -Uri "$mingit_latest_url" -Outfile "mingit_latest.zip"
+      Expand-Archive -Path "mingit_latest.zip" -DestinationPath "$env:ProgramFiles/Git"
+      $git_dir = "$env:ProgramFiles/Git"
+      $env:Path="$git_dir\cmd;$git_dir\mingw64\bin;$git_dir\usr\bin;$env:Path"
+    You can configure your newly installed git:
+      git config --global user.email "you@somedomain.com"
+      git config --global user.name "Your Name"
+      etc.
+  Then, once git is installed:
+    git clone https://github.com/pistacheio/pistache.git
+  OR to get Pistache using zip download:
+    Invoke-WebRequest -Uri "https://github.com/pistacheio/pistache/archive/refs/heads/master.zip" -OutFile "pistache.zip"
+    Expand-Archive -Path "pistache.zip" -DestinationPath "pistache"
+    (Or you can download and expand the zip using a web browser in the GUI)
+
+Then configure for either GCC or Visual Studio:
+  cd pistache
+and EITHER:
+  winscripts\msvcsetup.ps1
+OR:
+  winscripts\gccsetup.ps1
+
+Note: You should run msvcsetup.ps1 or gccsetup.ps1 each time you start
+a new PowerShell prompt that you will use for building Pistache.
+
+Then run:
+  winscripts\mesbuild.ps1
+  winscripts\mestest.ps1
+  winscripts\mesinstall.ps1
+
+Pistache is installed to the pistache_distribution subdirectory of the
+"Program Files" directory, most commonly:
+  C:\Program Files\pistache_distribution
+You can link your own executables to Pistache via
+\Program Files\pistache_distribution. Note that you will link your
+executable to an import library (.lib file) and, to run your program,
+you will ensure that your $env:path includes the location of the
+Pistache DLL; Windows then loads the Pistache DLL when your executable
+runs, based on the information provided in the .lib file.
+
+Note also that you do not need to link to or load pistachelog.dll in
+any way. pistachelog.dll's only purpose is to provide a place to keep
+certain strings that are needed when registering the Pistache logging
+manifest with Windows logging (see "Logging" below).
+
+If you prefer not to use msvcsetup.ps1 or gccsetup.ps1, dependencies
+can be installed manually and the environment can be configured
+manually. See the later "Dependencies and Configuration" section
+below.
+
+
+Logging
+=======
+
+In Windows, Pistache uses the ETW ("Event Tracing") system for logging.
+
+For events above level DEBUG, the event is sent to the Windows
+Application channel. This makes events appear in Windows Event
+Viewer. You can see the Pistache events in Event Viewer under Windows
+Logs / Application, looking for Source type Pistache.
+
+DEBUG events (in Pistache debug builds) are sent to the Pistache debug
+channel.
+
+Since DEBUG events are not consumed automatically by EventViewer via the
+Application channel, you will need another event consumer to record the
+events. You can use the Windows utility logman.exe.
+
+To use logman, you can do:
+  logman start -ets Pistache -p "Pistache-Provider" 0 0 -o pistache.etl
+ Then run your program, which you want to log.
+ Once your program is complete, you can do:
+  logman stop Pistache -ets
+This causes the log information to be written out to pistache.etl
+
+You can view the etl file:
+  1/ Use Event Viewer. (In Event Viewer, Action -> Open Saved Log, then
+     choose pistache.etl).
+  2/ Convert the  to XML:
+       tracerpt -y pistache.etl
+       Then view dumpfile.xml in a text editor or XML viewer
+Alternatively, you can have logman generate a CSV file instead of an .etl
+by adding the "-f csv" option to the "logman start..." command.
+
+logman has many other options, do "logman -?" to see the list.
+
+To use logging, you must also:
+ 1/ First, copy pistachelog.dll to the predefined location
+    "$env:ProgramFiles\pistache_distribution\bin"
+ 2/ Install the Pistache manifest file by doing:
+    wevtutil im "pist_winlog.man"
+The Pistache build process will do both 1/ and 2/ automatically upon
+running "meson build" (e.g. when doing winscripts\mesbuild.ps1).
+
+If needed or preferred you can also cause Pistache log messages to be
+written to the console i.e. to "stdout". This is controlled by a
+registry entry:
+  HKCU:\Software\pistacheio\pistache\psLogToStdoutAsWell
+A value of zero means, don't send to stdout; 1 means do send to
+stdout; and 10 means don't send to stdout even if the Pistache binary
+has been preconfigured and built to send every log message to stdout.
+The pistache build process creates the psLogToStdoutAsWell property
+automatically, giving it an initial value of zero. You can change its
+value via the WIndows GUI using the Windows Registry Editor, or at
+PowerShell command line:
+  $psre_path = "HKCU:\Software\pistacheio\pistache"
+  Set-ItemProperty -Path $psre_path -Name "psLogToStdoutAsWell" -Value 1
+Pistache will respond dynamically while a program is running to a
+change in psLogToStdoutAsWell's value, but typically you will set
+psLogToStdoutAsWell's value before you run your program.
+
+Note: To run mesinstall.ps1 or mesinstalldebug.ps1, you will typically
+have to close Windows Event Viewer if it's open. Event Viewer holds
+open the prior pistachelog.dll, preventing it being overwritten by the
+meson install methods.
+
+
+Debug Builds
+============
+
+To create and install a debug version of Pistache, do the following:
+  winscripts\mesbuilddebug.ps1
+  winscripts\mestestdebug.ps1
+  winscripts\mesinstalldebug.ps1
+
+The debug build can generate verbose debug log output if desired.
+
+
+Dependencies and Configuration
+==============================
+
+If installing dependencies by hand, install the following:
+  git
+  Either GCC or Visual Studio, or both
+  Windows Kits (aka Windows SDK)
+  vcpkg
+  pkg-config (aka pkgconf)
+  Ninja (comes automatically with Visual Studio)
+  Python3 (with PIP)
+  meson
+  doxygen
+  googletest
+  howard-hinnant-date
+  libevent
+  curl[openssl]
+  brotli (library)
+  zstd (library)
+
+Add the locations of the above utilities and libraries to
+$env:path. Note that $env:path is used by Windows to look for
+executables, but also to look for the locations of DLLs.
+
+Set $env:PKG_CONFIG_PATH to point to the location(s) of your
+pkg-config information. If you have installed some components using
+vcpkg, you will likely want to include:
+  <vcpkg base directory>\installed\x64-windows\lib\pkgconfig
+in your $env:PKG_CONFIG_PATH.
+
+For GCC builds:
+  $env:CXX="g++"
+  $env:CC="gcc"
+For Visual Studio builds, set:
+  $env:CXX="cl"
+  $env:CC=$env:CXX
+
+Once you have built your executable that links to Pistache, if you
+find that the executable exits silently when you try to run it, it
+probably means that the executable is failing to find a needed DLL on
+$env:path, or it is finding the wrong version of a DLL. Try going to
+the Windows GUI, open Windows Explorer, and double click on your
+executable - when the executable tries and fails to run, Windows may
+show you an error message that tells you what is wrong.
+
+
+Using A Source-Code Debugger
+============================
+
+A debugger such as Visual Studio Code can be used to debug binaries
+linked to a Pistache debug build, locally or remotely.
+
+For Visual Studio Code -
+
+For GCC debug builds, include in your launch.json entry:
+  "type": "cppdbg",
+  "MIMode": "gdb",
+  "miDebuggerPath": "C:\\msys64\\ucrt64\\bin\\gdb.exe",
+  "environment": [
+      {"name": "Path", "value":
+      "C:\\msys64\\ucrt64\\bin;${env:Path};<Pistache Build Directory>\\src;;C:\\vcpkg\\installed\\x64-windows\\bin;C:\\Program Files (x86)\\Windows Kits\\<Windows Version>\\bin\\<Windows SDK Version>\\x64"},
+                 ],
+ (Substituting in your <Pistache Build Directory>, <Windows Version>
+  and <Windows SDK Version>)
+
+For Visual Studio debug builds, include in your launch.json entry:
+  "type": "cppvsdbg",
+  "environment": [
+      {"name": "Path", "value":
+      "C:\\msys64\\ucrt64\\bin;${env:Path};<Pistache Build Directory>\\src;;C:\\vcpkg\\installed\\x64-windows\\bin;C:\\Program Files (x86)\\Windows Kits\\<Windows Version>\\bin\\<Windows SDK Version>\\x64"},
+                 ],
+ (Substituting in your <Pistache Build Directory>, <Windows Version>
+  and <Windows SDK Version>)
+
+You can also use the native debugggers, i.e. the Visual Studio
+debugger for Visual Studio debug builds, and gdb for GCC debug builds
+(note: gccsetup.ps1 configures gdb on the path if not already
+installed).
+
+
+How It Works
+============
+Pistache on Windows works very much as it does on macOS, i.e. by using
+the libevent library to provide the core event loop. Additionally, it
+uses the libevent mechanisms to emulate Linux-style or macOS-style
+edge-triggered events to the extent needed by Pistache, even though
+Windows native events are level-triggered not edge-triggered.

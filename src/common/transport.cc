@@ -14,16 +14,27 @@
 #include <pistache/eventmeth.h>
 
 #ifdef _USE_LIBEVENT_LIKE_APPLE
-// For sendfile(...) function
-#include <sys/types.h>
-#include <sys/uio.h>
 
+#ifdef __NetBSD__
+// For TCP_NODELAY
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <sys/socket.h>
+#else
+#ifndef _IS_WINDOWS
+// There is no TCP_NOPUSH/TCP_CORK in Windows or NetBSD
 #include <netinet/tcp.h> // for TCP_NOPUSH
 #endif
+#endif // of ifdef __NetBSD__ ... else ...
 
-#ifdef __linux__
-#include <sys/sendfile.h>
-#endif
+#endif // of ifdef _USE_LIBEVENT_LIKE_APPLE
+
+// ps_sendfile.h includes sys/uio.h in macOS, and sys/sendfile.h in Linux
+#include <pistache/ps_sendfile.h>
+
+#include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h/lseek in BSD.
+
+#include PIST_QUOTE(PIST_SOCKFNS_HDR) // socket read, write and close
 
 #ifndef _USE_LIBEVENT_LIKE_APPLE
 // Note: sys/timerfd.h is linux-only (and certainly POSIX only)
@@ -37,6 +48,12 @@
 #include <pistache/utils.h>
 
 using std::to_string;
+
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+#if defined(__NetBSD__) || defined(_IS_WINDOWS)
+#define PS_USE_TCP_NODELAY 1
+#endif
+#endif
 
 namespace Pistache::Tcp
 {
@@ -101,7 +118,7 @@ namespace Pistache::Tcp
         PS_TIMEDBG_START_THIS;
 
 #ifdef _USE_LIBEVENT
-        epoll_fd = NULL;
+        epoll_fd = nullptr;
 #endif
 
         notifier.unbind(poller);
@@ -114,20 +131,29 @@ namespace Pistache::Tcp
     {
         auto ctx                   = context();
         const bool isInRightThread = std::this_thread::get_id() == ctx.thread();
+
         if (!isInRightThread)
         {
+            PS_LOG_DEBUG("Pushing to peersQueue");
+
             PeerEntry entry(peer);
             peersQueue.push(std::move(entry));
         }
         else
         {
+            PS_LOG_DEBUG("Not pushing to peersQueue, handling directly");
             handlePeer(peer);
         }
+
+        Guard guard(toWriteLock);
         Fd fd = peer->fd();
+        if (fd == PS_FD_EMPTY)
         {
-            Guard guard(toWriteLock);
-            toWrite.emplace(fd, std::deque<WriteEntry> {});
+            PS_LOG_DEBUG("Empty Fd");
+            return;
         }
+
+        toWrite.emplace(fd, std::deque<WriteEntry> {});
     }
 
 #ifdef DEBUG
@@ -139,11 +165,11 @@ namespace Pistache::Tcp
         std::string str("fd ");
 
         std::stringstream ss;
-        ss << ((Fd)entry.getTag().value());
+        ss << (PS_NUM_CAST_TO_FD(entry.getTag().value()));
         str += ss.str();
 #endif
 
-        const char* flag_str = NULL;
+        const char* flag_str = nullptr;
 
         if (entry.isReadable())
             flag_str = " readable";
@@ -196,7 +222,7 @@ namespace Pistache::Tcp
             {
                 auto tag = entry.getTag();
                 PS_LOG_DEBUG_ARGS("entry isReadable fd %" PIST_QUOTE(PS_FD_PRNTFCD),
-                                  ((Fd)tag.value()));
+                                  tag.value()); // TagValue type := Fd
 
                 if (isPeerFd(tag))
                 {
@@ -230,7 +256,7 @@ namespace Pistache::Tcp
                 FdConst fdconst = static_cast<FdConst>(tag.value());
                 // Since fd is about to be written to, it isn't really const,
                 // and we cast away the const
-                Fd fd = ((Fd)fdconst);
+                Fd fd = PS_CAST_AWAY_CONST_FD(fdconst);
 
                 {
                     Guard guard(toWriteLock);
@@ -265,39 +291,53 @@ namespace Pistache::Tcp
 
     void Transport::handleIncoming(const std::shared_ptr<Peer>& peer)
     {
+        if (!peer)
+        {
+            PS_LOG_DEBUG("Null peer");
+            return;
+        }
+
         char buffer[Const::MaxBuffer] = { 0 };
 
-        ssize_t totalBytes = 0;
-        int fdactual       = GET_ACTUAL_FD(peer->fd());
+        PST_SSIZE_T totalBytes = 0;
+        em_socket_t fdactual   = peer->actualFd();
+        if (fdactual < 0)
+        {
+            PS_LOG_DEBUG_ARGS("Peer %p has no actual Fd", peer.get());
+            return;
+        }
 
         for (;;)
         {
 
-            ssize_t bytes;
+            PST_SSIZE_T bytes;
 
 #ifdef PISTACHE_USE_SSL
-            if (peer->ssl() != NULL)
+            if (peer->ssl() != nullptr)
             {
                 PS_LOG_DEBUG("SSL_read");
 
-                bytes = SSL_read((SSL*)peer->ssl(), buffer + totalBytes,
+                bytes = SSL_read(reinterpret_cast<SSL*>(peer->ssl()),
+                                 buffer + totalBytes,
                                  static_cast<int>(Const::MaxBuffer - totalBytes));
             }
             else
             {
 #endif /* PISTACHE_USE_SSL */
                 PS_LOG_DEBUG("recv (read)");
-                bytes = recv(fdactual, buffer + totalBytes, Const::MaxBuffer - totalBytes, 0);
+                bytes = PST_SOCK_READ(fdactual, buffer + totalBytes,
+                                      Const::MaxBuffer - totalBytes);
 #ifdef PISTACHE_USE_SSL
             }
 #endif /* PISTACHE_USE_SSL */
 
+            PST_DBG_DECL_SE_ERR_P_EXTRA;
             PS_LOG_DEBUG_ARGS("Fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", "
                                                                "bytes read %d, totalBytes %d, "
                                                                "err %d %s",
                               peer->fd(), bytes, totalBytes,
                               (bytes < 0) ? errno : 0,
-                              (bytes < 0) ? strerror(errno) : "");
+                              (bytes < 0) ? (PST_STRERROR_R_ERRNO) : "");
 
             if (bytes == -1)
             {
@@ -337,7 +377,11 @@ namespace Pistache::Tcp
     void Transport::removePeer(const std::shared_ptr<Peer>& peer)
     {
         Fd fd = peer->fd();
-
+        if (fd == PS_FD_EMPTY)
+        {
+            PS_LOG_DEBUG("Empty Fd");
+            return;
+        }
         {
             // See comment in transport.h on why peers_ must be mutex-protected
             std::lock_guard<std::mutex> l_guard(peers_mutex_);
@@ -353,12 +397,6 @@ namespace Pistache::Tcp
             }
         }
 
-        {
-            // Clean up buffers
-            Guard guard(toWriteLock);
-            toWrite.erase(fd);
-        }
-
         // Don't rely on close deleting this FD from the epoll "interest" list.
         // This is needed in case the FD has been shared with another process.
         // Sharing should no longer happen by accident as SOCK_CLOEXEC is now set on
@@ -372,10 +410,24 @@ namespace Pistache::Tcp
         peer->closeFd();
     }
 
+    void Transport::closeFd(Fd fd)
+    {
+        if (fd == PS_FD_EMPTY)
+        {
+            PS_LOG_DEBUG("Trying to close empty Fd");
+            return;
+        }
+
+        Guard guard(toWriteLock);
+        toWrite.erase(fd); // Clean up write buffers
+
+        CLOSE_FD(fd);
+    }
+
     void Transport::removeAllPeers()
     {
         PS_TIMEDBG_START_THIS;
-        
+
         for (;;)
         {
             std::shared_ptr<Peer> peer;
@@ -395,7 +447,7 @@ namespace Pistache::Tcp
                 }
             }
 
-            removePeer(peer);// removePeer locks mutex, erases peer from peers_
+            removePeer(peer); // removePeer locks mutex, erases peer from peers_
         }
     }
 
@@ -428,8 +480,8 @@ namespace Pistache::Tcp
 #ifdef _USE_LIBEVENT_LIKE_APPLE
             bool msg_more_style = entry.msg_more_style;
 #endif
-            BufferHolder& buffer              = entry.buffer;
-            Async::Deferred<ssize_t> deferred = std::move(entry.deferred);
+            BufferHolder& buffer                  = entry.buffer;
+            Async::Deferred<PST_SSIZE_T> deferred = std::move(entry.deferred);
 
             auto cleanUp = [&]() {
                 wq.pop_front();
@@ -446,8 +498,8 @@ namespace Pistache::Tcp
             size_t totalWritten = buffer.offset();
             for (;;)
             {
-                ssize_t bytesWritten = 0;
-                auto len             = buffer.size() - totalWritten;
+                PST_SSIZE_T bytesWritten = 0;
+                auto len                 = buffer.size() - totalWritten;
 
                 if (buffer.isRaw())
                 {
@@ -469,17 +521,18 @@ namespace Pistache::Tcp
                                       fd, len);
 
                     auto file    = buffer.fd();
-                    off_t offset = totalWritten;
+                    off_t offset = static_cast<off_t>(totalWritten);
                     bytesWritten = sendFile(fd, file, offset, len);
                 }
                 if (bytesWritten < 0)
                 {
+                    PST_DBG_DECL_SE_ERR_P_EXTRA;
                     PS_LOG_DEBUG_ARGS("fd %" PIST_QUOTE(PS_FD_PRNTFCD) " errno %d %s",
-                                      fd, errno, strerror(errno));
+                                      fd, errno, PST_STRERROR_R_ERRNO);
 
                     if (errno == EAGAIN || errno == EWOULDBLOCK)
                     {
-                        auto bufferHolder = buffer.detach(totalWritten);
+                        auto bufferHolder = buffer.detach(static_cast<off_t>(totalWritten));
 
                         // pop_front kills buffer - so we cannot continue loop or use buffer
                         // after this point
@@ -526,14 +579,14 @@ namespace Pistache::Tcp
                             // done with the file buffer, nothing else knows
                             // whether to close it with the way the code is
                             // written.
-                            ::close(buffer.fd());
+                            PST_FILE_CLOSE(buffer.fd());
                         }
 
                         cleanUp();
 
                         // Cast to match the type of defered template
                         // to avoid a BadType exception
-                        deferred.resolve(static_cast<ssize_t>(totalWritten));
+                        deferred.resolve(static_cast<PST_SSIZE_T>(totalWritten));
                         break;
                     }
                 }
@@ -544,15 +597,30 @@ namespace Pistache::Tcp
 #ifdef _USE_LIBEVENT_LIKE_APPLE
     void Transport::configureMsgMoreStyle(Fd fd, bool msg_more_style)
     {
+        // PS_USE_TCP_NODELAY defined (or not) at top of file
+
         int tcp_no_push  = 0;
         socklen_t len    = sizeof(tcp_no_push);
-        int sock_opt_res = getsockopt(GET_ACTUAL_FD(fd), tcp_prot_num_,
-#ifdef __APPLE__
-                                      TCP_NOPUSH,
+        int sock_opt_res = -1;
+
+#ifdef PS_USE_TCP_NODELAY
+        { // encapsulate
+            PST_SOCK_OPT_VAL_T tcp_nodelay = 0;
+            sock_opt_res                   = getsockopt(GET_ACTUAL_FD(fd), tcp_prot_num_,
+                                                        TCP_NODELAY, &tcp_nodelay, &len);
+            if (sock_opt_res == 0)
+                tcp_no_push = !tcp_nodelay;
+        }
 #else
-                                      TCP_CORK,
+        sock_opt_res = getsockopt(GET_ACTUAL_FD(fd), tcp_prot_num_,
+#if defined __APPLE__ || defined _IS_BSD
+                                  TCP_NOPUSH,
+#else
+                                  TCP_CORK,
 #endif
-                                      &tcp_no_push, &len);
+                                  &tcp_no_push, &len);
+#endif // of if defined(__NetBSD__) || defined(_IS_WINDOWS) ... else
+
         if (sock_opt_res == 0)
         {
             if (((tcp_no_push == 0) && (msg_more_style)) || ((tcp_no_push != 0) && (!msg_more_style)))
@@ -560,14 +628,28 @@ namespace Pistache::Tcp
                 PS_LOG_DEBUG_ARGS("Setting MSG_MORE style to %s",
                                   (msg_more_style) ? "on" : "off");
 
-                tcp_no_push  = msg_more_style ? 1 : 0;
+                PST_SOCK_OPT_VAL_T optval =
+#ifdef PS_USE_TCP_NODELAY
+                    // In NetBSD case we're getting/setting (or resetting) the
+                    // TCP_NODELAY socket option, which _stops_ data being held
+                    // prior to send, whereas in Linux, macOS, FreeBSD or
+                    // OpenBSD we're using TCP_CORK/TCP_NOPUSH which may
+                    // _cause_ data to be held prior to send. I.e. they're
+                    // opposites.
+                    msg_more_style ? 0 : 1;
+#else
+                    msg_more_style ? 1 : 0;
+#endif
+
                 sock_opt_res = setsockopt(GET_ACTUAL_FD(fd), tcp_prot_num_,
-#ifdef __APPLE__
+#ifdef PS_USE_TCP_NODELAY
+                                          TCP_NODELAY,
+#elif defined __APPLE__ || defined _IS_BSD
                                           TCP_NOPUSH,
 #else
-                                          TCP_CORK,
+                                              TCP_CORK,
 #endif
-                                          &tcp_no_push, len);
+                                          &optval, len);
                 if (sock_opt_res < 0)
                     throw std::runtime_error("setsockopt failed");
             }
@@ -575,30 +657,32 @@ namespace Pistache::Tcp
             else
             {
                 PS_LOG_DEBUG_ARGS("MSG_MORE style is already %s",
-                                  (tcp_no_push) ? "on" : "off");
+                                  (msg_more_style ? 1 : 0) ? "on" : "off");
             }
 #endif
         }
-#ifdef DEBUG
         else
         {
-            PS_LOG_DEBUG_ARGS("getsockopt failed for fd %p, actual fd %d",
-                              fd, GET_ACTUAL_FD(fd));
+            PST_DBG_DECL_SE_ERR_P_EXTRA;
+            PS_LOG_DEBUG_ARGS("getsockopt failed for fd %p, actual fd %d, "
+                              "errno %d, err %s",
+                              fd, GET_ACTUAL_FD(fd), errno,
+                              PST_STRERROR_R_ERRNO);
+
             throw std::runtime_error("getsockopt failed");
         }
-#endif
     }
 #endif // of ifdef _USE_LIBEVENT_LIKE_APPLE
 
-    ssize_t Transport::sendRawBuffer(Fd fd, const char* buffer, size_t len,
-                                     int flags
+    PST_SSIZE_T Transport::sendRawBuffer(Fd fd, const char* buffer, size_t len,
+                                         int flags
 #ifdef _USE_LIBEVENT_LIKE_APPLE
-                                     ,
-                                     bool msg_more_style
+                                         ,
+                                         bool msg_more_style
 #endif
     )
     {
-        ssize_t bytesWritten = 0;
+        PST_SSIZE_T bytesWritten = 0;
 
 #ifdef PISTACHE_USE_SSL
         bool it_second_ssl_is_null = false;
@@ -613,12 +697,12 @@ namespace Pistache::Tcp
                 throw std::runtime_error(
                     "No peer found for fd: " + to_string(fd));
 
-            it_second_ssl_is_null = (it_->second->ssl() == NULL);
+            it_second_ssl_is_null = (it_->second->ssl() == nullptr);
 
             if (!it_second_ssl_is_null)
             {
                 auto ssl_ = static_cast<SSL*>(it_->second->ssl());
-                PS_LOG_DEBUG_ARGS("SSL_write, len %d", (int)len);
+                PS_LOG_DEBUG_ARGS("SSL_write, len %d", static_cast<int>(len));
 
                 bytesWritten = SSL_write(ssl_, buffer, static_cast<int>(len));
             }
@@ -627,19 +711,51 @@ namespace Pistache::Tcp
         if (it_second_ssl_is_null)
         {
 #endif /* PISTACHE_USE_SSL */
-            // MSG_NOSIGNAL is used to prevent SIGPIPE on client connection termination
 
+#ifdef PS_USE_TCP_NODELAY
+            // Note re: TCP_NODELAY. Per the Linux tcp man page, "setting this
+            // option forces an explicit flush of pending output". However, we
+            // don't want the waiting content to be sent until after the
+            // _current_ send, which can then be included in the data being
+            // flushed; i.e. we want to send any already-pending output, plus
+            // the new output we're adding here with "send", in one go.
+            // Accordingly, when TCP_NODELAY is used, if we are turning
+            // TCP_NODELAY to OFF (i.e. msg_more_style is true), we want to do
+            // so _before_ calling send; but if we are turning it ON, we want
+            // to do so _after_ calling send.
+            if (msg_more_style)
+#endif
 #ifdef _USE_LIBEVENT_LIKE_APPLE
-            configureMsgMoreStyle(fd, msg_more_style);
+                configureMsgMoreStyle(fd, msg_more_style);
 #endif
 
             PS_LOG_DEBUG_ARGS("::send, fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", actual_fd %d, len %d",
-                              fd, GET_ACTUAL_FD(fd), (int)len);
+                              fd, GET_ACTUAL_FD(fd), static_cast<int>(len));
 
-            bytesWritten = ::send(GET_ACTUAL_FD(fd), buffer, len,
-                                  flags | MSG_NOSIGNAL);
+            bytesWritten =
+#ifdef _IS_WINDOWS
+                // Comparing with PST_SOCK_SEND below, there's no SIGPIPE in
+                // Windows and MSG_NOSIGNAL is not defined in Windows
+                PST_SOCK_SEND(GET_ACTUAL_FD(fd), buffer, len, flags);
+#else
+            PST_SOCK_SEND(GET_ACTUAL_FD(fd), buffer, len,
+                          flags | MSG_NOSIGNAL);
+        // MSG_NOSIGNAL is used to prevent SIGPIPE on client connection
+        // termination
+#endif
+#ifdef _USE_LIBEVENT_LIKE_APPLE
+            PS_LOG_DEBUG_ARGS("bytesWritten = %d, msg_more_style = %s",
+                              bytesWritten, msg_more_style ? "on" : "off");
+#else
+        PS_LOG_DEBUG_ARGS("bytesWritten = %d", bytesWritten);
+#endif
 
-            PS_LOG_DEBUG_ARGS("bytesWritten = %d", bytesWritten);
+#ifdef PS_USE_TCP_NODELAY
+            // See comment above on why configureMsgMoreStyle is done after
+            // "send" in TCP_NODELAY case.
+            if (!msg_more_style)
+                configureMsgMoreStyle(fd, msg_more_style);
+#endif
 
 #ifdef PISTACHE_USE_SSL
         }
@@ -648,9 +764,15 @@ namespace Pistache::Tcp
         return bytesWritten;
     }
 
-    ssize_t Transport::sendFile(Fd fd, int file, off_t offset, size_t len)
+#ifdef _IS_BSD
+#define SENDFILE my_sendfile
+#else
+#define SENDFILE ::sendfile
+#endif // ifdef _IS_BSD
+
+    PST_SSIZE_T Transport::sendFile(Fd fd, int file, off_t offset, size_t len)
     {
-        ssize_t bytesWritten = 0;
+        PST_SSIZE_T bytesWritten = 0;
 
 #ifdef PISTACHE_USE_SSL
         bool it_second_ssl_is_null = false;
@@ -669,7 +791,7 @@ namespace Pistache::Tcp
                 throw std::runtime_error(
                     "No peer found for fd: " + to_string(fd));
             }
-            it_second_ssl_is_null = (it_->second->ssl() == NULL);
+            it_second_ssl_is_null = (it_->second->ssl() == nullptr);
 
             if (!it_second_ssl_is_null)
             {
@@ -683,13 +805,21 @@ namespace Pistache::Tcp
         if (it_second_ssl_is_null)
         {
 #endif /* PISTACHE_USE_SSL */
-            PS_LOG_DEBUG_ARGS("::sendfile fd %" PIST_QUOTE(PS_FD_PRNTFCD) " actual-fd %d, file fd, len %d",
-                              fd, GET_ACTUAL_FD(fd), file, len);
 
-#ifdef _USE_LIBEVENT_LIKE_APPLE
-            // !!!! Should we do configureMsgMoreStyle for SLL as well? And
-            // same question in sendRawBuffer
+#ifdef DEBUG
+            const char* sendfile_fn_name = PIST_QUOTE(PS_SENDFILE);
+#endif
+            PS_LOG_DEBUG_ARGS(
+                "%s fd %" PIST_QUOTE(PS_FD_PRNTFCD) " actual-fd %d, file fd %d, len %d", sendfile_fn_name,
+                fd, GET_ACTUAL_FD(fd), file, len);
+
+#if defined(_USE_LIBEVENT_LIKE_APPLE) && !defined(PS_USE_TCP_NODELAY)
+            // See prior comment on why configureMsgMoreStyle is done after
+            // "send" in TCP_NODELAY case.
             configureMsgMoreStyle(fd, false /*msg_more_style*/);
+
+            // !!!! Should we do configureMsgMoreStyle for SSL as well? And
+            // same question in sendRawBuffer
 #endif
 
 #ifdef __APPLE__
@@ -704,14 +834,14 @@ namespace Pistache::Tcp
             // experimentation it appears sendfile does not advance the file
             // position of "file", which is the same as the behavior described
             // in Linux sendfile man page
-            int sendfile_res = ::sendfile(file, GET_ACTUAL_FD(fd),
-                                          offset, &len_as_off_t,
-                                          NULL, // no new prefix/suffix content
-                                          0 /*reserved, must be zero*/);
+            int sendfile_res = PS_SENDFILE(file, GET_ACTUAL_FD(fd),
+                                       offset, &len_as_off_t,
+                                       nullptr, // no new prefix/suffix content
+                                       0 /*reserved, must be zero*/);
 
             if (sendfile_res == 0)
             {
-                bytesWritten = (ssize_t)len_as_off_t;
+                bytesWritten = (PST_SSIZE_T)len_as_off_t;
                 offset += len_as_off_t; // to match what Linux sendfile does
             }
             else
@@ -720,10 +850,17 @@ namespace Pistache::Tcp
             }
 
 #else
-        bytesWritten = ::sendfile(GET_ACTUAL_FD(fd), file, &offset, len);
+        bytesWritten = PS_SENDFILE(GET_ACTUAL_FD(fd), file, &offset, len);
+#endif
+#ifdef PS_USE_TCP_NODELAY
+            // See prior comment on why configureMsgMoreStyle is done after
+            // "send" in TCP_NODELAY case.
+            configureMsgMoreStyle(fd, false /*msg_more_style*/);
 #endif
 
-            PS_LOG_DEBUG_ARGS("::sendfile fd %" PIST_QUOTE(PS_FD_PRNTFCD) " , bytesWritten %d", fd, bytesWritten);
+            PS_LOG_DEBUG_ARGS(
+                "%s fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", bytesWritten %d",
+                sendfile_fn_name, fd, bytesWritten);
 
 #ifdef PISTACHE_USE_SSL
         }
@@ -808,8 +945,9 @@ namespace Pistache::Tcp
 #endif
         if (res == -1)
         {
-            PS_LOG_DEBUG_ARGS("Fd %" PIST_QUOTE(PS_FD_PRNTFCD) ",  ernno %d %s",
-                              entry.fd, errno, strerror(errno));
+            PST_DBG_DECL_SE_ERR_P_EXTRA;
+            PS_LOG_DEBUG_ARGS("Fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", ernno %d %s",
+                              entry.fd, errno, PST_STRERROR_R_ERRNO);
 
             entry.deferred.reject(Pistache::Error::system("Could not set timer time"));
             return;
@@ -832,6 +970,8 @@ namespace Pistache::Tcp
                 break;
 
             auto fd = write->peerFd;
+            if (fd == PS_FD_EMPTY)
+                continue;
             if (!isPeerFd(fd))
                 continue;
 
@@ -882,6 +1022,11 @@ namespace Pistache::Tcp
         PS_TIMEDBG_START_THIS;
 
         Fd fd = peer->fd();
+        if (fd == PS_FD_EMPTY)
+        {
+            PS_LOG_DEBUG("Empty Fd");
+            return;
+        }
 
         {
             // See comment in transport.h on why peers_ must be mutex-protected
@@ -906,12 +1051,13 @@ namespace Pistache::Tcp
         while (this->notifier.tryRead())
             ;
 
-        rusage now;
+        PST_RUSAGE now;
 
-        auto res = getrusage(
+        auto res = PST_GETRUSAGE(
 #ifdef _USE_LIBEVENT_LIKE_APPLE
-            RUSAGE_SELF, // usage for whole process, not just current thread
-                         // (macOS getrusage doesn't support RUSAGE_THREAD)
+            PST_RUSAGE_SELF, // usage for whole process, not just current
+                             // thread (macOS getrusage doesn't support
+                             // RUSAGE_THREAD)
 #else
             RUSAGE_THREAD,
 #endif
@@ -959,11 +1105,7 @@ namespace Pistache::Tcp
     {
         PS_TIMEDBG_START_THIS;
 
-        // Cast away const so we can lock the mutex. Nonetheless, this function
-        // overall locks then unlocks the mutex, leaving it unchanged
-        Transport* non_const_this = (Transport*)this;
-
-        std::lock_guard<std::mutex> l_guard(non_const_this->peers_mutex_);
+        std::lock_guard<std::mutex> l_guard(peers_mutex_);
         return (isPeerFdNoPeersMutexLock(fdconst));
     }
 
@@ -973,7 +1115,7 @@ namespace Pistache::Tcp
         PS_TIMEDBG_START_THIS;
 
         // Can cast away const since we're not actually going to change fd
-        Fd fd = ((Fd)fdconst);
+        Fd fd = PS_CAST_AWAY_CONST_FD(fdconst);
 
         return peers_.find(fd) != std::end(peers_);
     }
@@ -983,7 +1125,7 @@ namespace Pistache::Tcp
         PS_TIMEDBG_START_THIS;
 
         // Can cast away const since we're not actually going to change fd
-        Fd fd    = ((Fd)fdconst);
+        Fd fd    = PS_CAST_AWAY_CONST_FD(fdconst);
         bool res = (timers.find(fd) != std::end(timers));
 
         PS_LOG_DEBUG_ARGS("Fd %" PIST_QUOTE(PS_FD_PRNTFCD) " %s in timers",
@@ -1007,7 +1149,7 @@ namespace Pistache::Tcp
         PS_TIMEDBG_START_THIS;
 
         // Can cast away const since we're not actually going to change fd
-        Fd fd = ((Fd)fdconst);
+        Fd fd = PS_CAST_AWAY_CONST_FD(fdconst);
 
         // See comment in transport.h on why peers_ must be mutex-protected
         std::lock_guard<std::mutex> l_guard(peers_mutex_);

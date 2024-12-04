@@ -21,8 +21,8 @@ fs = import('fs')
 
 #macOS host_machine.system() is 'darwin'
 
-if host_machine.system() != 'linux' and host_machine.system() != 'darwin'
-	error('Pistache currenly only supports Linux and macOS. See https://github.com/pistacheio/pistache/issues/6#issuecomment-242398225 for more information')
+if host_machine.system() != 'linux' and host_machine.system() != 'darwin' and host_machine.system() != 'windows' and not host_machine.system().endswith('bsd')
+	error('Pistache currenly only supports Linux, macOS, Free/Open/NetBSD and Windows.')
 endif
 
 compiler = meson.get_compiler('cpp')
@@ -39,6 +39,7 @@ endif
 deps_libpistache = [
 	dependency('threads')
 ]
+public_deps = []
 
 #Check if compiler supports C++20 date
 
@@ -75,24 +76,55 @@ endif
 if get_option('PISTACHE_USE_RAPIDJSON')
 	rapidjson_dep = dependency('RapidJSON', fallback: ['rapidjson', 'rapidjson_dep'])
 	deps_libpistache += rapidjson_dep
+	public_deps += rapidjson_dep
+endif
+
+# Support Zstd compressed Content-Encoding responses...
+if get_option('PISTACHE_USE_CONTENT_ENCODING_ZSTD')
+
+  #Need Zstd encoder for library...
+  zstd_dep = dependency('libzstd')
+  deps_libpistache += zstd_dep
+  public_deps += zstd_dep
 endif
 
 # Support Brotli compressed Content-Encoding responses...
 if get_option('PISTACHE_USE_CONTENT_ENCODING_BROTLI')
 
-    # Need Brotli encoder for library...
-    brotli = dependency('libbrotlienc')
-    deps_libpistache += brotli
-
+	# Need Brotli encoder for library...
+	brotli_dep = dependency('libbrotlienc')
+	deps_libpistache += brotli_dep
+	public_deps += brotli_dep
 endif
 
 # Support deflate compressed Content-Encoding responses...
 if get_option('PISTACHE_USE_CONTENT_ENCODING_DEFLATE')
 
-    # Need zlib...
-    zlib = dependency('zlib')
-    deps_libpistache += zlib
+	# Need zlib...
+	zlib_dep = dependency('zlib')
+	deps_libpistache += zlib_dep
+	public_deps += zlib_dep
+endif
 
+if host_machine.system() == 'windows'
+    # We have to use find_library unless the library is one of the
+    # special ones documented here:
+    # https://mesonbuild.com/Dependencies.html#dependencies-with-custom-lookup-functionality
+    # If the library is one of the "special ones", we can simply do
+    # deps_libpistache += <library-name> as we do for zlib above for
+    # instance
+
+    ws2_32_dep = compiler.find_library('Ws2_32', required: true)
+    deps_libpistache += ws2_32_dep
+
+    dbghelp_dep = compiler.find_library('dbghelp', required: true)
+    deps_libpistache += dbghelp_dep # for __unDName
+
+    iphlpapi_dep = compiler.find_library('Iphlpapi', required: true)
+    deps_libpistache += iphlpapi_dep # for GetAdaptersAddresses
+
+    mswsock_dep = compiler.find_library('Mswsock', required: true)
+    deps_libpistache += mswsock_dep # for TransmitFile
 endif
 
 # Check if -latomic is needed - https://github.com/llvm/llvm-project/blob/main/llvm/cmake/modules/CheckAtomic.cmake
@@ -147,12 +179,53 @@ if compiler_id == 'gcc' and compiler.version().version_compare('<9.1') or compil
 endif
 
 if get_option('PISTACHE_USE_SSL')
-	deps_libpistache += dependency('openssl')
+	openssl_dep = dependency('openssl')
+	deps_libpistache += openssl_dep
+	public_deps += openssl_dep
 endif
 
-if host_machine.system() == 'darwin' or get_option('PISTACHE_FORCE_LIBEVENT')
+if host_machine.system() == 'darwin' or host_machine.system() == 'windows' or host_machine.system().endswith('bsd') or get_option('PISTACHE_FORCE_LIBEVENT')
 	deps_libpistache += dependency('libevent')
-        deps_libpistache += dependency('libevent_pthreads')
+        if (not (host_machine.system() == 'windows'))
+                # It looks like libevent assumes windows threads in
+                # windows, at least by default, and libevent_pthreads
+                # is not built on windows
+                deps_libpistache += dependency('libevent_pthreads')
+        endif
+endif
+
+if host_machine.system().endswith('bsd')
+        # libexecinfo is included for the 'backtrace' function
+        libexecinfo_dep = compiler.find_library('execinfo')
+
+        deps_libpistache += libexecinfo_dep
+endif
+
+if host_machine.system() != 'windows'
+        # libdl may be required for function dladdr, used in logStackTrace,
+        # which is called by PS_LogWoBreak, used in turn by the stack-trace
+        # logging macro PS_LOG_WO_BREAK_LIMITED and its derivatives. Issue
+        # #1230.
+        # Note: If 'dl' is not available, per Meson it suggests that the
+        # functionality is provided by libc
+
+        # It would be nice to use compiler.has_function('dladdr') to test if
+        # we need to add libdl, but unfortunately that approach seems to break
+        # certain Redhat builds, specifically the Redhat builds that use
+        # ubi-8. In such cases, it appears meson creates a test file that
+        # includes the comment:
+        #   With some toolchains ... the compiler provides various builtins
+        #   which are not really implemented... [If] the user provides a
+        #   header, including the header didn't lead to the function being
+        #   defined, and the function we are checking isn't a builtin itself,
+        #   we assume the builtin is not functional and error out
+        # To avoid generating such an error, we take the simpler approach of
+        # trying to add libdl but making it optional (i.e. not required).
+        if meson.version().version_compare('>=0.62.0')
+          deps_libpistache += dependency('dl', required: false)
+        else
+          deps_libpistache += compiler.find_library('dl', required: false)
+        endif
 endif
 
 version_array = []

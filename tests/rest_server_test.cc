@@ -16,6 +16,10 @@
 #include <chrono>
 #include <thread>
 
+#ifdef _WIN32
+#include <versionhelpers.h> // used for choosing certain timeouts
+#endif
+
 using namespace std;
 using namespace Pistache;
 
@@ -110,10 +114,24 @@ TEST(rest_server_test, basic_test)
     {
         ASSERT_EQ(res->body, "ip6-localhost"); // count the passing test.
     }
-    else
+    else if (res->body == "localhost")
     {
         ASSERT_EQ(res->body, "localhost");
     }
+    else
+    {
+        const unsigned int my_max_hostname_len = 1024;
+        
+        // NetBSD showed this case, when hostname was not "localhost"
+        char name[my_max_hostname_len + 6];
+        name[0] = 0;
+
+        int ghn_res = gethostname(&(name[0]), my_max_hostname_len+2);
+        ASSERT_EQ(ghn_res, 0);
+
+        ASSERT_EQ(res->body, &(name[0]));
+    }
+    
     stats.shutdown();
 }
 
@@ -243,15 +261,62 @@ TEST(rest_server_test, keepalive_multithread_client_request)
             std::this_thread::sleep_for(KEEPALIVE_TIMEOUT + std::chrono::milliseconds(700));
         }));
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(700));
-    auto peer = stats.getAllPeer();
-    EXPECT_EQ(peer.size(), THR_NUMBER);
+    // @Sept/2024. Based on behavior seen in Windows 11, changed this timeout
+    // from 700ms to 3500ms.
+    //
+    // The longer timeout is required due to the behavior of httplib.h
+    // client.Get. In overview, httplib.h loops through the client addr it
+    // finds, issuing a "connect" for each addr in series. Following each
+    // "connect", it calls wait_until_socket_is_ready, which uses "select" with
+    // a 300ms timeout to get a result for the connect. Now, suppose there
+    // were 10 addr that failed select based on the timeout, it would take
+    // 3000ms until finally connect was issued on the addr that works.
+    //
+    // On the server side, the peer cannot be created until the "connect" is
+    // received. So if the sleep_for below were 700ms, there would still be
+    // zero server-side peers once the sleep_for completes, causing:
+    //   EXPECT_EQ(peer.size(), THR_NUMBER)
+    // to fail below.
+    //
+    // In practice, we saw ~2200ms delay before the socket connected
+    // successfully - Windows 11 running in a VM. So in Windows, this test
+    // would fail with a 700ms sleep_for, but succeed with 3500ms.
+    //
+    // Conversely, for macOS if we use 3500ms then the test fails - presumably,
+    // the connect happens so fast that not only has the connect happened but
+    // also the clients connections have timed out and the peers at the server
+    // have all closed again before the EXPECT_EQ(peer.size(), THR_NUMBER) test
+    // below executes.
+    //
+    // Experimentation with Windows 2019 server (using Visual Studio
+    // 2019), indicates further variability in the correct sleep time ahead of
+    // testing that peer.size() equals THR_NUMBER.
+    // In Debug build, it works with sleep times between 3000 and 3750ms.
+    // In Release build, it works with sleep times between 1063 and 3063.
+    //
+    // Given this level of variability in the time taken to connect the peers,
+    // we make the sleep time dynamic, checking every 700ms to see if the peers
+    // have successfully connected.
+
+    size_t max_peers_seen = 0;
+    for(unsigned int i=0; i<8; i++)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(700));
+        auto peer = stats.getAllPeer();
+        if (peer.size() > max_peers_seen)
+        {
+            max_peers_seen = peer.size();
+            if (max_peers_seen >= THR_NUMBER)
+                break;
+        }
+    }
+    EXPECT_EQ(max_peers_seen, THR_NUMBER);
 
     for (auto it = threads.begin(); it != threads.end(); ++it)
     {
         it->join();
     }
-    peer = stats.getAllPeer();
+    auto peer = stats.getAllPeer();
     EXPECT_EQ(peer.size(), 0ul);
 
     stats.shutdown();

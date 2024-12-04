@@ -45,11 +45,17 @@ void dumpData(const Rest::Request& /*req*/, Http::ResponseWriter response)
 
     for (size_t j = 0; j < N_WORKERS; ++j)
     {
-        workers.emplace_back([&jobCounter, &cv, &jobLock, &jobs]() {
+        // the ["="...] tells the compiler to capture-by-copy (i.e. by value)
+        // by default, and then specifies the exceptions (jobCounter etc.) that
+        // are to be captured by reference. Even though JOB_LIMIT is a
+        // constexpr, MSVC 2019 requires that the default capture method be
+        // provided when implicitly passing JOB_LIMIT to lambda function by
+        // copy/value
+        workers.emplace_back([=, &jobCounter, &cv, &jobLock, &jobs]() {
             while (jobCounter < JOB_LIMIT)
             {
                 std::unique_lock<Lock> l(jobLock);
-                cv.wait(l, [&jobCounter, &jobs] {
+                cv.wait(l, [=, &jobCounter, &jobs] {
                     return !jobs.empty() || !(jobCounter < JOB_LIMIT);
                 });
                 if (!jobs.empty())
@@ -72,8 +78,8 @@ void dumpData(const Rest::Request& /*req*/, Http::ResponseWriter response)
     for (size_t s = 0; s < SET_REPEATS; ++s)
     {
         for (size_t i = 0; i < N_LETTERS; ++i)
-        {
-            auto job = [&stream, &responseLock, i]() -> void {
+        {   // Re: '=', see prior comment about capture of const/constexpr
+            auto job = [=, &stream, &responseLock]() -> void {
                 constexpr size_t nchunks    = 10;
                 constexpr size_t chunk_size = LETTER_REPEATS / nchunks;
                 const std::string payload(chunk_size, static_cast<char>(letter + i));
@@ -251,7 +257,7 @@ TEST_F(StreamingTests, ChunkedStream)
     PS_TIMEDBG_START;
 
     { // encapsulate
-    
+
     SyncContext ctx;
 
     // force unbuffered
@@ -322,7 +328,7 @@ TEST(StreamingTest, ClientDisconnect)
     DBG_LOG_ALL_EMEVENTS;
 
     { // encapsulate
-        
+
     Http::Endpoint endpoint(Address(IP::loopback(), Port(0)));
     endpoint.init(Http::Endpoint::options().flags(Tcp::Options::ReuseAddr));
     endpoint.setHandler(Http::make_handler<ClientDisconnectHandler>());
@@ -355,7 +361,7 @@ TEST(StreamingTest, ClientDisconnect)
         curl_multi_perform(curlm, &still_running);
         if (still_running)
         {
-            curl_multi_wait(curlm, NULL, 0, 1000, NULL);
+            curl_multi_wait(curlm, nullptr, 0, 1000, nullptr);
             curl_multi_perform(curlm, &still_running);
         }
 

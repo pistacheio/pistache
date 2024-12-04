@@ -18,8 +18,13 @@
 
 #include <cstring>
 
-#include <netdb.h>
-#include <sys/socket.h>
+#include <pistache/winornix.h>
+
+#include PIST_QUOTE(PST_STRERROR_R_HDR)
+
+#include PIST_QUOTE(PST_NETDB_HDR)
+#include PIST_QUOTE(PST_SOCKET_HDR)
+
 #include <sys/types.h>
 
 #include <pistache/pist_check.h>
@@ -28,6 +33,7 @@
 #define TRY(...)                                               \
     do                                                         \
     {                                                          \
+        PST_SOCK_STARTUP_CHECK;                                \
         auto ret = __VA_ARGS__;                                \
         if (ret < 0)                                           \
         {                                                      \
@@ -40,7 +46,8 @@
             }                                                  \
             else                                               \
             {                                                  \
-                oss << strerror(errno);                        \
+                PST_DECL_SE_ERR_P_EXTRA;                           \
+                oss << PST_STRERROR_R_ERRNO; \
             }                                                  \
             PS_LOG_INFO_ARGS("TRY ret %d  errno %d  throw %s", \
                              ret, errno, oss.str().c_str());   \
@@ -52,12 +59,14 @@
 
 #define TRY_RET(...)                                           \
     [&]() {                                                    \
+        PST_SOCK_STARTUP_CHECK;                                \
         auto ret = __VA_ARGS__;                                \
         if (ret < 0)                                           \
         {                                                      \
             const char* str = #__VA_ARGS__;                    \
             std::ostringstream oss;                            \
-            oss << str << ": " << strerror(errno);             \
+            PST_DECL_SE_ERR_P_EXTRA;                               \
+            oss << str << ": " << PST_STRERROR_R_ERRNO; \
             PS_LOG_INFO_ARGS("TRY ret %d  errno %d  throw %s", \
                              ret, errno, oss.str().c_str());   \
             PS_LOGDBG_STACK_TRACE;                             \
@@ -70,12 +79,14 @@
 
 #define TRY_NULL_RET(...)                                      \
     [&]() {                                                    \
+        PST_SOCK_STARTUP_CHECK;                                \
         auto ret = __VA_ARGS__;                                \
-        if (ret == NULL)                                       \
+        if (ret == nullptr)                                       \
         {                                                      \
             const char* str = #__VA_ARGS__;                    \
             std::ostringstream oss;                            \
-            oss << str << ": " << strerror(errno);             \
+            PST_DECL_SE_ERR_P_EXTRA;                               \
+            oss << str << ": " << PST_STRERROR_R_ERRNO; \
             PS_LOG_INFO_ARGS("TRY_NULL_RET throw errno %d %s", \
                              errno, oss.str().c_str());        \
             PS_LOGDBG_STACK_TRACE;                             \
@@ -100,5 +111,3 @@ struct PrintException
         }
     }
 };
-
-#define unreachable() __builtin_unreachable()

@@ -10,6 +10,8 @@
    Implementation of the Http client
 */
 
+#include <pistache/winornix.h>
+
 #include <pistache/client.h>
 #include <pistache/common.h>
 #include <pistache/eventmeth.h>
@@ -17,24 +19,22 @@
 #include <pistache/net.h>
 #include <pistache/stream.h>
 
-#include <netdb.h>
+#include PIST_QUOTE(PST_NETDB_HDR)
+#include PIST_QUOTE(PST_SOCKET_HDR)
+#include PIST_QUOTE(PIST_SOCKFNS_HDR)
 
-#ifdef _USE_LIBEVENT_LIKE_APPLE
-// For sendfile(...) function
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/uio.h>
-#else
-#include <sys/sendfile.h>
-#endif
+// ps_sendfile.h includes sys/uio.h in macOS, and sys/sendfile.h in Linux
+#include <pistache/ps_sendfile.h>
 
-#include <sys/socket.h>
+#include PIST_QUOTE(PST_STRERROR_R_HDR)
+
 #include <sys/types.h>
 
 #include <algorithm>
 #include <memory>
 #include <sstream>
 #include <string>
+#include <cstring> // for std::memcpy
 
 namespace Pistache::Http::Experimental
 {
@@ -51,7 +51,7 @@ namespace Pistache::Http::Experimental
         // if https_out is non null, then *https_out is set to true if URL
         // starts with "https://" and false otherwise
         std::pair<std::string_view, std::string_view> splitUrl(
-            const std::string& url, bool* https_out = NULL)
+            const std::string& url, bool* https_out = nullptr)
         {
             RawStreamBuf<char> buf(const_cast<char*>(url.data()), url.size());
             StreamCursor cursor(&buf);
@@ -188,9 +188,9 @@ namespace Pistache::Http::Experimental
 
         Async::Promise<void> asyncConnect(std::shared_ptr<Connection> connection,
                                           const struct sockaddr* address,
-                                          socklen_t addr_len);
+                                          PST_SOCKLEN_T addr_len);
 
-        Async::Promise<ssize_t>
+        Async::Promise<PST_SSIZE_T>
         asyncSendRequest(std::shared_ptr<Connection> connection,
                          std::shared_ptr<TimerPool::Entry> timer, std::string buffer);
 
@@ -218,7 +218,7 @@ namespace Pistache::Http::Experimental
                 , connection(connection)
                 , addr_len(_addr_len)
             {
-                memcpy(&addr, _addr, addr_len);
+                std::memcpy(&addr, _addr, addr_len);
             }
 
             const sockaddr* getAddr() const
@@ -341,7 +341,7 @@ namespace Pistache::Http::Experimental
     void Transport::unregisterPoller(Polling::Epoll& poller)
     {
 #ifdef _USE_LIBEVENT
-        epoll_fd = NULL;
+        epoll_fd = nullptr;
 #endif
 
         connectionsQueue.unbind(poller);
@@ -350,7 +350,8 @@ namespace Pistache::Http::Experimental
 
     Async::Promise<void>
     Transport::asyncConnect(std::shared_ptr<Connection> connection,
-                            const struct sockaddr* address, socklen_t addr_len)
+                            const struct sockaddr* address,
+                            PST_SOCKLEN_T addr_len)
     {
         PS_TIMEDBG_START_THIS;
 
@@ -364,14 +365,14 @@ namespace Pistache::Http::Experimental
             });
     }
 
-    Async::Promise<ssize_t>
+    Async::Promise<PST_SSIZE_T>
     Transport::asyncSendRequest(std::shared_ptr<Connection> connection,
                                 std::shared_ptr<TimerPool::Entry> timer,
                                 std::string buffer)
     {
         PS_TIMEDBG_START_THIS;
 
-        return Async::Promise<ssize_t>(
+        return Async::Promise<PST_SSIZE_T>(
             [&](Async::Resolver& resolve, Async::Rejection& reject) {
                 PS_TIMEDBG_START;
                 auto ctx = context();
@@ -407,13 +408,13 @@ namespace Pistache::Http::Experimental
             return;
         }
 
-        ssize_t totalWritten = 0;
+        PST_SSIZE_T totalWritten = 0;
         for (;;)
         {
-            const char* data           = buffer.data() + totalWritten;
-            const ssize_t len          = buffer.size() - totalWritten;
-            const ssize_t bytesWritten = ::send(GET_ACTUAL_FD(fd), data,
-                                                len, 0);
+            const char* data               = buffer.data() + totalWritten;
+            const PST_SSIZE_T len          = buffer.size() - totalWritten;
+            const PST_SSIZE_T bytesWritten = PST_SOCK_SEND(GET_ACTUAL_FD(fd),
+                                                           data, len, 0);
             if (bytesWritten < 0)
             {
                 if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -490,19 +491,32 @@ namespace Pistache::Http::Experimental
 
             PS_LOG_DEBUG_ARGS("Calling ::connect fs %d", GET_ACTUAL_FD(fd));
 
-            int res = ::connect(GET_ACTUAL_FD(fd), data->getAddr(), data->addr_len);
-            if (res == -1)
+            int res = PST_SOCK_CONNECT(GET_ACTUAL_FD(fd), data->getAddr(), data->addr_len);
+            PST_DBG_DECL_SE_ERR_P_EXTRA;
+            PS_LOG_DEBUG_ARGS("::connect res %d, errno on fail %d (%s)",
+                              res, (res < 0) ? errno : 0,
+                              (res < 0) ?
+                              PST_STRERROR_R_ERRNO : "success");
+
+            if ((res == 0) || ((res == -1) && (errno == EINPROGRESS))
+                #ifdef _IS_WINDOWS
+                || ((res == -1) && (errno == EWOULDBLOCK))
+                // In Linux, EWOULDBLOCK can be set by ::connect, but only for
+                // Unix domain sockets (i.e. sockets being used for
+                // inter-process communication) which is not our situation
+                //
+                // In Windows, EWOULDBLOCK is typically set here for
+                // non-blocking sockets
+                #endif
+                )
             {
-                if (errno == EINPROGRESS)
-                {
-                    reactor()->registerFdOneShot(key(), fd,
-                                                 NotifyOn::Write | NotifyOn::Hangup | NotifyOn::Shutdown);
-                }
-                else
-                {
-                    data->reject(Error::system("Failed to connect"));
-                    continue;
-                }
+                reactor()->registerFdOneShot(key(), fd,
+                                             NotifyOn::Write | NotifyOn::Hangup | NotifyOn::Shutdown);
+            }
+            else
+            {
+                data->reject(Error::system("Failed to connect"));
+                continue;
             }
             connections.insert(std::make_pair(fd, std::move(*data)));
         }
@@ -525,7 +539,7 @@ namespace Pistache::Http::Experimental
         // Note: We only use the second element of *connIt (which is
         // "connection"); fd is the first element (the map key). Since *fd is
         // not in fact changed, it is OK to cast away the const of Fd here.
-        Fd fd_for_find = ((Fd)fd);
+        Fd fd_for_find = PS_CAST_AWAY_CONST_FD(fd);
 
         auto connIt = connections.find(fd_for_find);
         if (connIt != std::end(connections))
@@ -569,7 +583,7 @@ namespace Pistache::Http::Experimental
         // Note: We only use the second element of *connIt (which is
         // "connection"); fd is the first element (the map key). Since *fd is
         // not in fact changed, it is OK to cast away the const of Fd here.
-        Fd fd = ((Fd)fd_const);
+        Fd fd = PS_CAST_AWAY_CONST_FD(fd_const);
 
         auto connIt = connections.find(fd);
         if (connIt != std::end(connections))
@@ -615,7 +629,7 @@ namespace Pistache::Http::Experimental
         // Note: We only use the second element of *connIt (which is
         // "connection"); fd is the first element (the map key). Since *fd is
         // not in fact changed, it is OK to cast away the const of Fd here.
-        Fd fd = ((Fd)fd_const);
+        Fd fd = PS_CAST_AWAY_CONST_FD(fd_const);
 
         auto connIt = connections.find(fd);
         if (connIt != std::end(connections))
@@ -633,25 +647,47 @@ namespace Pistache::Http::Experimental
     {
         PS_TIMEDBG_START_THIS;
 
-        ssize_t totalBytes = 0;
+        PST_SSIZE_T totalBytes = 0;
+        unsigned int max_buffer = Const::MaxBuffer;
+        char stack_buffer[Const::MaxBuffer+16] = {
+                0,
+            };
+        char * buffer = &(stack_buffer[0]);
+        std::unique_ptr<char[]> buffer_uptr;
 
         for (;;)
         {
-            char buffer[Const::MaxBuffer] = {
-                0,
-            };
-
             Fd conn_fd = connection->fd();
             if (conn_fd == PS_FD_EMPTY)
                 break; // can happen if fd was closed meanwhile
 
-            const ssize_t bytes = recv(GET_ACTUAL_FD(conn_fd),
-                                       buffer, Const::MaxBuffer, 0);
+            const PST_SSIZE_T bytes = PST_SOCK_RECV(
+                GET_ACTUAL_FD(conn_fd), buffer+totalBytes,
+                max_buffer - totalBytes, 0);
             if (bytes == -1)
             {
-                if (errno != EAGAIN && errno != EWOULDBLOCK)
+                if ((errno == EAGAIN) || (errno == EWOULDBLOCK))
                 {
-                    connection->handleError(strerror(errno));
+                    if (totalBytes)
+                    {
+                        PS_LOG_DEBUG_ARGS("Passing %d totalBytes to "
+                                          "handleResponsePacket",
+                                          totalBytes);
+
+                        connection->handleResponsePacket(buffer, totalBytes);
+                    }
+                    else
+                    {
+                        PS_LOG_DEBUG("totalBytes is zero");
+                    }
+                }
+                else
+                {
+                    PST_DECL_SE_ERR_P_EXTRA;
+                    const char * err_msg = PST_STRERROR_R_ERRNO;
+                    PS_LOG_DEBUG_ARGS("recv err, errno %d %s", errno, err_msg);
+
+                    connection->handleError(err_msg);
                 }
                 break;
             }
@@ -667,8 +703,29 @@ namespace Pistache::Http::Experimental
             }
             else
             {
+                PS_LOG_DEBUG_ARGS("Rxed %d bytes", bytes);
                 totalBytes += bytes;
-                connection->handleResponsePacket(buffer, bytes);
+            }
+            if (totalBytes >= max_buffer)
+            {
+                auto new_max_buffer = (max_buffer * 2);
+                char * new_buffer = 0;
+                if ((new_max_buffer > (8*1024*1024)) ||//new_max_buffer > 8MB ?
+                    (0 == (new_buffer = new char[new_max_buffer+16])))
+                {
+                    if (new_max_buffer > 268435456)
+                        PS_LOG_WARNING("Receive buffer would be too big");
+                    else
+                        PS_LOG_WARNING_ARGS("Failed to alloc %d bytes memory",
+                                            new_max_buffer+16);
+
+                    connection->handleResponsePacket(buffer, totalBytes);
+                    break;
+                }
+                std::memcpy(new_buffer, buffer, max_buffer);
+                buffer_uptr = std::unique_ptr<char[]>(new_buffer);
+                buffer = new_buffer;
+                max_buffer = new_max_buffer;
             }
         }
     }
@@ -698,11 +755,13 @@ namespace Pistache::Http::Experimental
         TRY(addressInfo.invoke(host.c_str(), port.c_str(), &hints));
         const addrinfo* addrs = addressInfo.get_info_ptr();
 
-        int sfd = -1;
+        em_socket_t sfd = -1;
 
-        for (const addrinfo* addr = addrs; addr; addr = addr->ai_next)
+        for (const addrinfo* an_addr = addrs; an_addr;
+             an_addr = an_addr->ai_next)
         {
-            sfd = ::socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
+            sfd = PST_SOCK_SOCKET(an_addr->ai_family, an_addr->ai_socktype,
+                           an_addr->ai_protocol);
             PS_LOG_DEBUG_ARGS("::socket actual_fd %d", sfd);
             if (sfd < 0)
                 continue;
@@ -717,20 +776,26 @@ namespace Pistache::Http::Experimental
             fd_ = TRY_NULL_RET(
                 EventMethFns::em_event_new(
                     sfd, // pre-allocated file desc
-                    EVM_READ | EVM_WRITE | EVM_PERSIST,
+                    EVM_READ | EVM_WRITE | EVM_PERSIST | EVM_ET,
                     F_SETFDL_NOTHING, // setfd
-                    O_NONBLOCK // setfl
+                    PST_O_NONBLOCK // setfl
                     ));
 #else
             fd_ = sfd;
 #endif
 
             transport_
-                ->asyncConnect(shared_from_this(), addr->ai_addr, addr->ai_addrlen)
+                ->asyncConnect(shared_from_this(), an_addr->ai_addr,
+                               static_cast<PST_SOCKLEN_T>(an_addr->ai_addrlen))
+                // Note: We cast to PST_SOCKLEN_T for Windows because Windows
+                // uses "int" for PST_SOCKLEN_T, whereas Linux uses size_t. In
+                // general, even for Windows we use size_t for addresses'
+                // lengths in Pistache (e.g. in struct ifaddr), hence why we
+                // cast here
                 .then(
                     [sfd, this]() {
                         socklen_t len = sizeof(saddr);
-                        getsockname(sfd, reinterpret_cast<struct sockaddr*>(&saddr), &len);
+                        PST_SOCK_GETSOCKNAME(sfd, reinterpret_cast<struct sockaddr*>(&saddr), &len);
                         connectionState_.store(Connected);
                         processRequestQueue();
                     },
@@ -885,6 +950,8 @@ namespace Pistache::Http::Experimental
     {
         PS_TIMEDBG_START_THIS;
 
+        PS_LOG_DEBUG_ARGS("Error string %s", error);
+
         if (requestEntry)
         {
             if (requestEntry->timer)
@@ -992,11 +1059,11 @@ namespace Pistache::Http::Experimental
         }
     }
 
-    void ConnectionPool::init(size_t maxConnectionsPerHost,
-                              size_t maxResponseSize)
+    void ConnectionPool::init(size_t maxConnectionsPerHostParm,
+                              size_t maxResponseSizeParm)
     {
-        this->maxConnectionsPerHost = maxConnectionsPerHost;
-        this->maxResponseSize       = maxResponseSize;
+        this->maxConnectionsPerHost = maxConnectionsPerHostParm;
+        this->maxResponseSize       = maxResponseSizeParm;
     }
 
     std::shared_ptr<Connection>
@@ -1354,9 +1421,9 @@ namespace Pistache::Http::Experimental
                 PS_LOG_DEBUG("No transport yet on connection");
 
                 auto transports = reactor_->handlers(transportKey);
-                auto index      = ioIndex.fetch_add(1) % transports.size();
+                auto index  = ioIndex.fetch_add(1) % transports.size();
 
-                auto transport = std::static_pointer_cast<Transport>(transports[index]);
+                auto transport = std::static_pointer_cast<Transport>(transports[static_cast<unsigned int>(index)]);
                 PS_LOG_DEBUG_ARGS("Associating transport %p on connection %p",
                                   transport.get(), conn.get());
                 conn->associateTransport(transport);

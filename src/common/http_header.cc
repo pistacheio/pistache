@@ -10,6 +10,8 @@
    Implementation of common HTTP headers described by the RFC
 */
 
+#include <pistache/winornix.h>
+
 #include <pistache/base64.h>
 #include <pistache/common.h>
 #include <pistache/config.h>
@@ -18,6 +20,7 @@
 #include <pistache/stream.h>
 
 #include <algorithm>
+#include <charconv>
 #include <cstring>
 #include <iostream>
 #include <iterator>
@@ -25,7 +28,8 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <sys/socket.h>
+
+#include PIST_QUOTE(PST_SOCKET_HDR)
 
 namespace Pistache::Http::Header
 {
@@ -52,6 +56,8 @@ namespace Pistache::Http::Header
             return "gzip";
         case Encoding::Br:
             return "br";
+        case Encoding::Zstd:
+            return "zstd";
         case Encoding::Compress:
             return "compress";
         case Encoding::Deflate:
@@ -73,27 +79,31 @@ namespace Pistache::Http::Header
             return Encoding::Unknown;
         }
 
-        if (!strncasecmp(str.data(), "gzip", str.length()))
+        if (!PST_STRNCASECMP(str.data(), "zstd", str.length()))
+        {
+            return Encoding::Zstd;
+        }
+        else if (!PST_STRNCASECMP(str.data(), "gzip", str.length()))
         {
             return Encoding::Gzip;
         }
-        else if (!strncasecmp(str.data(), "br", str.length()))
+        else if (!PST_STRNCASECMP(str.data(), "br", str.length()))
         {
             return Encoding::Br;
         }
-        else if (!strncasecmp(str.data(), "deflate", str.length()))
+        else if (!PST_STRNCASECMP(str.data(), "deflate", str.length()))
         {
             return Encoding::Deflate;
         }
-        else if (!strncasecmp(str.data(), "compress", str.length()))
+        else if (!PST_STRNCASECMP(str.data(), "compress", str.length()))
         {
             return Encoding::Compress;
         }
-        else if (!strncasecmp(str.data(), "identity", str.length()))
+        else if (!PST_STRNCASECMP(str.data(), "identity", str.length()))
         {
             return Encoding::Identity;
         }
-        else if (!strncasecmp(str.data(), "chunked", str.length()))
+        else if (!PST_STRNCASECMP(str.data(), "chunked", str.length()))
         {
             return Encoding::Chunked;
         }
@@ -107,6 +117,11 @@ namespace Pistache::Http::Header
     {
         switch (encoding)
         {
+
+#ifdef PISTACHE_USE_CONTENT_ENCODING_ZSTD
+        case Encoding::Zstd:
+            /* @fallthrough@ */
+#endif
 #ifdef PISTACHE_USE_CONTENT_ENCODING_BROTLI
         case Encoding::Br:
             /* @fallthrough@ */
@@ -221,13 +236,20 @@ namespace Pistache::Http::Header
                                 "Invalid caching directive, missing delta-seconds");
                         }
 
-                        char* end;
                         const char* beg = cursor.offset();
-                        // @Security: if str is not \0 terminated, there might be a situation
-                        // where strtol can overflow. Double-check that it's harmless and fix
-                        // if not
-                        auto secs = strtol(beg, &end, 10);
-                        cursor.advance(end - beg);
+                        const char* end = cursor.offset() + cursor.remaining();
+
+                        std::uint64_t secs     = 0;
+                        const auto parseResult = std::from_chars(beg, end, secs);
+
+                        if (parseResult.ec != std::errc {})
+                        {
+                            throw std::runtime_error(
+                                "Invalid caching directive, malformated delta-seconds");
+                        }
+
+                        cursor.advance(parseResult.ptr - beg);
+
                         if (!cursor.eof() && cursor.current() != ',')
                         {
                             throw std::runtime_error(
@@ -288,7 +310,7 @@ namespace Pistache::Http::Header
             case CacheDirective::Ext:
                 return "";
             default:
-                return "";
+                break;
             }
             return "";
         };
@@ -660,7 +682,18 @@ namespace Pistache::Http::Header
         } while (!cursor.eof());
     }
 
-    void Accept::write(std::ostream& /*os*/) const { }
+    void Accept::write(std::ostream& os) const
+    {
+        if (mediaRange_.empty())
+        {
+            return;
+        }
+        for (size_t i = 0; i < mediaRange_.size() - 1; i++)
+        {
+            os << mediaRange_[i].toString() << ", ";
+        }
+        os << mediaRange_[mediaRange_.size() - 1].toString();
+    }
 
     void AccessControlAllowOrigin::parse(const std::string& data) { uri_ = data; }
 

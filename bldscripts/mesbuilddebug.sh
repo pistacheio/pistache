@@ -9,9 +9,12 @@
 # Execute this script from the parent directory by invoking:
 #   bldscripts/mesbuilddebug.sh
 
-source bldscripts/mesdebugsetdirvars.sh
+MY_SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-if [ -e "./${MESON_BUILD_DIR}" ]
+source $MY_SCRIPT_DIR/helpers/mesdebugsetdirvars.sh
+source $MY_SCRIPT_DIR/helpers/adjbuilddirformesbuild.sh
+
+if [ -e "${MESON_BUILD_DIR}" ]
 then
     echo "Using existing build dir ${MESON_BUILD_DIR}"
 else
@@ -22,11 +25,12 @@ else
     -DPISTACHE_BUILD_TESTS=true \
     -DPISTACHE_BUILD_DOCS=false \
     -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true \
+    -DPISTACHE_USE_CONTENT_ENCODING_BROTLI=true \
+    -DPISTACHE_USE_CONTENT_ENCODING_ZSTD=true \
     -DPISTACHE_DEBUG=true \
     --prefix="${MESON_PREFIX_DIR}" \
 #    -DPISTACHE_FORCE_LIBEVENT=true
-    
+
 fi
 
 meson compile -C ${MESON_BUILD_DIR}
-

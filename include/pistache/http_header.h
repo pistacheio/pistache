@@ -68,6 +68,7 @@ namespace Pistache::Http::Header
                           Br,
                           Compress,
                           Deflate,
+                          Zstd,
                           Identity,
                           Chunked,
                           Unknown };
@@ -172,6 +173,14 @@ namespace Pistache::Http::Header
 
         Accept()
             : mediaRange_()
+        { }
+
+        explicit Accept(const std::vector<Mime::MediaType>& mediaRange)
+            : mediaRange_(mediaRange)
+        { }
+
+        explicit Accept(std::initializer_list<Mime::MediaType> mediaRange)
+            : mediaRange_(mediaRange)
         { }
 
         void parseRaw(const char* str, size_t len) override;

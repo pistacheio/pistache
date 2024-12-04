@@ -13,9 +13,11 @@ SPDX-License-Identifier: Apache-2.0
 [![codecov](https://codecov.io/gh/pistacheio/pistache/branch/master/graph/badge.svg)](https://codecov.io/gh/pistacheio/pistache)
 [![REUSE status](https://api.reuse.software/badge/github.com/pistacheio/pistache)](https://api.reuse.software/info/github.com/pistacheio/pistache)
 
-Pistache is a modern and elegant HTTP and REST framework for C++. It is entirely written in pure-C++17[*](#linux-only) and provides a clear and pleasant API.
+Pistache is a modern and elegant HTTP and REST framework for C++. It is entirely written in pure-C++17[\*](#linux-only) and provides a clear and pleasant API.
 
-Pistache supports Linux and macOS. To use in macOS, see the file: *Building on macOS.txt*
+Pistache supports Linux, macOS, Windows and BSD (FreeBSD, OpenBSD, and
+NetBSD). To use in macOS, Windows, or BSD, see the respective files:
+*Building on macOS.txt*, *Building on Windows.txt* or *Building on BSD.txt*.
 
 ## Documentation
 
@@ -39,6 +41,9 @@ Pistache has the following third party dependencies
 - [OpenSSL](https://www.openssl.org/)
 - [RapidJSON](https://rapidjson.org/)
 - [Hinnant Date](https://github.com/HowardHinnant/date)
+- [brotli](https://www.brotli.org/)
+- [zstd](https://github.com/facebook/zstd)
+- [libevent](https://libevent.org/)
 
 ## Contributing
 
@@ -50,7 +55,7 @@ The [Launchpad Team](https://launchpad.net/~pistache+team) administers the daily
 
 ### Versioning
 
-The version of the library's public interface (ABI) is not the same as the release version, but we choose to always guarantee that the major release version and the soname version will match. The interface version is primarily associated with the _external_ interface of the library. Different platforms handle this differently, such as AIX, GNU/Linux, and Solaris.
+The version of the library's public interface (ABI) is not the same as the release version, but we plan to always guarantee that the major release version and the soname version will match after the 1.0 release; until that, the soname version will follow feature releases. The interface version is primarily associated with the _external_ interface of the library. Different platforms handle this differently, such as AIX, GNU/Linux, and Solaris.
 
 GNU Libtool abstracts each platform's idiosyncrasies away because it is more portable than using `ar(1)` or `ranlib(1)` directly. However, it is [not supported in Meson](https://mesonbuild.com/FAQ.html#how-do-i-do-the-equivalent-of-libtools-exportsymbol-and-exportregex) so we made do without it by setting the SONAME directly.
 
@@ -58,7 +63,7 @@ When Pistache is installed it will normally ship:
 
 - `libpistache.so.X.Y.Z`: This is the actual shared-library binary file. The _X_, _Y_ and _Z_ values are the major, minor and patch interface versions respectively.
 
-- `libpistache.so.X`: This is the _soname_ soft link that points to the binary file. It is what other programs and other libraries reference internally. You should never need to directly reference this file in your build environment.
+- `libpistache.so.X.Y`: This is the _soname_ soft link that points to the binary file. It is what other programs and other libraries reference internally. You should never need to directly reference this file in your build environment.
 
 - `libpistache.so`: This is the _linker name_ entry. This is also a soft link that refers to the soname with the highest major interface version. This linker name is what is referred to on the linker command line.
 
@@ -217,6 +222,7 @@ $ meson setup build                                 \
     -DPISTACHE_BUILD_DOCS=false                     \
     -DPISTACHE_USE_CONTENT_ENCODING_BROTLI=true     \
     -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true    \
+    -DPISTACHE_USE_CONTENT_ENCODING_ZSTD=true    \
     --prefix="$PWD/prefix"
 $ meson compile -C build
 $ meson install -C build
@@ -240,6 +246,7 @@ Some other Meson options:
 | PISTACHE_BUILD_DOCS                   | False   | Build Doxygen docs                             |
 | PISTACHE_USE_CONTENT_ENCODING_BROTLI  | False   | Build with Brotli content encoding support     |
 | PISTACHE_USE_CONTENT_ENCODING_DEFLATE | False   | Build with deflate content encoding support    |
+| PISTACHE_USE_CONTENT_ENCODING_ZSTD    | False   | Build with zstd content encoding support       |
 
 ## Example
 
@@ -270,4 +277,4 @@ int main() {
 
 Pistache hasn't yet hit the 1.0 release. This means that the project is _unstable_ but not _unusable_. In fact, most of the code is production ready; you can use Pistache to develop a RESTful API without issues, but the HTTP client has a few issues in it that make it buggy.
 
-<b id="linux-only">\*</b> While most code uses modern C++, Pistache makes use of some Linux-specific APIs where the standard library doesn't provide alternatives, and works only on that OS. See [#6](https://github.com/pistacheio/pistache/issues/6#issuecomment-242398225) for details. If you know how to help, please contribute a PR to add support for your desired platform :)
+<b id="linux-only">\*</b> While most code uses modern C++, Pistache makes use of some platform-specific APIs where the standard library doesn't provide alternatives. If you know how to help, please contribute a PR to add support for your desired platform :)
