@@ -14,10 +14,10 @@
 #include <iostream>
 #include <stdexcept>
 
-#include PIST_QUOTE(PST_ARPA_INET_HDR)
-#include PIST_QUOTE(PST_NETDB_HDR)
-#include PIST_QUOTE(PST_NETINET_IN_HDR)
-#include PIST_QUOTE(PST_SYS_UN_HDR)
+#include PST_ARPA_INET_HDR
+#include PST_NETDB_HDR
+#include PST_NETINET_IN_HDR
+#include PST_SYS_UN_HDR
 
 using namespace Pistache;
 using testing::Eq;

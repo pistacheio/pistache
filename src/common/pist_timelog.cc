@@ -16,15 +16,22 @@
 #ifdef _IS_WINDOWS
 #include <windows.h> // required for PST_THREAD_HDR (processthreadsapi.h)
 #endif
-#include PIST_QUOTE(PST_THREAD_HDR) //e.g. pthread.h
+#include PST_THREAD_HDR //e.g. pthread.h
 
 #ifdef DEBUG
 #include <atomic>
 
 static std::atomic_uint gUniCounter = 0; // universal (static) counter
 
-static std::map<PST_THREAD_ID, unsigned> gThreadMap;
-static std::mutex gThreadMapMutex;
+auto& gThreadMap(){
+    static std::map<PST_THREAD_ID, unsigned> inst{};
+    return inst;
+}
+
+auto& gThreadMapMutex(){
+    static std::mutex mutex_;
+    return mutex_;
+}
 
 /* ------------------------------------------------------------------------- */
 
@@ -38,15 +45,15 @@ unsigned __PS_TIMEDBG::getNextUniCounter()
 // returns depth value after increment
 unsigned __PS_TIMEDBG::getThreadNextDepth()
 {
-    std::lock_guard<std::mutex> l_guard(gThreadMapMutex);
+    std::lock_guard<std::mutex> l_guard(gThreadMapMutex());
     PST_THREAD_ID pthread_id = PST_THREAD_ID_SELF();
 
     std::map<PST_THREAD_ID, unsigned>::iterator it =
-        gThreadMap.find(pthread_id);
-    if (it == gThreadMap.end())
+        gThreadMap().find(pthread_id);
+    if (it == gThreadMap().end())
     {
         std::pair<PST_THREAD_ID, unsigned> pr(pthread_id, 1);
-        gThreadMap.insert(pr);
+        gThreadMap().insert(pr);
         return(1);
     }
 
@@ -58,18 +65,18 @@ unsigned __PS_TIMEDBG::getThreadNextDepth()
 // returns depth value before decrement
 unsigned __PS_TIMEDBG::decrementThreadDepth()
 {
-    std::lock_guard<std::mutex> l_guard(gThreadMapMutex);
+    std::lock_guard<std::mutex> l_guard(gThreadMapMutex());
     PST_THREAD_ID pthread_id = PST_THREAD_ID_SELF();
 
     std::map<PST_THREAD_ID, unsigned>::iterator it =
-        gThreadMap.find(pthread_id);
+        gThreadMap().find(pthread_id);
 
     unsigned old_depth = 1;
     if (it->second) // else something went wrong
         old_depth = ((it->second)--);
 
     if (old_depth <= 1)
-        gThreadMap.erase(it); // arguably optional, but avoids any risk
+        gThreadMap().erase(it); // arguably optional, but avoids any risk
     // of leaks
     return(old_depth);
 }

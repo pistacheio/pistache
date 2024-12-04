@@ -13,7 +13,7 @@
 #include <pistache/eventmeth.h>
 #include <pistache/os.h>
 
-#include PIST_QUOTE(PIST_SOCKFNS_HDR) // e.g. unistd.h
+#include PIST_SOCKFNS_HDR // e.g. unistd.h
 
 using namespace Pistache;
 

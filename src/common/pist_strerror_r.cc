@@ -12,7 +12,7 @@
 #include <string.h>
 #include <algorithm>
 
-#include PIST_QUOTE(PST_ERRNO_HDR)
+#include PST_ERRNO_HDR
 
 /* ------------------------------------------------------------------------- */
 

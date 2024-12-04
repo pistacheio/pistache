@@ -19,7 +19,7 @@
 #include <pistache/winornix.h>
 #include <pistache/emosandlibevdefs.h> // For _IS_BSD
 
-#include PIST_QUOTE(PST_CLOCK_GETTIME_HDR) // for clock_gettime and asctime
+#include PST_CLOCK_GETTIME_HDR // for clock_gettime and asctime
 #include <stdio.h> // snprintf
 #include <stdarg.h> // for vsnprintf
 
