@@ -7,18 +7,18 @@
 #include <gtest/gtest.h>
 
 #include <pistache/winornix.h>
-#include PIST_QUOTE(PST_ARPA_INET_HDR)
-#include PIST_QUOTE(PST_NETDB_HDR)
-#include PIST_QUOTE(PST_NETINET_IN_HDR)
+#include PST_ARPA_INET_HDR
+#include PST_NETDB_HDR
+#include PST_NETINET_IN_HDR
 
 
 #include <errno.h>
 #include <stdlib.h>
-#include PIST_QUOTE(PST_SOCKET_HDR)
-#include PIST_QUOTE(PIST_SOCKFNS_HDR)
+#include PST_SOCKET_HDR
+#include PIST_SOCKFNS_HDR
 
 #include <sys/types.h>
-#include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h
+#include PST_MISC_IO_HDR // unistd.h
 
 #include <array>
 #include <sstream>

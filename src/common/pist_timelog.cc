@@ -16,7 +16,7 @@
 #ifdef _IS_WINDOWS
 #include <windows.h> // required for PST_THREAD_HDR (processthreadsapi.h)
 #endif
-#include PIST_QUOTE(PST_THREAD_HDR) //e.g. pthread.h
+#include PST_THREAD_HDR //e.g. pthread.h
 
 #ifdef DEBUG
 #include <atomic>

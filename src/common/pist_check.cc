@@ -18,7 +18,7 @@
 #include <signal.h>
 #include <stdio.h>
 
-#include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h e.g. close
+#include PST_MISC_IO_HDR // unistd.h e.g. close
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -34,7 +34,7 @@
 #include <dlfcn.h> // Dl_info
 #endif
 
-#include PIST_QUOTE(PST_MAXPATH_HDR) // for PST_MAXPATHLEN
+#include PST_MAXPATH_HDR // for PST_MAXPATHLEN
 
 #include <pistache/ps_basename.h> // for PS_BASENAME_R
 

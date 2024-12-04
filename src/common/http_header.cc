@@ -29,7 +29,7 @@
 #include <string>
 #include <string_view>
 
-#include PIST_QUOTE(PST_SOCKET_HDR)
+#include PST_SOCKET_HDR
 
 namespace Pistache::Http::Header
 {
