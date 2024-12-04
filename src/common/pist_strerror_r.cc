@@ -12,15 +12,6 @@
 #include <string.h>
 #include <algorithm>
 
-// #ifdef errno
-// #error "already defined"
-// #endif
-
-// // PIST_Q(PST_ERRNO_HDR)
-// PST_ERRNO_HDR
-
-
-// #include PST_ERRNO_HDR
 #include PST_ERRNO_HDR
 
 /* ------------------------------------------------------------------------- */
