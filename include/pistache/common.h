@@ -20,10 +20,10 @@
 
 #include <pistache/winornix.h>
 
-#include PIST_QUOTE(PST_STRERROR_R_HDR)
+#include PST_STRERROR_R_HDR
 
-#include PIST_QUOTE(PST_NETDB_HDR)
-#include PIST_QUOTE(PST_SOCKET_HDR)
+#include PST_NETDB_HDR
+#include PST_SOCKET_HDR
 
 #include <sys/types.h>
 

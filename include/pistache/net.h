@@ -19,16 +19,16 @@
 
 #include <pistache/winornix.h>
 
-#include PIST_QUOTE(PST_NETDB_HDR)
+#include PST_NETDB_HDR
 
 // netinet/in.h defines in_port_t, in_addr_t, in_addr, sockaddr_in,
 // sockaddr_in6, IPPROTO_IP, INADDR_ANY, etc.
-#include PIST_QUOTE(PST_NETINET_IN_HDR)
+#include PST_NETINET_IN_HDR
 
-#include PIST_QUOTE(PST_SOCKET_HDR)
-#include PIST_QUOTE(PST_SYS_UN_HDR)
+#include PST_SOCKET_HDR
+#include PST_SYS_UN_HDR
 
-#include PIST_QUOTE(PIST_SOCKFNS_HDR)
+#include PIST_SOCKFNS_HDR
 
 #ifndef _KERNEL_FASTOPEN
 #define _KERNEL_FASTOPEN

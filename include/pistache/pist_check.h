@@ -15,7 +15,7 @@
 #define INCLUDED_PSCHECK_H
 
 #include <mutex>
-
+#include <pistache/pist_quote.h>
 #include "pist_syslog.h"
 
 // If DEBUG is enabled, PS_LOGDBG_STACK_TRACE logs a stack trace

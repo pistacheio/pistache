@@ -8,7 +8,7 @@
 //
 // Note that we use this intermediate include, rather than just relying solely
 // on defining PST_ERRNO_HDR to be 'errno.h' for Windows, because of mingw
-// gcc's treatment of errno as a macro - 'include PIST_QUOTE(PST_ERRNO_HDR)',
+// gcc's treatment of errno as a macro - 'include PST_ERRNO_HDR',
 // with PST_ERRNO_HDR defined as 'errno.h', can translate to "(*_errno()).h",
 // which is not what we want.
 //

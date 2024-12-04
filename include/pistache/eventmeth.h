@@ -209,7 +209,7 @@ namespace Pistache
 #include <map>
 #include <condition_variable>
 
-#include PIST_QUOTE(PST_FCNTL_HDR) // For FD_CLOEXEC and O_NONBLOCK
+#include PST_FCNTL_HDR // For FD_CLOEXEC and O_NONBLOCK
 
 /* ------------------------------------------------------------------------- */
 
