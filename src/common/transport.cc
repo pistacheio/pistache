@@ -12,6 +12,7 @@
 */
 
 #include <pistache/eventmeth.h>
+#include <pistache/pist_quote.h>
 
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 

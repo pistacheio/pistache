@@ -16,6 +16,7 @@
 #include <pistache/listener.h>
 #include <pistache/os.h>
 #include <pistache/peer.h>
+#include <pistache/pist_quote.h>
 #include <pistache/ssl_wrappers.h>
 #include <pistache/transport.h>
 

@@ -16,8 +16,6 @@
 
 #include PST_SYS_RESOURCE_HDR // for PST_RUSAGE + PST_GETRUSAGE
 
-#include <pistache/pist_timelog.h>
-#include <pistache/pist_quote.h>
 #include <pistache/async.h>
 #include <pistache/mailbox.h>
 #include <pistache/pist_quote.h>
