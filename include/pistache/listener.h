@@ -24,7 +24,7 @@
 #include <pistache/ssl_wrappers.h>
 #include <pistache/tcp.h>
 
-#include PIST_QUOTE(PST_SYS_RESOURCE_HDR)
+#include PST_SYS_RESOURCE_HDR
 
 #include <memory>
 #include <thread>

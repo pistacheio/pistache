@@ -19,22 +19,22 @@
 #include <pistache/ssl_wrappers.h>
 #include <pistache/transport.h>
 
-#include PIST_QUOTE(PST_ARPA_INET_HDR)
-#include PIST_QUOTE(PST_NETDB_HDR)
-#include PIST_QUOTE(PST_NETINET_IN_HDR)
-#include PIST_QUOTE(PST_NETINET_TCP_HDR)
+#include PST_ARPA_INET_HDR
+#include PST_NETDB_HDR
+#include PST_NETINET_IN_HDR
+#include PST_NETINET_TCP_HDR
 
 #include <pistache/eventmeth.h>
 
-#include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h e.g. close
-#include PIST_QUOTE(PST_FCNTL_HDR)
-#include PIST_QUOTE(PIST_SOCKFNS_HDR) // socket read, write and close
+#include PST_MISC_IO_HDR // unistd.h e.g. close
+#include PST_FCNTL_HDR
+#include PIST_SOCKFNS_HDR // socket read, write and close
 
 #ifndef _USE_LIBEVENT
 #include <sys/epoll.h>
 #endif
 
-#include PIST_QUOTE(PST_SOCKET_HDR)
+#include PST_SOCKET_HDR
 
 #ifndef _USE_LIBEVENT_LIKE_APPLE
 // Note: sys/timerfd.h is linux-only (and certainly POSIX only)

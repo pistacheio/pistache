@@ -13,7 +13,7 @@
 
 #include <pistache/winornix.h>
 
-#include PIST_QUOTE(PST_MAXPATH_HDR) // for PST_MAXPATHLEN
+#include PST_MAXPATH_HDR // for PST_MAXPATHLEN
 /* ------------------------------------------------------------------------- */
 
 #ifdef __APPLE__

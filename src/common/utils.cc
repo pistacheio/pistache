@@ -14,8 +14,8 @@
 
 #include <pistache/peer.h>
 
-#include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h e.g. close
-#include PIST_QUOTE(PIST_FILEFNS_HDR) // for pist_pread
+#include PST_MISC_IO_HDR // unistd.h e.g. close
+#include PIST_FILEFNS_HDR // for pist_pread
 
 #ifdef PISTACHE_USE_SSL
 

@@ -10,9 +10,9 @@
 #include <pistache/net.h>
 #include <pistache/os.h>
 
-#include PIST_QUOTE(PST_NETDB_HDR)
-#include PIST_QUOTE(PIST_POLL_HDR)
-#include PIST_QUOTE(PST_SOCKET_HDR) // best in C/C++, not .h, for non-test code
+#include PST_NETDB_HDR
+#include PIST_POLL_HDR
+#include PST_SOCKET_HDR // best in C/C++, not .h, for non-test code
 
 #include <sys/types.h>
 

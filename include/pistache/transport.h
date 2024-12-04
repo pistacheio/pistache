@@ -14,7 +14,7 @@
 
 #include <pistache/winornix.h>
 
-#include PIST_QUOTE(PST_SYS_RESOURCE_HDR) // for PST_RUSAGE + PST_GETRUSAGE
+#include PST_SYS_RESOURCE_HDR // for PST_RUSAGE + PST_GETRUSAGE
 
 #include <pistache/pist_timelog.h>
 #include <pistache/pist_quote.h>

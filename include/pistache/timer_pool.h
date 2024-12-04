@@ -25,7 +25,7 @@
 #include <vector>
 
 #include <cassert>
-#include PIST_QUOTE(PST_MISC_IO_HDR) // e.g. unistd.h
+#include PST_MISC_IO_HDR // e.g. unistd.h
 
 namespace Pistache
 {

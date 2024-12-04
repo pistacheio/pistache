@@ -14,12 +14,12 @@
 
 #include <pistache/winornix.h>
 
-#include PIST_QUOTE(PST_STRERROR_R_HDR)
+#include PST_STRERROR_R_HDR
 
 #include <pistache/eventmeth.h>
 #include <pistache/pist_quote.h>
 
-#include PIST_QUOTE(PIST_SOCKFNS_HDR)
+#include PIST_SOCKFNS_HDR
 
 #include <pistache/common.h>
 #include <pistache/os.h>

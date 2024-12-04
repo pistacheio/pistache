@@ -20,12 +20,12 @@
 
 #include <fcntl.h> // Needs this as well in Windows for file-open constants
 
-#include PIST_QUOTE(PST_FCNTL_HDR)
+#include PST_FCNTL_HDR
 
 #include <sys/stat.h>
 #include <sys/types.h>
-#include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h e.g. close
-#include PIST_QUOTE(PIST_FILEFNS_HDR) // PST_FILE_OPEN
+#include PST_MISC_IO_HDR // unistd.h e.g. close
+#include PIST_FILEFNS_HDR // PST_FILE_OPEN
 
 namespace Pistache
 {

@@ -12,8 +12,6 @@
 #ifndef _WINORNIX_H_
 #define _WINORNIX_H_
 
-#include <pistache/pist_quote.h>
-
 // DO NOT include emosandlibevdefs.h here
 // emosandlibevdefs.h includes winornix.h, and depends on it
 
@@ -66,11 +64,11 @@
 #define PST_GETRUSAGE getrusage
 #endif
 
-// Use #include PIST_QUOTE(PST_SYS_RESOURCE_HDR)
+// Use #include PST_SYS_RESOURCE_HDR
 #ifdef _IS_WINDOWS
-#define PST_SYS_RESOURCE_HDR pistache/pist_resource.h
+#define PST_SYS_RESOURCE_HDR "pistache/pist_resource.h"
 #else
-#define PST_SYS_RESOURCE_HDR sys/resource.h
+#define PST_SYS_RESOURCE_HDR "sys/resource.h"
 #endif
 
 #ifdef _IS_WINDOWS
@@ -150,45 +148,45 @@ typedef int PST_SOCK_OPT_VAL_T;
 // #define PST_CLOCK_BOOTTIME_ALARM CLOCK_BOOTTIME_ALARM
 #endif
 
-// Use #include PIST_QUOTE(PST_CLOCK_GETTIME_HDR)
+// Use #include PST_CLOCK_GETTIME_HDR
 #ifdef _IS_WINDOWS
-#define PST_CLOCK_GETTIME_HDR pistache/pist_clock_gettime.h
+#define PST_CLOCK_GETTIME_HDR "pistache/pist_clock_gettime.h"
 #else
-#define PST_CLOCK_GETTIME_HDR time.h
+#define PST_CLOCK_GETTIME_HDR "time.h"
 #endif
 
-// Use #include PIST_QUOTE(PST_IFADDRS_HDR)
+// Use #include PST_IFADDRS_HDR
 #ifdef _IS_WINDOWS
-#define PST_IFADDRS_HDR pistache/pist_ifaddrs.h
+#define PST_IFADDRS_HDR "pistache/pist_ifaddrs.h"
 #else
-#define PST_IFADDRS_HDR ifaddrs.h
+#define PST_IFADDRS_HDR "ifaddrs.h"
 #endif
 
-// Use #include PIST_QUOTE(PST_MAXPATH_HDR)
+// Use #include PST_MAXPATH_HDR
 #ifdef _IS_WINDOWS
-#define PST_MAXPATH_HDR Stdlib.h
+#define PST_MAXPATH_HDR "Stdlib.h"
 #define PST_MAXPATHLEN _MAX_PATH
 #elif defined __APPLE__
-#define PST_MAXPATH_HDR sys/syslimits.h
+#define PST_MAXPATH_HDR "sys/syslimits.h"
 #define PST_MAXPATHLEN PATH_MAX
 #else
-#define PST_MAXPATH_HDR sys/param.h
+#define PST_MAXPATH_HDR "sys/param.h"
 #define PST_MAXPATHLEN MAXPATHLEN
 #endif
 
 // Do this so the PST_DECL_SE_ERR_P_EXTRA / PST_STRERROR_R_ERRNO macros have
 // PST_MAXPATHLEN fully defined
-#include PIST_QUOTE(PST_MAXPATH_HDR)
+#include PST_MAXPATH_HDR
 
-// Use #include PIST_QUOTE(PST_STRERROR_R_HDR)
+// Use #include PST_STRERROR_R_HDR
 // mingw gcc doesn't define strerror_r (Oct/2024)
 // gcc on macOS does define strerror_r, but the XSI version not the POSIX one
 #if defined(__linux__) || (defined(__GNUC__) && (!defined(__MINGW32__)) && \
       (!defined(__clang__)) && (!defined(__NetBSD__)) && (!defined(__APPLE__)))
-#define PST_STRERROR_R_HDR string.h
+#define PST_STRERROR_R_HDR "string.h"
 #define PST_STRERROR_R strerror_r // returns char *
 #else
-#define PST_STRERROR_R_HDR pistache/pist_strerror_r.h
+#define PST_STRERROR_R_HDR "pistache/pist_strerror_r.h"
 #define PST_STRERROR_R pist_strerror_r // returns char *
 #endif
 
@@ -204,9 +202,9 @@ typedef int PST_SOCK_OPT_VAL_T;
 #define PST_DBG_DECL_SE_ERR_P_EXTRA
 #endif
 
-// Use #include PIST_QUOTE(PST_FCNTL_HDR)
+// Use #include PST_FCNTL_HDR
 #ifdef _IS_WINDOWS
-#define PST_FCNTL_HDR pistache/pist_fcntl.h
+#define PST_FCNTL_HDR "pistache/pist_fcntl.h"
 #define PST_FCNTL pist_fcntl
 
 // As per Linux /usr/include/x86_64-linux-gnu/bits/fcntl-linux.h
@@ -216,7 +214,7 @@ typedef int PST_SOCK_OPT_VAL_T;
 #define PST_F_SETFL		4	/* Set file status flags.  */
 
 #else
-#define PST_FCNTL_HDR fcntl.h
+#define PST_FCNTL_HDR "fcntl.h"
 #define PST_FCNTL fcntl
 
 #define PST_F_GETFD F_GETFD
@@ -229,60 +227,60 @@ typedef int PST_SOCK_OPT_VAL_T;
     (static_cast<int>((static_cast<unsigned int>((-1)/2))) - (0xded - 97))
 
 
-// Use #include PIST_QUOTE(PST_NETDB_HDR)
+// Use #include PST_NETDB_HDR
 #ifdef _IS_WINDOWS
-#define PST_NETDB_HDR ws2tcpip.h
+#define PST_NETDB_HDR "ws2tcpip.h"
 #else
-#define PST_NETDB_HDR netdb.h
+#define PST_NETDB_HDR "netdb.h"
 #endif
 
-// Use #include PIST_QUOTE(PST_SOCKET_HDR)
+// Use #include PST_SOCKET_HDR
 #ifdef _IS_WINDOWS
-#define PST_SOCKET_HDR winsock2.h
+#define PST_SOCKET_HDR "winsock2.h"
 #else
-#define PST_SOCKET_HDR sys/socket.h
+#define PST_SOCKET_HDR "sys/socket.h"
 #endif
 
-// Use #include PIST_QUOTE(PST_ARPA_INET_HDR)
+// Use #include PST_ARPA_INET_HDR
 #ifdef _IS_WINDOWS
-#define PST_ARPA_INET_HDR winsock2.h
+#define PST_ARPA_INET_HDR "winsock2.h"
 #else
-#define PST_ARPA_INET_HDR arpa/inet.h
+#define PST_ARPA_INET_HDR "arpa/inet.h"
 #endif
 
-// Use #include PIST_QUOTE(PST_NETINET_IN_HDR)
+// Use #include PST_NETINET_IN_HDR
 #ifdef _IS_WINDOWS
-#define PST_NETINET_IN_HDR ws2def.h
+#define PST_NETINET_IN_HDR "ws2def.h"
 #else
-#define PST_NETINET_IN_HDR netinet/in.h
+#define PST_NETINET_IN_HDR "netinet/in.h"
 #endif
 
-// Use #include PIST_QUOTE(PST_NETINET_TCP_HDR)
+// Use #include PST_NETINET_TCP_HDR
 #ifdef _IS_WINDOWS
-#define PST_NETINET_TCP_HDR winsock2.h
+#define PST_NETINET_TCP_HDR "winsock2.h"
 #else
-#define PST_NETINET_TCP_HDR netinet/tcp.h
+#define PST_NETINET_TCP_HDR "netinet/tcp.h"
 #endif
 
 
-// Use #include PIST_QUOTE(PST_IFADDRS_HDR)
+// Use #include PST_IFADDRS_HDR
 #ifdef _IS_WINDOWS
-#define PST_IFADDRS_HDR pistache/pist_ifaddrs.h
+#define PST_IFADDRS_HDR "pistache/pist_ifaddrs.h"
 #define PST_IFADDRS pist_ifaddrs
 #define PST_GETIFADDRS pist_getifaddrs
 #define PST_FREEIFADDRS pist_freeifaddrs
 #else
-#define PST_IFADDRS_HDR ifaddrs.h
+#define PST_IFADDRS_HDR "ifaddrs.h"
 #define PST_IFADDRS ifaddrs
 #define PST_GETIFADDRS getifaddrs
 #define PST_FREEIFADDRS freeifaddrs
 #endif
 
-// Use #include PIST_QUOTE(PST_SYS_UN_HDR)
+// Use #include PST_SYS_UN_HDR
 #ifdef _IS_WINDOWS
-#define PST_SYS_UN_HDR afunix.h
+#define PST_SYS_UN_HDR "afunix.h"
 #else
-#define PST_SYS_UN_HDR sys/un.h
+#define PST_SYS_UN_HDR "sys/un.h"
 #endif
 
 
@@ -300,56 +298,56 @@ typedef struct in_addr PST_IN_ADDR_T;
 
 
 
-// Use #include PIST_QUOTE(PST_THREAD_HDR)
+// Use #include PST_THREAD_HDR
 #ifdef _IS_WINDOWS
 // Note: processthreadsapi.h appears to require the prior inclusion of
 // windows.h as well.
 // So make sure to include PST_THREAD_HDR only in C/C++ files, not in a header
 // file where it could end up including the massive windows.h all over the
 // place.
-#define PST_THREAD_HDR processthreadsapi.h
+#define PST_THREAD_HDR "processthreadsapi.h"
 #else
-#define PST_THREAD_HDR pthread.h
+#define PST_THREAD_HDR "pthread.h"
 #endif
 
-// Use #include PIST_QUOTE(PST_ERRNO_HDR)
+// Use #include PST_ERRNO_HDR
 #ifndef __linux__
 // pistache/pst_errno.h prevents mingw gcc's bad macro substitution on errno
 // Same issue with clang on macOS and gcc on OpenBSD
-#define PST_ERRNO_HDR pistache/pst_errno.h
+#define PST_ERRNO_HDR "pistache/pst_errno.h"
 #else
-#define PST_ERRNO_HDR sys/errno.h
+#define PST_ERRNO_HDR "sys/errno.h"
 #endif
 
-// Use #include PIST_QUOTE(PST_MISC_IO_HDR)
+// Use #include PST_MISC_IO_HDR
 #ifdef _IS_WINDOWS
-#define PST_MISC_IO_HDR io.h
+#define PST_MISC_IO_HDR "io.h"
 // For _close etc.
 #else
-#define PST_MISC_IO_HDR unistd.h
+#define PST_MISC_IO_HDR "unistd.h"
 #endif
 
-// Use #include PIST_QUOTE(PIST_FILEFNS_HDR)
+// Use #include PIST_FILEFNS_HDR
 #ifdef _IS_WINDOWS
-#define PIST_FILEFNS_HDR pistache/pist_filefns.h
+#define PIST_FILEFNS_HDR "pistache/pist_filefns.h"
 #else
 // unistd.h defines pread
-#define PIST_FILEFNS_HDR unistd.h
+#define PIST_FILEFNS_HDR "unistd.h"
 #endif
 
-// Use #include PIST_QUOTE(PIST_POLL_HDR)
+// Use #include PIST_POLL_HDR
 #ifdef _IS_WINDOWS
-#define PIST_POLL_HDR pistache/pist_sockfns.h
+#define PIST_POLL_HDR "pistache/pist_sockfns.h"
 #else
-#define PIST_POLL_HDR poll.h
+#define PIST_POLL_HDR "poll.h"
 #endif
 
-// Use #include PIST_QUOTE(PIST_SOCKFNS_HDR)
+// Use #include PIST_SOCKFNS_HDR
 #ifdef _IS_WINDOWS
-#define PIST_SOCKFNS_HDR pistache/pist_sockfns.h
+#define PIST_SOCKFNS_HDR "pistache/pist_sockfns.h"
 #else
 // unistd.h defines pread
-#define PIST_SOCKFNS_HDR unistd.h // has close, read and write in Linux
+#define PIST_SOCKFNS_HDR "unistd.h" // has close, read and write in Linux
 #endif
 
 // PST_SOCK_xxx macros are for sockets. For files, use PST_FILE_xxx

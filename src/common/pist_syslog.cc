@@ -22,7 +22,7 @@
 #include <stdio.h> // snprintf
 #include <stdlib.h> // malloc
 
-#include PIST_QUOTE(PST_CLOCK_GETTIME_HDR)
+#include PST_CLOCK_GETTIME_HDR
 
 #include <time.h>
 #include <string.h>
@@ -39,7 +39,7 @@
 #include <algorithm> // std::remove_copy_if
 #include <vector>
 // #include <limits.h> // PATH_MAX
-#include PIST_QUOTE(PST_MAXPATH_HDR)
+#include PST_MAXPATH_HDR
 
 #ifdef __APPLE__
 #include <mach-o/dyld.h> // _NSGetExecutablePath
@@ -168,12 +168,12 @@
 #include <stdarg.h>
 #include <string.h> // for strcat
 
-#include PIST_QUOTE(PST_THREAD_HDR) // for pthread_self (getting thread ID)
+#include PST_THREAD_HDR // for pthread_self (getting thread ID)
 
-#include PIST_QUOTE(PST_MAXPATH_HDR)
+#include PST_MAXPATH_HDR
 
 #include <sys/types.h> // for getpid()
-#include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h e.g. close
+#include PST_MISC_IO_HDR // unistd.h e.g. close
 
 #include "pistache/pist_syslog.h"
 #include <memory> // for std::shared_ptr

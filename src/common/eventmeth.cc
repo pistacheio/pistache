@@ -5,7 +5,7 @@
  */
 
 #include <pistache/winornix.h>
-#include PIST_QUOTE(PST_ERRNO_HDR)
+#include PST_ERRNO_HDR
 
 #include <pistache/eventmeth.h>
 #include <pistache/pist_quote.h>
@@ -748,9 +748,9 @@ namespace Pistache
 #include <pistache/pist_timelog.h>
 #include <pistache/os.h>
 
-#include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h, for close
-#include PIST_QUOTE(PST_FCNTL_HDR)
-#include PIST_QUOTE(PIST_SOCKFNS_HDR) // socket read, write and close
+#include PST_MISC_IO_HDR // unistd.h, for close
+#include PST_FCNTL_HDR
+#include PIST_SOCKFNS_HDR // socket read, write and close
 
 #include <assert.h>
 
