@@ -44,17 +44,16 @@ public_deps = []
 #Check if compiler supports C++20 date
 
 cxx_chrono_date_check_code = '''
-#include <sstream>
 #include <chrono>
-int main() {
-    std::stringstream ss;
-	ss << std::format("%FT%T%z", std::chrono::system_clock::now());
-	std::chrono::system_clock::time_point tp;
-	ss >> std::chrono::parse("%FT%T%z", tp);
-	return 0;
-}
+#include <format>
+#if defined(__cpp_lib_format) && (__cpp_lib_format >= 201907L) && \
+    defined(__cpp_lib_chrono) && (__cpp_lib_chrono >= 201907L)
+// OK
+#else
+#error "no"
+#endif
 '''
-has_working_cxx_chrono_date = compiler.links(cxx_chrono_date_check_code, name: 'C++20 std::chrono')
+has_working_cxx_chrono_date = compiler.compiles(cxx_chrono_date_check_code, name: 'C++20 std::chrono')
 
 if (not has_working_cxx_chrono_date)
     # howardhinnant/date has several names - look for them, from the most
@@ -71,6 +70,8 @@ if (not has_working_cxx_chrono_date)
         date_dep = dependency('date', fallback: ['hinnant-date', 'date_dep'])
     endif
     deps_libpistache += date_dep
+else
+    add_project_arguments('-DPISTACHE_USE_STD_CHRONO', language: 'cpp')
 endif
 
 if get_option('PISTACHE_USE_RAPIDJSON')

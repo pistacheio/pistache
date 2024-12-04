@@ -6,7 +6,7 @@
 
 #pragma once
 
-#if __cplusplus >= 202002L
+#if PISTACHE_USE_STD_CHRONO
 #include <chrono>
 #include <format>
 namespace date
