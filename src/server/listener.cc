@@ -597,7 +597,7 @@ namespace Pistache::Tcp
         shutdownFd.bind(poller);
         PS_LOG_DEBUG("shutdownFd.bind done");
 
-        acceptThread = std::thread([=]() {
+        acceptThread = std::thread([this]() {
             PS_TIMEDBG_START;
             this->run();
         });

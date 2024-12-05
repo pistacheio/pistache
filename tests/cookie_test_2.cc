@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include <date/date.h>
+#include <pistache/date_wrapper.h>
 #include <pistache/cookie.h>
 
 using namespace Pistache;

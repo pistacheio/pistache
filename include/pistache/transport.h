@@ -69,7 +69,7 @@ namespace Pistache::Tcp
             //
             // Note: fd could be PS_FD_EMPTY
             return Async::Promise<PST_SSIZE_T>(
-                [=](Async::Deferred<PST_SSIZE_T> deferred) mutable {
+                [&, this](Async::Deferred<PST_SSIZE_T> deferred) mutable {
                     BufferHolder holder { buffer };
                     WriteEntry write(std::move(deferred), std::move(holder),
                                      fd, flags
@@ -84,7 +84,7 @@ namespace Pistache::Tcp
 
         Async::Promise<PST_RUSAGE> load()
         {
-            return Async::Promise<PST_RUSAGE>([=](Async::Deferred<PST_RUSAGE> deferred) {
+            return Async::Promise<PST_RUSAGE>([this](Async::Deferred<PST_RUSAGE> deferred) {
                 PS_TIMEDBG_START_CURLY;
 
                 loadRequest_ = std::move(deferred);

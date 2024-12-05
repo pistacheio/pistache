@@ -237,7 +237,7 @@ namespace Pistache::Http
         else
         {
             ResponseWriter response(Http::Version::Http11, this, static_cast<Http::Handler*>(handler_.get()), peer);
-            response.send(Http::Code::Request_Timeout).then([=](PST_SSIZE_T) { removePeer(peer); }, [=](std::exception_ptr) { removePeer(peer); });
+            response.send(Http::Code::Request_Timeout).then([peer, this](PST_SSIZE_T) { removePeer(peer); }, [peer, this](std::exception_ptr) { removePeer(peer); });
         }
     }
 

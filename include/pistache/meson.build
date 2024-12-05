@@ -11,6 +11,7 @@ install_headers(
 	'common.h',
 	'config.h',
 	'cookie.h',
+	'date_wrapper.h',
 	'description.h',
 	'em_socket_t.h',
 	'emosandlibevdefs.h',
