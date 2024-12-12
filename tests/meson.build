@@ -5,7 +5,26 @@
 curl_dep = dependency('libcurl')
 gtest_main_dep = dependency('gtest', main: true, fallback: ['gtest', 'gtest_main_dep'])
 gmock_dep = dependency('gmock', version: '>=1.11.0', fallback: ['gtest', 'gmock_dep'])
-cpp_httplib_dep = dependency('cpp-httplib', fallback: ['cpp-httplib', 'cpp_httplib_dep'])
+
+# On macOS, meson doesn't seem to find cpp-httplib even when
+# cpp-httplib has been installed in the system (i.e. even when
+# cpp-httplib has been installed with brew); I don't know why. This
+# causes a particular issue with Pistache's brew formula, since brew's
+# "std_meson_args", used by the formula, includes
+# "--wrap-mode=nofallback", preventing meson from using our httplib
+# subproject as a fallback (brew wants us to use brew to install each
+# dependency, in preference to using a subproject). We workaround the
+# issue here by effectively doing the fallback to the cpp-httplib
+# subproject without using meson dependency's "fallback:" option.
+if host_machine.system() == 'darwin' and get_option('wrap_mode') == 'nofallback'
+    cpp_httplib_dep = dependency('cpp-httplib', required: false)
+    if not cpp_httplib_dep.found()
+        cpp_httplib_dep = subproject('cpp-httplib').get_variable('cpp_httplib_dep')
+    endif
+else
+    cpp_httplib_dep = dependency('cpp-httplib', fallback: ['cpp-httplib', 'cpp_httplib_dep'])
+endif
+
 brotli_dep = dependency('', required: false)
 zstd_dep = dependency('', required: false)
 
