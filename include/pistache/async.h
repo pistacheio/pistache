@@ -299,8 +299,7 @@ namespace Pistache::Async
             void* memory() override { return &storage; }
 
         private:
-            typedef typename std::aligned_storage<sizeof(T), alignof(T)>::type Storage;
-            Storage storage;
+            alignas(T) std::byte storage[sizeof(T)];
         };
 
         template <>
