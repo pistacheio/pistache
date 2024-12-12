@@ -126,8 +126,14 @@ fi
 pist_form_file="$pist_form_dir/pistache.rb"
 
 if [ -f "$pist_form_file" ]; then
-
-    if cmp --silent -- "$MY_SCRIPT_DIR/pistache.rb" "$pist_form_file"; then
+    sed '1,6d' "$MY_SCRIPT_DIR/pistache.rb" >"$MY_SCRIPT_DIR/tmp_pistache.rb"
+    if cmp --silent -- "$MY_SCRIPT_DIR/tmp_pistache.rb" "$pist_form_file"; then
+        pistache_rb_unchanged=true
+    else
+        pistache_rb_unchanged=false
+    fi
+    rm "$MY_SCRIPT_DIR/tmp_pistache.rb"
+    if [ "$pistache_rb_unchanged" == true ]; then
         if [ "$do_force" != true ]; then
             echo "$pist_form_file is already up to date, exiting"
             if [ "$use_head" != true ]; then
@@ -150,12 +156,13 @@ if [ -f "$pist_form_file" ]; then
         echo "Overwriting $pist_form_file"
         echo "Saving prior to $pist_form_bak"
         cp "$pist_form_file" "$pist_form_bak"
-        cp "$MY_SCRIPT_DIR/pistache.rb" "$pist_form_file"
     fi
 else
     echo "Copying $MY_SCRIPT_DIR/pistache.rb to $pist_form_file"
-    cp "$MY_SCRIPT_DIR/pistache.rb" "$pist_form_file"
 fi
+
+# Drop copyright + license SPDX message when adding forumla to homebrew/core
+sed '1,6d' "$MY_SCRIPT_DIR/pistache.rb" >"$pist_form_file"
 
 if brew list pistache &>/dev/null; then brew remove pistache; fi
 if [ "$use_head" = true ]; then

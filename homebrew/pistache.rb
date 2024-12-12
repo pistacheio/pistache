@@ -7,27 +7,29 @@
 class Pistache < Formula
   desc "Modern, fast, elegant HTTP + REST C++17 framework with pleasant API"
   homepage "https://github.com/pistacheio/pistache"
-  # !!!!!!!! CHANGE THIS to a https://github.com/pistacheio/pistache release
-  url "https://github.com/dgreatwood/pistachefork/archive/refs/tags/v0.4.22b.tar.gz"
-  sha256 "1aee77ccde52096586dadea97a195b86f43717348bb26f372f8a512c4cec84bb"
+  url "https://github.com/pistacheio/pistache/archive/refs/tags/v0.4.26.tar.gz"
+  sha256 "29af6562547497acf6f49170661786fe8cf1ed3712ad80e69c53da4661c59544"
   license "Apache-2.0"
   head "https://github.com/pistacheio/pistache.git", branch: "master"
 
-  depends_on "brotli" => :build
-  depends_on "cmake" => :build # Required so meson finds hinnant-date
+  depends_on "cmake" => :build # for howard-hinnant-date
   depends_on "cpp-httplib" => :build
   depends_on "googletest" => :build
   depends_on "howard-hinnant-date" => :build
-  depends_on "libevent" => :build
   depends_on "meson" => :build
   depends_on "ninja" => :build
-  depends_on "pkg-config" => :build
+  depends_on "pkgconf" => :build
   depends_on "rapidjson" => :build
-  depends_on "zstd" => :build
+  depends_on "brotli"
+  depends_on "libevent"
+  depends_on "openssl@3"
+  depends_on "zstd"
+
+  uses_from_macos "curl" => :build
+  uses_from_macos "zlib"
 
   def install
     system "meson", "setup", "build",
-           "--buildtype=release",
            "-DPISTACHE_USE_SSL=true", "-DPISTACHE_BUILD_EXAMPLES=true",
            "-DPISTACHE_BUILD_TESTS=true",
            "-DPISTACHE_BUILD_DOCS=false",
