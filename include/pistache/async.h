@@ -250,7 +250,7 @@ namespace Pistache::Async
 
                 if (allocated)
                 {
-                    reinterpret_cast<T*>(mem)->~T();
+                    std::destroy_at(reinterpret_cast<T*>(mem));
                     allocated = false;
                 }
 
@@ -274,7 +274,7 @@ namespace Pistache::Async
             {
                 if (allocated)
                 {
-                    reinterpret_cast<T*>(&storage)->~T();
+                    std::destroy_at(reinterpret_cast<T*>(storage));
                     allocated = false;
                 }
             }
