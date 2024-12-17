@@ -24,7 +24,7 @@
 #endif
 #include <pistache/http_defs.h>
 
-#include PIST_QUOTE(PST_CLOCK_GETTIME_HDR)
+#include PST_CLOCK_GETTIME_HDR
 
 namespace Pistache::Http
 {

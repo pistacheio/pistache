@@ -20,7 +20,7 @@
 #include <pistache/peer.h>
 #include <pistache/transport.h>
 
-#include PIST_QUOTE(PST_STRERROR_R_HDR)
+#include PST_STRERROR_R_HDR
 
 #include <charconv>
 #include <cstring>
@@ -33,10 +33,10 @@
 #include <unordered_map>
 
 #include <fcntl.h> // for file-constants (_O_RDONLY etc.) in Windows
-#include PIST_QUOTE(PST_FCNTL_HDR) // for function fcntl()
+#include PST_FCNTL_HDR // for function fcntl()
 
-#include PIST_QUOTE(PST_MISC_IO_HDR) // for _close (io.h / unistd.h)
-#include PIST_QUOTE(PIST_FILEFNS_HDR) // for "open"
+#include PST_MISC_IO_HDR // for _close (io.h / unistd.h)
+#include PIST_FILEFNS_HDR // for "open"
 
 #include <sys/stat.h>
 #include <sys/types.h>

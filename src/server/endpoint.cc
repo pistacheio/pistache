@@ -13,6 +13,7 @@
 #include <pistache/config.h>
 #include <pistache/endpoint.h>
 #include <pistache/peer.h>
+#include <pistache/pist_quote.h>
 #include <pistache/tcp.h>
 
 #include <array>

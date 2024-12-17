@@ -19,14 +19,14 @@
 #include <pistache/net.h>
 #include <pistache/stream.h>
 
-#include PIST_QUOTE(PST_NETDB_HDR)
-#include PIST_QUOTE(PST_SOCKET_HDR)
-#include PIST_QUOTE(PIST_SOCKFNS_HDR)
+#include PST_NETDB_HDR
+#include PST_SOCKET_HDR
+#include PIST_SOCKFNS_HDR
 
 // ps_sendfile.h includes sys/uio.h in macOS, and sys/sendfile.h in Linux
 #include <pistache/ps_sendfile.h>
 
-#include PIST_QUOTE(PST_STRERROR_R_HDR)
+#include PST_STRERROR_R_HDR
 
 #include <sys/types.h>
 

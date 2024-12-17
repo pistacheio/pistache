@@ -25,7 +25,7 @@
 
 #ifdef _IS_BSD
 // For pthread_set_name_np
-#include PIST_QUOTE(PST_THREAD_HDR)
+#include PST_THREAD_HDR
 #ifndef __NetBSD__
 #include <pthread_np.h>
 #endif
@@ -33,7 +33,7 @@
 
 #ifdef _IS_WINDOWS
 #include <windows.h> // Needed for PST_THREAD_HDR (processthreadsapi.h)
-#include PIST_QUOTE(PST_THREAD_HDR) // for SetThreadDescription
+#include PST_THREAD_HDR // for SetThreadDescription
 #endif
 
 #ifdef _IS_WINDOWS

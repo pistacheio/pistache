@@ -16,8 +16,8 @@
 #include <pistache/config.h>
 #include <pistache/os.h>
 
-#include PIST_QUOTE(PST_FCNTL_HDR)
-#include PIST_QUOTE(PIST_SOCKFNS_HDR)
+#include PST_FCNTL_HDR
+#include PIST_SOCKFNS_HDR
 
 #include <pistache/pist_timelog.h>
 
@@ -27,7 +27,7 @@
 #include <sys/epoll.h>
 #endif
 
-#include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h e.g. close
+#include PST_MISC_IO_HDR // unistd.h e.g. close
 
 #include <algorithm>
 #include <fstream>

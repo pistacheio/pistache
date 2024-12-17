@@ -12,6 +12,7 @@
 */
 
 #include <pistache/eventmeth.h>
+#include <pistache/pist_quote.h>
 
 #ifdef _USE_LIBEVENT_LIKE_APPLE
 
@@ -32,9 +33,9 @@
 // ps_sendfile.h includes sys/uio.h in macOS, and sys/sendfile.h in Linux
 #include <pistache/ps_sendfile.h>
 
-#include PIST_QUOTE(PST_MISC_IO_HDR) // unistd.h/lseek in BSD.
+#include PST_MISC_IO_HDR // unistd.h/lseek in BSD.
 
-#include PIST_QUOTE(PIST_SOCKFNS_HDR) // socket read, write and close
+#include PIST_SOCKFNS_HDR // socket read, write and close
 
 #ifndef _USE_LIBEVENT_LIKE_APPLE
 // Note: sys/timerfd.h is linux-only (and certainly POSIX only)
