@@ -750,7 +750,7 @@ namespace Pistache::Async
                 void finishResolve(P& promise)
                 {
                     auto chainer = makeChainer(promise);
-                    promise.then(std::move(chainer), [=](std::exception_ptr exc) {
+                    promise.then(std::move(chainer), [this](std::exception_ptr exc) {
                         auto core   = this->chain_;
                         core->exc   = std::move(exc);
                         core->state = State::Rejected;
