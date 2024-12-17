@@ -102,8 +102,14 @@ if host_machine.system() == 'windows'
                               '-NonInteractive', '-WindowStyle', 'Hidden',
                               '-NoLogo',
                               '-Command',
-                              'if (!(Test-Path -Path "@OUTPUT0@")) { New-Item -ItemType SymbolicLink -Path "@OUTPUT0@" -Target "'+libpistache_filename+'" }'],
+                              'if (!(Test-Path -Path "@OUTPUT0@")) { Copy-Item "'+libpistache_filename+'" "@OUTPUT0@" }'],
                               depends: [libpistache])
+    # Above, it would be great to use "New-Item -ItemType SymbolicLink",
+    # however, Windows requires administrative privileges to create a
+    # symbolic link, so we use Copy-Item instead.
+    # 'if (!(Test-Path -Path "@OUTPUT0@")) {
+    #   New-Item -ItemType SymbolicLink -Path "@OUTPUT0@" `
+    #   -Target "'+libpistache_filename+'" }'
 
     unversioned_dll_cts += unversioned_dll_ct1
 
@@ -115,8 +121,9 @@ if host_machine.system() == 'windows'
                               '-NonInteractive', '-WindowStyle', 'Hidden',
                               '-NoLogo',
                               '-Command',
-                              'if (!(Test-Path -Path "@OUTPUT0@")) { New-Item -ItemType SymbolicLink -Path "@OUTPUT0@" -Target "'+libpistache_filename+'" }'],
+                              'if (!(Test-Path -Path "@OUTPUT0@")) { Copy-Item "'+libpistache_filename+'" "@OUTPUT0@" }'],
                               depends: [libpistache])
+    # As per prior comment, used Copy-Item rather than creating a SymbolicLink
         unversioned_dll_cts += unversioned_dll_ct2
     endif
 endif

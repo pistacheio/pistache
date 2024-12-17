@@ -20,7 +20,18 @@ prompt. The terminal prompt can be at the console of the target
 Windows machine, or via a remote SSH session. Just a regular
 PowerShell prompt is needed - you do NOT need to use a preconfigured
 "Developer PowerShell" prompt, and in fact the Pistache configuration
-scripts will configure a Developer prompt for you if required.
+scripts will configure a Developer prompt for you if
+required. Likewise, you can use a prompt without administrator rights.
+
+Newer versions of Windows may disable script execution by default. To
+enable script execution, at a PowerShell prompt with admin rights do:
+  Set-ExecutionPolicy -ExecutionPolicy Bypass
+
+Older versions of Windows (e.g. Windows Server 2019) that default to
+Internet Explorer may block access to Internet downloads needed by the
+Pistache setup scripts. To enable that Internet access, see that the
+note "Disabling Enhanced Security Configuration for Internet Explorer"
+later in this document.
 
 To begin - clone, fork or download and expand the zip of Pistache to
 fetch Pistache to your Windows machine:
@@ -65,10 +76,10 @@ Pistache is installed to the pistache_distribution subdirectory of the
   C:\Program Files\pistache_distribution
 You can link your own executables to Pistache via
 \Program Files\pistache_distribution. Note that you will link your
-executable to an import library (.lib file) and, to run your program,
-you will ensure that your $env:path includes the location of the
-Pistache DLL; Windows then loads the Pistache DLL when your executable
-runs, based on the information provided in the .lib file.
+executable to the Pistache import library (.lib file) and, to run your
+program, you will ensure that your $env:path includes the location of
+the Pistache DLL; Windows then loads the Pistache DLL when your
+executable runs, based on the information provided in the .lib file.
 
 Note also that you do not need to link to or load pistachelog.dll in
 any way. pistachelog.dll's only purpose is to provide a place to keep
@@ -236,6 +247,38 @@ You can also use the native debugggers, i.e. the Visual Studio
 debugger for Visual Studio debug builds, and gdb for GCC debug builds
 (note: gccsetup.ps1 configures gdb on the path if not already
 installed).
+
+
+Disabling Enhanced Security Configuration for Internet Explorer
+===============================================================
+Older versions of Windows (e.g. Windows Server 2019) that default to
+Internet Explorer may block access to Internet downloads needed by the
+Pistache setup scripts. To enable that Internet access:
+  Via the Windows GUI on Windows Server 2019, go to:
+    Server Manager > Local Server > IE Enhanced Security Configuration
+    Then, select Off for both Administrators and Users
+    And restart Internet Explorer
+  OR at a PowerShell prompt with admin rights, do:
+    $AdminKey = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{A509B1A7-37EF-4b3f-8CFC-4F3A74704073}"
+    $UserKey = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\{A509B1A8-37EF-4b3f-8CFC-4F3A74704073}"
+    Set-ItemProperty -Path $AdminKey -Name "IsInstalled" -Value 0
+    Set-ItemProperty -Path $UserKey -Name "IsInstalled" -Value 0
+    Stop-Process -Name Explorer
+
+
+Troubleshooting
+===============
+If mingit is installed, and you get an error "fatal exceeded maximum
+include depth" on invoking git, you likely have a circular include in
+the file "$env:ProgramFiles\Git\etc\gitconfig". Open that gitconfig
+file in an editor and comment out the line that looks like:
+  path = C:/Program Files/Git/etc/gitconfig
+You can comment it out by placing a semicolon at the line's start:
+  ; path = C:/Program Files/Git/etc/gitconfig
+
+More generally, if the setup script goes wrong in a hard-to-understand
+way, one thing to try is quitting the shell, starting a new shell, and
+running the script again.
 
 
 How It Works
