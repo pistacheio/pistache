@@ -12,11 +12,9 @@ on:
   push:
     branches:
     - master
-    - brewFormula
   pull_request:
     branches:
     - master
-    - brewFormula
 
 defaults:
   run:
@@ -77,6 +75,10 @@ jobs:
         export CXX
         export CC
         echo "CXX is $CXX; CC is $CC"
+
+        # Note - if you get the GitHub error:
+        #   GitHub API Error: API rate limit exceeded for aa.bb.cc.dd...
+        # Then try rerunning the job in 20-25 minutes
 
         homebrew/runformula.sh -y --force --HEAD
         #   -y         Say "yes" to doing the brew audit

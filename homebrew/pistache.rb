@@ -20,6 +20,7 @@ class Pistache < Formula
   depends_on "ninja" => :build
   depends_on "pkgconf" => :build
   depends_on "rapidjson" => :build
+
   depends_on "brotli"
   depends_on "libevent"
   depends_on "openssl@3"
@@ -30,13 +31,14 @@ class Pistache < Formula
 
   def install
     system "meson", "setup", "build",
-           "-DPISTACHE_USE_SSL=true", "-DPISTACHE_BUILD_EXAMPLES=true",
-           "-DPISTACHE_BUILD_TESTS=true",
-           "-DPISTACHE_BUILD_DOCS=false",
-           "-DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true",
-           "-DPISTACHE_USE_CONTENT_ENCODING_BROTLI=true",
-           "-DPISTACHE_USE_CONTENT_ENCODING_ZSTD=true",
-           *std_meson_args
+                    "-DPISTACHE_USE_SSL=true",
+                    "-DPISTACHE_BUILD_EXAMPLES=false",
+                    "-DPISTACHE_BUILD_TESTS=false",
+                    "-DPISTACHE_BUILD_DOCS=false",
+                    "-DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true",
+                    "-DPISTACHE_USE_CONTENT_ENCODING_BROTLI=true",
+                    "-DPISTACHE_USE_CONTENT_ENCODING_ZSTD=true",
+                    *std_meson_args
 
     system "meson", "compile", "-C", "build", "--verbose"
     system "meson", "install", "-C", "build"
