@@ -1247,33 +1247,6 @@ extern "C" void setPsLogCategory(const char * _category)
 
 // ---------------------------------------------------------------------------
 
-#ifndef __APPLE__
-static std::mutex ps_basename_r_mutex;
-extern "C" char * ps_basename_r(const char * path, char * bname)
-{
-    if (!bname)
-        return(NULL);
-
-    bname[0] = 0;
-
-    std::lock_guard<std::mutex> l_guard(ps_basename_r_mutex);
-
-    char * path_copy = (char *) malloc((path ? strlen(path) : 0) + 6);
-    strcpy(path_copy, path); // since basename may change path contents
-
-    char * bname_res = basename(path_copy);
-
-    if (bname_res)
-       strcpy(&(bname[0]), bname_res);
-
-    free(path_copy);
-    return(bname);
-}
-#endif // ifndef __APPLE__
-
-
-// ---------------------------------------------------------------------------
-
 // PSLogOss psLogOss;
 
 // Implementation strategy:
