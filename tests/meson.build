@@ -17,7 +17,9 @@ gmock_dep = dependency('gmock', version: '>=1.11.0', fallback: ['gtest', 'gmock_
 # dependency, in preference to using a subproject). We workaround the
 # issue here by effectively doing the fallback to the cpp-httplib
 # subproject without using meson dependency's "fallback:" option.
-if host_machine.system() == 'darwin' and get_option('wrap_mode') == 'nofallback'
+# Note: Have to do the same thing on Linux too, so "linuxbrew"
+# (homebrew on Linux) works.
+if (host_machine.system() == 'darwin' or host_machine.system() == 'linux') and get_option('wrap_mode') == 'nofallback'
     cpp_httplib_dep = dependency('cpp-httplib', required: false)
     if not cpp_httplib_dep.found()
         cpp_httplib_dep = subproject('cpp-httplib').get_variable('cpp_httplib_dep')

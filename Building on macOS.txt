@@ -112,3 +112,16 @@ by default. libevent is optional on Linux:
 Also:
   clean.sh - remove build directories
   gccmacsetup.sh - configure for GCC build on macOS
+
+
+Building with GCC
+-----------------
+
+By default, Pistache on macOS builds with clang, which is the default
+Apple compiler. If you prefer to use gcc, you can utilize the
+gccmacsetup.sh script provided by Pistache before doing the build,
+like this:
+  source bldscripts/gccmacsetup.sh
+  bldscripts/mesbuild.sh
+  bldscripts/mestest.sh
+  bldscripts/mesinstall.sh

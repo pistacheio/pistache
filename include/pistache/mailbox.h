@@ -213,8 +213,7 @@ namespace Pistache
             T& data() { return *reinterpret_cast<T*>(&storage); }
 
         private:
-            typedef typename std::aligned_storage<sizeof(T), alignof(T)>::type Storage;
-            Storage storage;
+            alignas(T) std::byte storage[sizeof(T)];
             std::atomic<Entry*> next;
         };
 
@@ -233,7 +232,7 @@ namespace Pistache
             while (!empty())
             {
                 Entry* e = pop();
-                e->data().~T();
+                std::destroy_at(&e->data());
                 delete e;
             }
             delete tail;
@@ -258,7 +257,7 @@ namespace Pistache
                 // Since it's Single-Consumer, the store does not need to be atomic
                 tail = next;
                 new (&res->storage) T(std::move(next->data()));
-                next->data().~T();
+                std::destroy_at(&next->data());
                 return res;
             }
             return nullptr;
@@ -275,7 +274,7 @@ namespace Pistache
             if (entry)
             {
                 object.reset(new T(std::move(entry->data())));
-                entry->data().~T();
+                std::destroy_at(&entry->data());
             }
 
             return object;

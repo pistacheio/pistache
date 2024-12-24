@@ -711,7 +711,7 @@ namespace Pistache::Aio
             {
                 PS_TIMEDBG_START;
 
-                thread = std::thread([=]() {
+                thread = std::thread([this]() {
                     PS_TIMEDBG_START;
 
                     if (!threadsName_.empty())

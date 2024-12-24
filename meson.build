@@ -54,10 +54,42 @@ if not date_dep.found()
 endif
 
 deps_libpistache = [
-	dependency('threads'),
-	date_dep
+	dependency('threads')
 ]
 public_deps = []
+
+#Check if compiler supports C++20 date
+
+cxx_chrono_date_check_code = '''
+#include <chrono>
+#include <format>
+#if defined(__cpp_lib_format) && (__cpp_lib_format >= 201907L) && \
+    defined(__cpp_lib_chrono) && (__cpp_lib_chrono >= 201907L)
+// OK
+#else
+#error "no"
+#endif
+'''
+has_working_cxx_chrono_date = compiler.compiles(cxx_chrono_date_check_code, name: 'C++20 std::chrono')
+
+if (not has_working_cxx_chrono_date)
+    # howardhinnant/date has several names - look for them, from the most
+    # to the least explicit name.
+    # In Meson 0.60.0, this can be replaced with a simpler:
+    #
+    #     dependency('howardhinnant-date', 'hinnant-date', 'date')
+    #
+    date_dep = dependency('howardhinnant-date', required: false)
+    if not date_dep.found()
+        date_dep = dependency('hinnant-date', required: false)
+    endif
+    if not date_dep.found()
+        date_dep = dependency('date', fallback: ['hinnant-date', 'date_dep'])
+    endif
+    deps_libpistache += date_dep
+else
+    add_project_arguments('-DPISTACHE_USE_STD_CHRONO', language: 'cpp')
+endif
 
 if get_option('PISTACHE_USE_RAPIDJSON')
 	rapidjson_dep = dependency('RapidJSON', fallback: ['rapidjson', 'rapidjson_dep'])

@@ -250,7 +250,7 @@ namespace Pistache::Async
 
                 if (allocated)
                 {
-                    reinterpret_cast<T*>(mem)->~T();
+                    std::destroy_at(reinterpret_cast<T*>(mem));
                     allocated = false;
                 }
 
@@ -274,7 +274,7 @@ namespace Pistache::Async
             {
                 if (allocated)
                 {
-                    reinterpret_cast<T*>(&storage)->~T();
+                    std::destroy_at(reinterpret_cast<T*>(storage));
                     allocated = false;
                 }
             }
@@ -299,8 +299,7 @@ namespace Pistache::Async
             void* memory() override { return &storage; }
 
         private:
-            typedef typename std::aligned_storage<sizeof(T), alignof(T)>::type Storage;
-            Storage storage;
+            alignas(T) std::byte storage[sizeof(T)];
         };
 
         template <>
@@ -751,7 +750,7 @@ namespace Pistache::Async
                 void finishResolve(P& promise)
                 {
                     auto chainer = makeChainer(promise);
-                    promise.then(std::move(chainer), [=](std::exception_ptr exc) {
+                    promise.then(std::move(chainer), [this](std::exception_ptr exc) {
                         auto core   = this->chain_;
                         core->exc   = std::move(exc);
                         core->state = State::Rejected;

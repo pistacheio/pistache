@@ -177,7 +177,7 @@ class MyHandler : public Http::Handler
     {
         response
             .send(Http::Code::Request_Timeout, "Timeout")
-            .then([=](PST_SSIZE_T) {}, PrintException());
+            .then([](PST_SSIZE_T) {}, PrintException());
     }
 };
 

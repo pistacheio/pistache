@@ -722,7 +722,8 @@ static int snprintProcessAndThread(char * _buff, size_t _buffSize)
             break;
     }
 
-    for (int i=((static_cast<int>(size_pt))-1); i>=0; --i) // little endian, if it matters
+    // little endian, if it matters
+    for (int i=((static_cast<int>(size_pt))-1); i>=0; --i)
     {
         buff_would_have_been_len =
             snprintf(_buff, _buffSize, "%02x", static_cast<unsigned>(ptc[i]));
