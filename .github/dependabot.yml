@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 Andrea Pappacoda
+#
+# SPDX-License-Identifier: Apache-2.0
+
 # Keep GitHub Actions up to date with GitHub's Dependabot...
 # https://docs.github.com/en/code-security/dependabot/working-with-dependabot/keeping-your-actions-up-to-date-with-dependabot
 # https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file#package-ecosystem
