@@ -11,11 +11,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: ${{ github.event.pull_request.commits }} + 1
 
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v4
 
       - name: Install commitlint cli
         run: |
