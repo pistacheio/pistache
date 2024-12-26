@@ -36,6 +36,7 @@ do_yes=false
 do_usage=false
 use_head=false
 skip_audit=false
+audit_only=false
 do_force=false
 optspec=":hfy-:"
 while getopts "$optspec" optchar; do
@@ -50,6 +51,9 @@ while getopts "$optspec" optchar; do
                     ;;
                 skipaudit)
                     skip_audit=true
+                    ;;
+                auditonly)
+                    audit_only=true
                     ;;
                 force)
                     do_force=true
@@ -87,6 +91,7 @@ if [ "$do_usage" = true ]; then
     echo " -f, --force   Test even if forumla already up-to-date"
     echo " -y            Answer yes to questions (i.e. do audit)"
     echo " --skipaudit   Skips brew audit; overrides -y for audit question"
+    echo " --auditonly   Skips brew install, does audit"
     if [ "$do_yes" = true ] || [ "$do_head" = true ]; then
         echo "Error: Usage requested with other options"
         do_error=true
@@ -161,19 +166,24 @@ else
     echo "Copying $MY_SCRIPT_DIR/pistache.rb to $pist_form_file"
 fi
 
-# Drop copyright + license SPDX message when adding forumla to homebrew/core
-sed '1,6d' "$MY_SCRIPT_DIR/pistache.rb" >"$pist_form_file"
+if [ "$audit_only" != true ]; then
+    # Drop copyright + license SPDX message when adding forumla to homebrew/core
+    sed '1,6d' "$MY_SCRIPT_DIR/pistache.rb" >"$pist_form_file"
 
-if brew list pistache &>/dev/null; then brew remove pistache; fi
-if [ "$use_head" = true ]; then
-    brew install --HEAD pistache
-else
-    brew install --build-from-source pistache
+    if brew list pistache &>/dev/null; then brew remove pistache; fi
+    if [ "$use_head" = true ]; then
+        brew install --HEAD pistache
+    else
+        brew install --build-from-source pistache
+    fi
+    brew test --verbose pistache
 fi
-brew test --verbose pistache
 
 if [ "$skip_audit" != true ]; then
     do_audit=$do_yes
+    if [ "$do_audit" != true ]; then
+        do_audit=$audit_only
+    fi
     if [ "$do_audit" != true ]; then
         read -e -p 'brew audit? [y/N]> '
         if [[ "$REPLY" == [Yy]* ]]; then

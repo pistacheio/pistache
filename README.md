@@ -109,7 +109,7 @@ $ sudo apt install libpistache-dev
 
 ### Ubuntu PPA (Stable)
 
-Currently there are no stable release of Pistache published into the [stable](https://launchpad.net/~pistache+team/+archive/ubuntu/stable) PPA. However, when that time comes, run the following to install a stable package:
+From time to time, the project transfers release packages into the [stable](https://launchpad.net/~pistache+team/+archive/ubuntu/stable) PPA. Run the following to install a stable package:
 
 ```sh
 $ sudo add-apt-repository ppa:pistache+team/stable

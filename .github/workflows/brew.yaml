@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2022 Andrea Pappacoda
+# SPDX-FileCopyrightText: 2024 Duncan Greatwood
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -31,6 +31,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Note: If you change the list of OS by adding a newer one,
+        # PLEASE UPDATE THE AUDIT PHASE to use the most recent macOS
+        # (See "runformula.sh --auditonly ..." later in this file)
         os: [ 'macos-13', 'macos-14', 'macos-15' ]
         compiler: [ 'clang' ]
         sanitizer: [ 'none' ]
@@ -76,16 +79,20 @@ jobs:
         export CC
         echo "CXX is $CXX; CC is $CC"
 
-        # Note - if you get the GitHub error:
-        #   GitHub API Error: API rate limit exceeded for aa.bb.cc.dd...
-        # Then try rerunning the job in 20-25 minutes
+        # This is a fine-grained personal access token restricted to a
+        # single repository and with all permissions left on "No
+        # Access". We set this token to avoid being blocked by the
+        # GitHub access rate limit for unauthenticated access
+        # (i.e. the rate limit for access with no token).
+        export HOMEBREW_GITHUB_API_TOKEN=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
 
-        homebrew/runformula.sh -y --force --HEAD
-        #   -y         Say "yes" to doing the brew audit
-        #   --force    Run even if pistache brew formula unchanged
-        #   --HEAD     Test with head of pistacheio/pistache master branch
+        homebrew/runformula.sh --skipaudit --force --HEAD
+        #   --skipaudit  Say "yes" to doing the brew audit
+        #   --force      Run even if pistache brew formula unchanged
+        #   --HEAD       Test with head of pistacheio/pistache master
+        #   branch
 
         # if brew list pistache &>/dev/null; then brew remove pistache; fi
-        # # Use release (not HEAD), do audit (-y), and force even if pistache
-        # # formula unchanged
+        ## Use release (not HEAD), do audit (-y), and force even if pistache
+        ## formula unchanged
         # homebrew/runformula.sh -y --force
