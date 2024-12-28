@@ -1,0 +1,98 @@
+# SPDX-FileCopyrightText: 2024 Duncan Greatwood
+#
+# SPDX-License-Identifier: Apache-2.0
+
+# See:
+#   https://docs.github.com/en/actions/writing-workflows/choosing-where-your-workflow-runs/choosing-the-runner-for-a-job
+#   https://github.com/actions/runner-images/blob/main/images/macos/macos-14-Readme.md
+
+name: Homebrew Formula
+
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+    branches:
+    - master
+
+defaults:
+  run:
+    shell: sh
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    name: Homebrew Formula
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Note: If you change the list of OS by adding a newer one,
+        # PLEASE UPDATE THE AUDIT PHASE to use the most recent macOS
+        # (See "runformula.sh --auditonly ..." later in this file)
+        os: [ 'macos-13', 'macos-14', 'macos-15' ]
+        compiler: [ 'clang' ]
+        sanitizer: [ 'none' ]
+        tls: [ 'true' ]
+        def_debug: [ 'false' ]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+        # Avoid doing "brew update" - the brew formulas that are
+        # preinstalled on the github runner image are likely
+        # consistent with the pre-installed software on the image. If
+        # we do "brew upate", and then install something new with
+        # brew, and the "something new" depends on pre-installed
+        # software on the image, and there are new versions of the
+        # pre-installed software revealed by doing "brew update", then
+        # when we install the "something new" brew may try and also
+        # install a new version of the pre-installed software on which
+        # the "something new" depends, but that attempt to install a
+        # new version of the pre-installed software can fail as a
+        # result of being blocked by the software that is already
+        # installed.
+
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Test Homebrew
+      run: |
+        if [ ${{ matrix.compiler }} = gcc ]; then
+            gcc_lns=`brew list gcc | grep "bin/g++-[0-9][0-9]" | sort -r`
+            gcc_fstln=`echo "$gcc_lns" | head -1`
+            CXX=`basename $gcc_fstln`
+
+            gcc_lns=`brew list gcc | grep "bin/gcc-[0-9][0-9]" | sort -r`
+            gcc_fstln=`echo "$gcc_lns" | head -1`
+            CC=`basename $gcc_fstln`
+        else
+            CXX=clang++
+            CC=CXX
+        fi
+        export CXX
+        export CC
+        echo "CXX is $CXX; CC is $CC"
+
+        # This is a fine-grained personal access token restricted to a
+        # single repository and with all permissions left on "No
+        # Access". We set this token to avoid being blocked by the
+        # GitHub access rate limit for unauthenticated access
+        # (i.e. the rate limit for access with no token).
+        export HOMEBREW_GITHUB_API_TOKEN=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
+
+        homebrew/runformula.sh --skipaudit --force --HEAD
+        #   --skipaudit  Say "yes" to doing the brew audit
+        #   --force      Run even if pistache brew formula unchanged
+        #   --HEAD       Test with head of pistacheio/pistache master
+        #   branch
+
+        # if brew list pistache &>/dev/null; then brew remove pistache; fi
+        ## Use release (not HEAD), do audit (-y), and force even if pistache
+        ## formula unchanged
+        # homebrew/runformula.sh -y --force

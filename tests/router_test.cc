@@ -19,7 +19,14 @@
 #include <pistache/http.h>
 #include <pistache/router.h>
 
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
 #include <httplib.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 using namespace Pistache;
 using namespace Pistache::Rest;

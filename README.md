@@ -81,6 +81,10 @@ If you have no need to modify the Pistache source, you are strongly recommended 
 
 Pistache is available in the official repositories since Debian 12 and Ubuntu 23.10, under the package name `libpistache-dev`.
 
+### macOS
+
+Pistache can be installed using the Homebrew package manager. See *Building on macOS.txt* for specifics.
+
 #### Supported Architectures
 
 Currently Pistache is built and tested on a number of [architectures](https://wiki.debian.org/SupportedArchitectures). Some of these are suitable for desktop or server use and others for embedded environments. As of this writing we do not currently have any MIPS related packages that have been either built or tested.
@@ -93,7 +97,7 @@ Currently Pistache is built and tested on a number of [architectures](https://wi
 - riscv64
 - s390x
 
-#### Ubuntu PPA (Unstable)
+### Ubuntu PPA (Unstable)
 
 The project builds [daily unstable snapshots](https://launchpad.net/~pistache+team/+archive/ubuntu/unstable) in a separate unstable PPA. To use it, run the following:
 
@@ -103,9 +107,9 @@ $ sudo apt update
 $ sudo apt install libpistache-dev
 ```
 
-#### Ubuntu PPA (Stable)
+### Ubuntu PPA (Stable)
 
-Currently there are no stable release of Pistache published into the [stable](https://launchpad.net/~pistache+team/+archive/ubuntu/stable) PPA. However, when that time comes, run the following to install a stable package:
+From time to time, the project transfers release packages into the [stable](https://launchpad.net/~pistache+team/+archive/ubuntu/stable) PPA. Run the following to install a stable package:
 
 ```sh
 $ sudo add-apt-repository ppa:pistache+team/stable
@@ -205,8 +209,7 @@ To download the latest available release, clone the repository over GitHub.
 $ git clone https://github.com/pistacheio/pistache.git
 ```
 
-To build for macOS, you can follow the instructions in:
-    *Building on macOS.txt*
+To build on macOS, Windows, or BSD, see the respective files *Building on macOS.txt*, *Building on Windows.txt* or *Building on BSD.txt*.
 
 Continuing the Linux instructions:
 

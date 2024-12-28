@@ -11,7 +11,15 @@
 #include <pistache/peer.h>
 #include <pistache/router.h>
 
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
 #include <httplib.h>
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
+
 
 #include <chrono>
 #include <thread>
@@ -121,7 +129,7 @@ TEST(rest_server_test, basic_test)
     else
     {
         const unsigned int my_max_hostname_len = 1024;
-        
+
         // NetBSD showed this case, when hostname was not "localhost"
         char name[my_max_hostname_len + 6];
         name[0] = 0;
@@ -131,7 +139,7 @@ TEST(rest_server_test, basic_test)
 
         ASSERT_EQ(res->body, &(name[0]));
     }
-    
+
     stats.shutdown();
 }
 

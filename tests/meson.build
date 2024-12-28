@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 curl_dep = dependency('libcurl')
+
 gtest_main_dep = dependency('gtest', main: true, fallback: ['gtest', 'gtest_main_dep'])
 gmock_dep = dependency('gmock', version: '>=1.11.0', fallback: ['gtest', 'gmock_dep'])
 
@@ -18,7 +19,7 @@ gmock_dep = dependency('gmock', version: '>=1.11.0', fallback: ['gtest', 'gmock_
 # subproject without using meson dependency's "fallback:" option.
 # Note: Have to do the same thing on Linux too, so "linuxbrew"
 # (homebrew on Linux) works.
-if (host_machine.system() == 'darwin' or host_machine.system() == 'linux')  and get_option('wrap_mode') == 'nofallback'
+if (host_machine.system() == 'darwin' or host_machine.system() == 'linux') and get_option('wrap_mode') == 'nofallback'
     cpp_httplib_dep = dependency('cpp-httplib', required: false)
     if not cpp_httplib_dep.found()
         cpp_httplib_dep = subproject('cpp-httplib').get_variable('cpp_httplib_dep')
