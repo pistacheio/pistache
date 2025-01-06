@@ -18,6 +18,10 @@
 # and set the Windows Registry key property value
 # HKCU:\Software\pistacheio\pistache\psLogToStdoutAsWell.
 
+$have_admin_rights = ([Security.Principal.WindowsPrincipal] `
+  [Security.Principal.WindowsIdentity]::GetCurrent() `
+  ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
 $pistinstbase="$env:DESTDIR\$env:MESON_INSTALL_PREFIX"
 if (($env:MESON_INSTALL_PREFIX) -and`
     [System.IO.Path]::IsPathRooted($env:MESON_INSTALL_PREFIX))
@@ -53,14 +57,11 @@ if (Test-Path -Path "$pistacheloggccdll")
         Write-Host "Copied $pistacheloggccdll to $pistachelogdll"
     }
 }
-    
+
 if (-Not (Test-Path "$pistachelogdll"))
 {
     throw "pistachelog.dll not found at $pistachelogdll"
 }
-
-wevtutil um "$pistwinlogman" # Uninstall - does nothing if not installed
-wevtutil im "$pistwinlogman" # Install
 
 # Next we create the Windows Registry log-to-stdout-as-well value for
 # Pistache, if it doesn't exist already. If that registry property
@@ -86,4 +87,38 @@ if (-Not ($key2.Property -contains "psLogToStdoutAsWell"))
         Value = 0
     }
     New-ItemProperty @newItemPropertySplat
+}
+
+Write-Host 'Installing Pistache logging manifest into Windows'
+if ($have_admin_rights) {
+    wevtutil um "$pistwinlogman" # Uninstall - does nothing if not installed
+    wevtutil im "$pistwinlogman" # Install
+}
+else {
+    $pst_command = `
+      'Write-Host ''In admin shell, installing logging manifest''; ' + `
+      'wevtutil um ''' + $pistwinlogman + '''; wevtutil im ''' + `
+      $pistwinlogman + '''; if($?) { ' + `
+      'Write-Host ''Success; exiting from shell that has Admin rights''; ' + `
+      '} else { ' + `
+      'Write-Host "Press any key to continue" -ForegroundColor Yellow; ' + `
+      '$x = $host.ui.RawUI.ReadKey(''NoEcho,IncludeKeyDown''); ' + `
+      'Write-Host ''Error; exiting from shell that has Admin rights'' }; ' + `
+      '[Environment]::Exit(0)'
+
+    Write-Host "To install manifest, launching cmd with admin rights"
+
+    # We use "Start-Process" so we can do "-verb RunAs", which provides
+    # admin-level privileges, like doing "sudo" on Linux
+    # ("wevtutil im ..." requires admin rights)
+
+    $modeproc = Start-Process -FilePath powershell.exe `
+      -ArgumentList "-NoProfile", "-noexit", `
+      "-WindowStyle", "Normal", `
+      "-Command", "$pst_command" `
+      -PassThru -verb RunAs
+
+    Write-Host "Wait for cmd to complete, no timeout"
+    $modeproc | Wait-Process -ErrorAction SilentlyContinue
+    Write-Host "cmd completed"
 }

@@ -10,9 +10,25 @@
 
 $savedpwd=$pwd
 
-. $PSScriptRoot/helpers/commonsetup.ps1
+$pst_outer_ps_cmd = $PSCommandPath
 
-if (Get-Command cl.exe -errorAction SilentlyContinue) {
+. $PSScriptRoot/helpers/commonsetup.ps1
+if ($pst_stop_running) {
+    cd "$savedpwd"
+    pstPressKeyIfRaisedAndErrThenExit
+    Exit(0) # Exit the script, but not the shell (no "[Environment]::")
+}
+
+if ($rights_raised_for_cmd) {
+    # If $rights_raised_for_cmd is set, it means this script has
+    # invoked itself to get admin rights for install purposes, and we
+    # don't want to get a MSVC prompt (the shell with admin rights
+    # will exit once the installs are done, so no point having the
+    # prompt)
+
+    Write-Host "Skipping MSVC prompt for admin-rights shell that will exit"
+}
+elseif (Get-Command cl.exe -errorAction SilentlyContinue) {
     Write-Host "WARNING: MSVC's cl.exe already setup? Skipping MSVC prompt"
 }
 else {
@@ -89,101 +105,102 @@ else {
                 Split-Path
           }
       }
-}
 
-if (($launch_vs_dev_shell_dir) -And `
-  (Test-Path -Path $launch_vs_dev_shell_dir)) {
-      cd "$launch_vs_dev_shell_dir"
-      # As at Aug-2024, VS 2022, Launch-VsDevShell.ps1 defaults to
-      # 32-bit host and target architectures. However you can specify
-      # both target architecture (-Arch option, valid values: x86,
-      # amd64, arm, arm64) and host architecture (-HostArch option,
-      # valid values: x86, amd64)
-      #
-      # If we don't do this, then meson will pickup 32-bit as the host
-      # and target architecture. Meanwhile, vcpkg defaults to 64-bit
-      # libraries (since we're on a 64-bit Windows). So then the
-      # linker can't link, because it is trying to link 64-bit vcpkg
-      # libs with our 32-bit object files.
-      #
-      # Ref: https://learn.microsoft.com/en-us/visualstudio/
-      #          ide/reference/command-prompt-powershell?view=vs-2022
-      try { ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64 }
-      catch {
+    if (($launch_vs_dev_shell_dir) -And `
+      (Test-Path -Path $launch_vs_dev_shell_dir)) {
           cd "$launch_vs_dev_shell_dir"
-          if (! ((./Launch-VsDevShell.ps1 -?) -like "*-HostArch*")) {
-              Write-Host "Launch-VsDevShell.ps1 has no parameter -HostArch"
-              if (Test-Path -Path "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe")
-              {
-                  Write-Host "Going to try Import-Module + Enter-VsDevShell"
-                  cd `
-                   "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer"
-                  $vs_instance_id=.\vswhere.exe -property instanceId
-                  cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio"
-                  $dirents=Get-ChildItem -Filter "????" -Name | `
-                    Sort-Object -Descending -Property Name
-                  foreach ($itm in $dirents) {
-                      if ("$itm" -match "^\d+$") {
-                          $itm_as_num=$itm/1
-                          if ($itm_as_num -gt 1970) {
-                              if (Test-Path "$itm/Enterprise/Common7/Tools/Microsoft.VisualStudio.DevShell.dll") {
-                                  $dev_shell_path = `
-                                    "$pwd\$itm\Enterprise\Common7\Tools"
-                                  break
-                              }
-                              elseif (Test-Path "$itm/Professional/Common7/Tools/Microsoft.VisualStudio.DevShell.dll") {
-                                  $dev_shell_path = `
-                                    "$pwd\$itm\Professional\Common7\Tools"
-                                  break
-                              }
-                              elseif (Test-Path "$itm/Community/Common7/Tools/Microsoft.VisualStudio.DevShell.dll") {
-                                  $dev_shell_path = `
-                                    "$pwd\$itm\Community\Common7\Tools"
-                                  break
+          # As at Aug-2024, VS 2022, Launch-VsDevShell.ps1 defaults to
+          # 32-bit host and target architectures. However you can specify
+          # both target architecture (-Arch option, valid values: x86,
+          # amd64, arm, arm64) and host architecture (-HostArch option,
+          # valid values: x86, amd64)
+          #
+          # If we don't do this, then meson will pickup 32-bit as the host
+          # and target architecture. Meanwhile, vcpkg defaults to 64-bit
+          # libraries (since we're on a 64-bit Windows). So then the
+          # linker can't link, because it is trying to link 64-bit vcpkg
+          # libs with our 32-bit object files.
+          #
+          # Ref: https://learn.microsoft.com/en-us/visualstudio/
+          #          ide/reference/command-prompt-powershell?view=vs-2022
+          try { ./Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64 }
+          catch {
+              cd "$launch_vs_dev_shell_dir"
+              if (! ((./Launch-VsDevShell.ps1 -?) -like "*-HostArch*")) {
+                  Write-Host "Launch-VsDevShell.ps1 has no parameter -HostArch"
+                  if (Test-Path -Path "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe")
+                  {
+                      Write-Host "Going to try Import-Module + Enter-VsDevShell"
+                      cd `
+                        "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer"
+                      $vs_instance_id=.\vswhere.exe -property instanceId
+                      cd "${env:ProgramFiles(x86)}/Microsoft Visual Studio"
+                      $dirents=Get-ChildItem -Filter "????" -Name | `
+                        Sort-Object -Descending -Property Name
+                      foreach ($itm in $dirents) {
+                          if ("$itm" -match "^\d+$") {
+                              $itm_as_num=$itm/1
+                              if ($itm_as_num -gt 1970) {
+                                  if (Test-Path "$itm/Enterprise/Common7/Tools/Microsoft.VisualStudio.DevShell.dll") {
+                                      $dev_shell_path = `
+                                        "$pwd\$itm\Enterprise\Common7\Tools"
+                                      break
+                                  }
+                                  elseif (Test-Path "$itm/Professional/Common7/Tools/Microsoft.VisualStudio.DevShell.dll") {
+                                      $dev_shell_path = `
+                                        "$pwd\$itm\Professional\Common7\Tools"
+                                      break
+                                  }
+                                  elseif (Test-Path "$itm/Community/Common7/Tools/Microsoft.VisualStudio.DevShell.dll") {
+                                      $dev_shell_path = `
+                                        "$pwd\$itm\Community\Common7\Tools"
+                                      break
+                                  }
                               }
                           }
                       }
-                  }
-                  if ("$dev_shell_path") {
-                      $dev_shell_path = `
-                        "$dev_shell_path\Microsoft.VisualStudio.DevShell.dll"
+                      if ("$dev_shell_path") {
+                          $dev_shell_path = `
+                            "$dev_shell_path\Microsoft.VisualStudio.DevShell.dll"
+                      }
+                      else {
+                          Write-Host `
+                            "Searching for Microsoft.VisualStudio.DevShell.dll"
+                          $dev_shell_path = Get-ChildItem -Path `
+                            "Microsoft.VisualStudio.DevShell.dll" -Recurse | `
+                            Sort-Object -Descending -Property LastWriteTime | `
+                            Select -Index 0 | `
+                            Select -ExpandProperty "FullName"
+                      }
+                      if ($dev_shell_path) {
+                          Import-Module "$dev_shell_path"
+                          $env:VSCMD_DEBUG=1
+                          Enter-VsDevShell -VsInstanceId $vs_instance_id `
+                            -SkipAutomaticLocation -DevCmdDebugLevel Basic `
+                            -DevCmdArguments '-arch=x64'
+                      }
+                      else {
+                          throw `
+                            "ERROR: No Microsoft.VisualStudio.DevShell.dll"
+                      }
                   }
                   else {
-                      Write-Host `
-                        "Searching for Microsoft.VisualStudio.DevShell.dll"
-                      $dev_shell_path = Get-ChildItem -Path `
-                        "Microsoft.VisualStudio.DevShell.dll" -Recurse | `
-                        Sort-Object -Descending -Property LastWriteTime | `
-                        Select -Index 0 | `
-                        Select -ExpandProperty "FullName"
-                  }
-                  if ($dev_shell_path) {
-                      Import-Module "$dev_shell_path"
-                      $env:VSCMD_DEBUG=1
-                      Enter-VsDevShell -VsInstanceId $vs_instance_id `
-                        -SkipAutomaticLocation -DevCmdDebugLevel Basic `
-                        -DevCmdArguments '-arch=x64'
-                  }
-                  else {
-                      throw `
-                        "ERROR: No Microsoft.VisualStudio.DevShell.dll"
+                      throw "ERROR: vswhere.exe not found"
                   }
               }
               else {
-                  throw "ERROR: vswhere.exe not found"
+                  throw "ERROR: Unexpected Launch-VsDevShell.ps1 error"
               }
           }
-          else {
-              throw "ERROR: Unexpected Launch-VsDevShell.ps1 error"
-          }
       }
-  }
-else {
-    throw("ERROR: Launch-VsDevShell.ps1 not found")
+    else {
+        throw("ERROR: Launch-VsDevShell.ps1 not found")
+    }
+
+    $env:CXX="cl"
+    $env:CC=$env:CXX
 }
 
-$env:CXX="cl"
-$env:CC=$env:CXX
 
 if (! (Get-Command ninja -errorAction SilentlyContinue)) {
     # Try looking in Microsoft Visual Studio
@@ -220,17 +237,37 @@ if (! (Get-Command ninja -errorAction SilentlyContinue)) {
               if (Get-Command winget -errorAction SilentlyContinue) {
                   if (! (winget list "ninja")) {
                       winget install "Ninja-build.Ninja"
-                      # Don't set ninja_dir - leaving it empty will
-                      # mean it doesn't get added to $env:path below,
-                      # which is good since winget takes care of the
-                      # path for us
+
+                      if (!(Get-Command ninja -errorAction SilentlyContinue)) {
+                          # Although winget will have adjusted the
+                          # path for us already, that adjustment takes
+                          # effect only after we have started a new
+                          # shell. So for the benefit of this shell,
+                          # since ninja is newly installed by winget,
+                          # we add it to the path
+                          if (Test-Path -Path `
+                            "$env:LOCALAPPDATA\Microsoft\WinGet\Links\ninja.exe") {
+                                $ninja_dir = `
+                                  "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
+                            }
+                          elseif (Test-Path -Path `
+                            "$env:APPDATA\Microsoft\WinGet\Links\ninja.exe") {
+                                $ninja_dir = `
+                                  "$env:APPDATA\Microsoft\WinGet\Links"
+                            }
+                          else {
+                              Write-Warning `
+                                "WARNING: ninja.exe not found where expected"
+                          }
+                      }
                   }
                   else {
                       Write-Host "WARNING: ninja already installed by winget, but not on path?"
                   }
               }
               else {
-                  if (! (vcpkg list "vcpkg-tool-ninja")) {
+                  ($ninja_there = (vcpkg list "vcpkg-tool-ninja")) *> $null
+                  if (! $ninja_there) {
                       vcpkg install vcpkg-tool-ninja
                       $ninja_dir=Get-ChildItem -Path "ninja.exe" -Recurse | `
                         Select -ExpandProperty "FullName" | `
@@ -273,3 +310,5 @@ if ((! ($env:plain_prompt)) -or ($env:plain_prompt -ne "Y"))
 }
 
 cd "$savedpwd"
+
+pstPressKeyIfRaisedAndErrThenExit

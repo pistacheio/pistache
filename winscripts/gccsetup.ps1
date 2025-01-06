@@ -10,7 +10,14 @@
 
 $savedpwd=$pwd
 
+$pst_outer_ps_cmd = $PSCommandPath
+
 . $PSScriptRoot/helpers/commonsetup.ps1
+if ($pst_stop_running) {
+    cd "$savedpwd"
+    pstPressKeyIfRaisedAndErrThenExit
+    Exit(0) # Exit the script, but not the shell (no "[Environment]::")
+}
 
 # Set $env:force_msys_gcc if you want to force the use of msys64's gcc
 # even if a different gcc is already installed. (Note:
@@ -25,20 +32,27 @@ if (($env:force_msys_gcc) -or `
       }
       else {
           cd ~
-          Write-Host "Downloading msys2-x86_64-latest.sfx.exe"
-          Invoke-WebRequest -Uri `
-            "https://repo.msys2.org/distrib/msys2-x86_64-latest.sfx.exe" `
-            -Outfile "msys2-x86_64-latest.sfx.exe"
-          Write-Host "Self-extracting msys2-x86_64-latest.sfx.exe"
-          .\msys2-x86_64-latest.sfx.exe -y -o$env:SYSTEMDRIVE\
+          # We get admin privilege here so ...sfx.exe can extract to
+          # SYSTEMDRIVE\msys64 (see "-oXXX" parms on ...sfx.exe)
+          if (! (pstRunScriptWithAdminRightsIfNotAlready)) {
+              $msys2_installed_by_this_shell = $TRUE
+              Write-Host "Downloading msys2-x86_64-latest.sfx.exe"
+              Invoke-WebRequest -Uri `
+                "https://repo.msys2.org/distrib/msys2-x86_64-latest.sfx.exe" `
+                -Outfile "msys2-x86_64-latest.sfx.exe"
+              Write-Host "Self-extracting msys2-x86_64-latest.sfx.exe"
+              .\msys2-x86_64-latest.sfx.exe -y "-o$env:SYSTEMDRIVE\"
+          }
           if (Test-Path -Path "$env:SYSTEMDRIVE\msys64") {
               $msys64_dir = "$env:SYSTEMDRIVE\msys64"
           }
           else {
               throw "msys64 didn't install as expected?"
           }
-          Write-Host "Checking msys2 shell"
-          & $msys64_dir\msys2_shell.cmd -defterm -here -no-start -ucrt64 -c “echo msysFirstTerminal”
+          if ($msys2_installed_by_this_shell) {
+              Write-Host "Checking msys2 shell"
+              & $msys64_dir\msys2_shell.cmd -defterm -here -no-start -ucrt64 -c “echo msysFirstTerminal”
+          }
       }
 
       if (! (Test-Path -Path "$msys64_dir\ucrt64\bin\gcc.exe")) {
@@ -59,8 +73,6 @@ if (($env:force_msys_gcc) -or `
 
 $env:CXX="g++"
 $env:CC="gcc"
-
-$savedpwd = $pwd
 
 if (! (Get-Command mc.exe -errorAction SilentlyContinue)) {
     if (Test-Path -Path "$env:ProgramFiles\Windows Kits") {
@@ -123,13 +135,30 @@ if (! (Get-Command ninja -errorAction SilentlyContinue)) {
         # Can't find ninja in "$env:VCPKG_DIR\installed"; install it now
 
         if (Get-Command winget -errorAction SilentlyContinue) {
-            winget install "Ninja-build.Ninja";
-            # Don't set ninja_dir - leaving it empty will mean it
-            # doesn't get added to $env:path below, which is good
-            # since winget takes care of the path for us
+            winget install "Ninja-build.Ninja"
+
+            if (! (Get-Command ninja -errorAction SilentlyContinue)) {
+                # Although winget will have adjusted the path for us
+                # already, that adjustment takes effect only after we
+                # have started a new shell. So for the benefit of this
+                # shell, since ninja is newly installed by winget, we
+                # add it to the path
+                if (Test-Path -Path `
+                  "$env:LOCALAPPDATA\Microsoft\WinGet\Links\ninja.exe") {
+                      $ninja_dir = "$env:LOCALAPPDATA\Microsoft\WinGet\Links"
+                  }
+                elseif (Test-Path -Path `
+                  "$env:APPDATA\Microsoft\WinGet\Links\ninja.exe") {
+                      $ninja_dir = "$env:APPDATA\Microsoft\WinGet\Links"
+                  }
+                else {
+                    Write-Warning "WARNING: ninja.exe not found where expected"
+                }
+            }
         }
         else {
-            if (! (vcpkg list "vcpkg-tool-ninja")) {
+            ($ninja_there = (vcpkg list "vcpkg-tool-ninja")) *> $null
+            if (! $ninja_there) {
                 vcpkg install vcpkg-tool-ninja
 
                 if (($env:VCPKG_DIR) -And `
@@ -177,5 +206,7 @@ if ((! ($env:plain_prompt)) -or ($env:plain_prompt -ne "Y"))
 }
 
 cd "$savedpwd"
+
+pstPressKeyIfRaisedAndErrThenExit
 
 Write-Host "SUCCESS: gcc.exe, mc.exe and ninja.exe set up"
