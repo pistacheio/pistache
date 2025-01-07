@@ -455,6 +455,17 @@ if (($env:VCPKG_DIR) -And (Test-Path -Path "$env:VCPKG_DIR")) {
     $env:VCPKG_INSTALLATION_ROOT=$env:VCPKG_DIR # As per github Windows images
     $env:VCPKG_ROOT=$env:VCPKG_INSTALLATION_ROOT
     $env:Path="$env:Path;$env:VCPKG_DIR"
+
+    $my_vcpkg_pc_dir = "$env:VCPKG_DIR\installed\x64-windows\lib\pkgconfig"
+    if ($env:PKG_CONFIG_PATH) {
+        if (! (($Env:PKG_CONFIG_PATH -split ";").TrimEnd('\').TrimEnd('/') `
+          -contains $my_vcpkg_pc_dir)) {
+              $env:PKG_CONFIG_PATH = "$env:PKG_CONFIG_PATH;$my_vcpkg_pc_dir"
+          }
+    }
+    else {
+        $env:PKG_CONFIG_PATH="$my_vcpkg_pc_dir"
+    }
 }
 
 cd $savedpwd
@@ -667,19 +678,8 @@ if ((! (Get-Command pkg-config -errorAction SilentlyContinue)) -or `
                   Sort-Object -Descending -Property LastWriteTime | `
                   Select -Index 0 | Select -ExpandProperty "FullName"
             }
-          if (($my_vcpkg_pkgconfig_dir) -And `
-            (Test-Path -Path $my_vcpkg_pkgconfig_dir)) {
-                $my_vcpkg_pkgconfig_dir = `
-                  "$env:VCPKG_DIR\installed\x64-windows\lib\pkgconfig"
-                if ($env:PKG_CONFIG_PATH) {
-                    $env:PKG_CONFIG_PATH = `
-                      "$env:PKG_CONFIG_PATH;$my_vcpkg_pkgconfig_dir"
-                }
-                else {
-                    $env:PKG_CONFIG_PATH="$my_vcpkg_pkgconfig_dir"
-                }
-            }
-          else {
+          if ((! $my_vcpkg_pkgconfig_dir) -Or `
+            (! (Test-Path -Path $my_vcpkg_pkgconfig_dir))) {
               throw "ERROR: pkgconf not installed as expected"
           }
       }
