@@ -264,8 +264,9 @@ namespace Pistache::Tcp
                     auto it = toWrite.find(fd);
                     if (it == std::end(toWrite))
                     {
-                        throw std::runtime_error(
-                            "Assertion Error: could not find write data");
+                        // This can happen if another thread triggered an explicit
+                        // flush right when this thread woke up to write as well
+                        PS_LOG_DEBUG("fd not in toWrite, nothing to write");
                     }
                 }
 
