@@ -981,11 +981,12 @@ namespace Pistache::Tcp
                 toWrite[fd].push_back(std::move(*write));
             }
 
-            reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write,
-                                Polling::Mode::Edge);
 
             if (flush)
                 asyncWriteImpl(fd);
+            else
+                reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write,
+                                    Polling::Mode::Edge);
         }
     }
 
