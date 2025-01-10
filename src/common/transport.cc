@@ -548,6 +548,7 @@ namespace Pistache::Tcp
                                                  ));
                         reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write,
                                             Polling::Mode::Edge);
+                        stop = true;
                     }
                     // EBADF can happen when the HTTP parser, in the case of
                     // an error, closes fd before the entire request is processed.
