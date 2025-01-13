@@ -264,8 +264,9 @@ namespace Pistache::Tcp
                     auto it = toWrite.find(fd);
                     if (it == std::end(toWrite))
                     {
-                        throw std::runtime_error(
-                            "Assertion Error: could not find write data");
+                        // This can happen if another thread triggered an explicit
+                        // flush right when this thread woke up to write as well
+                        PS_LOG_DEBUG("fd not in toWrite, nothing to write");
                     }
                 }
 
@@ -547,6 +548,7 @@ namespace Pistache::Tcp
                                                  ));
                         reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write,
                                             Polling::Mode::Edge);
+                        stop = true;
                     }
                     // EBADF can happen when the HTTP parser, in the case of
                     // an error, closes fd before the entire request is processed.
@@ -981,11 +983,12 @@ namespace Pistache::Tcp
                 toWrite[fd].push_back(std::move(*write));
             }
 
-            reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write,
-                                Polling::Mode::Edge);
 
             if (flush)
                 asyncWriteImpl(fd);
+            else
+                reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write,
+                                    Polling::Mode::Edge);
         }
     }
 
