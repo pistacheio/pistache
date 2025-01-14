@@ -117,14 +117,14 @@ TEST(rest_server_test, basic_test)
     ASSERT_EQ(res->status, 200);
 
     // TODO: Clean this up to use proper gtest macros.
-    // NOTE: res->body is "ip6-localhost" on some architectures.
-    if (res->body == "ip6-localhost")
+    if ((res->body.length() >= 9) && // 9 being len of "localhost"
+        (0 == res->body.compare(res->body.length() - 9, 9, "localhost")))
     {
-        ASSERT_EQ(res->body, "ip6-localhost"); // count the passing test.
-    }
-    else if (res->body == "localhost")
-    {
-        ASSERT_EQ(res->body, "localhost");
+        // NOTE: res->body is "localhost", or "ip6-localhost", or (seen on
+        // Windows 10) "view-localhost" on some architectures.
+        // We are checking for res->body ends in "localhost"
+        ASSERT_TRUE(
+            0 == res->body.compare(res->body.length() - 9, 9, "localhost"));
     }
     else
     {
