@@ -124,19 +124,49 @@ if host_machine.system() == 'windows'
     #                     pistachelog.dll
     #   mc.exe and rc.exe being utilities provided by Windows
 
-    mc_prog = find_program('mc.exe')
     if compiler.get_id() == 'gcc'
         rc_prog = find_program('windres.exe')
     else
         rc_prog = find_program('rc.exe')
     endif
 
-    gen_src_log_rc_ct = custom_target(
-      'gen-log-rc',
-      input: ['winlog'/'pist_winlog.man'],
-      output: ['pist_winlog.rc', 'pist_winlog.h'],
-      command: [mc_prog, '-um', '-h', '@OUTDIR@', '-r', '@OUTDIR@', '@INPUT@']
-    )
+    mc_prog = find_program('mc', required: false)
+    if mc_prog.found()
+        # Use 'mc' if available
+        gen_src_log_rc_ct = custom_target(
+            'gen-log-rc',
+            input: ['winlog'/'pist_winlog.man'],
+            output: ['pist_winlog.rc', 'pist_winlog.h'],
+            command: [mc_prog, '-um', '-h', '@OUTDIR@', '-r', '@OUTDIR@', '@INPUT@']
+        )
+    else
+        # mc.exe is not available, use the Python script to convert .man to .mc
+        python_prog = find_program('python3', required: true)
+        convert_man_to_mc_script = files('winlog' / 'convert_man_to_mc.py')
+
+        # Generate .mc file in the build directory
+        gen_mc_file = custom_target(
+            'gen-mc-file',
+            input: ['winlog' / 'pist_winlog.man'],
+            output: 'pist_winlog.mc',
+            command: [python_prog, convert_man_to_mc_script, '@INPUT@', '@OUTPUT@'],
+            build_by_default: true
+        )
+
+        # Use windmc.exe to generate .rc and .h files from the .mc file
+        mc_prog = find_program('windmc.exe')
+        gen_src_log_rc_ct = custom_target(
+            'gen-log-rc',
+            input: [gen_mc_file], # pist_winlog.mc
+            output: ['pist_winlog.rc', 'pist_winlog.h'],
+            command: [
+                mc_prog,
+                '-h', '@OUTDIR@',
+                '-r', '@OUTDIR@',
+                '@INPUT@'
+            ]
+        )
+    endif
 
     if compiler.get_id() == 'gcc'
         gen_src_log_res_ct = custom_target('gen-log-res',
@@ -187,13 +217,12 @@ if host_machine.system() == 'windows'
 
     # Add script to install logging manifest when "meson install..." is run
     install_headers(
-	'winlog'/'pist_winlog.man', 'winlog'/'installmanatinstall.ps1',
+        'winlog'/'pist_winlog.man', 'winlog'/'installmanatinstall.ps1',
         install_dir : 'src'/'winlog')
     meson.add_install_script('winlog'/'installmanatinstall.ps1')
 
     pistache_extra_src += gen_src_log_rc_ct[1] # for pist_winlog.h
 endif
-
 
 if host_machine.system() == 'windows'
   if compiler.get_id() == 'msvc'

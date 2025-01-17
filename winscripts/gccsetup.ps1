@@ -1,5 +1,7 @@
 #!/usr/bin/env powershell
 
+param([switch]$nomcexe)
+
 #
 # SPDX-FileCopyrightText: 2024 Duncan Greatwood
 #
@@ -74,27 +76,11 @@ if (($env:force_msys_gcc) -or `
 $env:CXX="g++"
 $env:CC="gcc"
 
-if (! (Get-Command mc.exe -errorAction SilentlyContinue)) {
-    if (Test-Path -Path "$env:ProgramFiles\Windows Kits") {
-        $win_sdk_found=1
-        cd "$env:ProgramFiles\Windows Kits"
-        $mc_exes_found=Get-ChildItem -Path "mc.exe" -Recurse |`
-          Sort-Object -Descending -Property LastWriteTime
-        foreach ($mc_exe_found in $mc_exes_found) {
-            if ($mc_exe_found -like "*\x64\mc*") {
-                $mc_exe = $mc_exe_found
-                break
-            }
-            if ((! ($mc_exe)) -and ($mc_exe_found -like "*\x86\mc*")) {
-	        $mc_exe = $mc_exe_found
-	    }
-        }
-    }
-
-    if (! ($mc_exe)) {
-        if (Test-Path -Path "${env:ProgramFiles(x86)}\Windows Kits") {
+if (!($nomcexe)) {
+    if (! (Get-Command mc.exe -errorAction SilentlyContinue)) {
+        if (Test-Path -Path "$env:ProgramFiles\Windows Kits") {
             $win_sdk_found=1
-            cd "${env:ProgramFiles(x86)}\Windows Kits"
+            cd "$env:ProgramFiles\Windows Kits"
             $mc_exes_found=Get-ChildItem -Path "mc.exe" -Recurse |`
               Sort-Object -Descending -Property LastWriteTime
             foreach ($mc_exe_found in $mc_exes_found) {
@@ -107,20 +93,38 @@ if (! (Get-Command mc.exe -errorAction SilentlyContinue)) {
 	        }
             }
         }
+
+        if (! ($mc_exe)) {
+            if (Test-Path -Path "${env:ProgramFiles(x86)}\Windows Kits") {
+                $win_sdk_found=1
+                cd "${env:ProgramFiles(x86)}\Windows Kits"
+                $mc_exes_found=Get-ChildItem -Path "mc.exe" -Recurse |`
+                  Sort-Object -Descending -Property LastWriteTime
+                foreach ($mc_exe_found in $mc_exes_found) {
+                    if ($mc_exe_found -like "*\x64\mc*") {
+                        $mc_exe = $mc_exe_found
+                        break
+                    }
+                    if ((! ($mc_exe)) -and ($mc_exe_found -like "*\x86\mc*")) {
+	                $mc_exe = $mc_exe_found
+	            }
+                }
+            }
+        }
     }
-}
 
-cd "$savedpwd"
+    cd "$savedpwd"
 
-if (! ($win_sdk_found)) {
-    throw "Unable to find Windows Kits (SDKs) folder"
-}
-if (! ($mc_exe)) {
-    throw "Unable to find mc.exe in Windows Kits (SDKs)"
-}
+    if (! ($win_sdk_found)) {
+        throw "Unable to find Windows Kits (SDKs) folder"
+    }
+    if (! ($mc_exe)) {
+        throw "Unable to find mc.exe in Windows Kits (SDKs)"
+    }
 
-$mc_exe_dir = Split-Path -Path $mc_exe
-$env:PATH="$env:PATH;$mc_exe_dir"
+    $mc_exe_dir = Split-Path -Path $mc_exe
+    $env:PATH="$env:PATH;$mc_exe_dir"
+}
 
 if (! (Get-Command ninja -errorAction SilentlyContinue)) {
     if (($env:VCPKG_DIR) -And (Test-Path -Path "$env:VCPKG_DIR\installed")) {
@@ -209,4 +213,9 @@ cd "$savedpwd"
 
 pstPressKeyIfRaisedAndErrThenExit
 
-Write-Host "SUCCESS: gcc.exe, mc.exe and ninja.exe set up"
+if ($nomcexe) {
+    Write-Host "SUCCESS: gcc.exe and ninja.exe set up (mc.exe skipped)"
+}
+else {
+    Write-Host "SUCCESS: gcc.exe, mc.exe and ninja.exe set up"
+}
