@@ -563,9 +563,13 @@ if (! (((Test-Path -Path "$env:ProgramFiles\Microsoft Visual Studio") -and `
           # i.e. wait until process complete before continuing
           # Ref: https://learn.microsoft.com/en-us/visualstudio/install/command-line-parameter-examples?view=vs-2022#using---wait
           # Also: "--quiet" makes installer run without UI
+          #       "--force" is needed to avoid an error on Windows 10
+          #       (it appears the installer starts a Visual Studio component,
+          #        then won't continue without confirmation that it can close
+          #        that component)
           $vsin_proc = Start-Process -FilePath vs_community.exe -ArgumentList `
             "--add", "Microsoft.VisualStudio.Workload.NativeDesktop", `
-            "--includeRecommended", "--quiet", "--wait" `
+            "--includeRecommended", "--force", "--quiet", "--wait" `
             -Wait -PassThru
           if ($vsin_proc.ExitCode -ne 0) {
               Write-Error "Visual Studio install returned non-zero exit code"
