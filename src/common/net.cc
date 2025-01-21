@@ -198,7 +198,7 @@ namespace Pistache
         }
         else
         {
-            unreachable();
+            Pistache::details::unreachable();
         }
     }
 

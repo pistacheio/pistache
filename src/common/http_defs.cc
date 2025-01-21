@@ -164,7 +164,7 @@ namespace Pistache::Http
             return "HTTP/1.1";
         }
 
-        unreachable();
+        Pistache::details::unreachable();
     }
 
     const char* methodString(Method method)
@@ -178,7 +178,7 @@ namespace Pistache::Http
 #undef METHOD
         }
 
-        unreachable();
+        Pistache::details::unreachable();
     }
 
     const char* codeString(Code code)
