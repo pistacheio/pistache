@@ -592,16 +592,19 @@ typedef uint32_t pst_thread_id; // DWORD := uint32_t
 #define PST_FD_CLOEXEC      FD_CLOEXEC
 #endif
 
-#ifdef __GNUC__
-// GCC 4.8+, Clang, Intel and other compilers compatible with GCC
-#define unreachable() __builtin_unreachable()
-// [[noreturn]] inline __attribute__((always_inline)) void unreachable() {__builtin_unreachable();}
+#include <utility>
+namespace Pistache::details
+{
+#ifdef __cpp_lib_unreachable
+using std::unreachable;
+#elif defined(__GNUC__) // GCC 4.8+, Clang, Intel and other compilers compatible with GCC
+[[noreturn]] inline __attribute__((always_inline)) void unreachable() {__builtin_unreachable();}
 #elif defined(_MSC_VER) // MSVC
 [[noreturn]] __forceinline void unreachable() {__assume(false);}
 #else // ???
 inline void unreachable() {}
 #endif
-/// Note: Could also use std::unreachable for C++23
+}
 
 /* ------------------------------------------------------------------------- */
 #endif // of ifndef _WINORNIX_H_

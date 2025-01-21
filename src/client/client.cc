@@ -821,7 +821,7 @@ namespace Pistache::Http::Experimental
         }
         else
         {
-            unreachable();
+            Pistache::details::unreachable();
         }
         oss << ")";
         return oss.str();
