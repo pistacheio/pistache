@@ -207,26 +207,22 @@ if host_machine.system() != 'windows'
         # which is called by PS_LogWoBreak, used in turn by the stack-trace
         # logging macro PS_LOG_WO_BREAK_LIMITED and its derivatives. Issue
         # #1230.
-        # Note: If 'dl' is not available, per Meson it suggests that the
-        # functionality is provided by libc
-
-        # It would be nice to use compiler.has_function('dladdr') to test if
-        # we need to add libdl, but unfortunately that approach seems to break
-        # certain Redhat builds, specifically the Redhat builds that use
-        # ubi-8. In such cases, it appears meson creates a test file that
-        # includes the comment:
-        #   With some toolchains ... the compiler provides various builtins
-        #   which are not really implemented... [If] the user provides a
-        #   header, including the header didn't lead to the function being
-        #   defined, and the function we are checking isn't a builtin itself,
-        #   we assume the builtin is not functional and error out
-        # To avoid generating such an error, we take the simpler approach of
-        # trying to add libdl but making it optional (i.e. not required).
         if meson.version().version_compare('>=0.62.0')
-          deps_libpistache += dependency('dl', required: false)
+          dl_dep = dependency('dl')
         else
-          deps_libpistache += compiler.find_library('dl', required: false)
+          dl_dep = compiler.find_library('dl', required: false)
         endif
+        # Note: the Single Unix Specification version 2, issue 5 (1997) defines dlopen
+        # but not dladdr. POSIX 2024 issue 8 requires dladdr. Older systems might
+        # therefore lack what we need, even if libdl exists.
+        #
+        # Meson's "dl" check looks for dlopen. We assume that, if dladdr exists
+        # at all, it is in the same DSO (whether it is libc or -ldl) as dlopen.
+        # But it may not exist at all, so check to be sure.
+        if not compiler.has_function('dladdr', prefix: '#include <dlfcn.h>', dependencies: dl_dep)
+          error('dladdr could not be detected')
+        endif
+        deps_libpistache += dl_dep
 endif
 
 version_array = []
