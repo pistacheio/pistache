@@ -58,6 +58,11 @@ em_socket_t pist_sock_socket(int domain, int type, int protocol);
 int pist_sock_bind(em_socket_t em_sock, const struct sockaddr *addr,
                    PST_SOCKLEN_T addrlen);
 
+// On success, returns 0. On failure, -1 is returned and errno is set.
+int pist_sock_set_timeout(em_socket_t em_sock,
+                          int optname, // SO_RCVTIMEO or SO_SNDTIMEO
+                          unsigned int timeout_in_ms);
+
 // On success returns an em_socket_t for the accepted socket. On failure, -1 is
 // returned and errno is set.
 em_socket_t pist_sock_accept(em_socket_t em_sock, struct sockaddr *addr,
@@ -77,6 +82,10 @@ PST_SSIZE_T pist_sock_send(em_socket_t em_sock, const void *buf,
 // returned and errno is set. Returns 0 if connection closed gracefully.
 PST_SSIZE_T pist_sock_recv(em_socket_t em_sock, void * buf, size_t len,
                            int flags);
+
+typedef struct fd_set fd_set;
+int pist_sock_select(int nfds, fd_set * readfds, fd_set * writefds,
+                     fd_set * exceptfds, const struct timeval * timeout);
 
 typedef struct PST_POLLFD
 {

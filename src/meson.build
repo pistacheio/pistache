@@ -42,7 +42,9 @@ pistache_server_src = [
 	'server'/'router.cc'
 ]
 pistache_client_src = [
-	'client'/'client.cc'
+	'client'/'client.cc',
+	'client'/'sslclient.cc',
+	'client'/'ssl_async.cc'
 ]
 
 public_args = []

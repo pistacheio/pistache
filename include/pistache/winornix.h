@@ -106,14 +106,21 @@ struct pst_timespec { long tv_sec; long tv_nsec; };
 #define PST_LOCALTIME_R localtime_r
 #endif
 
+// For setsockopt
 #ifdef _IS_WINDOWS
-typedef char PST_SOCK_OPT_VAL_T;
+typedef char * PST_SOCK_OPT_VAL_PTR_T; // type of 4th parm of setsockopt
+
+// most (not all) optval are this type
+// Note: uint32_t used as DWORD, so we don't have to have DWORD defined here
+typedef uint32_t PST_SOCK_OPT_VAL_TYPICAL_T;
 
 // defined in ws2tcpip.h; defined here to avoid need to include big header
 // files (winsock2.h and ws2tcpip.h) in our headers just for this type
 typedef int PST_SOCKLEN_T;
 #else
-typedef int PST_SOCK_OPT_VAL_T;
+typedef int * PST_SOCK_OPT_VAL_PTR_T; // type of 4th parm of setscokopt
+typedef int PST_SOCK_OPT_VAL_TYPICAL_T;// most (not all) optval are this type
+
 #define PST_SOCKLEN_T socklen_t
 #endif
 
@@ -262,6 +269,13 @@ typedef int PST_SOCK_OPT_VAL_T;
 #define PST_NETINET_TCP_HDR "netinet/tcp.h"
 #endif
 
+// Use #include PST_SELECT_HDR
+#ifdef _IS_WINDOWS
+#define PST_SELECT_HDR "winsock2.h"
+#else
+#define PST_SELECT_HDR "sys/select.h"
+#endif
+
 
 // Use #include PST_IFADDRS_HDR
 #ifdef _IS_WINDOWS
@@ -387,6 +401,9 @@ typedef struct in_addr PST_IN_ADDR_T;
 #define PST_SOCK_SEND pist_sock_send
 #define PST_SOCK_RECV pist_sock_recv
 
+#define PST_FD_SET_FD_TYPE SOCKET // type to use with FD_SET(fd, ...)
+#define PST_SOCK_SELECT pist_sock_select
+
 // PST_POLLFD, PST_POLLFD_T + PST_NFDS_T defined in pist_sockfns.h for Windows
 #define PST_SOCK_POLL pist_sock_poll
 
@@ -404,6 +421,9 @@ typedef struct in_addr PST_IN_ADDR_T;
 #define PST_SOCK_LISTEN ::listen
 #define PST_SOCK_SEND ::send
 #define PST_SOCK_RECV ::recv
+
+#define PST_FD_SET_FD_TYPE em_socket_t // type to use with FD_SET(fd, ...)
+#define PST_SOCK_SELECT ::select
 
 #define PST_SOCK_POLL ::poll
 #define PST_POLLFD pollfd // Note - this is a type, not a function

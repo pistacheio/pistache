@@ -10,8 +10,13 @@ src/common/pist_timelog.cc
 include/pistache/pist_timelog.h
 src/common/pist_check.cc
 include/pistache/pist_check.h
+src/common/pist_sockfns.cc
 src/common/pist_syslog.cc
 include/pistache/pist_syslog.h
 src/common/ps_strl.cc
 include/pistache/ps_strl.h
+include/pistache/ssl_async.h
+src/client/ssl_async.cc
+include/pistache/sslclient.h
+src/client/sslclient.cc
 include/pistache/winornix.h

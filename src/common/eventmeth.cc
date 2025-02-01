@@ -2074,7 +2074,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
 
             if (!emee)
             {
-                PS_LOG_INFO_ARGS(
+                PS_LOG_DEBUG_ARGS(
                     "EmEventTmrFd %p null EMEE for starting timer", this);
                 // This isn't perhaps ideal, in that the timer won't start
                 // running until the timer can be added to an EMEE. However it

@@ -41,7 +41,9 @@ namespace Pistache
     {
         Address httpAddr(const std::string_view& view)
         {
-            return(httpAddr(view, 0/*default port*/));
+            return(httpAddr(view, 0/*default port*/,
+                            Address::Scheme::Unspecified,
+                            nullptr)); // nullptr: page_cptr
         }
     } // namespace helpers
 
@@ -370,6 +372,7 @@ namespace Pistache
         : ip_ {}
         , port_ { 0 }
         , addrLen_(sizeof(struct sockaddr_in6))
+        , scheme_(Scheme::Unspecified)
     { }
 
     Address::Address(std::string host, Port port)
@@ -391,10 +394,12 @@ namespace Pistache
     }
 
     Address Address::makeWithDefaultPort(std::string addr,
-                                         Port default_port /* defaults to zero*/)
+                                         Port default_port, // defaults to zero
+                                         Scheme scheme,
+                                         const std::string * page_cptr)
     { // static
         Address res;
-        res.init(std::move(addr), default_port);
+        res.init(std::move(addr), default_port, scheme, page_cptr);
 
         return (res);
     }
@@ -431,6 +436,8 @@ namespace Pistache
 
     void Address::init(const std::string& addr, Port default_port)
     {
+        scheme_ = Scheme::Unspecified;
+
         // Handle unix domain addresses separately.
         if (isUnixDomain(addr))
         {
@@ -512,6 +519,16 @@ namespace Pistache
         {
             throw std::invalid_argument("Invalid numeric port");
         }
+    }
+
+    void Address::init(const std::string& addr, Port default_port,
+                       Scheme scheme, const std::string * page_cptr)
+    {
+        init(addr, default_port);
+        scheme_ = scheme;
+
+        if (page_cptr)
+            page_ = (*page_cptr);
     }
 
     // Applies heuristics to deterimine whether or not addr names a unix
