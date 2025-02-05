@@ -35,7 +35,7 @@ A benchmark comparison of Pistache to other C++ RESTful APIs was created by gute
 
 Pistache has the following third party dependencies
 
-- [Meson](https://mesonbuild.com)
+- [Meson](https://mesonbuild.com) version >= 0.53.2
 - [Doxygen](https://www.doxygen.nl/)
 - [Googletest](https://github.com/google/googletest)
 - [OpenSSL](https://www.openssl.org/)
