@@ -731,7 +731,7 @@ namespace Pistache::Tcp
 
 #ifdef _IS_WINDOWS
 
-                unsigned int timeout_in_ms = static_cast<unsigned int>(
+                unsigned long int timeout_in_ms = static_cast<unsigned int>(
                     std::chrono::duration_cast<
                         std::chrono::milliseconds>(sslHandshakeTimeout_)
                         .count());

@@ -962,7 +962,13 @@ if (! (Get-Command doxygen -errorAction SilentlyContinue)) {
             try {
                 cd ~
                 Write-Host "doxygen: Fetching version number of latest release"
-                $doxygen_latest_links = (Invoke-WebRequest -Uri "https://github.com/doxygen/doxygen/releases/latest").Links
+                $doxygen_latest_links = (Invoke-WebRequest -Uri "https://github.com/doxygen/doxygen/releases/latest" -UseBasicParsing).Links
+                # Note on "-UseBasicParsing". Without that option,
+                # Invoke-WebRequest hangs in Windows Server 2019 (PS
+                # v5.1.17763.2931/Desktop) for that URI, apparently a known
+                # PowerShell bug. See:
+                # https://stackoverflow.com/questions/56187543/invoke-webrequest-freezes-hangs
+                # https://github.com/PowerShell/PowerShell/issues/2867
                 foreach ($itm in $doxygen_latest_links) {
                     $ot = $itm.outerText
                     if ($ot -like "Release_*") {
