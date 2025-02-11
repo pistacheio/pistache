@@ -602,15 +602,17 @@ namespace Pistache::Tcp
     {
         // PS_USE_TCP_NODELAY defined (or not) at top of file
 
-        int tcp_no_push  = 0;
-        socklen_t len    = sizeof(tcp_no_push);
-        int sock_opt_res = -1;
+        PST_SOCK_OPT_VAL_TYPICAL_T tcp_no_push = 0;
+        PST_SOCKLEN_T len                      = sizeof(tcp_no_push);
+        int sock_opt_res                       = -1;
 
 #ifdef PS_USE_TCP_NODELAY
         { // encapsulate
-            PST_SOCK_OPT_VAL_T tcp_nodelay = 0;
-            sock_opt_res                   = getsockopt(GET_ACTUAL_FD(fd), tcp_prot_num_,
-                                                        TCP_NODELAY, &tcp_nodelay, &len);
+            PST_SOCK_OPT_VAL_TYPICAL_T tcp_nodelay = 0;
+
+            sock_opt_res = getsockopt(
+                GET_ACTUAL_FD(fd), tcp_prot_num_, TCP_NODELAY,
+                reinterpret_cast<PST_SOCK_OPT_VAL_PTR_T>(&tcp_nodelay), &len);
             if (sock_opt_res == 0)
                 tcp_no_push = !tcp_nodelay;
         }
@@ -631,7 +633,7 @@ namespace Pistache::Tcp
                 PS_LOG_DEBUG_ARGS("Setting MSG_MORE style to %s",
                                   (msg_more_style) ? "on" : "off");
 
-                PST_SOCK_OPT_VAL_T optval =
+                PST_SOCK_OPT_VAL_TYPICAL_T optval =
 #ifdef PS_USE_TCP_NODELAY
                     // In NetBSD case we're getting/setting (or resetting) the
                     // TCP_NODELAY socket option, which _stops_ data being held
@@ -644,15 +646,17 @@ namespace Pistache::Tcp
                     msg_more_style ? 1 : 0;
 #endif
 
-                sock_opt_res = setsockopt(GET_ACTUAL_FD(fd), tcp_prot_num_,
+                sock_opt_res = setsockopt(
+                    GET_ACTUAL_FD(fd), tcp_prot_num_,
 #ifdef PS_USE_TCP_NODELAY
-                                          TCP_NODELAY,
+	            TCP_NODELAY,
 #elif defined __APPLE__ || defined _IS_BSD
-                                          TCP_NOPUSH,
+                    TCP_NOPUSH,
 #else
-                                              TCP_CORK,
+                        TCP_CORK,
 #endif
-                                          &optval, len);
+                    reinterpret_cast<PST_SOCK_OPT_VAL_PTR_T>(&optval),
+                    len);
                 if (sock_opt_res < 0)
                     throw std::runtime_error("setsockopt failed");
             }

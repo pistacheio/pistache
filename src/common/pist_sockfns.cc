@@ -456,6 +456,42 @@ int pist_sock_bind(em_socket_t em_sock, const struct sockaddr *addr,
 
     return(WSAGetLastErrorSetErrno());
 }
+/* ------------------------------------------------------------------------- */
+
+// On success, returns 0. On failure, -1 is returned and errno is set.
+int pist_sock_set_timeout(em_socket_t em_sock,
+                          int optname, // SO_RCVTIMEO or SO_SNDTIMEO
+                          unsigned long int timeout_in_ms)
+{
+    PIST_SOCK_STARTUP_CHECK_RET_MINUS_1_ON_ERR;
+
+    SOCKET win_sock = get_win_socket_from_em_socket_t(em_sock);
+    if (win_sock == INVALID_SOCKET)
+    {
+        PS_LOG_DEBUG("Invalid Socket");
+        errno = EBADF;
+        return(-1);
+    }
+
+    if ((optname != SO_RCVTIMEO) && (optname != SO_SNDTIMEO))
+    {
+        PS_LOG_WARNING_ARGS("Invalid optname value %d", optname);
+        errno = EINVAL;
+        return(-1);
+    }
+
+    DWORD optval = timeout_in_ms;
+
+    int setsockopt_res = ::setsockopt(
+        win_sock, SOL_SOCKET, optname,
+        reinterpret_cast<PST_SOCK_OPT_VAL_PTR_T>(&optval),
+        sizeof(optval));
+
+    if (setsockopt_res != SOCKET_ERROR)
+        return(0); // success - return bytes read
+
+    return(WSAGetLastErrorSetErrno());
+}
 
 /* ------------------------------------------------------------------------- */
 

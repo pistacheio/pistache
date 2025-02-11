@@ -91,6 +91,7 @@ namespace Pistache::Tcp
                     continue_reading = false;
                     break;
                 case -2:
+                    PS_LOG_DEBUG("Likely PopStringFromBio error");
                     throw std::logic_error("Trying to call PopStringFromBio on a BIO that "
                                            "does not support the BIO_gets method");
                     break;
@@ -130,7 +131,6 @@ namespace Pistache::Tcp
                         + ssl_print_errors_to_string();
 
                     PS_LOG_DEBUG_ARGS("%s", err.c_str());
-
                     throw std::runtime_error(err);
                 }
             }
@@ -160,7 +160,6 @@ namespace Pistache::Tcp
                 std::string err = "SSL error - cannot load SSL certificate: "
                     + ssl_print_errors_to_string();
                 PS_LOG_DEBUG_ARGS("%s", err.c_str());
-
                 throw std::runtime_error(err);
             }
 
@@ -169,7 +168,6 @@ namespace Pistache::Tcp
                 std::string err = "SSL error - cannot load SSL private key: "
                     + ssl_print_errors_to_string();
                 PS_LOG_DEBUG_ARGS("%s", err.c_str());
-
                 throw std::runtime_error(err);
             }
 
@@ -202,7 +200,10 @@ namespace Pistache::Tcp
                 f_setfd_flags |= PST_FD_CLOEXEC;
                 int fcntl_res = PST_FCNTL(actualFd, PST_F_SETFD, f_setfd_flags);
                 if (fcntl_res == -1)
+                {
+                    PS_LOG_DEBUG("fcntl set failed");
                     throw std::runtime_error("fcntl set failed");
+                }
             }
         }
 #endif
@@ -211,23 +212,28 @@ namespace Pistache::Tcp
         {
             PS_LOG_DEBUG("Set SO_REUSEADDR");
 
-            PST_SOCK_OPT_VAL_T one = 1;
+            PST_SOCK_OPT_VAL_TYPICAL_T one = 1;
             // Note: TRY also invokes PST_SOCK_STARTUP_CHECK
-            TRY(::setsockopt(actualFd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one)));
+            TRY(::setsockopt(
+                actualFd, SOL_SOCKET, SO_REUSEADDR,
+                reinterpret_cast<PST_SOCK_OPT_VAL_PTR_T>(&one),
+                sizeof(one)));
         }
 
         if (options.hasFlag(Options::ReusePort))
         {
             PS_LOG_DEBUG("Set SO_REUSEPORT");
-            PST_SOCK_OPT_VAL_T one = 1;
+            PST_SOCK_OPT_VAL_TYPICAL_T one = 1;
 #ifdef _IS_WINDOWS
             // Note: Windows doesn't have SO_REUSEPORT, but if caller has
             // requested Options::ReusePort, but not Options::ReuseAddr, then
             // in Windows we set SO_REUSEADDR here
             if (!(options.hasFlag(Options::ReuseAddr)))
             {
-                TRY(::setsockopt(actualFd, SOL_SOCKET,
-                                 SO_REUSEADDR, &one, sizeof(one)));
+                TRY(::setsockopt(
+                    actualFd, SOL_SOCKET, SO_REUSEADDR,
+                    reinterpret_cast<PST_SOCK_OPT_VAL_PTR_T>(&one),
+                    sizeof(one)));
             }
 #else
             TRY(::setsockopt(actualFd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(one)));
@@ -240,7 +246,7 @@ namespace Pistache::Tcp
             opt.l_onoff  = 1;
             opt.l_linger = 1;
             TRY(::setsockopt(actualFd, SOL_SOCKET, SO_LINGER,
-                             reinterpret_cast<PST_SOCK_OPT_VAL_T*>(&opt),
+                             reinterpret_cast<PST_SOCK_OPT_VAL_PTR_T>(&opt),
                              sizeof(opt)));
         }
 
@@ -259,15 +265,19 @@ namespace Pistache::Tcp
 
         if (options.hasFlag(Options::FastOpen))
         {
-            PST_SOCK_OPT_VAL_T hint = 5;
-            TRY(::setsockopt(actualFd, tcp_prot_num,
-                             TCP_FASTOPEN, &hint, sizeof(hint)));
+            PST_SOCK_OPT_VAL_TYPICAL_T hint = 5;
+            TRY(::setsockopt(
+                actualFd, tcp_prot_num, TCP_FASTOPEN,
+                reinterpret_cast<PST_SOCK_OPT_VAL_PTR_T>(&hint),
+                sizeof(hint)));
         }
         if (options.hasFlag(Options::NoDelay))
         {
-            PST_SOCK_OPT_VAL_T one = 1;
-            TRY(::setsockopt(actualFd, tcp_prot_num,
-                             TCP_NODELAY, &one, sizeof(one)));
+            PST_SOCK_OPT_VAL_TYPICAL_T one = 1;
+            TRY(::setsockopt(
+                actualFd, tcp_prot_num, TCP_NODELAY,
+                reinterpret_cast<PST_SOCK_OPT_VAL_PTR_T>(&one),
+                sizeof(one)));
         }
     }
 
@@ -325,9 +335,11 @@ namespace Pistache::Tcp
     {
 #if 0
     if (ioGroup.empty()) {
+        PS_LOG_DEBUG("Invalid operation, ioGroup empty");
         throw std::domain_error("Invalid operation, did you call init() before ?");
     }
     if (worker > ioGroup.size()) {
+        PS_LOG_DEBUG("Invalid worker");
         throw std::invalid_argument("Trying to pin invalid worker");
     }
 
@@ -488,6 +500,7 @@ namespace Pistache::Tcp
         if (!found)
         {
             PST_DECL_SE_ERR_P_EXTRA;
+            PS_LOG_DEBUG("Not found");
             throw std::runtime_error(PST_STRERROR_R_ERRNO);
         }
     }
@@ -556,6 +569,7 @@ namespace Pistache::Tcp
 
                 if (ready_fds == -1)
                 {
+                    PS_LOG_DEBUG("Polling failed");
                     throw Error::system("Polling");
                 }
                 for (const auto& event : events)
@@ -579,6 +593,7 @@ namespace Pistache::Tcp
                             }
                             catch (ServerError& ex)
                             {
+                                PS_LOG_WARNING("Server error");
                                 PISTACHE_LOG_STRING_FATAL(
                                     logger_, "Server error: " << ex.what());
                                 throw;
@@ -714,6 +729,23 @@ namespace Pistache::Tcp
             {
                 PS_LOG_DEBUG("SSL timeout to be set");
 
+#ifdef _IS_WINDOWS
+
+                unsigned long int timeout_in_ms = static_cast<unsigned int>(
+                    std::chrono::duration_cast<
+                        std::chrono::milliseconds>(sslHandshakeTimeout_)
+                        .count());
+
+                PS_LOG_DEBUG_ARGS("Socket timeout %dms", timeout_in_ms);
+
+                TRY(pist_sock_set_timeout(actual_cli_fd, SO_RCVTIMEO,
+                                          timeout_in_ms));
+
+                TRY(pist_sock_set_timeout(actual_cli_fd, SO_SNDTIMEO,
+                                          timeout_in_ms));
+
+#else
+
                 struct timeval timeout;
 
                 timeout.tv_sec = static_cast<PST_TIMEVAL_S_T>(std::chrono::duration_cast<std::chrono::seconds>(sslHandshakeTimeout_).count());
@@ -722,11 +754,12 @@ namespace Pistache::Tcp
                 timeout.tv_usec                  = static_cast<PST_SUSECONDS_T>(residual_microseconds.count());
 
                 TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_RCVTIMEO,
-                                 reinterpret_cast<PST_SOCK_OPT_VAL_T*>(&timeout),
+                                 reinterpret_cast<PST_SOCK_OPT_VAL_PTR_T>(&timeout),
                                  sizeof(timeout)));
                 TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_SNDTIMEO,
-                                 reinterpret_cast<PST_SOCK_OPT_VAL_T*>(&timeout),
+                                 reinterpret_cast<PST_SOCK_OPT_VAL_PTR_T>(&timeout),
                                  sizeof(timeout)));
+#endif // Of ifdef _IS_WINDOWS... else...
             }
 
             SSL_set_fd(ssl_data,
@@ -746,6 +779,7 @@ namespace Pistache::Tcp
             );
             SSL_set_accept_state(ssl_data);
 
+            PS_LOG_DEBUG_ARGS("Calling SSL_accept with ssl_data %p", ssl_data);
             int ssl_accept_res = SSL_accept(ssl_data);
 
             if (ssl_accept_res <= 0)
@@ -757,19 +791,16 @@ namespace Pistache::Tcp
 #ifdef DEBUG
                 const char* ssl_ver = OPENSSL_VERSION_TEXT;
                 PS_LOG_DEBUG_ARGS("openssl: %s", ssl_ver);
-#endif
 
-#ifdef DEBUG
                 int ssl_err_code = SSL_get_error(ssl_data, ssl_accept_res);
-                PS_LOG_DEBUG_ARGS("ssl_err_code %d", ssl_err_code);
 #endif
-
                 std::string err = "SSL connection error: "
                     + ssl_print_errors_to_string();
-
-                PS_LOG_DEBUG_ARGS("%s", err.c_str());
-
+                PS_LOG_DEBUG_ARGS("ssl_err_code %d, %s",
+                                  ssl_err_code, err.c_str());
                 PISTACHE_LOG_STRING_INFO(logger_, err);
+
+                PS_LOG_DEBUG("ssl_accept failed");
                 SSL_free(ssl_data);
                 PST_SOCK_CLOSE(actual_cli_fd);
                 return;
@@ -783,31 +814,39 @@ namespace Pistache::Tcp
             {
                 PS_LOG_DEBUG("SSL timeout to be removed");
 
+#ifdef _IS_WINDOWS
+
+                TRY(pist_sock_set_timeout(actual_cli_fd, SO_RCVTIMEO, 0));
+                TRY(pist_sock_set_timeout(actual_cli_fd, SO_SNDTIMEO, 0));
+
+#else
+
                 struct timeval timeout;
                 timeout.tv_sec  = 0;
                 timeout.tv_usec = 0;
 
                 TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_RCVTIMEO,
-                                 reinterpret_cast<PST_SOCK_OPT_VAL_T*>(&timeout),
+                                 reinterpret_cast<PST_SOCK_OPT_VAL_PTR_T>(&timeout),
                                  sizeof(timeout)));
                 TRY(::setsockopt(actual_cli_fd, SOL_SOCKET, SO_SNDTIMEO,
-                                 reinterpret_cast<PST_SOCK_OPT_VAL_T*>(&timeout),
+                                 reinterpret_cast<PST_SOCK_OPT_VAL_PTR_T>(&timeout),
                                  sizeof(timeout)));
+
+#endif // Of ifdef _IS_WINDOWS... else...
             }
 
             ssl = static_cast<void*>(ssl_data);
         }
 #endif /* PISTACHE_USE_SSL */
 
-#ifdef DEBUG
-        bool mnb_res =
-#endif
-            make_non_blocking(actual_cli_fd);
-#ifdef DEBUG
-        if (!mnb_res)
-            PS_LOG_DEBUG_ARGS("make_non_blocking failed for fd %d",
-                              actual_cli_fd);
-#endif
+        if (!make_non_blocking(actual_cli_fd))
+        {
+            PS_LOG_WARNING_ARGS("actual_cli_fd %d failed make_non_blocking",
+                                actual_cli_fd);
+
+            PST_SOCK_CLOSE(actual_cli_fd);
+            return;
+        }
 
 #ifdef _USE_LIBEVENT
         // Since we're accepting a remote connection here, presumably it makes
@@ -892,6 +931,8 @@ namespace Pistache::Tcp
 
         if (client_actual_fd < 0)
         {
+            PS_LOG_DEBUG("socket accept failed");
+
             PST_DECL_SE_ERR_P_EXTRA;
 
             if (errno == EBADF || errno == ENOTSOCK)
@@ -906,7 +947,13 @@ namespace Pistache::Tcp
         // We set CLOEXEC and unset all other flags to exactly match what
         // happens in Linux with accept4 (see comment to "::accept" above)
 
-        int fcntl_res = PST_FCNTL(client_actual_fd, PST_F_SETFD, PST_FD_CLOEXEC);
+        int fcntl_res = PST_FCNTL(client_actual_fd, PST_F_SETFD,
+#ifdef _IS_WINDOWS
+                                  0 // CLOEXEC mostly meaningless in Windows
+#else
+                                  PST_FD_CLOEXEC
+#endif
+        );
         if (fcntl_res == -1)
         {
             PST_DBG_DECL_SE_ERR_P_EXTRA;
@@ -1010,7 +1057,10 @@ namespace Pistache::Tcp
     {
         return [&] {
             if (!handler_)
+            {
+                PS_LOG_DEBUG("setHandler() has not been called");
                 throw std::runtime_error("setHandler() has not been called");
+            }
 
             return std::make_shared<Transport>(handler_);
         };

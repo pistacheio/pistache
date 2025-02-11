@@ -11,7 +11,6 @@
 #include PST_NETDB_HDR
 #include PST_NETINET_IN_HDR
 
-
 #include <errno.h>
 #include <stdlib.h>
 #include PST_SOCKET_HDR
@@ -106,7 +105,7 @@ SocketWrapper bind_free_port_helper(int ai_family)
     em_socket_t sockfd    = -1; // listen on sock_fd, new connection on new_fd
     struct addrinfo hints = {}, *servinfo, *p;
 
-    PST_SOCK_OPT_VAL_T yes = 1;
+    PST_SOCK_OPT_VAL_TYPICAL_T yes = 1;
     int rv;
 
     hints.ai_family   = ai_family;
@@ -134,7 +133,11 @@ SocketWrapper bind_free_port_helper(int ai_family)
             continue;
         }
 
-        if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1)
+        if (::setsockopt(
+                sockfd, SOL_SOCKET, SO_REUSEADDR,
+                reinterpret_cast<PST_SOCK_OPT_VAL_PTR_T>(&yes),
+                sizeof(yes))
+            == -1)
         {
             PS_LOG_DEBUG("setsockopt");
             if (ai_family == AF_UNSPEC)
@@ -184,16 +187,15 @@ SocketWrapper bind_free_port()
 
     try
     {
-        return(bind_free_port_helper(AF_INET/*IPv4*/));
+        return (bind_free_port_helper(AF_INET /*IPv4*/));
     }
-    catch(...)
+    catch (...)
     {
         PS_LOG_DEBUG("bind_free_port_helper failed for IPv4");
     }
 
-    return(bind_free_port_helper(AF_UNSPEC/*any*/));
+    return (bind_free_port_helper(AF_UNSPEC /*any*/));
 }
-
 
 // This is just done to get the value of a free port. The socket will be
 // closed after the closing curly bracket and the port will be free again
@@ -286,15 +288,15 @@ TEST(listener_test, listener_bind_port_not_free_throw_runtime)
         int flag = 0;
 
         PST_DECL_SE_ERR_P_EXTRA;
-        char * desired_str = // Try strerror_r in case str affected by locale
-            PST_STRERROR_R(EADDRINUSE, &se_err[0], sizeof(se_err)-16);
-        if ((desired_str) && (strlen(desired_str)) &&
-            (strncmp(err.what(), desired_str, strlen(desired_str)) == 0))
+        char* desired_str = // Try strerror_r in case str affected by locale
+            PST_STRERROR_R(EADDRINUSE, &se_err[0], sizeof(se_err) - 16);
+        if ((desired_str) && (strlen(desired_str)) && (strncmp(err.what(), desired_str, strlen(desired_str)) == 0))
         {
             flag = 1;
         }
         else if (strncmp(err.what(), "Address already in use",
-                    sizeof("Address already in use")) == 0)
+                         sizeof("Address already in use"))
+                 == 0)
         { // GNU libc
             flag = 1;
         }
@@ -359,12 +361,12 @@ TEST(listener_test, listener_bind_unix_domain)
 #ifdef _IS_WINDOWS
     // No mkdtemp or equivalent in Windows
 
-    const char * tmpDir = 0;
+    const char* tmpDir = 0;
     std::string td_buf_sstr("C:\\temp\\bind_test_852823");
 
     { // encapsulate
-        TCHAR tmp_path[PST_MAXPATHLEN+16];
-        tmp_path[0] = 0;
+        TCHAR tmp_path[PST_MAXPATHLEN + 16];
+        tmp_path[0]   = 0;
         DWORD gtp_res = GetTempPathA(PST_MAXPATHLEN, &(tmp_path[0]));
         if ((!gtp_res) || (gtp_res > PST_MAXPATHLEN))
         {
@@ -372,13 +374,12 @@ TEST(listener_test, listener_bind_unix_domain)
         }
         else
         {
-            std::random_device rd;  // a seed source for the engine
+            std::random_device rd; // a seed source for the engine
             std::mt19937 gen(rd()); // mersenne_twister_engine
             std::uniform_int_distribution<> distrib(100000, 999999);
             auto rnd_6_digits = distrib(gen);
 
-            td_buf_sstr = std::string(&(tmp_path[0])) + "bind_test_" +
-                std::to_string(rnd_6_digits);
+            td_buf_sstr = std::string(&(tmp_path[0])) + "bind_test_" + std::to_string(rnd_6_digits);
         }
     }
     tmpDir = td_buf_sstr.c_str();
