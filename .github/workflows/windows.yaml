@@ -262,7 +262,7 @@ jobs:
         }
         cd "$savedpwd"
 
-        ninja -C build
+        ninja -C build all meson-test-prereq
 
     - name: Test
       env:
