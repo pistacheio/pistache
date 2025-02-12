@@ -11,11 +11,9 @@ on:
   push:
     branches:
     - master
-    - winSetsockopt
   pull_request:
     branches:
     - master
-    - winSetsockopt
 
 defaults:
   run:
@@ -32,17 +30,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ 'windows-2019' ] # Oct/2024, latest = 2022
-        compiler: [ 'msvc' ] # Could also add clang
-        sanitizer: [ 'none' ]
-        tls: [ 'true' ]
-        def_debug: [ 'true' ]
-# !!!!!!!!
-#         os: [ 'windows-2019', 'windows-latest' ] # Oct/2024, latest = 2022
-#         compiler: [ 'msvc', 'gcc' ] # Could also add clang
-#         sanitizer: [ 'address', 'none' ]
-#         tls: [ 'true', 'false' ]
-#         def_debug: [ 'true', 'false' ]
+        os: [ 'windows-2019', 'windows-latest' ] # Oct/2024, latest = 2022
+        compiler: [ 'msvc', 'gcc' ] # Could also add clang
+        sanitizer: [ 'address', 'none' ]
+        tls: [ 'true', 'false' ]
+        def_debug: [ 'true', 'false' ]
         exclude:
           # VS only supports address sanitizer as of Oct/2024
           # mingw-gcc does not support any sanitizer as of Oct/2024
@@ -270,7 +262,7 @@ jobs:
         }
         cd "$savedpwd"
 
-        ninja -C build
+        ninja -C build all meson-test-prereq
 
     - name: Test
       env:
