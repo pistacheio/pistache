@@ -58,6 +58,11 @@ em_socket_t pist_sock_socket(int domain, int type, int protocol);
 int pist_sock_bind(em_socket_t em_sock, const struct sockaddr *addr,
                    PST_SOCKLEN_T addrlen);
 
+// On success, returns 0. On failure, -1 is returned and errno is set.
+int pist_sock_set_timeout(em_socket_t em_sock,
+                          int optname, // SO_RCVTIMEO or SO_SNDTIMEO
+                          unsigned long int timeout_in_ms);
+
 // On success returns an em_socket_t for the accepted socket. On failure, -1 is
 // returned and errno is set.
 em_socket_t pist_sock_accept(em_socket_t em_sock, struct sockaddr *addr,

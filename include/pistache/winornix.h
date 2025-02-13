@@ -106,15 +106,21 @@ struct pst_timespec { long tv_sec; long tv_nsec; };
 #define PST_LOCALTIME_R localtime_r
 #endif
 
+// For setsockopt
 #ifdef _IS_WINDOWS
-typedef char PST_SOCK_OPT_VAL_T;
+using PST_SOCK_OPT_VAL_PTR_T = char *; // type of 4th parm of get/setsockopt
+
+// most (not all) optval are this type
+// Note: uint32_t used as DWORD, so we don't have to have DWORD defined here
+using PST_SOCK_OPT_VAL_TYPICAL_T = uint32_t;
 
 // defined in ws2tcpip.h; defined here to avoid need to include big header
 // files (winsock2.h and ws2tcpip.h) in our headers just for this type
-typedef int PST_SOCKLEN_T;
+using PST_SOCKLEN_T = int;
 #else
-typedef int PST_SOCK_OPT_VAL_T;
-#define PST_SOCKLEN_T socklen_t
+using PST_SOCK_OPT_VAL_PTR_T = int *; // type of 4th parm of get/setsockopt
+using PST_SOCK_OPT_VAL_TYPICAL_T = int; // most (not all) optval are this type
+#define PST_SOCKLEN_T socklen_t // #define: socklen_t may not be defined yet
 #endif
 
 

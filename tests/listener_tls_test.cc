@@ -81,16 +81,22 @@ TEST(listener_tls_test, tls_handshake_timeout_custom)
     long success = BIO_do_connect(bio);
     ASSERT_THAT(success, Eq(1));
 
+    const auto duration1 = std::chrono::steady_clock::now() - pre_handshake;
+    // The timeout shouldn't be longer than 5 seconds
+    EXPECT_THAT(duration1, Le(std::chrono::seconds(5)));
+    // Note, in Windows, we've seen this BIO_do_connect action take ~2 seconds
+
     // Try to read something until the listener drops the connection. The
     // read is expected to fail
     unsigned char buf[10];
     success = BIO_read(bio, buf, sizeof buf);
     EXPECT_THAT(success, Le(0));
 
-    const auto duration = std::chrono::steady_clock::now() - pre_handshake;
+    const auto duration2 = std::chrono::steady_clock::now() - pre_handshake;
 
-    // The timeout shouldn't be longer than 5 seconds
-    EXPECT_THAT(duration, Le(std::chrono::seconds(5)));
+    // The timeout shouldn't be longer than 8 seconds (BIO_do_connect time +
+    // 3s read timeout + 2s buffer)
+    EXPECT_THAT(duration2, Le(std::chrono::seconds(8)));
 
     BIO_free_all(bio);
 }
