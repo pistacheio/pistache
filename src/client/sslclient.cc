@@ -48,7 +48,7 @@ public:
 
     // Note: read(...) removed since not used
 
-    PST_SSIZE_T sslRawRecv(void * _buffer, size_t _length);
+    PST_SSIZE_T sslRawRecv(void * _buffer, size_t _length, bool _knowReadable);
     PST_SSIZE_T sslRawSend(const void * _buffer, size_t _length);
 
     Fd getFd() const; // rets FD of underlying socket, or < 0 if not open
@@ -101,7 +101,8 @@ SslConnectionImpl::~SslConnectionImpl()
 
 // ---------------------------------------------------------------------------
 
-PST_SSIZE_T SslConnectionImpl::sslRawRecv(void * _buffer, size_t _length)
+PST_SSIZE_T SslConnectionImpl::sslRawRecv(void * _buffer, size_t _length,
+                                          bool _knowReadable)
 {
     if (!mSslAsync)
     {
@@ -115,7 +116,8 @@ PST_SSIZE_T SslConnectionImpl::sslRawRecv(void * _buffer, size_t _length)
         return(-1);
     }
 
-    PST_SSIZE_T res_len = mSslAsync->sslAppRecv(_buffer, _length);
+    PST_SSIZE_T res_len = mSslAsync->sslAppRecv(_buffer, _length,
+                                                _knowReadable);
     return(res_len);
 }
 
@@ -187,9 +189,10 @@ SslConnection::SslConnection(const std::string & _hostName,
 
 // Note: read(...) removed since not used
 
-PST_SSIZE_T SslConnection::sslRawRecv(void * _buffer, size_t _length)
+PST_SSIZE_T SslConnection::sslRawRecv(void * _buffer, size_t _length,
+                                      bool _knowReadable)
 {
-    return(mImpl->sslRawRecv(_buffer, _length));
+    return(mImpl->sslRawRecv(_buffer, _length, _knowReadable));
 }
 
 PST_SSIZE_T SslConnection::sslRawSend(const void * _buffer, size_t _length)

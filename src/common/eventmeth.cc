@@ -681,19 +681,19 @@ namespace Pistache
 
     static void dbg_new_emv(const EmEvent * emv)
     {
-        std::lock_guard<std::mutex> l_guard(dbg_emv_set_mutex);
+        GUARD_AND_DBG_LOG(dbg_emv_set_mutex);
         dbg_emv_set.insert(emv);
     }
 
     static void dbg_delete_emv(const EmEvent * emv)
     {
-        std::lock_guard<std::mutex> l_guard(dbg_emv_set_mutex);
+        GUARD_AND_DBG_LOG(dbg_emv_set_mutex);
         dbg_emv_set.erase(emv);
     }
 
     void dbg_log_all_emes()
     {
-        std::lock_guard<std::mutex> l_guard(dbg_emv_set_mutex);
+        GUARD_AND_DBG_LOG(dbg_emv_set_mutex);
         PS_LOG_DEBUG_ARGS("Full set of %u EmEvent * follows:",
                           dbg_emv_set.size());
 
@@ -4368,7 +4368,7 @@ EmEventTmrFd::EmEventTmrFd(PST_CLOCK_ID_T clock_id,
             }
         }
 
-        // No valid/safe EMEEI to erase from, just close and delete
+        PS_LOG_DEBUG_ARGS("No valid EMEEI, closing em_event %p", em_event);
 
         int close_res = em_event->close();
         if (close_res == 0)

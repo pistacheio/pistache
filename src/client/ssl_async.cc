@@ -31,6 +31,10 @@
  *
  */
 
+#ifndef OPENSSL_NO_DEPRECATED
+#define OPENSSL_NO_DEPRECATED
+#endif
+
 #include <pistache/winornix.h>
 
 #include <mutex>
@@ -47,6 +51,7 @@
 #include <pistache/ssl_async.h>
 #include <pistache/pist_syslog.h>
 #include <pistache/pist_timelog.h>
+#include <pistache/pist_check.h>
 
 // For GENERAL_NAMES stuff
 #include <openssl/x509.h>
@@ -69,19 +74,15 @@ namespace Pistache::Http::Experimental {
 
 // ---------------------------------------------------------------------------
 
-#define SSL_LOG_WRN_AND_THROW(__MSG)            \
-    {                                           \
-        PS_LOG_WARNING(__MSG);                      \
-        throw std::runtime_error(__MSG);        \
-    }
-
-#define SSL_LOG_WRN_CLOSE_AND_THROW(__MSG)            \
-    {                                                 \
+#define SSL_LOG_WRN_CLOSE_AND_THROW(__MSG)                \
+    {                                                     \
         PS_LOG_WARNING(__MSG);                            \
-        auto current_fd = mFd;                        \
-        mFd = PS_FD_EMPTY;                            \
-        CLOSE_FD(current_fd);                         \
-        throw std::runtime_error(__MSG);              \
+        auto current_fd = mFd;                            \
+        mFd = PS_FD_EMPTY;                                \
+        if (current_fd != PS_FD_EMPTY)                    \
+            CLOSE_FD(current_fd);                         \
+        if (addrinfo_ptr) ::freeaddrinfo(addrinfo_ptr);   \
+        throw std::runtime_error(__MSG);                  \
     }
 
 // ---------------------------------------------------------------------------
@@ -110,7 +111,7 @@ PST_SSIZE_T SslAsync::sslAppSend(const void * _buffer, size_t _length)
         return(-1);
     }
 
-    std::lock_guard<std::mutex> grd(mSslAsyncMutex);
+    GUARD_AND_DBG_LOG(mSslAsyncMutex);
 
     std::size_t prior_size = mToWriteVec.size();
     std::size_t total_written = 0;
@@ -123,7 +124,8 @@ PST_SSIZE_T SslAsync::sslAppSend(const void * _buffer, size_t _length)
     for(; loop_count < 256; loop_count++)
     {
         starting_size = mToWriteVec.size();
-        int check_socket_res = checkSocket(false/*not forAppRead*/);
+        int check_socket_res = checkSocket(false/*not forAppRead*/,
+                                           false/*not known to be readable*/);
         if (check_socket_res)
             return(-1); // errno already set by checkSocket
         if (!mToWriteVec.size())
@@ -182,10 +184,13 @@ SslAsync::ACTION SslAsync::ssl_connect()
                 return CONTINUE;
             }
 
+            #ifdef SSL_ERROR_WANT_RETRY_VERIFY
+            // Not defined in RedHat / ubi8
             if (ssl_error == SSL_ERROR_WANT_RETRY_VERIFY) {
                 PS_LOG_DEBUG("SSL_ERROR_WANT_RETRY_VERIFY");
                 return CONTINUE;
             }
+            #endif
 
             #ifdef DEBUG
             const char* error_string = ERR_error_string(ssl_error, NULL);
@@ -203,7 +208,8 @@ SslAsync::ACTION SslAsync::ssl_connect()
 
 // ---------------------------------------------------------------------------
 
-PST_SSIZE_T SslAsync::sslAppRecv(void * _buffer, size_t _length)
+PST_SSIZE_T SslAsync::sslAppRecv(void * _buffer, size_t _length,
+                                 bool _knowReadable)
 {
     if (!_buffer || !_length)
     {
@@ -211,18 +217,21 @@ PST_SSIZE_T SslAsync::sslAppRecv(void * _buffer, size_t _length)
         return(-1);
     }
 
-    std::lock_guard<std::mutex> grd(mSslAsyncMutex);
+    GUARD_AND_DBG_LOG(mSslAsyncMutex);
 
-    errno = EWOULDBLOCK;
-
-    checkSocket(true/*forAppRead*/);
     if (mReadFromVec.empty())
-    {
-        if (errno == ENODATA)
-            return(0);
-        if (errno == 0)
-            errno = EWOULDBLOCK;
-        return(-1);
+    { // Otherwise we already have bytes to pass
+        errno = EWOULDBLOCK;
+
+        checkSocket(true/*forAppRead*/, _knowReadable);
+        if (mReadFromVec.empty())
+        {
+            if (errno == ECONNRESET)
+                return(0);
+            if (errno == 0)
+                errno = EWOULDBLOCK;
+            return(-1);
+        }
     }
 
     PST_SSIZE_T bytes_received = std::min(_length, mReadFromVec.size());
@@ -260,7 +269,7 @@ SslAsync::ACTION SslAsync::ssl_read()
     }
 
     if (ssl_error == SSL_ERROR_ZERO_RETURN) {
-      PS_LOG_DEBUG("Peer closed the TLS/SSL connection for writing");
+      PS_LOG_DEBUG("Peer closed the TLS/SSL connection");
       // Can also happen if peer abruptly closed the connection and we have
       // SSL_OP_IGNORE_UNEXPECTED_EOF set
     } else {
@@ -364,22 +373,27 @@ SslAsync::ACTION SslAsync::ssl_write()
 // Helper function to be called only by initOpenSslIfNotAlready
 static void init_openssl_library(void)
 {
-    /* https://www.openssl.org/docs/ssl/SSL_library_init.html */
-    (void)SSL_library_init();
-    /* Cannot fail (always returns success) ??? */
+    /*
+     Per: https://docs.openssl.org/master/man3/OPENSSL_init_ssl/
+       As of version 1.1.0 OpenSSL will automatically allocate all resources
+       that it needs so no explicit initialisation is required. Similarly it
+       will also automatically deinitialise as required.
+    */
 
+    /*
+    // SSL_library_init and OpenSSL_add_all_algorithms were deprecated in
+    // OpenSSL 1.1.0 by OPENSSL_init_ssl() (which itself is not needed - see
+    // above)
+    // https://www.openssl.org/docs/ssl/SSL_library_init.html
+    (void)SSL_library_init(); // Cannot fail (always returns success)
     OpenSSL_add_all_algorithms();
 
-    /* https://www.openssl.org/docs/crypto/ERR_load_crypto_strings.html */
-    SSL_load_error_strings();
-    /* Cannot fail ??? */
+    // https://www.openssl.org/docs/crypto/ERR_load_crypto_strings.html
+    SSL_load_error_strings(); // Deprecated since OpenSSL 1.1.0
 
     // ERR_load_BIO_strings();
-    ERR_load_crypto_strings();
-
-    /* SSL_load_error_strings loads both libssl and libcrypto strings */
-    /* ERR_load_crypto_strings(); */
-    /* Cannot fail ??? */
+    ERR_load_crypto_strings(); // Deprecated since OpenSSL 1.1.0
+    */
 
     /* OpenSSL_config may or may not be called internally, based on */
     /*  some #defines and internal gyrations. Explicitly call it    */
@@ -389,7 +403,6 @@ static void init_openssl_library(void)
     // instead if needed.
     //
     // OPENSSL_config(NULL);
-    /* Cannot fail ??? */
 
     /* Include <openssl/opensslconf.h> to get this define     */
 #if defined (OPENSSL_THREADS)
@@ -406,7 +419,7 @@ static void initOpenSslIfNotAlready()
     if (lOpenSslInited)
         return;
 
-    std::lock_guard<std::mutex> grd(lOpenSslInitedMutex);
+    GUARD_AND_DBG_LOG(lOpenSslInitedMutex);
     if (lOpenSslInited)
         return;
 
@@ -701,64 +714,82 @@ SslAsync::SslAsync(const char * _hostName, unsigned int _hostPort,
     mDoVerification(_doVerification),
     mSsl(NULL), mCtxt(NULL)
 {
+    struct addrinfo * addrinfo_ptr = NULL;
+
     if (!_hostName)
     {
         errno = EINVAL;
-        SSL_LOG_WRN_AND_THROW("Null hostName");
+        SSL_LOG_WRN_CLOSE_AND_THROW("Null hostName");
     }
 
     if (!_hostChainPemFile)
     {
         errno = EINVAL;
-        SSL_LOG_WRN_AND_THROW("Null hostChainPemFile");
+        SSL_LOG_WRN_CLOSE_AND_THROW("Null hostChainPemFile");
     }
 
     if (!_hostPort)
         _hostPort = 443;
 
+    struct addrinfo hints = {};
+    hints.ai_family       = _domain;
+    hints.ai_socktype     = SOCK_STREAM;
+    hints.ai_protocol     = IPPROTO_TCP;
     std::string host_port_as_sstr(std::to_string(_hostPort));
-    struct addrinfo * addrinfo_ptr = NULL;
+
     PS_LOG_DEBUG_ARGS("Doing getaddrinfo. _hostName %s, _hostPort %u",
                       _hostName, static_cast<unsigned int>(_hostPort));
     int res = getaddrinfo(_hostName, host_port_as_sstr.c_str(),
-                          NULL, &addrinfo_ptr);
+                          &hints, &addrinfo_ptr);
     PS_LOG_DEBUG_ARGS("getaddrinfo res %d", res);
     if (res != 0)
-        SSL_LOG_WRN_AND_THROW("local getaddrinfo failed");
+        SSL_LOG_WRN_CLOSE_AND_THROW("Local getaddrinfo failed");
 
     initOpenSslIfNotAlready();
 
     mCtxt = makeSslCtx(_hostChainPemFile);
     if (!mCtxt)
-        SSL_LOG_WRN_AND_THROW("could not SSL_CTX_new");
+        SSL_LOG_WRN_CLOSE_AND_THROW("Could not SSL_CTX_new");
 
     em_socket_t sfd = PST_SOCK_SOCKET(_domain, SOCK_STREAM, 0);
     if (sfd < 0)
-        SSL_LOG_WRN_AND_THROW("could not create socket");
+        SSL_LOG_WRN_CLOSE_AND_THROW("Could not create socket");
 
     #ifdef _USE_LIBEVENT
     // We're openning a connection to a remote resource - I guess
     // it makes sense to allow either read or write
-    mFd = TRY_NULL_RET(EventMethFns::em_event_new(
+    try {
+        mFd = TRY_NULL_RET(EventMethFns::em_event_new(
                            sfd, // pre-allocated file desc
                            EVM_READ | EVM_WRITE | EVM_PERSIST | EVM_ET,
                            F_SETFDL_NOTHING, // setfd
                            PST_O_NONBLOCK // setfl
                            ));
+    }
+    catch(...) { }
+    if (!mFd)
+    {
+        // Hereafter SSL_LOG_WRN_CLOSE_AND_THROW would do the socket close for
+        // us using mFd, but since the mFd creation didn't work we close sfd
+        // here directly
+        PST_SOCK_CLOSE(sfd);
+
+        SSL_LOG_WRN_CLOSE_AND_THROW("Could not create an em_event_new");
+    }
     #else
     mFd = sfd;
     #endif
 
     mSsl = SSL_new(mCtxt);
     if (!mSsl)
-        SSL_LOG_WRN_AND_THROW("could not SSL_new");
+        SSL_LOG_WRN_CLOSE_AND_THROW("Could not SSL_new");
 
     // Set the socket to be non blocking.
     int flags = PST_FCNTL(sfd, PST_F_GETFL, 0);
     if (flags == PST_FCNTL_GETFL_UNKNOWN)
         flags = 0;
     if (PST_FCNTL(sfd, PST_F_SETFL, flags | PST_O_NONBLOCK))
-        SSL_LOG_WRN_CLOSE_AND_THROW("could not fcntl");
+        SSL_LOG_WRN_CLOSE_AND_THROW("Could not fcntl");
 
     #ifdef _USE_LIBEVENT_LIKE_APPLE
       // SOL_TCP not defined in macOS Nov 2023
@@ -766,7 +797,8 @@ SslAsync::SslAsync(const char * _hostName, unsigned int _hostPort,
       int tcp_prot_num          = pe ? pe->p_proto : 6;
     #ifdef DEBUG
     #ifdef __linux__
-      assert(tcp_prot_num == SOL_TCP);
+      if (tcp_prot_num != SOL_TCP)
+          SSL_LOG_WRN_CLOSE_AND_THROW("tcp_prot_num != SOL_TCP");
     #endif
     #endif
     #else
@@ -777,10 +809,11 @@ SslAsync::SslAsync(const char * _hostName, unsigned int _hostPort,
             sfd, tcp_prot_num, TCP_NODELAY,
             reinterpret_cast<PST_SOCK_OPT_VAL_PTR_T>(&one),
             sizeof(one)))
-        SSL_LOG_WRN_CLOSE_AND_THROW("could not setsockopt");
+        SSL_LOG_WRN_CLOSE_AND_THROW("Could not setsockopt");
 
     mConnecting = 0;
     struct addrinfo * this_addrinfo;
+    int last_sock_connect_errno = -1;
     for(this_addrinfo = addrinfo_ptr; this_addrinfo;
         this_addrinfo = this_addrinfo->ai_next)
     {
@@ -812,10 +845,23 @@ SslAsync::SslAsync(const char * _hostName, unsigned int _hostPort,
             mConnecting = 1; //true
             break;
         }
+        last_sock_connect_errno = errno;
+        PS_LOG_DEBUG_ARGS("sock connect error, errno %d, "
+                          "sfd %d, ai_addrlen %d, ai_addr %p",
+                          errno, sfd, ai_addrlen, ai_addr);
     }
     PS_LOG_DEBUG_ARGS("mConnecting = %d", mConnecting);
     if (!mConnecting)
+    {
+        if (last_sock_connect_errno >= 0)
+        {
+            PST_DECL_SE_ERR_P_EXTRA;
+            PS_LOG_INFO_ARGS("Connecting last non-blocking errno %d, %s",
+                             last_sock_connect_errno,
+                             PST_STRERROR_R_SE_ERR(last_sock_connect_errno));
+        }
         SSL_LOG_WRN_CLOSE_AND_THROW("Failed to start connecting");
+    }
 
     // Save a pointer to mDoVerification for use in verify_callback
     SSL_set_ex_data(mSsl, 0, &mDoVerification); // 0 is "idx" for app data
@@ -825,11 +871,11 @@ SslAsync::SslAsync(const char * _hostName, unsigned int _hostPort,
     //     https://docs.openssl.org/3.2/man7/ossl-guide-tls-client-block/
     //                                            #setting-the-servers-hostname
     if (!SSL_set_tlsext_host_name(mSsl, _hostName))
-        SSL_LOG_WRN_CLOSE_AND_THROW("could not SSL_set_tlsext_host_name");
+        SSL_LOG_WRN_CLOSE_AND_THROW("Could not SSL_set_tlsext_host_name");
 
     SSL_set_hostflags(mSsl, X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
     if (!SSL_set1_host(mSsl, _hostName))
-        SSL_LOG_WRN_CLOSE_AND_THROW("could not SSL_set1_host");
+        SSL_LOG_WRN_CLOSE_AND_THROW("Could not SSL_set1_host");
 
     if (!SSL_set_fd(mSsl,
                     #ifdef _IS_WINDOWS
@@ -846,25 +892,32 @@ SslAsync::SslAsync(const char * _hostName, unsigned int _hostPort,
                         )
                     #endif
             ))
-        SSL_LOG_WRN_CLOSE_AND_THROW("could not SSL_set_fd");
+        SSL_LOG_WRN_CLOSE_AND_THROW("Could not SSL_set_fd");
 
     SSL_set_connect_state(mSsl);
 
-    checkSocket(false/*not forAppRead*/);
+    checkSocket(false/*not forAppRead*/, false/*not known to be readable*/);
+
+    if (addrinfo_ptr)
+        ::freeaddrinfo(addrinfo_ptr);
 }
 
 // ---------------------------------------------------------------------------
 
 SslAsync::~SslAsync()
 {
-    std::lock_guard<std::mutex> grd(mSslAsyncMutex);
+    GUARD_AND_DBG_LOG(mSslAsyncMutex);
 
     if (mSsl)
         SSL_free(mSsl);
     if (mCtxt)
         SSL_CTX_free(mCtxt);
     if (mFd != PS_FD_EMPTY)
+    {
+        PS_LOG_DEBUG_ARGS("Closing %" PIST_QUOTE(PS_FD_PRNTFCD),
+                          mFd);
         CLOSE_FD(mFd);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -886,7 +939,7 @@ void toTimeval(Duration&& d, struct timeval & tv)
 // user data) the application would have no way of knowing that we have read
 // user data waiting and so may never call sslAppRecv to retrieve it
 // Returns -1 when errno has been set, 0 otherwise
-int SslAsync::checkSocket(bool _forAppRead)
+int SslAsync::checkSocket(bool _forAppRead, bool _knowReadable)
 {
     PS_TIMEDBG_START_ARGS("mConnecting %d, mDoVerification %s, "
                           "_forAppRead %s, "
@@ -913,6 +966,7 @@ int SslAsync::checkSocket(bool _forAppRead)
     // returns immediately whether we have a result yet or not.
 
     int res = 0;
+    errno = 0; // make completely sure we're not returning with a stale errno
 
     unsigned int loop_count = 0;
     for(; loop_count < MAX_LOOP_COUNT; loop_count++)
@@ -945,11 +999,42 @@ int SslAsync::checkSocket(bool _forAppRead)
                           std::chrono::duration_cast<std::chrono::milliseconds>
                           (wait_so_far).count());
 
-        bool assume_read_select = ((loop_count == 0) && _forAppRead &&
-                              (!mCallSslWriteForSslLib) && (!mConnecting));
-        // We don't need to call select when checkSocket called with forAppRead
-        // true, since caller must have seen a poll/select on the socket
-        // already in order to call us
+        bool assume_read_select = false;
+        if ((!mCallSslWriteForSslLib) && (!mConnecting))
+        {
+            assume_read_select = ((loop_count == 0) && _knowReadable);
+            // We don't need to call select when checkSocket called with
+            // _knowReadable true, since caller must have seen a poll/select on
+            // the socket already in order to call us
+
+            if ((!assume_read_select) && _forAppRead)
+            {
+                PS_LOG_DEBUG("Checking SSL_pending");
+                int ssl_pending_res = SSL_pending(mSsl);
+                PS_LOG_DEBUG_ARGS("SSL_pending_res %d", ssl_pending_res);
+
+                if (ssl_pending_res > 0)
+                {
+                    assume_read_select = true;
+
+                    // If SSL_pending() > 0, it means the SSL library is
+                    // holding received bytes that have not yet been passed to
+                    // us. In such a case, bytes can be read from SSL_read even
+                    // if there are no bytes pending to be read on the
+                    // _socket_.
+                    //
+                    // Side note: This is not necessarily the case if
+                    // SSL_has_pending is true. If SSL_pending() returns zero,
+                    // but SSL_has_pending is true, it means there are bytes
+                    // being held in the SSL library but too few to allow us to
+                    // read (e.g. a partial encryption block which cannot be
+                    // decrypted until additional bytes arrive) - in that case
+                    // we do want to do select, because only if there are
+                    // additional bytes pending on the _socket_ might we be
+                    // able to successfully do SSL_read.
+                }
+            }
+        }
 
         // rptr to avoid reading when not wanted (see earlier comment re: bool
         // _forAppRead)
@@ -982,12 +1067,31 @@ int SslAsync::checkSocket(bool _forAppRead)
         // "should be set to the highest-numbered file descriptor in any of the
         // three sets, plus 1". In Windows, nfds is ignored.
 
-        PS_LOG_DEBUG_ARGS("%s select, timeout.tv_sec %d, tv_usec %d, "
-                          "mConnecting %s",
-                          assume_read_select ? "Not calling" : "Calling",
-                          static_cast<int>(timeout.tv_sec),
-                          static_cast<int>(timeout.tv_usec),
-                          mConnecting ? "true" : "false");
+        #ifdef _IS_WINDOWS
+        PS_LOG_DEBUG_ARGS(
+            "%s select, timeout.tv_sec %d, tv_usec %d, "
+            "mConnecting %s, read_fs %d, write_fs %d, except_fs %d",
+            assume_read_select ? "Not calling" : "Calling",
+            static_cast<int>(timeout.tv_sec),
+            static_cast<int>(timeout.tv_usec),
+            mConnecting ? "true" : "false",
+            read_fs_rptr ? (FD_ISSET(sfd, &read_fds) ? 1 : 0) : -1,
+            write_fs_rptr ? (FD_ISSET(sfd, &write_fds) ? 1 : 0) : -1,
+            except_fs_rptr ? (FD_ISSET(sfd, &except_fds) ? 1 : 0) : -1
+            );
+        #else
+        PS_LOG_DEBUG_ARGS(
+            "%s select, timeout.tv_sec %d, tv_usec %d, "
+            "mConnecting %s, read_fs %d, write_fs %d",
+            assume_read_select ? "Not calling" : "Calling",
+            static_cast<int>(timeout.tv_sec),
+            static_cast<int>(timeout.tv_usec),
+            mConnecting ? "true" : "false",
+            read_fs_rptr ? (FD_ISSET(sfd, &read_fds) ? 1 : 0) : -1,
+            write_fs_rptr ? (FD_ISSET(sfd, &write_fds) ? 1 : 0) : -1
+            );
+        #endif // of ifdef _IS_WINDOWS... else...
+
         select_res = assume_read_select ? 1 :
             PST_SOCK_SELECT(static_cast<int>(sfd) + 1,
                             read_fs_rptr, write_fs_rptr,
@@ -1065,6 +1169,8 @@ int SslAsync::checkSocket(bool _forAppRead)
                     if (action == CONTINUE) {
                         continue;
                     } else if (action == BREAK) {
+                        errno = ECONNREFUSED;
+                        res = -1;
                         break;
                     }
                 } else {

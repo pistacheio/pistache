@@ -200,8 +200,11 @@ using PST_SOCK_OPT_VAL_TYPICAL_T = int; // most (not all) optval are this type
 #define PST_DECL_SE_ERR_P_EXTRA                \
     char se_err[PST_MAXPATHLEN+16]; se_err[0] = 0
 
+#define PST_STRERROR_R_SE_ERR(_PST_ERRNO_)      \
+    PST_STRERROR_R(_PST_ERRNO_, &se_err[0], PST_MAXPATHLEN)
 #define PST_STRERROR_R_ERRNO                    \
-    PST_STRERROR_R(errno, &se_err[0], PST_MAXPATHLEN)
+    PST_STRERROR_R_SE_ERR(errno)
+
 #ifdef DEBUG
 #define PST_DBG_DECL_SE_ERR_P_EXTRA PST_DECL_SE_ERR_P_EXTRA
 #else

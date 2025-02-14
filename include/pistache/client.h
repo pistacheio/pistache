@@ -29,23 +29,29 @@
 
 namespace Pistache::Http::Experimental
 {
+#ifdef PISTACHE_USE_SSL
     enum class SslVerification { // Note: Affects only HTTPS connections
         On                = 1,
         OnExceptLocalhost = 2,
         Off               = 3
     };
+#endif // PISTACHE_USE_SSL
 
     namespace Default
     {
-        constexpr int Threads                           = 1;
-        constexpr int MaxConnectionsPerHost             = 8;
-        constexpr bool KeepAlive                        = true;
-        constexpr size_t MaxResponseSize                = std::numeric_limits<uint32_t>::max();
+        constexpr int Threads               = 1;
+        constexpr int MaxConnectionsPerHost = 8;
+        constexpr bool KeepAlive            = true;
+        constexpr size_t MaxResponseSize    = std::numeric_limits<uint32_t>::max();
+#ifdef PISTACHE_USE_SSL
         constexpr SslVerification ClientSslVerification = SslVerification::OnExceptLocalhost;
+#endif // PISTACHE_USE_SSL
     } // namespace Default
 
     class Transport;
+#ifdef PISTACHE_USE_SSL
     class SslConnection;
+#endif // PISTACHE_USE_SSL
 
     class FdOrSslConn
     {
@@ -57,20 +63,23 @@ namespace Pistache::Http::Experimental
         FdOrSslConn(Fd _fd)
             : fd_(_fd)
         { }
+#ifdef PISTACHE_USE_SSL
         FdOrSslConn(std::shared_ptr<SslConnection> _sslConn)
             : fd_(PS_FD_EMPTY)
             , ssl_conn_(_sslConn)
         { }
-
+        std::shared_ptr<SslConnection> getSslConn() { return (ssl_conn_); }
+#endif // PISTACHE_USE_SSL
         Fd getFd() const;
         Fd getNonSslSocketFd() const { return (fd_); }
-        std::shared_ptr<SslConnection> getSslConn() { return (ssl_conn_); }
 
         void close(); // closes either fd_ or ssl_conn_
 
     private:
         Fd fd_;
+#ifdef PISTACHE_USE_SSL
         std::shared_ptr<SslConnection> ssl_conn_;
+#endif // PISTACHE_USE_SSL
     };
 
     struct Connection : public std::enable_shared_from_this<Connection>
@@ -103,7 +112,10 @@ namespace Pistache::Http::Experimental
                                Connecting,
                                Connected };
 
-        void connect(Address::Scheme scheme, SslVerification sslVerification,
+        void connect(Address::Scheme scheme,
+#ifdef PISTACHE_USE_SSL
+                     SslVerification sslVerification,
+#endif // PISTACHE_USE_SSL
                      const std::string& domain,
                      const std::string* page);
         // connectSocket and connectSsl are private
@@ -116,9 +128,11 @@ namespace Pistache::Http::Experimental
         bool hasTransport() const;
         void associateTransport(const std::shared_ptr<Transport>& transport);
 
+#ifdef PISTACHE_USE_SSL
         // If using HTTPS, application should set hostChainPemFile_
         static const std::string& getHostChainPemFile();
         static void setHostChainPemFile(const std::string& _hostCPFl); // call once
+#endif // PISTACHE_USE_SSL
 
         Async::Promise<Response> perform(const Http::Request& request, OnDone onDone);
 
@@ -134,10 +148,12 @@ namespace Pistache::Http::Experimental
         }
 
         // Fd fd() const;
+#ifdef PISTACHE_USE_SSL
         bool isSsl() const
         {
             return ((fd_or_ssl_conn_) && (fd_or_ssl_conn_->getSslConn()));
         }
+#endif // PISTACHE_USE_SSL
         Fd fdDirectOrFromSsl() const
         {
             if (!fd_or_ssl_conn_)
@@ -155,8 +171,10 @@ namespace Pistache::Http::Experimental
         void processRequestQueue();
 
         void connectSocket(const Address& addr);
+#ifdef PISTACHE_USE_SSL
         void connectSsl(const Address& addr, const std::string& domain,
                         SslVerification sslVerification);
+#endif // PISTACHE_USE_SSL
 
         struct RequestEntry
         {
@@ -174,8 +192,10 @@ namespace Pistache::Http::Experimental
             OnDone onDone;
         };
 
+#ifdef PISTACHE_USE_SSL
         static std::mutex hostChainPemFileMutex_;
         static std::string hostChainPemFile_;
+#endif // PISTACHE_USE_SSL
 
         std::shared_ptr<FdOrSslConn> fd_or_ssl_conn_;
         // Fd fd_;
@@ -279,21 +299,27 @@ namespace Pistache::Http::Experimental
                 , maxConnectionsPerHost_(Default::MaxConnectionsPerHost)
                 , keepAlive_(Default::KeepAlive)
                 , maxResponseSize_(Default::MaxResponseSize)
+#ifdef PISTACHE_USE_SSL
                 , clientSslVerification_(Default::ClientSslVerification)
+#endif // PISTACHE_USE_SSL
             { }
 
             Options& threads(int val);
             Options& keepAlive(bool val);
             Options& maxConnectionsPerHost(int val);
             Options& maxResponseSize(size_t val);
+#ifdef PISTACHE_USE_SSL
             Options& clientSslVerification(SslVerification val);
+#endif // PISTACHE_USE_SSL
 
         private:
             int threads_;
             int maxConnectionsPerHost_;
             bool keepAlive_;
             size_t maxResponseSize_;
+#ifdef PISTACHE_USE_SSL
             SslVerification clientSslVerification_;
+#endif // PISTACHE_USE_SSL
         };
 
         Client();
@@ -319,7 +345,9 @@ namespace Pistache::Http::Experimental
         ConnectionPool pool;
         Aio::Reactor::Key transportKey;
 
+#ifdef PISTACHE_USE_SSL
         SslVerification sslVerification;
+#endif // PISTACHE_USE_SSL
 
         std::atomic<uint64_t> ioIndex;
 

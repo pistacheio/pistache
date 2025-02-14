@@ -41,7 +41,7 @@ public:
 
     // Note: read(...) removed since not used
 
-    PST_SSIZE_T sslRawRecv(void * _buffer, size_t _length);
+    PST_SSIZE_T sslRawRecv(void * _buffer, size_t _length, bool _knowReadable);
     PST_SSIZE_T sslRawSend(const void * _buffer, size_t _length);
 
     Fd getFd() const; // rets FD of underlying socket, or < 0 if not open

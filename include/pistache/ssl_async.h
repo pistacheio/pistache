@@ -63,14 +63,14 @@ private:
     } ACTION;
     ACTION ssl_connect();
 
-    int checkSocket(bool _forAppRead);
+    int checkSocket(bool _forAppRead, bool _knowReadable);
 
 private:
     ACTION ssl_read();
     ACTION ssl_write();
 
 public:
-    PST_SSIZE_T sslAppRecv(void * _buffer, size_t _length);
+    PST_SSIZE_T sslAppRecv(void * _buffer, size_t _length, bool _knowReadable);
     PST_SSIZE_T sslAppSend(const void * _buffer, size_t _length);
 
 public:

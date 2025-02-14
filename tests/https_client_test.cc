@@ -153,6 +153,24 @@ TEST(https_client_test, one_client_with_google_request)
                 done = true;
                 // const std::string bdy(rsp.body());
             }
+            else if (rsp.code() == Http::Code::Found)
+            {
+                // Feb-2025: These HTTP 302 (temporarily moved aka Found)
+                // responses seem to come very roughly once every 3000 Google
+                // search requests
+                PS_LOG_INFO("Temporarily Moved (aka Found) from google.com");
+                done = true;
+            }
+            else if ((rsp.code() == Http::Code::Temporary_Redirect) ||
+                     (rsp.code() == Http::Code::See_Other))
+            {
+                // Feb-2025: We have not seen these HTTP 307 (Temporary
+                // Redirect) or HTTP 303 (See Other) responses from google.com,
+                // but include them here since they are so similar to HTTP 302,
+                // which we do see.
+                PS_LOG_INFO("Temporary Redirect or See Other from google.com");
+                done = true;
+            }
         },
         Async::IgnoreException);
 
@@ -275,9 +293,7 @@ TEST(https_client_test, multiple_clients_with_multiple_search_requests)
                 [&response_counter, &response_correct_counter,
                  server_address_idx,
                  i,
-#ifdef DEBUG
                  j,
-#endif
                  resp_substr](Http::Response rsp) {
                     PS_LOG_DEBUG("Http::Response");
 
@@ -296,16 +312,26 @@ TEST(https_client_test, multiple_clients_with_multiple_search_requests)
                             if (it != bdy.end())
                                 ++response_correct_counter;
                             else
-                                PS_LOG_DEBUG_ARGS(
+                                PS_LOG_WARNING_ARGS(
                                     "For i=%d, j=%d, %s not found in resp %s",
                                     i, j,
                                     resp_substr[i].c_str(), bdy.c_str());
                         }
 
                     }
+                    else if ((rsp.code() == Http::Code::Found) ||
+                             (rsp.code() == Http::Code::Temporary_Redirect) ||
+                             (rsp.code() == Http::Code::See_Other))
+                    {
+                        // Feb-2025: See prior comment re: Http::Code::Found
+                        PS_LOG_INFO("Temporary redirect");
+                        ++response_counter;
+                    }
                     else
+                    {
                         PS_LOG_WARNING_ARGS("Http::Response error code %d",
                                             rsp.code());
+                    }
                 },
                 Async::IgnoreException);
             responses.push_back(std::move(response));
@@ -322,23 +348,45 @@ TEST(https_client_test, multiple_clients_with_multiple_search_requests)
         client[j].shutdown();
     }
 
-    ASSERT_EQ(response_counter, CLIENT_SIZE * RESPONSE_SIZE);
+    ASSERT_GE(response_counter, RESPONSE_SIZE);
+    if (response_counter < (CLIENT_SIZE * RESPONSE_SIZE))
+    {
+        // Very occasionally we see an HTTP 500 error come back
+        PS_LOG_WARNING_ARGS("response_counter %d less than expected %d; "
+                            "possible internal server error at search engine",
+                            static_cast<int>(response_counter),
+                            (CLIENT_SIZE * RESPONSE_SIZE));
+    }
+    else
+    {
+        unsigned int response_correct_counter_uint =
+            static_cast<unsigned int>(response_correct_counter);
 
-    PS_LOG_DEBUG_ARGS("For aol.com, response_correct_counter %d, max %d",
-                      static_cast<int>(response_correct_counter),
-                      ((CLIENT_SIZE * RESPONSE_SIZE) / SERVER_ADDRESS_NUM));
-    // Note: We allow response_correct_counter to be somewhat less than
-    // "CLIENT_SIZE * RESPONSE_SIZE / SERVER_ADDRESS_NUM", because both Bing
-    // and Google appeared to intermittently return flaky results sometimes -
-    // pages that offered to redirect us to their AI result and so on and which
-    // didn't actually include the query answer as far as I could see. Now that
-    // we're checking aol.com query results instead of Google/Bing, we keep the
-    // same logic (of allowing some query results not to have an answer)
-    // just-in-case.
-    unsigned int response_correct_counter_uint =
-        static_cast<unsigned int>(response_correct_counter);
-    ASSERT_GE(response_correct_counter_uint,
-              (((CLIENT_SIZE * RESPONSE_SIZE) * 2) / 3) / SERVER_ADDRESS_NUM);
+        if (response_correct_counter_uint <
+            ((CLIENT_SIZE * RESPONSE_SIZE) / SERVER_ADDRESS_NUM))
+        {
+            PS_LOG_WARNING_ARGS("For aol, response_correct_counter %d, max %d",
+                                static_cast<int>(response_correct_counter),
+                                ((CLIENT_SIZE * RESPONSE_SIZE) /
+                                 SERVER_ADDRESS_NUM));
+        }
+#ifdef DEBUG
+        else
+        {
+            PS_LOG_DEBUG_ARGS("For aol, response_correct_counter %d",
+                              static_cast<int>(response_correct_counter));
+        }
+#endif
+
+        // Note @Feb/2025: We allow response_correct_counter to be less than
+        // "CLIENT_SIZE * RESPONSE_SIZE / SERVER_ADDRESS_NUM", because AOL
+        // appears to intermittently (1 time per 2,000 requests approx) return
+        // flaky results - pages that don't actually include the query answer
+        // in plain-text form as far as I could see. When this happens, we have
+        // seen AOL return up to 3 (out of a possible 6) such "flaky" pages.
+        ASSERT_GE(response_correct_counter_uint,
+                  ((CLIENT_SIZE * RESPONSE_SIZE) / 3) / SERVER_ADDRESS_NUM);
+    }
 }
 
 TEST(https_client_test, one_client_with_one_request)

@@ -17,7 +17,9 @@
 #include <pistache/eventmeth.h>
 #include <pistache/http.h>
 #include <pistache/net.h>
+#ifdef PISTACHE_USE_SSL
 #include <pistache/sslclient.h>
+#endif // PISTACHE_USE_SSL
 #include <pistache/stream.h>
 
 #include PST_NETDB_HDR
@@ -172,7 +174,7 @@ namespace Pistache::Http::Experimental
             writeCookies(streamBuf, request.cookies());
             writeHeaders(streamBuf, request.headers());
 
-            std::string host_str(
+            std::string host_str(// add port if HTTPs and not already specified
                 std::string(host) + std::string((is_https && (std::string(host).find(':') == std::string::npos)) ? ":443" : ""));
 
             writeHeader<Http::Header::UserAgent>(streamBuf, UA);
@@ -243,7 +245,25 @@ namespace Pistache::Http::Experimental
                 , connection(connection)
                 , addr_len(_addr_len)
             {
-                std::memcpy(&addr, _addr, addr_len);
+                // Note: Sanitizer may object to invocation of memcpy with null
+                // _addr, even if addr_len is zero
+                if (_addr_len)
+                {
+                    // Note - the "cast" here avoids a warning of mismatched
+                    // signedness in Windows
+                    if (addr_len > (static_cast<socklen_t>(sizeof(addr))))
+                    {
+                        PS_LOG_ERR_ARGS("addr_len %d bigger than %d",
+                                        addr_len, sizeof(addr));
+                        throw std::invalid_argument("addr_len too big");
+                    }
+
+                    std::memcpy(&addr, _addr, addr_len);
+                }
+                else
+                {
+                    std::memset(&addr, 0, sizeof(addr));
+                }
             }
 
             const sockaddr* getAddr() const
@@ -442,26 +462,27 @@ namespace Pistache::Http::Experimental
             const PST_SSIZE_T len    = buffer.size() - totalWritten;
             PST_SSIZE_T bytesWritten = -1;
 
+#ifdef PISTACHE_USE_SSL
             if (conn->isSsl())
             {
-                // Comment out PST_SSL_REQ_DBG to suppress log of send content
-                #ifdef DEBUG
-                // #define PST_SSL_REQ_DBG DEBUG // Comment in/out as desired
-                #endif
-                #ifdef PST_SSL_REQ_DBG
-                PS_LOG_DEBUG_ARGS("SSL send: fd %" PIST_QUOTE(PS_FD_PRNTFCD)
-                                  ", len %d, ptr %p, data: %s",
+// Set -DPST_SSL_REQ_DBG on build (or comment in below) to log send content
+// Comment out PST_SSL_REQ_DBG to suppress log of send content
+#ifdef DEBUG
+// #define PST_SSL_REQ_DBG DEBUG // Comment in/out as desired
+#endif
+#ifdef PST_SSL_REQ_DBG
+                PS_LOG_DEBUG_ARGS("SSL send: fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", len %d, ptr %p, data: %s",
                                   fd, len, data, data);
-                #else
-                PS_LOG_DEBUG_ARGS("SSL send: fd %" PIST_QUOTE(PS_FD_PRNTFCD)
-                                  ", len %d, ptr %p",
+#else
+                PS_LOG_DEBUG_ARGS("SSL send: fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", len %d, ptr %p",
                                   fd, len, data);
-                #endif
+#endif
                 bytesWritten = conn->fdOrSslConn()->getSslConn()->sslRawSend(data, len);
                 PS_LOG_DEBUG_ARGS("SSL sent: res %d, fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", data %p, len %d",
                                   bytesWritten, fd, data, len);
             }
             else
+#endif // PISTACHE_USE_SSL
             {
                 bytesWritten = PST_SOCK_SEND(GET_ACTUAL_FD(fd), data, len, 0);
             }
@@ -478,10 +499,14 @@ namespace Pistache::Http::Experimental
                 }
                 else if (errno == ECONNREFUSED)
                 {
+                    PS_LOG_DEBUG("Could not send, connection refused");
                     conn->handleError("Could not send, connection refused");
                 }
                 else
                 {
+                    PST_DBG_DECL_SE_ERR_P_EXTRA;
+                    PS_LOG_DEBUG_ARGS("Could not send request, errno %d %s",
+                                      errno, PST_STRERROR_R_ERRNO);
                     conn->handleError("Could not send request");
                 }
                 break;
@@ -544,6 +569,7 @@ namespace Pistache::Http::Experimental
                 continue;
             }
 
+#ifdef PISTACHE_USE_SSL
             if (conn->isSsl())
             {
                 std::shared_ptr<SslConnection> ssl_conn(
@@ -571,6 +597,7 @@ namespace Pistache::Http::Experimental
                 reactor()->modifyFd(key(), fd, NotifyOn::Read);
             }
             else
+#endif // PISTACHE_USE_SSL
             {
                 PS_LOG_DEBUG_ARGS("Calling ::connect fs %d",
                                   GET_ACTUAL_FD(fd));
@@ -692,6 +719,7 @@ namespace Pistache::Http::Experimental
                     // the ssl case, the fd of the SslConnection
                 }
 
+#ifdef PISTACHE_USE_SSL
                 if (connection->isSsl())
                 { // Complete SSL verification
                     try
@@ -709,6 +737,7 @@ namespace Pistache::Http::Experimental
                             "SSL failure, could not connect");
                     }
                 }
+#endif // PISTACHE_USE_SSL
 
                 connectionEntry.resolve();
                 // We are connected, we can start reading data now
@@ -764,6 +793,10 @@ namespace Pistache::Http::Experimental
         char* buffer = &(stack_buffer[0]);
         std::unique_ptr<char[]> buffer_uptr;
 
+#ifdef PISTACHE_USE_SSL
+        bool know_readable = true; // true only in first pass of "for" loop
+#endif // PISTACHE_USE_SSL
+
         for (;;)
         {
             Fd conn_fd = connection->fdDirectOrFromSsl();
@@ -771,13 +804,20 @@ namespace Pistache::Http::Experimental
                 break; // can happen if fd was closed meanwhile
 
             PST_SSIZE_T bytes = -1;
+#ifdef PISTACHE_USE_SSL
             if (connection->isSsl())
                 bytes = connection->fdOrSslConn()->getSslConn()->sslRawRecv(
-                    buffer + totalBytes, max_buffer - totalBytes);
+                    buffer + totalBytes, max_buffer - totalBytes,
+                    know_readable);
             else
+#endif // PISTACHE_USE_SSL
                 bytes = PST_SOCK_RECV(
                     GET_ACTUAL_FD(conn_fd), buffer + totalBytes,
                     max_buffer - totalBytes, 0);
+
+#ifdef PISTACHE_USE_SSL
+            know_readable = false;
+#endif // PISTACHE_USE_SSL
 
             if (bytes == -1)
             {
@@ -812,6 +852,15 @@ namespace Pistache::Http::Experimental
                 {
                     connection->handleError("Remote closed connection");
                 }
+                else
+                {
+                    PS_LOG_DEBUG_ARGS("Passing %d totalBytes to "
+                                          "handleResponsePacket",
+                                          totalBytes);
+
+                    connection->handleResponsePacket(buffer, totalBytes);
+                }
+
                 connections.erase(conn_fd);
                 connection->closeFromRemoteClosedConnection();
                 break;
@@ -853,7 +902,9 @@ namespace Pistache::Http::Experimental
     }
 
     void Connection::connect(Address::Scheme scheme,
+#ifdef PISTACHE_USE_SSL
                              SslVerification sslVerification,
+#endif // PISTACHE_USE_SSL
                              const std::string& domain,
                              const std::string* page)
     {
@@ -862,6 +913,7 @@ namespace Pistache::Http::Experimental
             (Address::Scheme::Https == scheme) ? 443 : 0, // default port
             scheme, page));
 
+#ifdef PISTACHE_USE_SSL
         if (scheme == Address::Scheme::Https)
         {
             std::string domain_without_port(domain);
@@ -872,6 +924,7 @@ namespace Pistache::Http::Experimental
             connectSsl(addr, domain_without_port, sslVerification);
         }
         else
+#endif // PISTACHE_USE_SSL
         {
             connectSocket(addr);
         }
@@ -949,6 +1002,7 @@ namespace Pistache::Http::Experimental
             throw std::runtime_error("Failed to connect");
     }
 
+#ifdef PISTACHE_USE_SSL
     std::mutex Connection::hostChainPemFileMutex_;
     std::string Connection::hostChainPemFile_;
     const std::string& Connection::getHostChainPemFile()
@@ -961,7 +1015,9 @@ namespace Pistache::Http::Experimental
         GUARD_AND_DBG_LOG(hostChainPemFileMutex_);
         hostChainPemFile_ = _hostCPFl;
     }
+#endif // PISTACHE_USE_SSL
 
+#ifdef PISTACHE_USE_SSL
     void Connection::connectSsl(const Address& addr, const std::string& domain,
                                 SslVerification sslVerification)
     {
@@ -983,12 +1039,13 @@ namespace Pistache::Http::Experimental
                 do_verification = false;
         }
 
-        std::shared_ptr<SslConnection> ssl_conn(std::make_shared<SslConnection>(domain,
-                                                                                addr.port(),
-                                                                                addr.family(), // domain
-                                                                                addr.page(),
-                                                                                do_verification,
-                                                                                &host_cpem_file));
+        std::shared_ptr<SslConnection> ssl_conn(
+            std::make_shared<SslConnection>(domain,
+                                            addr.port(),
+                                            addr.family(), // domain
+                                            addr.page(),
+                                            do_verification,
+                                            &host_cpem_file));
         if (!ssl_conn)
             throw std::runtime_error("Failed to connect");
 
@@ -1010,6 +1067,7 @@ namespace Pistache::Http::Experimental
         if (fdDirectOrFromSsl() == PS_FD_EMPTY)
             throw std::runtime_error("Failed to connect");
     }
+#endif // PISTACHE_USE_SSL
 
     std::string Connection::dump() const
     {
@@ -1158,6 +1216,8 @@ namespace Pistache::Http::Experimental
         }
         catch (const std::exception& ex)
         {
+            PS_LOG_DEBUG_ARGS("Parser exception, totalBytes %d, buffer %s",
+                              totalBytes, buffer);
             handleError(ex.what());
         }
     }
@@ -1476,18 +1536,22 @@ namespace Pistache::Http::Experimental
         return *this;
     }
 
+#ifdef PISTACHE_USE_SSL
     Client::Options& Client::Options::clientSslVerification(
         SslVerification val)
     {
         clientSslVerification_ = val;
         return *this;
     }
+#endif // PISTACHE_USE_SSL
 
     Client::Client()
         : reactor_(Aio::Reactor::create())
         , pool()
         , transportKey()
+#ifdef PISTACHE_USE_SSL
         , sslVerification(SslVerification::On)
+#endif // PISTACHE_USE_SSL
         , ioIndex(0)
         , queuesLock()
         , stopProcessRequestQueues(false)
@@ -1506,7 +1570,9 @@ namespace Pistache::Http::Experimental
 
     void Client::init(const Client::Options& options)
     {
+#ifdef PISTACHE_USE_SSL
         sslVerification = options.clientSslVerification_;
+#endif // PISTACHE_USE_SSL
         pool.init(options.maxConnectionsPerHost_, options.maxResponseSize_);
         reactor_->init(Aio::AsyncContext(options.threads_));
         transportKey = reactor_->addHandler(std::make_shared<Transport>());
@@ -1670,7 +1736,9 @@ namespace Pistache::Http::Experimental
                 const std::string page(resource.second);
 
                 conn->connect(https_url ? Address::Scheme::Https : Address::Scheme::Http,
+#ifdef PISTACHE_USE_SSL
                               https_url ? sslVerification : SslVerification::Off,
+#endif // PISTACHE_USE_SSL
                               domain, &page);
                 return res;
             }
@@ -1739,7 +1807,11 @@ namespace Pistache::Http::Experimental
 
     Fd FdOrSslConn::getFd() const
     {
+#ifdef PISTACHE_USE_SSL
         return (ssl_conn_ ? ssl_conn_->getFd() : fd_);
+#else
+        return (fd_);
+#endif // PISTACHE_USE_SSL... else...
     }
 
     void FdOrSslConn::close()
@@ -1749,11 +1821,13 @@ namespace Pistache::Http::Experimental
             CLOSE_FD(fd_);
             fd_ = PS_FD_EMPTY;
         }
+#ifdef PISTACHE_USE_SSL
         if (ssl_conn_)
         {
             ssl_conn_->close();
             ssl_conn_ = nullptr;
         }
+#endif // PISTACHE_USE_SSL
     }
 
 } // namespace Pistache::Http::Experimental

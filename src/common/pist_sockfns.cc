@@ -42,7 +42,7 @@ static int WSAGetLastErrorSetErrno()
     switch(wsa_last_err)
     {
     case WSANOTINITIALISED:
-        PS_LOG_DEBUG("WSANOTINITIALISED");
+        PS_LOG_WARNING("WSANOTINITIALISED");
         errno = EINVAL;
         break;
 
