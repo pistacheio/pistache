@@ -557,6 +557,39 @@ namespace Pistache::Http::Header
 
     void Date::write(std::ostream& os) const { fullDate_.write(os); }
 
+    void ETag::parse(const std::string& str)
+    {
+        auto parseOpaqueTag = [](const std::string& opaqueTag) -> auto {
+            // opaqueTag goes in quotes
+            if (opaqueTag.size() < 2 || opaqueTag.front() != '"' || opaqueTag.back() != '"')
+            {
+                throw std::runtime_error("Invalid ETag format");
+            }
+            //  return value without quotes
+            return opaqueTag.substr(1, opaqueTag.size() - 2);
+        };
+
+        if (str.size() >= weakValidatorMark_.size()
+            && str.substr(0, weakValidatorMark_.size()) == weakValidatorMark_)
+        {
+            value_            = parseOpaqueTag(str.substr(weakValidatorMark_.size()));
+            useWeakValidator_ = true;
+            return;
+        }
+
+        value_            = parseOpaqueTag(str);
+        useWeakValidator_ = false;
+    }
+
+    void ETag::write(std::ostream& os) const
+    {
+        if (useWeakValidator_)
+        {
+            os << weakValidatorMark_;
+        }
+        os << "\"" << value_ << "\"";
+    }
+
     void Expect::parseRaw(const char* str, size_t /*len*/)
     {
         if (std::strcmp(str, "100-continue") == 0)

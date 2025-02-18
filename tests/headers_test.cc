@@ -1016,3 +1016,101 @@ TEST(headers_test, cookie_headers_are_case_insensitive)
         ASSERT_EQ(request.cookies().get("x").value, "y");
     }
 }
+
+TEST(headers_test, etag_test)
+{
+    {
+        // test write method
+        // empty etag value
+        std::ostringstream oss;
+        Pistache::Http::Header::ETag etag {};
+        etag.write(oss);
+        ASSERT_EQ("\"\"", oss.str());
+    }
+
+    {
+        // test write method
+        // empty etag value with useWeakValidator set to true
+        std::ostringstream oss;
+        Pistache::Http::Header::ETag etag { "", true };
+        etag.write(oss);
+        ASSERT_EQ("W/\"\"", oss.str());
+    }
+
+    {
+        // test write method
+        // some etag value with useWeakValidator set to false
+        std::ostringstream oss;
+        Pistache::Http::Header::ETag etag { "some_etag_value", false };
+        etag.write(oss);
+        ASSERT_EQ("\"some_etag_value\"", oss.str());
+    }
+
+    {
+        // test write method
+        // some etag value with useWeakValidator set to true
+        std::ostringstream oss;
+        Pistache::Http::Header::ETag etag { "some_other_etag_value", true };
+        etag.write(oss);
+        ASSERT_EQ("W/\"some_other_etag_value\"", oss.str());
+    }
+
+    {
+        // test parse method
+        // valid etag value
+        const std::string data { "\"33a64df551425fcc55e4d42a148795d9f25f89d4\"" };
+        Pistache::Http::Header::ETag etag {};
+        etag.parse(data);
+        ASSERT_FALSE(etag.useWeakValidator());
+        ASSERT_EQ("33a64df551425fcc55e4d42a148795d9f25f89d4", etag.value());
+    }
+
+    {
+        // test parse method
+        // valid etag value with W/
+        const std::string data { "W/\"33a64df551425fcc55e4d42a148795d9f25f89d4\"" };
+        Pistache::Http::Header::ETag etag {};
+        etag.parse(data);
+        ASSERT_TRUE(etag.useWeakValidator());
+        ASSERT_EQ("33a64df551425fcc55e4d42a148795d9f25f89d4", etag.value());
+    }
+
+    {
+        // test parse method
+        // empty etag value
+        const std::string data { "\"\"" };
+        Pistache::Http::Header::ETag etag {};
+        etag.parse(data);
+        ASSERT_FALSE(etag.useWeakValidator());
+        ASSERT_EQ("", etag.value());
+    }
+
+    {
+        // test parse method
+        // empty etag value with W/
+        const std::string data { "W/\"\"" };
+        Pistache::Http::Header::ETag etag {};
+        etag.parse(data);
+        ASSERT_TRUE(etag.useWeakValidator());
+        ASSERT_EQ("", etag.value());
+    }
+
+    {
+        // test parse method
+        // invalid format (no closing quote)
+        const std::string data { "W/\"33a64df551425fcc55e4d42a148795d9f25f89d4" };
+        Pistache::Http::Header::ETag etag {};
+
+        std::string what;
+        try
+        {
+            etag.parse(data);
+        }
+        catch (std::exception& e)
+        {
+            what = e.what();
+        }
+
+        ASSERT_EQ("Invalid ETag format", what);
+    }
+}

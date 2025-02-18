@@ -551,6 +551,38 @@ namespace Pistache::Http::Header
         FullDate fullDate_;
     };
 
+    class ETag : public Header
+    {
+    public:
+        NAME("ETag")
+
+        ETag()
+            : value_()
+            , useWeakValidator_()
+        { }
+
+        explicit ETag(std::string&& value, bool useWeakValidator = false)
+            : value_(std::move(value))
+            , useWeakValidator_(useWeakValidator)
+        { }
+
+        explicit ETag(const std::string& value, bool useWeakValidator = false)
+            : value_(value)
+            , useWeakValidator_(useWeakValidator)
+        { }
+
+        void parse(const std::string& data) override;
+        void write(std::ostream& os) const override;
+
+        std::string value() const { return value_; }
+        bool useWeakValidator() const { return useWeakValidator_; }
+
+    private:
+        std::string value_;
+        bool useWeakValidator_;
+        static constexpr std::string_view weakValidatorMark_ { "W/" };
+    };
+
     class Expect : public Header
     {
     public:
