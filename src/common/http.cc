@@ -650,7 +650,7 @@ namespace Pistache::Http
 
     const std::string& Message::body() const { return body_; }
 
-    std::string Message::body() { return body_; }
+    std::string& Message::body() { return body_; }
 
     const Header::Collection& Message::headers() const { return headers_; }
 

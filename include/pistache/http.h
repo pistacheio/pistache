@@ -120,7 +120,7 @@ namespace Pistache
             Code code() const;
 
             const std::string& body() const;
-            std::string body();
+            std::string& body();
 
             const CookieJar& cookies() const;
             CookieJar& cookies();
