@@ -559,7 +559,7 @@ namespace Pistache::Http::Header
 
     void ETag::parse(const std::string& str)
     {
-        auto parseOpaqueTag = [](const std::string& opaqueTag) -> auto {
+        auto parseOpaqueTag = [](const std::string_view opaqueTag) -> auto {
             // opaqueTag goes in quotes
             if (opaqueTag.size() < 2 || opaqueTag.front() != '"' || opaqueTag.back() != '"')
             {
@@ -569,25 +569,55 @@ namespace Pistache::Http::Header
             return opaqueTag.substr(1, opaqueTag.size() - 2);
         };
 
+        std::string_view etagcValue;
+        bool isWeakValue { false };
+
         if (str.size() >= weakValidatorMark_.size()
-            && str.substr(0, weakValidatorMark_.size()) == weakValidatorMark_)
+            && str.compare(0, weakValidatorMark_.size(), weakValidatorMark_) == 0)
         {
-            value_            = parseOpaqueTag(str.substr(weakValidatorMark_.size()));
-            useWeakValidator_ = true;
-            return;
+            std::string_view opaqueTag = std::string_view(str).substr(weakValidatorMark_.size());
+            etagcValue                 = parseOpaqueTag(opaqueTag);
+            isWeakValue                = true;
+        }
+        else
+        {
+            etagcValue = parseOpaqueTag(str);
         }
 
-        value_            = parseOpaqueTag(str);
-        useWeakValidator_ = false;
+        // this will throw exception if etagcString is not a valid etagc
+        validateEtagcWithException(etagcValue);
+
+        etagc_  = etagcValue;
+        isWeak_ = isWeakValue;
     }
 
     void ETag::write(std::ostream& os) const
     {
-        if (useWeakValidator_)
+        if (isWeak_)
         {
             os << weakValidatorMark_;
         }
-        os << "\"" << value_ << "\"";
+        os << "\"" << etagc_ << "\"";
+    }
+
+    bool ETag::validateEtagc(std::string_view etagc) const
+    {
+        return std::all_of(
+            etagc.begin(),
+            etagc.end(),
+            [](unsigned char ch) {
+                return (ch == 0x21
+                        || (ch >= 0x23 && ch <= 0x7E)
+                        || (ch >= 0x80));
+            });
+    }
+
+    void ETag::validateEtagcWithException(std::string_view etagc) const
+    {
+        if (!validateEtagc(etagc))
+        {
+            throw std::runtime_error("Invalid ETag format: etagc must contain chars in a range of 0x21 / 0x23-0x7E / 0x80-0xFF");
+        }
     }
 
     void Expect::parseRaw(const char* str, size_t /*len*/)

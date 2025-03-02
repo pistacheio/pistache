@@ -551,35 +551,57 @@ namespace Pistache::Http::Header
         FullDate fullDate_;
     };
 
+    /**
+     * @brief Represents an HTTP ETag (Entity Tag) with an optional weak validator.
+     *
+     * ETags are used for web caching and conditional requests. They help determine
+     * whether a resource has changed. For more details, see:
+     * [RFC 9110 - HTTP Semantics](https://datatracker.ietf.org/doc/html/rfc9110#section-8.8.3).
+     */
     class ETag : public Header
     {
     public:
         NAME("ETag")
 
         ETag()
-            : value_()
-            , useWeakValidator_()
+            : etagc_()
+            , isWeak_(false)
         { }
 
-        explicit ETag(std::string&& value, bool useWeakValidator = false)
-            : value_(std::move(value))
-            , useWeakValidator_(useWeakValidator)
-        { }
-
-        explicit ETag(const std::string& value, bool useWeakValidator = false)
-            : value_(value)
-            , useWeakValidator_(useWeakValidator)
-        { }
+        /**
+         * @brief Construct a new ETag object
+         *
+         * @param etagc The ETag value. Must be only ETag value itself without quotes and weak validator flag.
+         * @param useWeakValidator  Set to true if the ETag is weak (default: false).
+         */
+        explicit ETag(const std::string_view etagc, bool useWeakValidator = false)
+            : etagc_(etagc)
+            , isWeak_(useWeakValidator)
+        {
+            validateEtagcWithException(etagc);
+        }
 
         void parse(const std::string& data) override;
         void write(std::ostream& os) const override;
+        /**
+         * @brief
+         *
+         * @param etagc etagc value as defined in RFC 9110
+         * @return true when etagc is a valid value according to the RFC 9110
+         * @return false otherwise
+         */
+        bool validateEtagc(std::string_view etagc) const;
 
-        std::string value() const { return value_; }
-        bool useWeakValidator() const { return useWeakValidator_; }
+        std::string etagc() const { return etagc_; }
+        bool isWeak() const { return isWeak_; }
 
     private:
-        std::string value_;
-        bool useWeakValidator_;
+        std::string etagc_;
+        bool isWeak_;
+
+        // throw exception if etagc is not valid
+        void validateEtagcWithException(std::string_view etagc) const;
+
         static constexpr std::string_view weakValidatorMark_ { "W/" };
     };
 
