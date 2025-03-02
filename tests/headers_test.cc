@@ -1101,16 +1101,6 @@ TEST(headers_test, etag_test)
         const std::string data { "W/\"33a64df551425fcc55e4d42a148795d9f25f89d4" };
         Pistache::Http::Header::ETag etag {};
 
-        std::string what;
-        try
-        {
-            etag.parse(data);
-        }
-        catch (std::exception& e)
-        {
-            what = e.what();
-        }
-
-        ASSERT_EQ("Invalid ETag format", what);
+        EXPECT_THAT([&] { etag.parse(data); }, ThrowsMessage<std::runtime_error>("Invalid ETag format"));
     }
 }
