@@ -600,7 +600,7 @@ namespace Pistache::Http::Header
         os << "\"" << etagc_ << "\"";
     }
 
-    bool ETag::validateEtagc(std::string_view etagc) const
+    bool ETag::isValidEtagc(std::string_view etagc)
     {
         return std::all_of(
             etagc.begin(),
@@ -612,9 +612,9 @@ namespace Pistache::Http::Header
             });
     }
 
-    void ETag::validateEtagcWithException(std::string_view etagc) const
+    void ETag::validateEtagcWithException(std::string_view etagc)
     {
-        if (!validateEtagc(etagc))
+        if (!isValidEtagc(etagc))
         {
             throw std::runtime_error("Invalid ETag format: etagc must contain chars in a range of 0x21 / 0x23-0x7E / 0x80-0xFF");
         }

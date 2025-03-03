@@ -583,14 +583,15 @@ namespace Pistache::Http::Header
 
         void parse(const std::string& data) override;
         void write(std::ostream& os) const override;
+
         /**
-         * @brief
+         * @brief check if etagc value is valid according to the RFC 9110
          *
-         * @param etagc etagc value as defined in RFC 9110
-         * @return true when etagc is a valid value according to the RFC 9110
+         * @param etagc etagc value to check
+         * @return true when etagc is a valid value
          * @return false otherwise
          */
-        bool validateEtagc(std::string_view etagc) const;
+        static bool isValidEtagc(std::string_view etagc);
 
         std::string etagc() const { return etagc_; }
         bool isWeak() const { return isWeak_; }
@@ -599,8 +600,13 @@ namespace Pistache::Http::Header
         std::string etagc_;
         bool isWeak_;
 
-        // throw exception if etagc is not valid
-        void validateEtagcWithException(std::string_view etagc) const;
+        /**
+         * @brief check if etagc value is valid according to the RFC 9110
+         *
+         * @param etagc etagc value to check
+         * @throw std::runtime_error if etagc value is not valid
+         */
+        static void validateEtagcWithException(std::string_view etagc);
 
         static constexpr std::string_view weakValidatorMark_ { "W/" };
     };
