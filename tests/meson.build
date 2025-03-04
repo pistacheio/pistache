@@ -69,6 +69,7 @@ flaky_tests = []
 if get_option('PISTACHE_USE_SSL')
 	pistache_test_files += [
 		'https_server_test',
+		'https_client_test',
 		'listener_tls_test'
 	]
 	subdir('certs')

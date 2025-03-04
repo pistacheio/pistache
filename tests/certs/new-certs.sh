@@ -116,4 +116,8 @@ openssl verify -purpose sslserver -CAfile rootCA.crt server_protected.crt || exi
 log "Create server_from_intermediate_with_chain.crt"
 cat server_from_intermediate.crt intermediateCA.crt > server_from_intermediate_with_chain.crt
 
+log "Get Mozilla's cacert.pem for SSL client"
+curl --etag-compare etag.txt --etag-save etag.txt --remote-name https://curl.se/ca/cacert.pem
+
+
 log "done"

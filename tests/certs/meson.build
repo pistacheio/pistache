@@ -13,3 +13,4 @@ configure_file(input: 'server_from_intermediate.key', output: 'server_from_inter
 configure_file(input: 'intermediateCA.crt', output: 'intermediateCA.crt', copy: true)
 configure_file(input: 'server_protected.crt', output: 'server_protected.crt', copy: true)
 configure_file(input: 'server_protected.key', output: 'server_protected.key', copy: true)
+configure_file(input: 'cacert.pem', output: 'cacert.pem', copy: true)

@@ -7,6 +7,9 @@
 /tests/build*/
 /googletest/
 
+# Marker file for certs
+/tests/certs/etag.txt
+
 # Soft links to favorite build convenience files
 /build.sh
 /builddebug.sh

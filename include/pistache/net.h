@@ -68,7 +68,7 @@ namespace Pistache
                    const struct addrinfo* hints)
         {
             PST_SOCK_STARTUP_CHECK;
-            
+
             if (addrs)
             {
                 ::freeaddrinfo(addrs);
@@ -166,7 +166,7 @@ namespace Pistache
         Address();
         Address(std::string host, Port port);
         Address(std::string host); // retained for backwards compatibility
-        
+
         /*
          * Constructors for creating addresses from strings.  They're
          * typically used to create IP-based addresses, but can also be used
@@ -184,8 +184,16 @@ namespace Pistache
 
         explicit Address(const char* addr);
 
+        enum class Scheme {
+            Unspecified,
+            Http,
+            Https
+        };
+
         static Address makeWithDefaultPort(std::string addr,
-                                           Port default_port = 0);
+                                           Port default_port = 0,
+                                           Scheme scheme = Scheme::Unspecified,
+                                           const std::string * page_cptr = nullptr);
 
         Address(IP ip, Port port);
 
@@ -221,11 +229,16 @@ namespace Pistache
             return ip_.getSockAddr();
         }
 
+        Scheme scheme() const { return(scheme_); }
+        const std::string & page() const { return(page_); }
+
         friend std::ostream& operator<<(std::ostream& os, const Address& address);
 
     private:
         // For init, default_port of zero makes the default port 80, though the
         // default can be overridden by addr
+        void init(const std::string& addr, Port default_port, Scheme scheme,
+                  const std::string * page_cptr);
         void init(const std::string& addr, Port default_port);
         void init(const std::string& addr);
 
@@ -233,6 +246,8 @@ namespace Pistache
         IP ip_;
         Port port_;
         socklen_t addrLen_;
+        Scheme scheme_;
+        std::string page_;
     };
 
     std::ostream& operator<<(std::ostream& os, const Address& address);
@@ -240,10 +255,12 @@ namespace Pistache
     namespace helpers
     {
         inline Address httpAddr(const std::string_view& view,
-                                Port default_port)
+                                Port default_port,
+                                Address::Scheme scheme,
+                                const std::string * page_cptr)
         {
             return Address::makeWithDefaultPort(std::string(view),
-                                                default_port);
+                                                default_port, scheme, page_cptr);
         }
 
         Address httpAddr(const std::string_view& view);

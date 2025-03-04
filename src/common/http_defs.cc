@@ -37,7 +37,15 @@ namespace Pistache::Http
         {
             std::istringstream in { s };
             in >> date::parse("%a, %d %b %Y %T %Z", tp);
-            return !in.fail();
+            if (in.fail())
+            {
+                // Google seems to use this 1123 variant, like this:
+                // from www.google.com: expires=Mon, 26-May-2025 18:38:48 GMT
+                std::istringstream in2 { s };
+                in2 >> date::parse("%a, %d-%b-%Y %T %Z", tp);
+                return !in2.fail();
+            }
+            return true;
         }
 
         bool parse_RFC_850(const std::string& s, time_point& tp)
@@ -120,6 +128,7 @@ namespace Pistache::Http
         else if (parse_asctime(str, tp))
             return FullDate(tp);
 
+        PS_LOG_DEBUG_ARGS("Failed parsing date: %s", str.c_str());
         throw std::runtime_error("Invalid Date format");
     }
 

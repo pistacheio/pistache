@@ -83,6 +83,10 @@ PST_SSIZE_T pist_sock_send(em_socket_t em_sock, const void *buf,
 PST_SSIZE_T pist_sock_recv(em_socket_t em_sock, void * buf, size_t len,
                            int flags);
 
+typedef struct fd_set fd_set;
+int pist_sock_select(int nfds, fd_set * readfds, fd_set * writefds,
+                     fd_set * exceptfds, const struct timeval * timeout);
+
 typedef struct PST_POLLFD
 {
     em_socket_t   fd;
