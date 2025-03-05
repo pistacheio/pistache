@@ -787,7 +787,20 @@ namespace Pistache::Http
 
         auto fd = peer()->fd();
         transport_->asyncWrite(fd, buf);
-        transport_->flush();
+
+        // Calling transport_->flush from here is unnecessary - we already
+        // placed the write on the transport's writesQueue with the call to
+        // asyncWrite directly above; the transport will send just as soon as
+        // the fd becomes writable.
+        //
+        // Calling transport_->flush is also dangerous - writesQueue is
+        // supposed to be single consumer queue, but calling flush here
+        // initiates a pop from a different thread (i.e. from our thread
+        // here). This can cause queue corruption if both our thread here and
+        // the Pistache consumer thread are popping at the same moment; see
+        // Issue #1290.
+        //
+        // transport_->flush();
 
         buf_.clear();
     }
