@@ -1016,3 +1016,129 @@ TEST(headers_test, cookie_headers_are_case_insensitive)
         ASSERT_EQ(request.cookies().get("x").value, "y");
     }
 }
+
+TEST(headers_test, etag_test)
+{
+    {
+        // test constructor
+        // etagc value = 0x22 (quote), not allowed
+        EXPECT_THAT(
+            [] {
+                Pistache::Http::Header::ETag etag { "\"some_etag_value_with_quote_or_quoted\"" };
+            },
+            ThrowsMessage<std::runtime_error>("Invalid ETag format: etagc must contain chars in a range of 0x21 / 0x23-0x7E / 0x80-0xFF"));
+    }
+
+    {
+        // test write method
+        // empty etagc value
+        std::ostringstream oss;
+        Pistache::Http::Header::ETag etag {};
+        etag.write(oss);
+        ASSERT_EQ("\"\"", oss.str());
+    }
+
+    {
+        // test write method
+        // empty etagc value with isWeak set to true
+        std::ostringstream oss;
+        Pistache::Http::Header::ETag etag { "", true };
+        etag.write(oss);
+        ASSERT_EQ("W/\"\"", oss.str());
+    }
+
+    {
+        // test write method
+        // some etagc value with isWeak set to false
+        std::ostringstream oss;
+        Pistache::Http::Header::ETag etag { "some_etag_value", false };
+        etag.write(oss);
+        ASSERT_EQ("\"some_etag_value\"", oss.str());
+    }
+
+    {
+        // test write method
+        // some etagc value with isWeak set to true
+        std::ostringstream oss;
+        Pistache::Http::Header::ETag etag { "some_other_etag_value", true };
+        etag.write(oss);
+        ASSERT_EQ("W/\"some_other_etag_value\"", oss.str());
+    }
+
+    {
+        // test parse method
+        // valid etagc value
+        const std::string data { "\"33a64df551425fcc55e4d42a148795d9f25f89d4\"" };
+        Pistache::Http::Header::ETag etag {};
+        etag.parse(data);
+        ASSERT_FALSE(etag.isWeak());
+        ASSERT_EQ("33a64df551425fcc55e4d42a148795d9f25f89d4", etag.etagc());
+    }
+
+    {
+        // test parse method
+        // valid etagc value with W/
+        const std::string data { "W/\"33a64df551425fcc55e4d42a148795d9f25f89d4\"" };
+        Pistache::Http::Header::ETag etag {};
+        etag.parse(data);
+        ASSERT_TRUE(etag.isWeak());
+        ASSERT_EQ("33a64df551425fcc55e4d42a148795d9f25f89d4", etag.etagc());
+    }
+
+    {
+        // test parse method
+        // empty etagc value
+        const std::string data { "\"\"" };
+        Pistache::Http::Header::ETag etag {};
+        etag.parse(data);
+        ASSERT_FALSE(etag.isWeak());
+        ASSERT_EQ("", etag.etagc());
+    }
+
+    {
+        // test parse method
+        // empty etagc value with W/
+        const std::string data { "W/\"\"" };
+        Pistache::Http::Header::ETag etag {};
+        etag.parse(data);
+        ASSERT_TRUE(etag.isWeak());
+        ASSERT_EQ("", etag.etagc());
+    }
+
+    {
+        // test parse method
+        // invalid format (no closing quote)
+        const std::string data { "W/\"33a64df551425fcc55e4d42a148795d9f25f89d4" };
+        Pistache::Http::Header::ETag etag {};
+
+        EXPECT_THAT([&] { etag.parse(data); }, ThrowsMessage<std::runtime_error>("Invalid ETag format"));
+    }
+
+    {
+        // test parse method
+        // invalid format (space in the etagc value)
+        const std::string data { "W/\"33a64df55142 5fcc55e4d42a148795d9f25f89d4\"" };
+        Pistache::Http::Header::ETag etag {};
+
+        EXPECT_THAT(
+            [&] {
+                etag.parse(data);
+            },
+            ThrowsMessage<std::runtime_error>("Invalid ETag format: etagc must contain chars in a range of 0x21 / 0x23-0x7E / 0x80-0xFF"));
+    }
+
+    {
+        // test parse method
+        // invalid format (DEL (0x7F) in the etagc value)
+        const std::string data { "W/\"33a64df55142"
+                                 "\x7F"
+                                 "5fcc55e4d42a148795d9f25f89d4\"" };
+        Pistache::Http::Header::ETag etag {};
+
+        EXPECT_THAT(
+            [&] {
+                etag.parse(data);
+            },
+            ThrowsMessage<std::runtime_error>("Invalid ETag format: etagc must contain chars in a range of 0x21 / 0x23-0x7E / 0x80-0xFF"));
+    }
+}

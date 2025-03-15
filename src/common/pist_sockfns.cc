@@ -253,38 +253,44 @@ int pist_sock_startup_check()
     if (wsastartup_res == 0)
     {
         lWsaStartupDone = true;
+
+        // Note: By doing this log here, we ensure there is at least one
+        // message in the log. Apart from anything else, this can be used by
+        // github workflows to check that logging is working
+        PS_LOG_INFO("WSAStartup Succeeded");
+
         return(0); // success
     }
 
     switch(wsastartup_res)
     {
     case WSASYSNOTREADY:
-        PS_LOG_DEBUG("WSAStartup WSASYSNOTREADY");
+        PS_LOG_WARNING("WSAStartup WSASYSNOTREADY");
         errno = ENETUNREACH;
         break;
 
     case WSAVERNOTSUPPORTED:
-        PS_LOG_DEBUG("WSAStartup WSAVERNOTSUPPORTED");
+        PS_LOG_WARNING("WSAStartup WSAVERNOTSUPPORTED");
         errno = EOPNOTSUPP;
         break;
 
     case WSAEINPROGRESS:
-        PS_LOG_DEBUG("WSAStartup WSAEINPROGRESS");
+        PS_LOG_INFO("WSAStartup WSAEINPROGRESS");
         errno = EINPROGRESS;
         break;
 
     case WSAEPROCLIM:
-        PS_LOG_DEBUG("WSAStartup WSAEPROCLIM");
+        PS_LOG_WARNING("WSAStartup WSAEPROCLIM");
         errno = EMFILE; // too many files
         break;
 
     case WSAEFAULT:
-        PS_LOG_DEBUG("WSAStartup WSAEFAULT");
+        PS_LOG_WARNING("WSAStartup WSAEFAULT");
         errno = EFAULT;
         break;
 
     default:
-        PS_LOG_DEBUG_ARGS("Unexpected WSAStartup error %d:", wsastartup_res);
+        PS_LOG_WARNING_ARGS("Unexpected WSAStartup error %d:", wsastartup_res);
         errno = EIO;
         break;
     }

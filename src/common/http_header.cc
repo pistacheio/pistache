@@ -557,6 +557,69 @@ namespace Pistache::Http::Header
 
     void Date::write(std::ostream& os) const { fullDate_.write(os); }
 
+    void ETag::parse(const std::string& str)
+    {
+        auto parseOpaqueTag = [](const std::string_view opaqueTag) -> auto {
+            // opaqueTag goes in quotes
+            if (opaqueTag.size() < 2 || opaqueTag.front() != '"' || opaqueTag.back() != '"')
+            {
+                throw std::runtime_error("Invalid ETag format");
+            }
+            //  return value without quotes
+            return opaqueTag.substr(1, opaqueTag.size() - 2);
+        };
+
+        std::string_view etagcValue;
+        bool isWeakValue { false };
+
+        if (str.size() >= weakValidatorMark_.size()
+            && str.compare(0, weakValidatorMark_.size(), weakValidatorMark_) == 0)
+        {
+            std::string_view opaqueTag = std::string_view(str).substr(weakValidatorMark_.size());
+            etagcValue                 = parseOpaqueTag(opaqueTag);
+            isWeakValue                = true;
+        }
+        else
+        {
+            etagcValue = parseOpaqueTag(str);
+        }
+
+        // this will throw exception if etagcString is not a valid etagc
+        validateEtagcWithException(etagcValue);
+
+        etagc_  = etagcValue;
+        isWeak_ = isWeakValue;
+    }
+
+    void ETag::write(std::ostream& os) const
+    {
+        if (isWeak_)
+        {
+            os << weakValidatorMark_;
+        }
+        os << "\"" << etagc_ << "\"";
+    }
+
+    bool ETag::isValidEtagc(std::string_view etagc)
+    {
+        return std::all_of(
+            etagc.begin(),
+            etagc.end(),
+            [](unsigned char ch) {
+                return (ch == 0x21
+                        || (ch >= 0x23 && ch <= 0x7E)
+                        || (ch >= 0x80));
+            });
+    }
+
+    void ETag::validateEtagcWithException(std::string_view etagc)
+    {
+        if (!isValidEtagc(etagc))
+        {
+            throw std::runtime_error("Invalid ETag format: etagc must contain chars in a range of 0x21 / 0x23-0x7E / 0x80-0xFF");
+        }
+    }
+
     void Expect::parseRaw(const char* str, size_t /*len*/)
     {
         if (std::strcmp(str, "100-continue") == 0)

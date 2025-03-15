@@ -344,6 +344,84 @@ jobs:
         # Use the following to run just a single test (e.g. http_server_test)
         #   build/tests/run_http_server_test
 
+        # Test for Windows ETW Log Entries
+
+        cd "$savedpwd";
+
+        logman start -ets Pistache -p "Pistache-Provider" 0 0 -o pistache.etl
+
+        cd "build/tests";
+        ./run_cookie_test_3.exe;
+        cd "..\..";
+        logman stop Pistache -ets
+
+        $fst5 =
+          Get-WinEvent -path "pistache.etl" -Oldest | Select-Object -First 5
+
+        cd "$savedpwd"
+
+        $id_102_count=0;
+        $id_102_start_msg_count=0;
+        $id_1_count=0;
+        foreach ($evitm in $fst5) {
+            if ($evitm.Id -eq 102) {
+                $id_102_count++;
+
+                $ldn=$evitm.LevelDisplayName;
+                if (! ($ldn -contains "Information")) {
+                    Write-Error "log LevelDisplayName not as expected: $ldn";
+                    throw "Windows log LevelDisplayName not as expected";
+                }
+
+                $msg=$evitm.Message;
+                if ((! $id_102_start_msg_count) -and
+                  ((! ("$msg" -like "*INFO*")) -or
+                   (! ("$msg" -like "*Pistache start*")))) {
+                    Write-Warning "log msg not as expected: $msg";
+                }
+                else {
+                    $id_102_start_msg_count++;
+                }
+            }
+
+            if ($evitm.Id -eq 1) {
+                $id_1_count++
+
+                $ldn=$evitm.LevelDisplayName;
+                if (! ($ldn -contains "Verbose")) {
+                    Write-Error "log LevelDisplayName not as expected: $ldn"
+                    throw "Windows log LevelDisplayName not as expected"
+                }
+
+                $msg=$evitm.Message;
+                if ((! ("$msg" -like "*DEBUG*")) -or
+                    (! ("$msg" -like "*PSTCH*"))) {
+                    Write-Error "log msg not as expected: $msg";
+                    throw "Windows log message not as expected"
+                }
+            }
+        }
+
+        if (! $id_102_count) {
+            throw "No Id=102 / INFO log messages found"
+        }
+        if (! $id_102_start_msg_count) {
+            throw "No Id=102 / INFO Pistache start message found"
+        }
+        if ($env:mtrx_def_debug -eq "false") {
+            if ($id_1_count) {
+                throw "Id=1 / DEBUG log messages found unexpectedly"
+            }
+        }
+        else {
+            if (! $id_1_count) {
+                throw "No Id=1 / DEBUG log messages found"
+            }
+        }
+
+        Write-Host "Logging test passed"
+
+
     - name: Install
       env:
         mtrx_compiler: ${{ matrix.compiler }}
