@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2024 Julian Amann
+#
+# SPDX-License-Identifier: Apache-2.0
+
+module(
+    name = "pistache",
+    compatibility_level = 1,
+)
