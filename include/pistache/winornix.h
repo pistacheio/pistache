@@ -200,8 +200,11 @@ using PST_SOCK_OPT_VAL_TYPICAL_T = int; // most (not all) optval are this type
 #define PST_DECL_SE_ERR_P_EXTRA                \
     char se_err[PST_MAXPATHLEN+16]; se_err[0] = 0
 
+#define PST_STRERROR_R_SE_ERR(_PST_ERRNO_)      \
+    PST_STRERROR_R(_PST_ERRNO_, &se_err[0], PST_MAXPATHLEN)
 #define PST_STRERROR_R_ERRNO                    \
-    PST_STRERROR_R(errno, &se_err[0], PST_MAXPATHLEN)
+    PST_STRERROR_R_SE_ERR(errno)
+
 #ifdef DEBUG
 #define PST_DBG_DECL_SE_ERR_P_EXTRA PST_DECL_SE_ERR_P_EXTRA
 #else
@@ -266,6 +269,13 @@ using PST_SOCK_OPT_VAL_TYPICAL_T = int; // most (not all) optval are this type
 #define PST_NETINET_TCP_HDR "winsock2.h"
 #else
 #define PST_NETINET_TCP_HDR "netinet/tcp.h"
+#endif
+
+// Use #include PST_SELECT_HDR
+#ifdef _IS_WINDOWS
+#define PST_SELECT_HDR "winsock2.h"
+#else
+#define PST_SELECT_HDR "sys/select.h"
 #endif
 
 
@@ -393,6 +403,9 @@ typedef struct in_addr PST_IN_ADDR_T;
 #define PST_SOCK_SEND pist_sock_send
 #define PST_SOCK_RECV pist_sock_recv
 
+#define PST_FD_SET_FD_TYPE SOCKET // type to use with FD_SET(fd, ...)
+#define PST_SOCK_SELECT pist_sock_select
+
 // PST_POLLFD, PST_POLLFD_T + PST_NFDS_T defined in pist_sockfns.h for Windows
 #define PST_SOCK_POLL pist_sock_poll
 
@@ -410,6 +423,9 @@ typedef struct in_addr PST_IN_ADDR_T;
 #define PST_SOCK_LISTEN ::listen
 #define PST_SOCK_SEND ::send
 #define PST_SOCK_RECV ::recv
+
+#define PST_FD_SET_FD_TYPE em_socket_t // type to use with FD_SET(fd, ...)
+#define PST_SOCK_SELECT ::select
 
 #define PST_SOCK_POLL ::poll
 #define PST_POLLFD pollfd // Note - this is a type, not a function

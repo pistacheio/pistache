@@ -312,7 +312,8 @@ namespace Pistache::Tcp
         for (;;)
         {
 
-            PST_SSIZE_T bytes;
+            PST_SSIZE_T bytes = -1;
+            bool retry        = false;
 
 #ifdef PISTACHE_USE_SSL
             if (peer->ssl() != nullptr)
@@ -322,6 +323,13 @@ namespace Pistache::Tcp
                 bytes = SSL_read(reinterpret_cast<SSL*>(peer->ssl()),
                                  buffer + totalBytes,
                                  static_cast<int>(Const::MaxBuffer - totalBytes));
+                if (bytes < 0)
+                {
+                    int ssl_get_error_res = SSL_get_error(
+                        reinterpret_cast<SSL*>(peer->ssl()),
+                        static_cast<int>(bytes));
+                    retry = (ssl_get_error_res == SSL_ERROR_WANT_READ);
+                }
             }
             else
             {
@@ -329,21 +337,24 @@ namespace Pistache::Tcp
                 PS_LOG_DEBUG("recv (read)");
                 bytes = PST_SOCK_READ(fdactual, buffer + totalBytes,
                                       Const::MaxBuffer - totalBytes);
+                if (bytes < 0)
+                    retry = (errno == EAGAIN || errno == EWOULDBLOCK);
 #ifdef PISTACHE_USE_SSL
             }
 #endif /* PISTACHE_USE_SSL */
 
             PST_DBG_DECL_SE_ERR_P_EXTRA;
             PS_LOG_DEBUG_ARGS("Fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", "
-                                                               "bytes read %d, totalBytes %d, "
+                                                               "bytes read %d, totalBytes %d, retry %s,"
                                                                "err %d %s",
                               peer->fd(), bytes, totalBytes,
+                              (retry) ? "true" : "false",
                               (bytes < 0) ? errno : 0,
                               (bytes < 0) ? (PST_STRERROR_R_ERRNO) : "");
 
             if (bytes == -1)
             {
-                if (errno == EAGAIN || errno == EWOULDBLOCK)
+                if (retry)
                 {
                     if (totalBytes > 0)
                     {
@@ -649,7 +660,7 @@ namespace Pistache::Tcp
                 sock_opt_res = setsockopt(
                     GET_ACTUAL_FD(fd), tcp_prot_num_,
 #ifdef PS_USE_TCP_NODELAY
-	            TCP_NODELAY,
+                    TCP_NODELAY,
 #elif defined __APPLE__ || defined _IS_BSD
                     TCP_NOPUSH,
 #else
@@ -712,6 +723,41 @@ namespace Pistache::Tcp
                 PS_LOG_DEBUG_ARGS("SSL_write, len %d", static_cast<int>(len));
 
                 bytesWritten = SSL_write(ssl_, buffer, static_cast<int>(len));
+                if (bytesWritten < 0)
+                {
+                    int ssl_get_error_res = SSL_get_error(
+                        ssl_, static_cast<int>(bytesWritten));
+                    switch (ssl_get_error_res)
+                    {
+                    case SSL_ERROR_WANT_WRITE:
+                        errno = EAGAIN;
+                        break;
+
+                    case SSL_ERROR_ZERO_RETURN:
+                        errno = ECONNRESET;
+                        break;
+
+                    case SSL_ERROR_WANT_CONNECT:
+                    case SSL_ERROR_WANT_ACCEPT:
+                        errno = ENOTCONN;
+                        break;
+
+                    case SSL_ERROR_SYSCALL:
+                    case SSL_ERROR_SSL:
+                        errno = EBADF;
+                        break;
+
+                    case SSL_ERROR_NONE:
+                        PS_LOG_INFO("SSL_write returned <0, "
+                                    "but SSL_get_error returned ERROR_NONE");
+                        // Deliberately fall through to default
+                        break;
+
+                    default:
+                        errno = EINVAL;
+                        break;
+                    }
+                }
             }
         }
 
@@ -842,9 +888,9 @@ namespace Pistache::Tcp
             // position of "file", which is the same as the behavior described
             // in Linux sendfile man page
             int sendfile_res = PS_SENDFILE(file, GET_ACTUAL_FD(fd),
-                                       offset, &len_as_off_t,
-                                       nullptr, // no new prefix/suffix content
-                                       0 /*reserved, must be zero*/);
+                                           offset, &len_as_off_t,
+                                           nullptr, // no new prefix/suffix content
+                                           0 /*reserved, must be zero*/);
 
             if (sendfile_res == 0)
             {
@@ -986,7 +1032,6 @@ namespace Pistache::Tcp
                 Guard guard(toWriteLock);
                 toWrite[fd].push_back(std::move(*write));
             }
-
 
             if (flush)
                 asyncWriteImpl(fd);

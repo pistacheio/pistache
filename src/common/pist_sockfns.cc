@@ -24,6 +24,7 @@
 
 #include <pistache/pist_syslog.h>
 #include <pistache/pist_check.h>
+#include <pistache/pist_timelog.h>
 
 /* ------------------------------------------------------------------------- */
 
@@ -41,7 +42,7 @@ static int WSAGetLastErrorSetErrno()
     switch(wsa_last_err)
     {
     case WSANOTINITIALISED:
-        PS_LOG_DEBUG("WSANOTINITIALISED");
+        PS_LOG_WARNING("WSANOTINITIALISED");
         errno = EINVAL;
         break;
 
@@ -669,6 +670,32 @@ PST_SSIZE_T pist_sock_recv(em_socket_t em_sock, void * buf, size_t len,
         return(recv_res); // success - ret number of bytes received
 
     return(WSAGetLastErrorSetErrno());
+}
+
+/* ------------------------------------------------------------------------- */
+
+// On success, returns 0. On failure, -1 is returned and errno is set.
+int pist_sock_select(int nfds, fd_set * readfds, fd_set * writefds,
+                     fd_set * exceptfds, const struct timeval * timeout)
+{
+    PIST_SOCK_STARTUP_CHECK_RET_MINUS_1_ON_ERR;
+
+    // Note: Unlike in many of the other pist_sock_xxx functions, we do not
+    // convert from em_socket_t to SOCKET. The fd_set type used by Windows
+    // ::select is a set of SOCKET already; when Pistache has used FD_SET to
+    // construct the fd_set, Pistache will have inserted SOCKET values into the
+    // fd_set. Ref:
+    // https://learn.microsoft.com/en-us/windows/win32/api/winsock2/ns-winsock2-fd_set
+
+    // Returns number of socket handles that are ready and contained in the
+    // fd_set structures, zero if the time limit expired, or SOCKET_ERROR if an
+    // error occurred.
+    int select_res = ::select(nfds, readfds, writefds, exceptfds, timeout);
+
+    if (select_res == SOCKET_ERROR)
+        return(WSAGetLastErrorSetErrno());
+
+    return(select_res); // Can be 0 if timeout occured before any came ready
 }
 
 /* ------------------------------------------------------------------------- */
