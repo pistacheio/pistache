@@ -70,7 +70,11 @@ if get_option('PISTACHE_USE_SSL')
 	pistache_test_files += [
 		'https_server_test',
 		'https_client_test',
+                'https_client_test_net',
 		'listener_tls_test'
+	]
+        network_tests += [
+                'https_client_test_net'
 	]
 	subdir('certs')
 endif
