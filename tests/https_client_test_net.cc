@@ -138,45 +138,112 @@ TEST(https_client_test, one_client_with_google_request)
     Http::Experimental::Client client;
     client.init();
 
-    auto rb       = client.get(server_address);
-    auto response = rb.header<Http::Header::Connection>(
-        Http::ConnectionControl::KeepAlive).send();
     bool done = false;
-    response.then(
-        [&done](Http::Response rsp) {
-            PS_LOG_DEBUG_ARGS("http rsp code: %d", rsp.code());
-            if (rsp.code() == Http::Code::Ok)
-            {
-                done = true;
-                // const std::string bdy(rsp.body());
-            }
-            else if (rsp.code() == Http::Code::Found)
-            {
-                // Feb-2025: These HTTP 302 (temporarily moved aka Found)
-                // responses seem to come very roughly once every 3000 Google
-                // search requests
-                PS_LOG_INFO("Temporarily Moved (aka Found) from google.com");
-                done = true;
-            }
-            else if ((rsp.code() == Http::Code::Temporary_Redirect) ||
-                     (rsp.code() == Http::Code::See_Other))
-            {
-                // Feb-2025: We have not seen these HTTP 307 (Temporary
-                // Redirect) or HTTP 303 (See Other) responses from google.com,
-                // but include them here since they are so similar to HTTP 302,
-                // which we do see.
-                PS_LOG_INFO("Temporary Redirect or See Other from google.com");
-                done = true;
-            }
-        },
-        Async::IgnoreException);
+    auto rb       = client.get(server_address);
+    try {
+        auto response = rb.header<Http::Header::Connection>(
+            Http::ConnectionControl::KeepAlive).send();
 
-    Async::Barrier<Http::Response> barrier(response);
-    barrier.wait_for(std::chrono::seconds(5));
+        response.then(
+            [&done](Http::Response rsp) {
+                PS_LOG_DEBUG_ARGS("http rsp code: %d", rsp.code());
+                if (rsp.code() == Http::Code::Ok)
+                {
+                    done = true;
+                    // const std::string bdy(rsp.body());
+                }
+                else if (rsp.code() == Http::Code::Found)
+                {
+                    // Feb-2025: These HTTP 302 (temporarily moved aka Found)
+                    // responses seem to come very roughly once every 3000
+                    // Google search requests
+                    PS_LOG_INFO(
+                        "Temporarily Moved (aka Found) from google.com");
+                    done = true;
+                }
+                else if ((rsp.code() == Http::Code::Temporary_Redirect) ||
+                         (rsp.code() == Http::Code::See_Other))
+                {
+                    // Feb-2025: We have not seen these HTTP 307 (Temporary
+                    // Redirect) or HTTP 303 (See Other) responses from
+                    // google.com, but include them here since they are so
+                    // similar to HTTP 302, which we do see.
+                    PS_LOG_INFO(
+                        "Temporary Redirect or See Other from google.com");
+                    done = true;
+                }
+            },
+            Async::IgnoreException);
+
+        Async::Barrier<Http::Response> barrier(response);
+        barrier.wait_for(std::chrono::seconds(5));
+    }
+    catch (const std::exception& e)
+    {
+        PS_LOG_WARNING_ARGS("Exception fetching from google.com: %s",
+                            e.what());
+        // This can happen if google.com is unreachable, e.g. we have no
+        // network connection
+    }
 
     client.shutdown();
 
     ASSERT_TRUE(done);
+}
+
+TEST(https_client_test, one_client_with_nonexisitent_url_request)
+{
+    PS_TIMEDBG_START;
+
+    const std::string server_address(
+        "https://www.gog27isnothere2xajsh.com/search?q=pistache+HTTP+REST");
+
+    Http::Experimental::Client client;
+    client.init();
+
+    bool done  = false;
+    bool excep = false;
+    auto rb       = client.get(server_address);
+    try {
+        auto response = rb.header<Http::Header::Connection>(
+            Http::ConnectionControl::KeepAlive).send();
+
+        response.then(
+            [&done](Http::Response rsp) {
+                PS_LOG_DEBUG_ARGS("http rsp code: %d", rsp.code());
+                if (rsp.code() == Http::Code::Ok)
+                {
+                    done = true;
+                    // const std::string bdy(rsp.body());
+                }
+                else if (rsp.code() == Http::Code::Found)
+                {
+                    PS_LOG_INFO("Temporarily Moved (aka Found)");
+                    done = true;
+                }
+                else if ((rsp.code() == Http::Code::Temporary_Redirect) ||
+                         (rsp.code() == Http::Code::See_Other))
+                {
+                    PS_LOG_INFO("Temporary Redirect or See Other");
+                    done = true;
+                }
+            },
+            Async::IgnoreException);
+
+        Async::Barrier<Http::Response> barrier(response);
+        barrier.wait_for(std::chrono::seconds(5));
+    }
+    catch (const std::exception& e)
+    {
+        PS_LOG_DEBUG_ARGS("Exception fetching from nonexisitent URL: %s",
+                          e.what());
+        excep = true;
+    }
+
+    client.shutdown();
+
+    ASSERT_TRUE(excep);
+    ASSERT_FALSE(done);
 }
 
 TEST(https_client_test, one_client_with_bad_google_request)
@@ -189,28 +256,39 @@ TEST(https_client_test, one_client_with_bad_google_request)
     Http::Experimental::Client client;
     client.init();
 
-    auto rb       = client.get(server_address);
-    auto response = rb.header<Http::Header::Connection>(
-        Http::ConnectionControl::KeepAlive) .send();
+    auto rb        = client.get(server_address);
     bool done      = false;
     bool error_404 = false;
 
-    response.then(
-        [&done, &error_404](Http::Response rsp) {
-            PS_LOG_DEBUG_ARGS("http rsp code (expect 404): %d", rsp.code());
-            if (rsp.code() == Http::Code::Ok)
-            {
-                done = true;
-            }
-            else if (rsp.code() == Http::Code::Not_Found)
-            {
-                error_404 = true;
-            }
-        },
-        Async::IgnoreException);
+    try {
+        auto response = rb.header<Http::Header::Connection>(
+            Http::ConnectionControl::KeepAlive) .send();
 
-    Async::Barrier<Http::Response> barrier(response);
-    barrier.wait_for(std::chrono::seconds(5));
+        response.then(
+            [&done, &error_404](Http::Response rsp) {
+                PS_LOG_DEBUG_ARGS("http rsp code (expect 404): %d",
+                                  rsp.code());
+                if (rsp.code() == Http::Code::Ok)
+                {
+                    done = true;
+                }
+                else if (rsp.code() == Http::Code::Not_Found)
+                {
+                    error_404 = true;
+                }
+            },
+            Async::IgnoreException);
+
+        Async::Barrier<Http::Response> barrier(response);
+        barrier.wait_for(std::chrono::seconds(5));
+    }
+    catch (const std::exception& e)
+    {
+        PS_LOG_WARNING_ARGS("Exception fetching from google.com: %s",
+                            e.what());
+        // This can happen if google.com is unreachable, e.g. we have no
+        // network connection
+    }
 
     client.shutdown();
 
@@ -283,62 +361,76 @@ TEST(https_client_test, multiple_clients_with_multiple_search_requests)
                 server_address_start[server_address_idx] + query[i]);
             auto rb = client[j].get(server_address);
 
-            auto response = rb.header<Http::Header::Connection>(
-                                  Http::ConnectionControl::KeepAlive)
-                                .send();
-            response.then(
-                [&response_counter, &response_correct_counter,
-                 server_address_idx,
-                 i,
-                 j,
-                 resp_substr](Http::Response rsp) {
-                    PS_LOG_DEBUG("Http::Response");
+            try {
+                auto response = rb.header<Http::Header::Connection>(
+                    Http::ConnectionControl::KeepAlive)
+                    .send();
+                response.then(
+                    [&response_counter, &response_correct_counter,
+                     server_address_idx,
+                     i,
+                     j,
+                     resp_substr](Http::Response rsp) {
+                        PS_LOG_DEBUG("Http::Response");
 
-                    if (rsp.code() == Http::Code::Ok)
-                    {
-                        ++response_counter;
-                        if (0 == server_address_idx)
+                        if (rsp.code() == Http::Code::Ok)
                         {
-                            const std::string bdy(rsp.body());
-                            auto it = std::search(
-                                bdy.begin(), bdy.end(),
-                                resp_substr[i].begin(), resp_substr[i].end(),
-                                [](unsigned char ch1, unsigned char ch2)
-                              { return std::toupper(ch1) == std::toupper(ch2);
-                              });
-                            if (it != bdy.end())
-                                ++response_correct_counter;
-                            else
-                                PS_LOG_WARNING_ARGS(
-                                    "For i=%d, j=%d, %s not found in resp %s",
-                                    i, j,
-                                    resp_substr[i].c_str(), bdy.c_str());
-                        }
+                            ++response_counter;
+                            if (0 == server_address_idx)
+                            {
+                                const std::string bdy(rsp.body());
+                                auto it = std::search(
+                                    bdy.begin(), bdy.end(),
+                                    resp_substr[i].begin(), resp_substr[i].end(),
+                                    [](unsigned char ch1, unsigned char ch2)
+                                        { return std::toupper(ch1) == std::toupper(ch2);
+                                        });
+                                if (it != bdy.end())
+                                    ++response_correct_counter;
+                                else
+                                    PS_LOG_WARNING_ARGS(
+                                        "For i=%d, j=%d, %s "
+                                        "not found in resp %s",
+                                        i, j,
+                                        resp_substr[i].c_str(), bdy.c_str());
+                            }
 
-                    }
-                    else if ((rsp.code() == Http::Code::Found) ||
-                             (rsp.code() == Http::Code::Temporary_Redirect) ||
-                             (rsp.code() == Http::Code::See_Other))
-                    {
-                        // Feb-2025: See prior comment re: Http::Code::Found
-                        PS_LOG_INFO("Temporary redirect");
-                        ++response_counter;
-                    }
-                    else
-                    {
-                        PS_LOG_WARNING_ARGS("Http::Response error code %d",
-                                            rsp.code());
-                    }
-                },
-                Async::IgnoreException);
-            responses.push_back(std::move(response));
+                        }
+                        else if ((rsp.code() == Http::Code::Found) ||
+                                 (rsp.code() == Http::Code::Temporary_Redirect) ||
+                                 (rsp.code() == Http::Code::See_Other))
+                        {
+                            // Feb-2025: See prior comment re:
+                            // Http::Code::Found
+                            PS_LOG_INFO("Temporary redirect");
+                            ++response_counter;
+                        }
+                        else
+                        {
+                            PS_LOG_WARNING_ARGS("Http::Response error code %d",
+                                                rsp.code());
+                        }
+                    },
+                    Async::IgnoreException);
+                responses.push_back(std::move(response));
+            }
+            catch (const std::exception& e)
+            {
+                PS_LOG_WARNING_ARGS("Exception fetching from %s: %s",
+                                    server_address.c_str(), e.what());
+                // This can happen if URL is unreachable, e.g. we have no
+                // network connection
+            }
         }
     }
 
-    auto sync = Async::whenAll(responses.begin(), responses.end());
-    Async::Barrier<std::vector<Http::Response>> barrier(sync);
+    if (!responses.empty())
+    {
+        auto sync = Async::whenAll(responses.begin(), responses.end());
+        Async::Barrier<std::vector<Http::Response>> barrier(sync);
 
-    barrier.wait_for(std::chrono::seconds(15));
+        barrier.wait_for(std::chrono::seconds(15));
+    }
 
     for (unsigned int j = 0; j < CLIENT_SIZE; ++j)
     {
@@ -413,10 +505,12 @@ TEST(https_client_test, one_cli_mult_reqs_force_https_verification_that_fails)
     std::vector<Async::Promise<Http::Response>> responses;
     const int RESPONSE_SIZE = 3;
     int response_counter    = 0;
+    bool excep = false;
 
     auto rb = client.get(server_address);
     for (int i = 0; i < RESPONSE_SIZE; ++i)
     {
+        try {
         auto response = rb.send();
         response.then(
             [&response_counter](Http::Response rsp) {
@@ -426,15 +520,29 @@ TEST(https_client_test, one_cli_mult_reqs_force_https_verification_that_fails)
             Async::IgnoreException);
 
         responses.push_back(std::move(response));
+        }
+        catch (const std::exception& e)
+        {
+            PS_LOG_WARNING_ARGS("Exception fetching from %s: %s",
+                                server_address.c_str(), e.what());
+            // This can happen if URL is unreachable, e.g. we have no network
+            // connection
+
+            excep = true;
+        }
     }
 
-    auto sync = Async::whenAll(responses.begin(), responses.end());
-    Async::Barrier<std::vector<Http::Response>> barrier(sync);
+    if (!responses.empty())
+    {
+        auto sync = Async::whenAll(responses.begin(), responses.end());
+        Async::Barrier<std::vector<Http::Response>> barrier(sync);
 
-    barrier.wait_for(std::chrono::seconds(5));
+        barrier.wait_for(std::chrono::seconds(5));
+    }
 
     server.shutdown();
     client.shutdown();
 
     ASSERT_EQ(response_counter, 0);
+    ASSERT_FALSE(excep);
 }
