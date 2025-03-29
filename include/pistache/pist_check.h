@@ -6,7 +6,7 @@
 
 /******************************************************************************
  * pist_check.h
- * 
+ *
  * Debugging breakpoints
  *
  */
@@ -15,6 +15,7 @@
 #define INCLUDED_PSCHECK_H
 
 #include <mutex>
+#include <atomic>
 #include <pistache/pist_quote.h>
 #include "pist_syslog.h"
 
@@ -40,7 +41,7 @@
         {                                                               \
             if (max_num)                                                \
             {                                                           \
-                volatile static int checked_num = max_num;              \
+                static std::atomic_int checked_num = max_num;           \
                 if (checked_num > 0)                                    \
                 {                                                       \
                     checked_num--;                                      \
@@ -76,7 +77,7 @@ public:
     GuardAndDbgLog(const char * mtx_name,
                    unsigned ln, const char * fn,
                    std::mutex * mutex_ptr);
-    
+
     ~GuardAndDbgLog();
 
 private:
@@ -106,4 +107,3 @@ private:
 #endif /* INCLUDED_PSCHECK_H */
 
 // ---------------------------------------------------------------------------
-
