@@ -174,11 +174,18 @@ namespace Pistache::Http::Experimental
             writeCookies(streamBuf, request.cookies());
             writeHeaders(streamBuf, request.headers());
 
-            std::string host_str(// add port if HTTPs and not already specified
+            std::string host_str( // add port if HTTPs and not already specified
                 std::string(host) + std::string((is_https && (std::string(host).find(':') == std::string::npos)) ? ":443" : ""));
 
-            writeHeader<Http::Header::UserAgent>(streamBuf, UA);
-            writeHeader<Http::Header::Host>(streamBuf, host_str);
+            if (!request.headers().has("User-Agent"))
+            {
+                writeHeader<Http::Header::UserAgent>(streamBuf, UA);
+            }
+
+            if (!request.headers().has("Host"))
+            {
+                writeHeader<Http::Header::Host>(streamBuf, host_str);
+            }
 
             if (!body.empty())
             {
@@ -855,8 +862,8 @@ namespace Pistache::Http::Experimental
                 else
                 {
                     PS_LOG_DEBUG_ARGS("Passing %d totalBytes to "
-                                          "handleResponsePacket",
-                                          totalBytes);
+                                      "handleResponsePacket",
+                                      totalBytes);
 
                     connection->handleResponsePacket(buffer, totalBytes);
                 }
@@ -1667,7 +1674,6 @@ namespace Pistache::Http::Experimental
         PS_TIMEDBG_START_THIS;
 
         // request.headers_.add<Header::Connection>(ConnectionControl::KeepAlive);
-        request.headers().remove<Header::UserAgent>();
         auto resourceData = request.resource();
 
         PS_LOG_DEBUG_ARGS("resourceData %s", resourceData.c_str());
