@@ -323,12 +323,29 @@ namespace Pistache::Tcp
                 bytes = SSL_read(reinterpret_cast<SSL*>(peer->ssl()),
                                  buffer + totalBytes,
                                  static_cast<int>(Const::MaxBuffer - totalBytes));
-                if (bytes < 0)
+                if (bytes <= 0)
                 {
                     int ssl_get_error_res = SSL_get_error(
                         reinterpret_cast<SSL*>(peer->ssl()),
                         static_cast<int>(bytes));
-                    retry = (ssl_get_error_res == SSL_ERROR_WANT_READ);
+                    PS_LOG_DEBUG_ARGS("SSL_read err %d, bytes %d", ssl_get_error_res, bytes);
+
+                    switch (ssl_get_error_res)
+                    {
+                    case SSL_ERROR_SYSCALL:
+                    case SSL_ERROR_SSL:
+                        PS_LOG_DEBUG_ARGS("SSL_read clearing error queue, last 0x%08X", ERR_peek_last_error());
+                        ERR_clear_error();
+                        break;
+
+                    case SSL_ERROR_WANT_READ:
+                        bytes = -1; // To force handling of reset in the logic that follows.
+                        retry = true;
+                        break;
+
+                    default:
+                        break;
+                    }
                 }
             }
             else
@@ -723,10 +740,12 @@ namespace Pistache::Tcp
                 PS_LOG_DEBUG_ARGS("SSL_write, len %d", static_cast<int>(len));
 
                 bytesWritten = SSL_write(ssl_, buffer, static_cast<int>(len));
-                if (bytesWritten < 0)
+                if (bytesWritten <= 0)
                 {
                     int ssl_get_error_res = SSL_get_error(
                         ssl_, static_cast<int>(bytesWritten));
+                    PS_LOG_DEBUG_ARGS("SSL_write err %d, bytes %d", ssl_get_error_res, bytesWritten);
+
                     switch (ssl_get_error_res)
                     {
                     case SSL_ERROR_WANT_WRITE:
@@ -744,6 +763,8 @@ namespace Pistache::Tcp
 
                     case SSL_ERROR_SYSCALL:
                     case SSL_ERROR_SSL:
+                        PS_LOG_DEBUG_ARGS("SSL_write clearing error queue, last 0x%08X", ERR_peek_last_error());
+                        ERR_clear_error();
                         errno = EBADF;
                         break;
 
