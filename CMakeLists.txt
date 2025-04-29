@@ -21,6 +21,7 @@ option(PISTACHE_ENABLE_NETWORK_TESTS "if tests are built, run ones needing netwo
 option(PISTACHE_USE_SSL "add support for SSL server" OFF)
 option(PISTACHE_PIC "Enable pistache PIC" ON) # Position-independent code lib
 option(PISTACHE_BUILD_FUZZ "Build fuzzer for oss-fuzz" OFF)
+option(PISTACHE_USE_RAPIDJSON "add support for rapidjson" ON)
 
 string(TOLOWER "${CMAKE_HOST_SYSTEM_NAME}" CMAKE_HOST_SYSTEM_NAME_LOWER)
 
@@ -102,6 +103,10 @@ add_subdirectory (src)
 # For info on GTest::gtest GTest::gmock_main, see Pistache's
 # tests/CMakeLists.txt
 if (PISTACHE_BUILD_TESTS)
+    if (NOT PISTACHE_USE_RAPIDJSON)
+        message(FATAL_ERROR "Pistache tests require rapidjson support")
+    endif()
+
     include(CTest)
     find_package(GTest QUIET)
     if (NOT GTEST_FOUND)
@@ -123,7 +128,7 @@ if (PISTACHE_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 
-if (PISTACHE_BUILD_FUZZ) 
+if (PISTACHE_BUILD_FUZZ)
     add_subdirectory(tests/fuzzers)
 endif()
 

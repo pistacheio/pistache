@@ -24,26 +24,28 @@ set(PISTACHE_INCLUDE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
 )
 
-find_package(RapidJSON QUIET)
-if (NOT RapidJSON_FOUND)
-    message("RapidJSON not found. Consider installing it on your system. Downloading it from source...")
-    include(FetchContent)
-    FetchContent_Declare(
-        RapidJSON
-        GIT_REPOSITORY https://github.com/Tencent/rapidjson.git
-        GIT_TAG v1.1.0
-        GIT_SHALLOW true
-    )
-    set(RAPIDJSON_BUILD_DOC OFF CACHE BOOL "")
-    set(RAPIDJSON_BUILD_EXAMPLES OFF CACHE BOOL "")
-    set(RAPIDJSON_BUILD_TESTS OFF CACHE BOOL "")
-    if(NOT RapidJSON_POPULATED)
-        FetchContent_Populate(RapidJSON)
-        add_subdirectory(${rapidjson_SOURCE_DIR} ${rapidjson_BINARY_DIR})
+if (PISTACHE_USE_RAPIDJSON)
+    find_package(RapidJSON QUIET)
+    if (NOT RapidJSON_FOUND)
+        message("RapidJSON not found. Consider installing it on your system. Downloading it from source...")
+        include(FetchContent)
+        FetchContent_Declare(
+            RapidJSON
+            GIT_REPOSITORY https://github.com/Tencent/rapidjson.git
+            GIT_TAG v1.1.0
+            GIT_SHALLOW true
+        )
+        set(RAPIDJSON_BUILD_DOC OFF CACHE BOOL "")
+        set(RAPIDJSON_BUILD_EXAMPLES OFF CACHE BOOL "")
+        set(RAPIDJSON_BUILD_TESTS OFF CACHE BOOL "")
+        if(NOT RapidJSON_POPULATED)
+            FetchContent_Populate(RapidJSON)
+            add_subdirectory(${rapidjson_SOURCE_DIR} ${rapidjson_BINARY_DIR})
+        endif()
+        target_include_directories(pistache PRIVATE ${rapidjson_SOURCE_DIR}/include)
+    else()
+        target_include_directories(pistache PRIVATE ${RAPIDJSON_INCLUDE_DIRS})
     endif()
-    target_include_directories(pistache PRIVATE ${rapidjson_SOURCE_DIR}/include)
-else()
-    target_include_directories(pistache PRIVATE ${RAPIDJSON_INCLUDE_DIRS})
 endif()
 
 target_include_directories(pistache PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../subprojects/hinnant-date/include)
