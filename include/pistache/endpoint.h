@@ -29,6 +29,8 @@ namespace Pistache::Http
         {
             friend class Endpoint;
 
+            Options& acceptThreads(int val);
+            Options& acceptThreadsName(const std::string& val);
             Options& threads(int val);
             Options& threadsName(const std::string& val);
 
@@ -78,6 +80,10 @@ namespace Pistache::Http
             maxPayload(size_t val);
 
         private:
+            // Accept thread options
+            int acceptThreads_;
+            std::string acceptThreadName_;
+
             // Thread options
             int threads_;
             std::string threadsName_;

@@ -251,7 +251,8 @@ namespace Pistache::Http
     }
 
     Endpoint::Options::Options()
-        : threads_(1)
+        : acceptThreads_(1)
+        , threads_(1)
         , flags_()
         , backlog_(Const::MaxBacklog)
         , maxRequestSize_(Const::DefaultMaxRequestSize)
@@ -263,6 +264,18 @@ namespace Pistache::Http
         // This should be moved after "keepaliveTimeout_" in the next ABI change
         , sslHandshakeTimeout_(Const::DefaultSSLHandshakeTimeout)
     { }
+
+    Endpoint::Options& Endpoint::Options::acceptThreads(int val)
+    {
+        acceptThreads_ = val;
+        return *this;
+    }
+
+    Endpoint::Options& Endpoint::Options::acceptThreadsName(const std::string& val)
+    {
+        acceptThreadName_ = val;
+        return *this;
+    }
 
     Endpoint::Options& Endpoint::Options::threads(int val)
     {
@@ -319,7 +332,9 @@ namespace Pistache::Http
 
     void Endpoint::init(const Endpoint::Options& options)
     {
-        listener.init(options.threads_, options.flags_, options.threadsName_, options.backlog_);
+        listener.init(options.threads_, options.flags_, options.threadsName_, options.backlog_,
+                      options.acceptThreads_, options.acceptThreadName_);
+
         listener.setTransportFactory([this, options] {
             if (!handler_)
                 throw std::runtime_error("Must call setHandler()");

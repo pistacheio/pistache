@@ -18,6 +18,7 @@ namespace Pistache::Const
     static constexpr size_t MaxBacklog     = 128;
     static constexpr size_t MaxEvents      = 1024;
     static constexpr size_t MaxBuffer      = 4096;
+    static constexpr size_t DefaultAcceptors = 1;
     static constexpr size_t DefaultWorkers = 1;
 
     static constexpr size_t DefaultTimerPoolSize = 128;

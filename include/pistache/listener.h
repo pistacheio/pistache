@@ -62,10 +62,12 @@ namespace Pistache::Tcp
 
         explicit Listener(const Address& address);
         void init(size_t workers,
-                  Flags<Options> options          = Flags<Options>(Options::None),
-                  const std::string& workersName  = "",
-                  int backlog                     = Const::MaxBacklog,
-                  PISTACHE_STRING_LOGGER_T logger = PISTACHE_NULL_STRING_LOGGER);
+                  Flags<Options> options           = Flags<Options>(Options::None),
+                  const std::string& workersName   = "",
+                  int backlog                      = Const::MaxBacklog,
+                  size_t acceptors                 = Const::DefaultAcceptors,
+                  const std::string& acceptorsName = "",
+                  PISTACHE_STRING_LOGGER_T logger  = PISTACHE_NULL_STRING_LOGGER);
 
         void setTransportFactory(TransportFactory factory);
         void setHandler(const std::shared_ptr<Handler>& handler);
@@ -105,6 +107,10 @@ namespace Pistache::Tcp
         Flags<Options> options_;
         std::thread acceptThread;
 
+        size_t acceptors_ = Const::DefaultAcceptors;
+        std::string acceptorsName_;
+        std::vector<std::thread> acceptWorkers;
+
         size_t workers_ = Const::DefaultWorkers;
         std::string workersName_;
         std::shared_ptr<Handler> handler_;
@@ -117,6 +123,7 @@ namespace Pistache::Tcp
         TransportFactory defaultTransportFactory() const;
 
         bool bindListener(const struct addrinfo* addr);
+        void acceptWorkerFn();
 
         void handleNewConnection();
         em_socket_t acceptConnection(struct sockaddr_storage& peer_addr) const;
