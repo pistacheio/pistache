@@ -59,6 +59,68 @@
 
 #endif /* PISTACHE_USE_SSL */
 
+#ifdef _IS_BSD
+// For pthread_set_name_np
+#include PST_THREAD_HDR
+#ifndef __NetBSD__
+#include <pthread_np.h>
+#endif
+#endif
+
+#ifdef _IS_WINDOWS
+#include <windows.h> // Needed for PST_THREAD_HDR (processthreadsapi.h)
+#include PST_THREAD_HDR // for SetThreadDescription
+#endif
+
+#ifdef _IS_WINDOWS
+static std::atomic_bool lLoggedSetThreadDescriptionFail = false;
+#ifdef __MINGW32__
+
+#include <libloaderapi.h> // for GetProcAddress and GetModuleHandleA
+#include <windows.h>
+typedef HRESULT(WINAPI* TSetThreadDescription)(HANDLE, PCWSTR);
+
+static std::atomic_bool lSetThreadDescriptionLoaded = false;
+static std::mutex lSetThreadDescriptionLoadMutex;
+static TSetThreadDescription lSetThreadDescriptionPtr = nullptr;
+
+static TSetThreadDescription getSetThreadDescriptionPtr()
+{
+    if (lSetThreadDescriptionLoaded)
+        return (lSetThreadDescriptionPtr);
+
+    GUARD_AND_DBG_LOG(lSetThreadDescriptionLoadMutex);
+    if (lSetThreadDescriptionLoaded)
+        return (lSetThreadDescriptionPtr);
+
+    HMODULE hKernelBase = GetModuleHandleA("KernelBase.dll");
+
+    if (!hKernelBase)
+    {
+        PS_LOG_WARNING(
+            "Failed to get KernelBase.dll for SetThreadDescription");
+        lSetThreadDescriptionLoaded = true;
+        return (nullptr);
+    }
+
+    FARPROC set_thread_desc_fpptr = GetProcAddress(hKernelBase, "SetThreadDescription");
+
+    // We do the cast in two steps, otherwise mingw-gcc complains about
+    // incompatible types
+    void* set_thread_desc_vptr = reinterpret_cast<void*>(set_thread_desc_fpptr);
+    lSetThreadDescriptionPtr   = reinterpret_cast<TSetThreadDescription>(set_thread_desc_vptr);
+
+    lSetThreadDescriptionLoaded = true;
+    if (!lSetThreadDescriptionPtr)
+    {
+        PS_LOG_WARNING(
+            "Failed to get SetThreadDescription from KernelBase.dll");
+    }
+    return (lSetThreadDescriptionPtr);
+}
+#endif // of ifdef __MINGW32__
+#endif // of ifdef _IS_WINDOWS
+
 using namespace std::chrono_literals;
 
 namespace Pistache::Tcp

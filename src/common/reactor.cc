@@ -40,22 +40,22 @@
 static std::atomic_bool lLoggedSetThreadDescriptionFail = false;
 #ifdef __MINGW32__
 
-#include <windows.h>
 #include <libloaderapi.h> // for GetProcAddress and GetModuleHandleA
-typedef HRESULT (WINAPI *TSetThreadDescription)(HANDLE, PCWSTR);
+#include <windows.h>
+typedef HRESULT(WINAPI* TSetThreadDescription)(HANDLE, PCWSTR);
 
 static std::atomic_bool lSetThreadDescriptionLoaded = false;
 static std::mutex lSetThreadDescriptionLoadMutex;
 static TSetThreadDescription lSetThreadDescriptionPtr = nullptr;
 
-TSetThreadDescription getSetThreadDescriptionPtr()
+static TSetThreadDescription getSetThreadDescriptionPtr()
 {
     if (lSetThreadDescriptionLoaded)
-        return(lSetThreadDescriptionPtr);
+        return (lSetThreadDescriptionPtr);
 
     GUARD_AND_DBG_LOG(lSetThreadDescriptionLoadMutex);
     if (lSetThreadDescriptionLoaded)
-        return(lSetThreadDescriptionPtr);
+        return (lSetThreadDescriptionPtr);
 
     HMODULE hKernelBase = GetModuleHandleA("KernelBase.dll");
 
@@ -64,18 +64,15 @@ TSetThreadDescription getSetThreadDescriptionPtr()
         PS_LOG_WARNING(
             "Failed to get KernelBase.dll for SetThreadDescription");
         lSetThreadDescriptionLoaded = true;
-        return(nullptr);
+        return (nullptr);
     }
 
-    FARPROC set_thread_desc_fpptr =
-        GetProcAddress(hKernelBase, "SetThreadDescription");
+    FARPROC set_thread_desc_fpptr = GetProcAddress(hKernelBase, "SetThreadDescription");
 
     // We do the cast in two steps, otherwise mingw-gcc complains about
     // incompatible types
-    void * set_thread_desc_vptr =
-        reinterpret_cast<void *>(set_thread_desc_fpptr);
-    lSetThreadDescriptionPtr =
-        reinterpret_cast<TSetThreadDescription>(set_thread_desc_vptr);
+    void* set_thread_desc_vptr = reinterpret_cast<void*>(set_thread_desc_fpptr);
+    lSetThreadDescriptionPtr   = reinterpret_cast<TSetThreadDescription>(set_thread_desc_vptr);
 
     lSetThreadDescriptionLoaded = true;
     if (!lSetThreadDescriptionPtr)
@@ -83,7 +80,7 @@ TSetThreadDescription getSetThreadDescriptionPtr()
         PS_LOG_WARNING(
             "Failed to get SetThreadDescription from KernelBase.dll");
     }
-    return(lSetThreadDescriptionPtr);
+    return (lSetThreadDescriptionPtr);
 }
 #endif // of ifdef __MINGW32__
 #endif // of ifdef _IS_WINDOWS
@@ -299,17 +296,16 @@ namespace Pistache::Aio
                         break;
                     case 0:
                         break;
-                    default:
-                        {
-                            if (shutdown_)
-                                return;
+                    default: {
+                        if (shutdown_)
+                            return;
 
-                            GUARD_AND_DBG_LOG(shutdown_mutex_);
-                            if (shutdown_)
-                                return;
+                        GUARD_AND_DBG_LOG(shutdown_mutex_);
+                        if (shutdown_)
+                            return;
 
-                            handleFds(std::move(events));
-                        }
+                        handleFds(std::move(events));
+                    }
                     }
                 }
             }
@@ -454,11 +450,8 @@ namespace Pistache::Aio
                 // encode the index of the handler is that in the fast path, we
                 // won't need to shift the value to retrieve the fd if there is
                 // only one handler as all the bits will already be set to 0.
-                auto encodedValue                =
-                    (index << HandlerShift) |
-                    PS_FD_CAST_TO_UNUM(uint64_t, static_cast<Fd>(value));
-                Polling::TagValue encodedValueTV =
-                    static_cast<Polling::TagValue>(PS_NUM_CAST_TO_FD(encodedValue));
+                auto encodedValue                = (index << HandlerShift) | PS_FD_CAST_TO_UNUM(uint64_t, static_cast<Fd>(value));
+                Polling::TagValue encodedValueTV = static_cast<Polling::TagValue>(PS_NUM_CAST_TO_FD(encodedValue));
                 return Polling::Tag(encodedValueTV);
             }
 
@@ -468,8 +461,7 @@ namespace Pistache::Aio
                 auto value                      = tag.valueU64();
                 size_t index                    = value >> HandlerShift;
                 uint64_t maskedValue            = value & DataMask;
-                Polling::TagValue maskedValueTV =
-                    static_cast<Polling::TagValue>(PS_NUM_CAST_TO_FD(maskedValue));
+                Polling::TagValue maskedValueTV = static_cast<Polling::TagValue>(PS_NUM_CAST_TO_FD(maskedValue));
 
                 return std::make_pair(index, maskedValueTV);
             }
@@ -720,13 +712,12 @@ namespace Pistache::Aio
 #ifdef _IS_WINDOWS
                         const std::string threads_name(threadsName_.substr(0, 15));
                         const std::wstring temp(threads_name.begin(),
-                                          threads_name.end());
+                                                threads_name.end());
                         const LPCWSTR wide_threads_name = temp.c_str();
 
                         HRESULT hr = E_NOTIMPL;
 #ifdef __MINGW32__
-                        TSetThreadDescription set_thread_description_ptr =
-                            getSetThreadDescriptionPtr();
+                        TSetThreadDescription set_thread_description_ptr = getSetThreadDescriptionPtr();
                         if (set_thread_description_ptr)
                         {
                             hr = set_thread_description_ptr(
