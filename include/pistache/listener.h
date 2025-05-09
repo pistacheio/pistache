@@ -110,6 +110,7 @@ namespace Pistache::Tcp
         size_t acceptors_ = Const::DefaultAcceptors;
         std::string acceptorsName_;
         std::vector<std::thread> acceptWorkers;
+        std::atomic_int activeAcceptors { 0 };
 
         size_t workers_ = Const::DefaultWorkers;
         std::string workersName_;

@@ -683,6 +683,7 @@ namespace Pistache::Tcp
                 PS_LOG_DEBUG("Calling this->run()");
                 this->acceptWorkerFn();
             });
+            ++activeAcceptors;
         }
 
         for (auto& t : acceptWorkers)
@@ -728,7 +729,10 @@ namespace Pistache::Tcp
                 for (const auto& event : events)
                 {
                     if (event.tag == shutdownFd.tag())
+                    {
+                        --activeAcceptors;
                         return;
+                    }
 
                     if (event.flags.hasFlag(Polling::NotifyOn::Read))
                     {
@@ -749,6 +753,7 @@ namespace Pistache::Tcp
                                 PS_LOG_WARNING("Server error");
                                 PISTACHE_LOG_STRING_FATAL(
                                     logger_, "Server error: " << ex.what());
+                                --activeAcceptors;
                                 throw;
                             }
                         }
@@ -764,10 +769,14 @@ namespace Pistache::Tcp
         {
             PS_TIMEDBG_START_CURLY;
 
-            for (size_t i = 0; i < acceptors_; i++)
+            while (activeAcceptors)
             {
-                shutdownFd.notify();
-                std::this_thread::yield();
+                for (size_t i = 0; i < activeAcceptors; i++)
+                {
+                    shutdownFd.notify();
+                    std::this_thread::yield();
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
         }
 
