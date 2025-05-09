@@ -59,6 +59,68 @@
 
 #endif /* PISTACHE_USE_SSL */
 
+#ifdef _IS_BSD
+// For pthread_set_name_np
+#include PST_THREAD_HDR
+#ifndef __NetBSD__
+#include <pthread_np.h>
+#endif
+#endif
+
+#ifdef _IS_WINDOWS
+#include <windows.h> // Needed for PST_THREAD_HDR (processthreadsapi.h)
+#include PST_THREAD_HDR // for SetThreadDescription
+#endif
+
+#ifdef _IS_WINDOWS
+static std::atomic_bool lLoggedSetThreadDescriptionFail = false;
+#ifdef __MINGW32__
+
+#include <libloaderapi.h> // for GetProcAddress and GetModuleHandleA
+#include <windows.h>
+typedef HRESULT(WINAPI* TSetThreadDescription)(HANDLE, PCWSTR);
+
+static std::atomic_bool lSetThreadDescriptionLoaded = false;
+static std::mutex lSetThreadDescriptionLoadMutex;
+static TSetThreadDescription lSetThreadDescriptionPtr = nullptr;
+
+static TSetThreadDescription getSetThreadDescriptionPtr()
+{
+    if (lSetThreadDescriptionLoaded)
+        return (lSetThreadDescriptionPtr);
+
+    GUARD_AND_DBG_LOG(lSetThreadDescriptionLoadMutex);
+    if (lSetThreadDescriptionLoaded)
+        return (lSetThreadDescriptionPtr);
+
+    HMODULE hKernelBase = GetModuleHandleA("KernelBase.dll");
+
+    if (!hKernelBase)
+    {
+        PS_LOG_WARNING(
+            "Failed to get KernelBase.dll for SetThreadDescription");
+        lSetThreadDescriptionLoaded = true;
+        return (nullptr);
+    }
+
+    FARPROC set_thread_desc_fpptr = GetProcAddress(hKernelBase, "SetThreadDescription");
+
+    // We do the cast in two steps, otherwise mingw-gcc complains about
+    // incompatible types
+    void* set_thread_desc_vptr = reinterpret_cast<void*>(set_thread_desc_fpptr);
+    lSetThreadDescriptionPtr   = reinterpret_cast<TSetThreadDescription>(set_thread_desc_vptr);
+
+    lSetThreadDescriptionLoaded = true;
+    if (!lSetThreadDescriptionPtr)
+    {
+        PS_LOG_WARNING(
+            "Failed to get SetThreadDescription from KernelBase.dll");
+    }
+    return (lSetThreadDescriptionPtr);
+}
+#endif // of ifdef __MINGW32__
+#endif // of ifdef _IS_WINDOWS
+
 using namespace std::chrono_literals;
 
 namespace Pistache::Tcp
@@ -306,6 +368,7 @@ namespace Pistache::Tcp
 
     void Listener::init(size_t workers, Flags<Options> options,
                         const std::string& workersName, int backlog,
+                        size_t acceptors, const std::string& acceptorsName,
                         PISTACHE_STRING_LOGGER_T logger)
     {
         if (workers > hardware_concurrency())
@@ -313,12 +376,14 @@ namespace Pistache::Tcp
             // Log::warning() << "More workers than available cores"
         }
 
-        options_     = options;
-        backlog_     = backlog;
-        useSSL_      = false;
-        workers_     = workers;
-        workersName_ = workersName;
-        logger_      = logger;
+        options_       = options;
+        backlog_       = backlog;
+        useSSL_        = false;
+        workers_       = workers;
+        workersName_   = workersName;
+        acceptors_     = acceptors;
+        acceptorsName_ = acceptorsName;
+        logger_        = logger;
     }
 
     void Listener::setTransportFactory(TransportFactory factory)
@@ -555,14 +620,102 @@ namespace Pistache::Tcp
             shutdownFd.bind(poller);
         reactor_->run();
 
-        for (;;)
+        PS_LOG_DEBUG("shutdownFd.bind done");
+
+        for (size_t i = 0; i < acceptors_; i++)
         {
-            { // encapsulate l_guard(poller.reg_unreg_mutex_)
-              // See comment in class Epoll regarding reg_unreg_mutex_
+            acceptWorkers.emplace_back([this]() {
                 PS_TIMEDBG_START;
 
-                std::mutex& poller_reg_unreg_mutex(poller.reg_unreg_mutex_);
-                GUARD_AND_DBG_LOG(poller_reg_unreg_mutex);
+                if (!acceptorsName_.empty())
+                {
+                    PS_LOG_DEBUG("Setting thread name/description");
+#ifdef _IS_WINDOWS
+                    const std::string threads_name(acceptorsName_.substr(0, 15));
+                    const std::wstring temp(threads_name.begin(),
+                                            threads_name.end());
+                    const LPCWSTR wide_threads_name = temp.c_str();
+
+                    HRESULT hr = E_NOTIMPL;
+#ifdef __MINGW32__
+                    TSetThreadDescription set_thread_description_ptr = getSetThreadDescriptionPtr();
+                    if (set_thread_description_ptr)
+                    {
+                        hr = set_thread_description_ptr(
+                            GetCurrentThread(), wide_threads_name);
+                    }
+#else
+                    hr = SetThreadDescription(GetCurrentThread(),
+                                              wide_threads_name);
+#endif
+                    if ((FAILED(hr)) && (!lLoggedSetThreadDescriptionFail))
+                    {
+                        lLoggedSetThreadDescriptionFail = true;
+                        // Log it just once
+                        PS_LOG_INFO("SetThreadDescription failed");
+                    }
+#else
+#if defined _IS_BSD && !defined __NetBSD__
+                    pthread_set_name_np(
+#else
+                    pthread_setname_np(
+#endif
+#ifndef __APPLE__
+                        // Apple's macOS version of pthread_setname_np
+                        // takes only "const char * name" as parm
+                        // (Nov/2023), and assumes that the thread is the
+                        // calling thread. Note that pthread_self returns
+                        // calling thread in Linux, so this amounts to
+                        // the same thing in the end
+                        // It appears older FreeBSD (2003 ?) also behaves
+                        // as per macOS, while newer FreeBSD (2021 ?)
+                        // behaves as per Linux
+                        pthread_self(),
+#endif
+#ifdef __NetBSD__
+                        "%s", // NetBSD has 3 parms for pthread_setname_np
+                        (void*)/*cast away const for NetBSD*/
+#endif
+                        acceptorsName_.substr(0, 15)
+                            .c_str());
+#endif // of ifdef _IS_WINDOWS... else...
+                }
+                PS_LOG_DEBUG("Calling this->run()");
+                this->acceptWorkerFn();
+            });
+            ++activeAcceptors;
+        }
+
+        for (auto& t : acceptWorkers)
+            t.join();
+    }
+
+    void Listener::runThreaded()
+    {
+        PS_TIMEDBG_START;
+
+        shutdownFd.bind(poller);
+        PS_LOG_DEBUG("shutdownFd.bind done");
+
+        acceptThread = std::thread([this]() {
+            PS_TIMEDBG_START;
+            this->run();
+        });
+    }
+
+    void Listener::acceptWorkerFn()
+    {
+        for (;;)
+        {
+            {
+                PS_TIMEDBG_START;
+
+                // poller only has 2 fds added/removed in its life time:
+                // 1. The listening socket
+                // 2. The shutdown fd
+                // There won't be any case a fd being processed is removed
+                // from poller, we don't need this lock
+                // std::mutex& poller_reg_unreg_mutex(poller.reg_unreg_mutex_);
 
                 std::vector<Polling::Event> events;
                 int ready_fds = poller.poll(events);
@@ -572,10 +725,14 @@ namespace Pistache::Tcp
                     PS_LOG_DEBUG("Polling failed");
                     throw Error::system("Polling");
                 }
+
                 for (const auto& event : events)
                 {
                     if (event.tag == shutdownFd.tag())
+                    {
+                        --activeAcceptors;
                         return;
+                    }
 
                     if (event.flags.hasFlag(Polling::NotifyOn::Read))
                     {
@@ -596,6 +753,7 @@ namespace Pistache::Tcp
                                 PS_LOG_WARNING("Server error");
                                 PISTACHE_LOG_STRING_FATAL(
                                     logger_, "Server error: " << ex.what());
+                                --activeAcceptors;
                                 throw;
                             }
                         }
@@ -605,26 +763,21 @@ namespace Pistache::Tcp
         }
     }
 
-    void Listener::runThreaded()
-    {
-        PS_TIMEDBG_START;
-
-        shutdownFd.bind(poller);
-        PS_LOG_DEBUG("shutdownFd.bind done");
-
-        acceptThread = std::thread([this]() {
-            PS_TIMEDBG_START;
-            this->run();
-        });
-    }
-
     void Listener::shutdown()
     {
         if (shutdownFd.isBound())
         {
             PS_TIMEDBG_START_CURLY;
 
-            shutdownFd.notify();
+            while (activeAcceptors)
+            {
+                for (size_t i = 0; i < activeAcceptors; i++)
+                {
+                    shutdownFd.notify();
+                    std::this_thread::yield();
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
         }
 
         if (reactor_)
@@ -731,9 +884,8 @@ namespace Pistache::Tcp
 
 #ifdef _IS_WINDOWS
 
-                unsigned long int timeout_in_ms =
-                    static_cast<unsigned long int>(
-                        std::chrono::duration_cast<
+                unsigned long int timeout_in_ms = static_cast<unsigned long int>(
+                    std::chrono::duration_cast<
                         std::chrono::milliseconds>(sslHandshakeTimeout_)
                         .count());
 
