@@ -70,6 +70,27 @@ struct ServeFileHandler : public Http::Handler
     }
 };
 
+static void assertCurlVersionInfo(void)
+{
+    const auto toLower = [](std::string& str) { std::for_each(str.begin(), str.end(), [](std::string::value_type& c) { c = static_cast<std::string::value_type>(std::tolower(c)); }); };
+
+    // Fetch cURL version information, requires initialization.
+    const auto& curlVersionInfo = curl_version_info(CURLVERSION_NOW);
+
+    // Fetch version, e.g. '7.88.1'.
+    std::string curlVersion = curlVersionInfo->version;
+
+    // Fetch SSL version, e.g. 'OpenSSL/3.0.15'
+    std::string sslVersion = curlVersionInfo->ssl_version;
+    toLower(sslVersion);
+
+    // Perform checks on SSL version.
+    if (sslVersion.find("openssl") == std::string::npos)
+    {
+        FAIL() << "Found cURL '" << curlVersion << "' with SSL Version: '" << sslVersion << "', OpenSSL is required.";
+    }
+}
+
 // @March/2024
 //
 // In macOS, calling curl_global_init, and then curl_global_cleanup, for every
@@ -503,6 +524,55 @@ TEST(https_server_test, basic_tls_request_with_password_cert)
 
     ASSERT_EQ(res, CURLE_OK);
     ASSERT_EQ(buffer, "Hello, World!");
+}
+
+TEST(https_server_test, basic_tls_requests_with_no_shutdown_from_peer)
+{
+    // Ensure available libcurl is using OpenSSL for this test, see discussion in:
+    //   https://github.com/pistacheio/pistache/pull/1310
+    // @May/2025.
+    assertCurlVersionInfo();
+
+    Http::Endpoint server(Address("localhost", Pistache::Port(0)));
+
+    const auto sslctxCallback = +[](CURL* /* curl */, void* sslctx, void* /* parm */) -> CURLcode {
+        // Enable quiet shutdown so that we do not send any shutdown notification to server from peer.
+        SSL_CTX_set_quiet_shutdown(reinterpret_cast<SSL_CTX*>(sslctx), 1);
+        return CURLE_OK;
+    };
+
+    server.init(Http::Endpoint::options().flags(Tcp::Options::ReuseAddr));
+    server.setHandler(Http::make_handler<HelloHandler>());
+    server.useSSL("./certs/server.crt", "./certs/server.key");
+    server.serveThreaded();
+
+    CURL* curl;
+    CURLcode res;
+    std::string buffer;
+
+    curl = curl_easy_init();
+    ASSERT_NE(curl, nullptr);
+
+    const auto url = getServerUrl(server);
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_CAINFO, "./certs/rootCA.crt");
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+    curl_easy_setopt(curl, CURLOPT_SSL_CTX_FUNCTION, sslctxCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &write_cb);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &buffer);
+    CSO_WIN_REVOKE_BEST_EFFORT;
+
+    // Perform multiple requests with quiet shutdown and ensure they are handled.
+    for (std::size_t req_i = 0U; req_i < 10U; req_i++)
+    {
+        res = curl_easy_perform(curl);
+        EXPECT_EQ(res, CURLE_OK);
+        EXPECT_EQ(buffer, "Hello, World!");
+        buffer.clear();
+    }
+
+    curl_easy_cleanup(curl);
+    server.shutdown();
 }
 
 // MUST be LAST test

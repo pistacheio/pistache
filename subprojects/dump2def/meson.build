@@ -12,7 +12,8 @@ project(
 		'buildtype=release',
 		'b_ndebug=if-release',
 		'b_lto=false',
-		'warning_level=3'
+		'warning_level=3',
+        'b_sanitize=none'
 	],
 	meson_version: '>=0.53.2'
 )

@@ -77,6 +77,7 @@ jobs:
         brew install howard-hinnant-date
         if ! brew list brotli &>/dev/null; then brew install brotli; fi
         if ! brew list zstd &>/dev/null; then brew install zstd; fi
+        brew install curl
 
     - uses: actions/checkout@v4
       with:
@@ -91,6 +92,8 @@ jobs:
             export CC=CXX
         fi
         echo "Using CXX $CXX, and CC $CC"
+
+        export PKG_CONFIG_PATH="$(brew --prefix)/opt/curl/lib/pkgconfig:$PKG_CONFIG_PATH"
 
         meson setup build \
           -DPISTACHE_BUILD_TESTS=true -DPISTACHE_DEBUG=${{ matrix.def_debug }} -DPISTACHE_USE_SSL=${{ matrix.tls }} -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_DOCS=false -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true -DPISTACHE_USE_CONTENT_ENCODING_BROTLI=true -DPISTACHE_USE_CONTENT_ENCODING_ZSTD=true \
