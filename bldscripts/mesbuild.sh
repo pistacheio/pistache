@@ -13,6 +13,7 @@ MY_SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 source $MY_SCRIPT_DIR/helpers/messetdirvars.sh
 source $MY_SCRIPT_DIR/helpers/adjbuilddirformesbuild.sh
+source $MY_SCRIPT_DIR/helpers/ifmacOScheckLibcurl.sh
 
 if [ -e "${MESON_BUILD_DIR}" ]
 then
