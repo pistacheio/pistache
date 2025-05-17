@@ -473,8 +473,18 @@ TEST(https_client_test, multiple_clients_with_multiple_search_requests)
         // flaky results - pages that don't actually include the query answer
         // in plain-text form as far as I could see. When this happens, we have
         // seen AOL return up to 3 (out of a possible 6) such "flaky" pages.
-        ASSERT_GE(response_correct_counter_uint,
-                  ((CLIENT_SIZE * RESPONSE_SIZE) / 3) / SERVER_ADDRESS_NUM);
+        //
+        // @May/2025: AOL is now intermittently returning ALL flaky/unparsable
+        // pages, so we've changed what was formerly an ASSERT_GE here to a
+        // debug warning if the responses don't appear correct.
+        if (response_correct_counter_uint <
+            ((CLIENT_SIZE * RESPONSE_SIZE) / 3) / SERVER_ADDRESS_NUM)
+        {
+            PS_LOG_WARNING_ARGS("For aol, response_correct_counter %d < %d",
+                                static_cast<int>(response_correct_counter),
+                                (((CLIENT_SIZE * RESPONSE_SIZE) / 3) /
+                                 SERVER_ADDRESS_NUM));
+        }
     }
 }
 
