@@ -67,7 +67,6 @@ jobs:
         if ! type "meson" > /dev/null; then brew install meson --overwrite; fi
 
         brew install lcov
-        brew install --quiet --cask doxygen
         if [ ${{ matrix.compiler }} != gcc ]; then
             brew install googletest
         fi
