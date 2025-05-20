@@ -1,0 +1,2 @@
+build:gcc11 --cxxopt=-std=c++20
+build:gcc11 --cxxopt=-Wall
