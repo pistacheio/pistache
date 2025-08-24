@@ -13,6 +13,8 @@
 #include <pistache/router.h>
 #include <pistache/serializer/rapidjson.h>
 
+#include <fstream>
+
 #ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
