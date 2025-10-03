@@ -102,6 +102,15 @@ namespace Pistache::Http
                 PST_OUT(os << crlf);
             }
 
+            // Write raw/custom headers
+            for (const auto& rawHeaderPair : headers.rawList())
+            {
+                const auto& rawHeader = rawHeaderPair.second;
+                PST_OUT(os << rawHeader.name() << ": ");
+                PST_OUT(os << rawHeader.value());
+                PST_OUT(os << crlf);
+            }
+
             return true;
 
 #undef PST_OUT
