@@ -33,11 +33,11 @@ jobs:
         apt -y update
         apt -y install abigail-tools g++ meson pkg-config cmake libhowardhinnant-date-dev libssl-dev rapidjson-dev git ca-certificates --no-install-recommends
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         path: current
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         path: previous
         fetch-depth: 2
