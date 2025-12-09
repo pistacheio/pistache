@@ -191,14 +191,17 @@ target_link_libraries(${PROJECT_NAME} PkgConfig::Pistache)
 
 ### Makefile
 
-To use within a vanilla makefile, you can call `pkg-config` directly to supply compiler and linker flags using shell substitution.
+To use within a vanilla makefile, you can call `pkg-config` directly to supply compiler and linker flags using the shell assignment operator.
 
 ```makefile
-CFLAGS=-g3 -Wall -Wextra -Werror ...
-LDFLAGS=-lfoo ...
-...
-CFLAGS+= $(pkg-config --cflags libpistache)
-LDFLAGS+= $(pkg-config --libs libpistache)
+PC_CXXFLAGS != pkg-config --cflags libpistache
+PC_LDFLAGS != pkg-config --libs libpistache
+
+CXXFLAGS += $(PC_CXXFLAGS)
+LDFLAGS += $(PC_LDFLAGS)
+
+all:
+	c++ -o main main.cpp $(CXXFLAGS) $(LDFLAGS)
 ```
 
 ## Building from source
