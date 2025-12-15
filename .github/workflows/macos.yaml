@@ -78,7 +78,7 @@ jobs:
         if ! brew list zstd &>/dev/null; then brew install zstd; fi
         brew install curl
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         submodules: true
 
