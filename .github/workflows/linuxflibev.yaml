@@ -59,7 +59,7 @@ jobs:
         rm ninja-linux.zip
         pip3 install meson
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         submodules: true
 
