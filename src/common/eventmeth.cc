@@ -28,6 +28,8 @@ struct event; // libevent's event struct
 
 namespace Pistache
 {
+    extern "C" void eventCallbackFn(evutil_socket_t, short, void*);
+
     class EventMethBase;
     class EmEventCtr;
 
