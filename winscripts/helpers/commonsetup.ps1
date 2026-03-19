@@ -650,16 +650,19 @@ if ((! (Get-Command pkg-config -errorAction SilentlyContinue)) -or `
         # Server 2019, and is experimental only on Windows Server
         # 2022.
 
-          # Note: winget install bloodrock.pkg-config-lite' seemed to
+          # Note: winget install blood,rock.pkg-config-lite' seemed to
           # work around Sept. 2024 but failed Dec 2024.
           # We use "$tmp =" to hide the ""No package found matching
           # input criteria" message that otherwise shows up from
           # winget
+          Write-Host "Attempting to install bloodrock.pkg-config-lite"
           $tmp = winget install --accept-source-agreements bloodrock.pkg-config-lite
           $winget_bloodrock_p_conf = $?
       }
       if (! $winget_bloodrock_p_conf)
       {
+          Write-Host "bloodrock.pkg-config-lite did not install, try vcpkg"
+
           # First, check pkgconfig installed, and install if not
 
           if (($env:VCPKG_DIR) -And `
@@ -689,8 +692,8 @@ if ((! (Get-Command pkg-config -errorAction SilentlyContinue)) -or `
       }
   }
 
-($brotli_there = (vcpkg list "brotli")) *> $null
-($zstd_there = (vcpkg list "zstd")) *> $null
+try { ($brotli_there = (vcpkg list "brotli")) *> $null } catch {}
+try { ($zstd_there = (vcpkg list "zstd")) *> $null } catch {}
 if (! $brotli_there) { vcpkg install brotli }
 if (! $zstd_there) { vcpkg install zstd }
 
@@ -722,6 +725,7 @@ if (($env:VCPKG_DIR) -And (Test-Path -Path "$env:VCPKG_DIR\installed")) {
     if (($vcpkg_installed_pkgconf_dir) -And `
       (Test-Path -Path $vcpkg_installed_pkgconf_dir)) {
           $env:Path="$vcpkg_installed_pkgconf_dir;$env:Path"
+          Write-Host "vcpkg pkgconf dir prepended to path"
           # Puts pkgconf.exe on the Path
 
           if ((! (Get-Command pkg-config.exe -errorAction SilentlyContinue)) `
@@ -729,6 +733,7 @@ if (($env:VCPKG_DIR) -And (Test-Path -Path "$env:VCPKG_DIR\installed")) {
           {
               if (! (pstRunScriptWithAdminRightsIfNotAlready)) {
                   # Requires admin privileges
+                  Write-Host "Creating symbloic link for pkg-config.exe"
                   New-Item -ItemType SymbolicLink `
                     -Path "$vcpkg_installed_pkgconf_dir\pkg-config.exe" `
                     -Target "$vcpkg_installed_pkgconf_dir\pkgconf.exe"
@@ -774,7 +779,8 @@ if (! $python3_there) {
                     Select -Index 0 | Select -ExpandProperty "FullName" | `
                     Split-Path
               }
-            ($py3_vcpkg_there = (vcpkg list "py3_vcpkg")) *> $null
+            try { ($py3_vcpkg_there = (vcpkg list "py3_vcpkg")) *> $null } `
+              catch {}
             if ((! ($py3_path)) -and (! $py3_vcpkg_there)) {
                 vcpkg install python3
 
@@ -855,17 +861,17 @@ if (! (Get-Command meson -errorAction SilentlyContinue)) {
     }
 }
 
-($curl_openssl_there = (vcpkg list "curl[openssl]")) *> $null
+try { ($curl_openssl_there = (vcpkg list "curl[openssl]")) *> $null } catch {}
 if (! $curl_openssl_there) { # vcpkg list - list installed packages
-    ($curl_there = (vcpkg list "curl")) *> $null
+    try { ($curl_there = (vcpkg list "curl")) *> $null } catch {}
     if ($curl_there) {
         vcpkg remove curl
     }
     vcpkg install curl[openssl]
 }
 
-($openssl_there = (vcpkg list "openssl")) *> $null
-($libevent_there = (vcpkg list "libevent")) *> $null
+try { ($openssl_there = (vcpkg list "openssl")) *> $null } catch {}
+try { ($libevent_there = (vcpkg list "libevent")) *> $null } catch {}
 if (! $openssl_there) { vcpkg install openssl }
 if (! $libevent_there) { vcpkg install libevent }
 
@@ -893,7 +899,7 @@ if ((! (Get-ChildItem -Path "$env:ProgramFiles\googletest*" `
       }
   }
 
-($date_there = (vcpkg list "date")) *> $null
+try { ($date_there = (vcpkg list "date")) *> $null } catch {}
 if (! $date_there) { vcpkg install date } #Howard-Hinnant-Date
 
 if ((! (Get-ChildItem -Path "$env:ProgramFiles\zlib*" `
@@ -903,8 +909,29 @@ if ((! (Get-ChildItem -Path "$env:ProgramFiles\zlib*" `
       # We do pstRunScriptWithAdminRightsIfNotAlready so we have admin
       # privilege for "cmake --install ..." below
       if (! (pstRunScriptWithAdminRightsIfNotAlready)) {
-          Invoke-WebRequest -Uri https://zlib.net/current/zlib.tar.gz -OutFile zlib.tar.gz
-          tar -xvzf .\zlib.tar.gz
+          # Download of zlib seems to fail occasionally
+          $dnld_zlib_ct = 0
+          $dnld_zlib_ct_max = 16
+          Do {
+              $dnld_zlib_ct++
+              if ($dnld_zlib_ct -gt 1) { Start-Sleep -Seconds 60 }
+              if ($dnld_zlib_ct -gt 2) { Start-Sleep -Seconds 60 }
+
+              # Note: Invoke-WebRequest will overwrite OutFile if
+              # OutFile already exists (not error or warning)
+              Invoke-WebRequest -Uri https://zlib.net/current/zlib.tar.gz -OutFile zlib.tar.gz
+              tar -xvzf .\zlib.tar.gz
+          } While ((! ($?)) -and ($dnld_zlib_ct -le $dnld_zlib_ct_max))
+          if ($dnld_zlib_ct -gt $dnld_zlib_ct_max) {
+              Write-Warning `
+                "untar of zlib failed after download $dnld_zlib_ct times"
+              throw "untar of downloaded zlib failed"
+          }
+          if ($dnld_zlib_ct -gt 1) {
+              Write-Host `
+                "untar of zlib failed $dnld_zlib_ct times before success"
+          }
+
           cd "zlib*" # Adjusts to whatever we downloaded, e.g. zlib-1.3.1
           if (! (Test-Path -Path "build")) { mkdir build }
           cd build
@@ -1019,6 +1046,42 @@ if (! (Get-Command doxygen -errorAction SilentlyContinue)) {
         }
     }
 }
+
+if (Get-Command winget -errorAction SilentlyContinue)
+{ # winget exists on newer versions of Windows 10 and on Windows 11
+  # and after. It is is not supported on Windows Server 2019, and is
+  # experimental only on Windows Server 2022.
+
+    # Although winget install may have adjusted the path for us
+    # already, that adjustment takes effect only after we have started
+    # a new shell, and so is lost if we save and restore the
+    # path. Here, we add the winget links directories to the path
+    # manually, which helps for any package where winget is relying on
+    # the links to make the installed packages callable - notably
+    # bloodrock.pkg-config-lite in certain versions.
+
+    if (Test-Path -Path "$env:LOCALAPPDATA\Microsoft\WinGet\Links") {
+        $env:Path="$env:LOCALAPPDATA\Microsoft\WinGet\Links;$env:Path"
+    }
+    else {
+        Write-Host "winget user links directory not found"
+    }
+
+    if (Test-Path -Path "$env:ProgramFiles\WinGet\Links") {
+        $winget_machine_links = "$env:ProgramFiles\WinGet\Links"
+    }
+    elseif (Test-Path -Path `
+      "${env:ProgramFiles(x86)}\WinGet\Links") {
+          $winget_machine_links = "${env:ProgramFiles(x86)}\WinGet\Links"
+      }
+    if ($winget_machine_links) {
+        $env:Path="$winget_machine_links;$env:Path"
+    }
+    else {
+        Write-Host "winget machine links directory not found"
+    }
+}
+
 
 $pst_username = `
   [System.Security.Principal.WindowsIdentity]::GetCurrent().Name

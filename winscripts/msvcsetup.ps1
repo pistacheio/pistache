@@ -266,7 +266,9 @@ if (! (Get-Command ninja -errorAction SilentlyContinue)) {
                   }
               }
               else {
-                  ($ninja_there = (vcpkg list "vcpkg-tool-ninja")) *> $null
+                  try {
+                      ($ninja_there = (vcpkg list "vcpkg-tool-ninja")) *> $null }
+                  catch {}
                   if (! $ninja_there) {
                       vcpkg install vcpkg-tool-ninja
                       $ninja_dir=Get-ChildItem -Path "ninja.exe" -Recurse | `
