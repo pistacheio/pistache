@@ -30,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ 'windows-2019', 'windows-latest' ] # Oct/2024, latest = 2022
+        os: [ 'windows-2022', 'windows-latest' ] # Mar/2026, latest = 2025
         compiler: [ 'msvc', 'gcc' ] # Could also add clang
         sanitizer: [ 'address', 'none' ]
         tls: [ 'true', 'false' ]

@@ -34,7 +34,7 @@ jobs:
         # Note: If you change the list of OS by adding a newer one,
         # PLEASE UPDATE THE AUDIT PHASE to use the most recent macOS
         # (See "runformula.sh --auditonly ..." later in this file)
-        os: [ 'macos-13', 'macos-14', 'macos-15' ]
+        os: [ 'macos-14', 'macos-15', 'macos-latest', 'macos-15-intel', 'macos-26-intel' ]
         compiler: [ 'clang' ]
         sanitizer: [ 'none' ]
         tls: [ 'true' ]
