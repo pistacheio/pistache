@@ -86,7 +86,7 @@ jobs:
         rm ninja-linux.zip
         pip3 install meson
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         submodules: true
 
@@ -108,12 +108,23 @@ jobs:
     - name: Test
       run: meson test -C build --verbose
 
-    - name: Coverage
-      if: ${{ matrix.os == 'debian:stable' }}
+
+    - name: Install lcov v2.0 (Debian stable, GCC)
+      if: ${{ matrix.os == 'debian:stable' && matrix.compiler == 'gcc' }}
+      run: |
+        apt-get -y install --no-install-recommends make libjson-perl libperlio-gzip-perl
+        git clone --depth 1 --branch v2.0 https://github.com/linux-test-project/lcov.git
+        cd lcov
+        make install
+        cd ..
+        rm -rf lcov
+
+    - name: Coverage (Debian stable, GCC)
+      if: ${{ matrix.os == 'debian:stable' && matrix.compiler == 'gcc' }}
       run: |
         mkdir -p $HOME/.local/bin
         if [ "${{ matrix.compiler }}" = 'clang' ]; then printf 'llvm-cov gcov "$@"' > $HOME/.local/bin/cov.sh; else printf 'gcov "$@"' > $HOME/.local/bin/cov.sh; fi && chmod +x $HOME/.local/bin/cov.sh
-        lcov --capture --output-file coverage.info --directory . --gcov-tool $HOME/.local/bin/cov.sh --exclude '/usr/*' --exclude "${HOME}"'/.cache/*' --exclude '*/tests/*' --exclude '*/subprojects/*'
+        lcov --capture --output-file coverage.info --directory . --gcov-tool $HOME/.local/bin/cov.sh --exclude '/usr/*' --exclude '*/tests/*' --rc derive_function_end_line=0 --rc check_data_consistency=0
         lcov --list coverage.info
         curl https://keybase.io/codecovsecurity/pgp_keys.asc | gpg --no-default-keyring --keyring trustedkeys.gpg --import
         curl --silent --remote-name https://uploader.codecov.io/latest/linux/codecov
