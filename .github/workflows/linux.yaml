@@ -75,6 +75,16 @@ jobs:
         # version which may be installed as a meson dependency.
         if [ ${{ matrix.compiler }} = clang ] && [ ${{ matrix.os == 'debian:testing' }} ]; then libstdcpp_latest=$(apt-cache search "libstdc++" | grep "libstdc++-..-dev " | sort -r | head -c 16); libstdcpp_latest_fst9=$(echo "${libstdcpp_latest}" | head -c 9); libstdcpp_latest_lst3=$(echo "${libstdcpp_latest}" | tail -c 4 | head -c 3); if [ ${libstdcpp_latest_fst9} = "libstdc++" ]  && [ ${libstdcpp_latest_lst3} = "dev" ]; then apt -y install ${libstdcpp_latest} --no-install-recommends; fi; fi
 
+        # Install lcov v2.0 only on Debian stable with GCC
+        if [ '${{ matrix.os }}' = 'debian:stable' ] && [ ${{ matrix.compiler }} = gcc ]; then
+          apt-get -y install --no-install-recommends make libjson-perl libperlio-gzip-perl
+          git clone --depth 1 --branch v2.0 https://github.com/linux-test-project/lcov.git
+          cd lcov
+          make install
+          cd ..
+          rm -rf lcov
+        fi
+
     - name: Install dependencies (Red Hat)
       if: contains(matrix.os, 'redhat')
       run: |
@@ -108,16 +118,6 @@ jobs:
     - name: Test
       run: meson test -C build --verbose
 
-
-    - name: Install lcov v2.0 (Debian stable, GCC)
-      if: ${{ matrix.os == 'debian:stable' && matrix.compiler == 'gcc' }}
-      run: |
-        apt-get -y install --no-install-recommends make libjson-perl libperlio-gzip-perl
-        git clone --depth 1 --branch v2.0 https://github.com/linux-test-project/lcov.git
-        cd lcov
-        make install
-        cd ..
-        rm -rf lcov
 
     - name: Coverage (Debian stable, GCC)
       if: ${{ matrix.os == 'debian:stable' && matrix.compiler == 'gcc' }}

@@ -47,6 +47,16 @@ jobs:
         apt -y update
         apt -y install $compiler meson pkg-config cmake brotli libbrotli-dev zstd libzstd-dev rapidjson-dev libssl-dev libevent-dev netbase '?exact-name(libhowardhinnant-date-dev)' '?exact-name(libgmock-dev) (?version([1-9]\.[1-9][1-9]) | ?version([1-9]\.[2-9][0-9]))' '?exact-name(libcpp-httplib-dev)' libcurl4-openssl-dev git ca-certificates curl gpg gpgv gpg-agent lcov llvm-dev --no-install-recommends
 
+        # Install lcov v2.0 only on Debian stable with GCC
+        if [ ${{ matrix.compiler }} = gcc ]; then
+          apt-get -y install --no-install-recommends make libjson-perl libperlio-gzip-perl
+          git clone --depth 1 --branch v2.0 https://github.com/linux-test-project/lcov.git
+          cd lcov
+          make install
+          cd ..
+          rm -rf lcov
+        fi
+
     - uses: actions/checkout@v6
       with:
         submodules: true
@@ -69,16 +79,6 @@ jobs:
       run: meson test -C build --verbose
       # Use the following to run just a single test (e.g. http_server_test)
       # run: build/tests/run_http_server_test
-
-    - name: Install lcov v2.0 (Debian stable, GCC)
-      if: ${{ matrix.compiler == 'gcc' }}
-      run: |
-        apt-get -y install --no-install-recommends make libjson-perl libperlio-gzip-perl
-        git clone --depth 1 --branch v2.0 https://github.com/linux-test-project/lcov.git
-        cd lcov
-        make install
-        cd ..
-        rm -rf lcov
 
     - name: Coverage
       if: ${{ matrix.compiler == 'gcc' }}
