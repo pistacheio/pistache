@@ -77,7 +77,7 @@ jobs:
 
         # Install lcov v2.0 only on Debian stable with GCC
         if [ '${{ matrix.os }}' = 'debian:stable' ] && [ ${{ matrix.compiler }} = gcc ]; then
-          apt-get -y install --no-install-recommends make libjson-perl libperlio-gzip-perl
+          apt-get -y install --no-install-recommends make libjson-perl libperlio-gzip-perl libcapture-tiny-perl libdatetime-perl libtimedate-perl
           git clone --depth 1 --branch v2.0 https://github.com/linux-test-project/lcov.git
           cd lcov
           make install
