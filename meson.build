@@ -34,6 +34,12 @@ add_project_arguments(compiler.get_supported_arguments(['-Wconversion', '-Wno-si
 # No need for --coverage, since b_coverage is set
 if get_option('b_coverage')
 	add_project_arguments(compiler.get_supported_arguments(['-fstack-protector-all', '--param=ssp-buffer-size=4']), language: 'cpp')
+	# Pin target architecture and disable inlining to ensure identical GCOV
+	# function-entry/line-counter assignments for lambdas across different CPUs.
+	# Without this, GCC's mtune auto-detection via cpuid causes different code
+	# generation for lambda operator() bodies (e.g. exception-path outlining),
+	# producing inconsistent gcov data that lcov reports as errors.
+	add_project_arguments(compiler.get_supported_arguments(['-march=x86-64', '-mtune=generic', '-fno-inline']), language: 'cpp')
 endif
 
 deps_libpistache = [

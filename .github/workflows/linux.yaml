@@ -57,7 +57,7 @@ jobs:
       run: |
         if [ ${{ matrix.compiler }} = gcc ]; then compiler=g++; else compiler="clang lld ?exact-name(libclang-rt-dev)"; fi
         apt -y update
-        apt -y install $compiler meson pkg-config cmake brotli libbrotli-dev zstd libzstd-dev rapidjson-dev libssl-dev netbase '?exact-name(libhowardhinnant-date-dev)' '?exact-name(libgmock-dev) (?version([1-9]\.[1-9][1-9]) | ?version([1-9]\.[2-9][0-9]))' '?exact-name(libcpp-httplib-dev)' libcurl4-openssl-dev git ca-certificates curl gpg gpgv gpg-agent lcov llvm-dev --no-install-recommends
+        apt -y install $compiler meson pkg-config cmake brotli libbrotli-dev zstd libzstd-dev rapidjson-dev libssl-dev netbase '?exact-name(libhowardhinnant-date-dev)' '?exact-name(libgmock-dev) (?version([1-9]\.[1-9][1-9]) | ?version([1-9]\.[2-9][0-9]))' '?exact-name(libcpp-httplib-dev)' libcurl4-openssl-dev git ca-certificates curl gpg gpgv gpg-agent llvm-dev --no-install-recommends
 
         # Periodically, debian:testing fails with clang, saying that
         # libstdc++ cannot be found. In debian:testing/clang, normally
@@ -75,6 +75,16 @@ jobs:
         # version which may be installed as a meson dependency.
         if [ ${{ matrix.compiler }} = clang ] && [ ${{ matrix.os == 'debian:testing' }} ]; then libstdcpp_latest=$(apt-cache search "libstdc++" | grep "libstdc++-..-dev " | sort -r | head -c 16); libstdcpp_latest_fst9=$(echo "${libstdcpp_latest}" | head -c 9); libstdcpp_latest_lst3=$(echo "${libstdcpp_latest}" | tail -c 4 | head -c 3); if [ ${libstdcpp_latest_fst9} = "libstdc++" ]  && [ ${libstdcpp_latest_lst3} = "dev" ]; then apt -y install ${libstdcpp_latest} --no-install-recommends; fi; fi
 
+        # Install lcov v2.0 only on Debian stable with GCC
+        if [ '${{ matrix.os }}' = 'debian:stable' ] && [ ${{ matrix.compiler }} = gcc ]; then
+          apt-get -y install --no-install-recommends make libjson-perl libperlio-gzip-perl libcapture-tiny-perl libdatetime-perl libtimedate-perl
+          git clone --depth 1 --branch v2.0 https://github.com/linux-test-project/lcov.git
+          cd lcov
+          make install
+          cd ..
+          rm -rf lcov
+        fi
+
     - name: Install dependencies (Red Hat)
       if: contains(matrix.os, 'redhat')
       run: |
@@ -86,7 +96,7 @@ jobs:
         rm ninja-linux.zip
         pip3 install meson
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         submodules: true
 
@@ -108,12 +118,13 @@ jobs:
     - name: Test
       run: meson test -C build --verbose
 
-    - name: Coverage
-      if: ${{ matrix.os == 'debian:stable' }}
+
+    - name: Coverage (Debian stable, GCC)
+      if: ${{ matrix.os == 'debian:stable' && matrix.compiler == 'gcc' }}
       run: |
         mkdir -p $HOME/.local/bin
         if [ "${{ matrix.compiler }}" = 'clang' ]; then printf 'llvm-cov gcov "$@"' > $HOME/.local/bin/cov.sh; else printf 'gcov "$@"' > $HOME/.local/bin/cov.sh; fi && chmod +x $HOME/.local/bin/cov.sh
-        lcov --capture --output-file coverage.info --directory . --gcov-tool $HOME/.local/bin/cov.sh --exclude '/usr/*' --exclude "${HOME}"'/.cache/*' --exclude '*/tests/*' --exclude '*/subprojects/*'
+        lcov --capture --output-file coverage.info --directory . --gcov-tool $HOME/.local/bin/cov.sh --exclude '/usr/*' --exclude '*/tests/*' --rc derive_function_end_line=0 --rc check_data_consistency=0
         lcov --list coverage.info
         curl https://keybase.io/codecovsecurity/pgp_keys.asc | gpg --no-default-keyring --keyring trustedkeys.gpg --import
         curl --silent --remote-name https://uploader.codecov.io/latest/linux/codecov
