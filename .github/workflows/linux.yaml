@@ -119,18 +119,29 @@ jobs:
       run: meson test -C build --verbose
 
 
-    - name: Coverage (Debian stable, GCC)
-      if: ${{ matrix.os == 'debian:stable' && matrix.compiler == 'gcc' }}
+    - name: Check coverage condition
+      id: coverage
+      run: |
+        if [ '${{ matrix.os }}' = 'debian:stable' ] && [ '${{ matrix.compiler }}' = 'gcc' ]; then
+          echo "run=true" >> $GITHUB_OUTPUT
+        else
+          echo "run=false" >> $GITHUB_OUTPUT
+        fi
+        flag=$(printf '%s_%s_%s_%s_%s' '${{ github.workflow }}' '${{ matrix.os }}' '${{ matrix.compiler }}' '${{ matrix.sanitizer }}' '${{ matrix.tls }}' | tr ':/.+-' '_____')
+        echo "flag=$flag" >> $GITHUB_OUTPUT
+
+    - name: Coverage
+      if: ${{ steps.coverage.outputs.run == 'true' }}
       run: |
         mkdir -p $HOME/.local/bin
         if [ "${{ matrix.compiler }}" = 'clang' ]; then printf 'llvm-cov gcov "$@"' > $HOME/.local/bin/cov.sh; else printf 'gcov "$@"' > $HOME/.local/bin/cov.sh; fi && chmod +x $HOME/.local/bin/cov.sh
         lcov --capture --output-file coverage.info --directory . --gcov-tool $HOME/.local/bin/cov.sh --exclude '/usr/*' --exclude '*/tests/*' --rc derive_function_end_line=0 --rc check_data_consistency=0
         lcov --list coverage.info
-        curl https://keybase.io/codecovsecurity/pgp_keys.asc | gpg --no-default-keyring --keyring trustedkeys.gpg --import
-        curl --silent --remote-name https://uploader.codecov.io/latest/linux/codecov
-        curl --silent --remote-name https://uploader.codecov.io/latest/linux/codecov.SHA256SUM
-        curl --silent --remote-name https://uploader.codecov.io/latest/linux/codecov.SHA256SUM.sig
-        gpgv codecov.SHA256SUM.sig codecov.SHA256SUM
-        sha256sum --check codecov.SHA256SUM
-        chmod +x codecov
-        ./codecov
+
+    - uses: codecov/codecov-action@v5
+      if: ${{ steps.coverage.outputs.run == 'true' }}
+      with:
+        fail_ci_if_error: true
+        flags: ${{ steps.coverage.outputs.flag }}
+        token: ${{ secrets.CODECOV_UPLOAD_TOKEN }}
+        verbose: true
