@@ -22,11 +22,11 @@ $have_admin_rights = ([Security.Principal.WindowsPrincipal] `
   [Security.Principal.WindowsIdentity]::GetCurrent() `
   ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
-$pistinstbase="$env:DESTDIR\$env:MESON_INSTALL_PREFIX"
-if (($env:MESON_INSTALL_PREFIX) -and`
-    [System.IO.Path]::IsPathRooted($env:MESON_INSTALL_PREFIX))
-{ # Ignore DESTDIR if MESON_INSTALL_PREFIX is an absolute path
-    $pistinstbase="$env:MESON_INSTALL_PREFIX"
+# Meson guarantees this variable is the correctly joined DESTDIR + Prefix
+$pistinstbase = $env:MESON_INSTALL_DESTDIR_PREFIX
+if (-Not $pistinstbase) {
+    # Fallback only if running outside of a Meson install context
+    $pistinstbase = $env:MESON_INSTALL_PREFIX 
 }
 Write-Host "pistinstbase is $pistinstbase"
 
