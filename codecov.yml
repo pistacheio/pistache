@@ -1,2 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Maximilian Kleinert
+#
+# SPDX-License-Identifier: Apache-2.0
 ignore:
   - "subprojects/**/*"
