@@ -77,7 +77,7 @@ if get_option('PISTACHE_LOG_AND_STDOUT')
 endif
 
 if get_option('PISTACHE_FORCE_LIBEVENT')
-        add_project_arguments('-DPISTACHE_FORCE_LIBEVENT', language: 'cpp')
+	public_args += '-DPISTACHE_FORCE_LIBEVENT'
 endif
 
 # To add symbols to release MSVC build in Windows:
