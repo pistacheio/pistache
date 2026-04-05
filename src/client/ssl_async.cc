@@ -287,7 +287,13 @@ SslAsync::ACTION SslAsync::ssl_read()
     }
 
     // ECONNRESET: Connection reset by peer; or else, no data available
-    errno = ((ssl_error == SSL_ERROR_ZERO_RETURN) ? ECONNRESET : ENODATA);
+    errno = ((ssl_error == SSL_ERROR_ZERO_RETURN) ? ECONNRESET :
+             #ifdef _IS_BSD
+             EAGAIN
+             #else
+             ENODATA
+             #endif
+        );
     return BREAK;
   } else {
       mReadFromVec.insert(mReadFromVec.end(), &(buffer[0]), &(buffer[num]));
@@ -827,12 +833,19 @@ SslAsync::SslAsync(const char * _hostName, unsigned int _hostPort,
         int connect_res = PST_SOCK_CONNECT(sfd, ai_addr,
                                            static_cast<socklen_t>(ai_addrlen));
         PS_LOG_DEBUG_ARGS("Socket connect res = %d", connect_res);
-        if (connect_res != -1)
+
+        if (connect_res == 0)
+        {
+            mConnecting = 1; //true
+            break;
+        }
+        else if (connect_res != -1)
         {
             PS_LOG_WARNING("Expecting non-blocking connect for SSL");
             errno = EINVAL;
             continue;
         }
+
         if (errno ==
         #ifdef _IS_WINDOWS
                      EWOULDBLOCK
