@@ -10,7 +10,7 @@
  * Logging Facilities
  *
  * #include <pistache/pist_syslog.h>
- * 
+ *
  */
 
 
@@ -94,7 +94,7 @@
 // property value other than 0, 1 or 10 is treated like 1. Deleting the
 // property or key is treated like 0. If the property value is changed while
 // pistache.dll is running, the log output behavior will update dynamically.
-// 
+//
 // #define PS_LOG_AND_STDOUT true
 
 #ifndef PS_LOG_AND_STDOUT
@@ -132,6 +132,30 @@
 #define PS_LOG_FNNAME
 #endif
 
+// The "true"s below means send to stdout in addition to log
+#define PS_LOG_AND_SOUT_ALERT_ARGS(__fmt, ...)                          \
+    PSLogFn(LOG_ALERT, true, __FILE__, __LINE__, __FUNCTION__,          \
+            __fmt, __VA_ARGS__)
+
+#define PS_LOG_AND_SOUT_ERR_ARGS(__fmt, ...)                 \
+    PSLogFn(LOG_ERR, true, __FILE__, __LINE__, __FUNCTION__, \
+            __fmt, __VA_ARGS__)
+
+#define PS_LOG_AND_SOUT_WARNING_ARGS(__fmt, ...)                 \
+    PSLogFn(LOG_WARNING, true, __FILE__, __LINE__, __FUNCTION__, \
+            __fmt, __VA_ARGS__)
+
+#define PS_LOG_AND_SOUT_INFO_ARGS(__fmt, ...)                 \
+    PSLogFn(LOG_INFO, true, __FILE__, __LINE__, __FUNCTION__, \
+            __fmt, __VA_ARGS__)
+
+#ifdef DEBUG
+#define PS_LOG_AND_SOUT_DEBUG_ARGS(__fmt, ...)                 \
+    PSLogFn(LOG_DEBUG, true, __FILE__, __LINE__, __FUNCTION__, \
+            __fmt, __VA_ARGS__)
+#else
+#define PS_LOG_AND_SOUT_DEBUG_ARGS(__fmt, ...) { }
+#endif
 
 // ---------------------------------------------------------------------------
 
@@ -150,7 +174,7 @@ extern "C" void PSLogNoLocFn(int _pri, bool _andPrintf,
 // anything then the _category string will be passed to openlog as the "ident"
 // parm upon the first pistachio log; or if setPsLogCategory is not called,
 // then pistachio will assign a 5-letter ident based on the executable name.
-// 
+//
 // Note that if (and this is NOT RECOMMENDED - instead get the app to call
 // openlog itself before anything is logged) setPsLogCategory is called with
 // NULL or empty string, but then pistachio logs something before the
@@ -189,19 +213,18 @@ public:
     std::ostream error;
     std::ostream alert;
 
-    
+
     PSLogOss();
 };
 
 // extern PSLogOss psLogOss;
 
-    
-    
-    
+
+
+
 
 /*****************************************************************************/
 
 #endif // of ifndef INCLUDED_PS_LOG_H
 
 /*****************************************************************************/
-
