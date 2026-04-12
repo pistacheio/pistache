@@ -16,7 +16,7 @@
 /* ------------------------------------------------------------------------- */
 
 #if !defined(__linux__) && ((!defined(__GNUC__)) || (defined(__MINGW32__)) \
-      || (defined(__clang__)) || (defined(__NetBSD__)) || (defined(__APPLE__)))
+      || (defined(__clang__)) || (defined(BSD)) || (defined(__APPLE__)))
 
 /* ------------------------------------------------------------------------- */
 // Note: We provide the GNU-specific/POSIX style (which returns char *), not

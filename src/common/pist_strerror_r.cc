@@ -87,6 +87,10 @@ extern "C" char * pist_strerror_r(int errnum, char *buf, size_t buflen)
                 str = "Connection already in progress";
                 break;
 
+            case EAGAIN:
+                str = "Resource temporarily unavailable";
+                break;
+
             case EBADMSG:
                 str = "Bad message";
                 break;
@@ -151,9 +155,11 @@ extern "C" char * pist_strerror_r(int errnum, char *buf, size_t buflen)
                 str = "No buffer space";
                 break;
 
+#ifndef _IS_BSD
             case ENODATA:
                 str = "No message available";
                 break;
+#endif
 
             case ENOLINK:
                 str = "No link";
@@ -261,7 +267,7 @@ extern "C" char * pist_strerror_r(int errnum, char *buf, size_t buflen)
 /* ------------------------------------------------------------------------- */
 
 #elif !defined(__linux__) && ((!defined(__GNUC__)) || (defined(__MINGW32__)) \
-      || (defined(__clang__)) || (defined(__NetBSD__)) || (defined(__APPLE__)))
+      || (defined(__clang__)) || (defined(BSD)) || (defined(__APPLE__)))
 
 #include <pistache/ps_strl.h>
 
