@@ -112,17 +112,31 @@ jobs:
           $proc = Start-Process -FilePath $exePath -PassThru `
                     -RedirectStandardOutput $stdoutLog `
                     -RedirectStandardError  $stderrLog
-          Start-Sleep -Seconds 3
 
-          # Check the process is still alive
-          if ($proc.HasExited) {
+          # Wait up to 30s for the server to start accepting connections
+          $ready = $false
+          for ($i = 0; $i -lt 30; $i++) {
+            if ($proc.HasExited) { break }
+            try {
+              $conn = [System.Net.Sockets.TcpClient]::new()
+              $conn.Connect('127.0.0.1', 9080)
+              $conn.Close()
+              $ready = $true
+              break
+            } catch {
+              Start-Sleep -Seconds 1
+            }
+          }
+
+          # Check the process is still alive and port is open
+          if ($proc.HasExited -or -not $ready) {
             Write-Host "=== stdout ==="
             Get-Content $stdoutLog -ErrorAction SilentlyContinue
             Write-Host "=== stderr ==="
             Get-Content $stderrLog -ErrorAction SilentlyContinue
             $exitCode = $proc.ExitCode
             $ucode = [System.BitConverter]::ToUInt32([System.BitConverter]::GetBytes($exitCode), 0)
-            $msg = "Server process exited prematurely (exit code $exitCode / 0x$($ucode.ToString('X8')))."
+            $msg = "Server process exited prematurely or port 9080 not ready (exit code $exitCode / 0x$($ucode.ToString('X8')))."
             if ($ucode.ToString('X8') -eq 'C0000135') {
               $msg += " STATUS_DLL_NOT_FOUND: a required DLL could not be located."
             }
