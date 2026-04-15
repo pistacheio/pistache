@@ -188,7 +188,7 @@ using PST_SOCK_OPT_VAL_TYPICAL_T = int; // most (not all) optval are this type
 // mingw gcc doesn't define strerror_r (Oct/2024)
 // gcc on macOS does define strerror_r, but the XSI version not the POSIX one
 #if defined(__linux__) || (defined(__GNUC__) && (!defined(__MINGW32__)) && \
-      (!defined(__clang__)) && (!defined(__NetBSD__)) && (!defined(__APPLE__)))
+      (!defined(__clang__)) && (!defined(BSD)) && (!defined(__APPLE__)))
 #define PST_STRERROR_R_HDR "string.h"
 #define PST_STRERROR_R strerror_r // returns char *
 #else
