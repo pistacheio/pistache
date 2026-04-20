@@ -181,7 +181,7 @@ namespace Pistache::Http
             date::to_stream(os, "%a %b %d %T %Y", date_);
             break;
         default:
-            std::runtime_error("Invalid use of FullDate::write");
+            throw std::runtime_error("Invalid use of FullDate::write");
         }
     }
 
