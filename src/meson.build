@@ -345,6 +345,7 @@ if host_machine.system() == 'windows'
 endif
 
 if host_machine.system() == 'windows' and compiler.get_id() == 'msvc'
+    # Windows/MSVC: no soversion/version (not applicable on Windows), use vs_module_defs
     libpistache = library(
 	'pistache',
 	sources: pistache_common_src + pistache_server_src + pistache_client_src + pistache_extra_src,
@@ -353,12 +354,23 @@ if host_machine.system() == 'windows' and compiler.get_id() == 'msvc'
 	dependencies: deps_libpistache,
 	link_args: libpistache_links_args,
 	install: get_option('PISTACHE_INSTALL'),
-	soversion: version_major + '.' + version_minor,
-	version: version_str,
-        vs_module_defs: gen_src_def,
+    vs_module_defs: gen_src_def,
 	pic: get_option('b_staticpic')
     )
-else # No vs_module_defs
+elif host_machine.system() == 'windows'
+    # Windows/non-MSVC (e.g. MinGW): no soversion/version, no vs_module_defs
+    libpistache = library(
+	'pistache',
+	sources: pistache_common_src + pistache_server_src + pistache_client_src + pistache_extra_src,
+	cpp_args: public_args,
+	include_directories: incl_pistache,
+	dependencies: deps_libpistache,
+	link_args: libpistache_links_args,
+	install: get_option('PISTACHE_INSTALL'),
+	pic: get_option('b_staticpic')
+    )
+else
+    # Non-Windows: soversion/version apply
     libpistache = library(
 	'pistache',
 	sources: pistache_common_src + pistache_server_src + pistache_client_src + pistache_extra_src,
