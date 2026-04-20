@@ -41,8 +41,19 @@
 // #include <limits.h> // PATH_MAX
 #include PST_MAXPATH_HDR
 
+#if defined(__APPLE__) && !defined(__clang__)
+#define USE_GETPROGNAME
+// Note Apr/2026: The mach header files needed for _NSGetExecutablePath (from
+// dyld.h) don't appear to work with gcc in MacOS-26, so instead we use
+// getprogname() on MacOS with gcc.
+#endif
+
 #ifdef __APPLE__
+#ifdef USE_GETPROGNAME
+#include <stdlib.h> // for getprogname()
+#else
 #include <mach-o/dyld.h> // _NSGetExecutablePath
+#endif
 #endif
 
 #ifdef __APPLE__
@@ -573,9 +584,16 @@ static std::string getLogIdent()
     prog_path[0] = 0;
 
     #ifdef __APPLE__
+    #ifdef USE_GETPROGNAME
+    const char * pn = getprogname();
+    if ((!pn) || (!strlen(pn)))
+        return(std::string());
+    strcpy(&(prog_path[0]), pn);
+    #else
     uint32_t bufsize = PST_MAXPATHLEN;
     if (_NSGetExecutablePath(&(prog_path[0]), &bufsize) != 0)
         return(std::string());
+    #endif
     #elif defined _IS_WINDOWS
     if (GetModuleFileNameA(nullptr, // NULL->executable file of current process
                            &(prog_path[0]), PST_MAXPATHLEN) == 0)
@@ -585,6 +603,9 @@ static std::string getLogIdent()
         return(std::string());
     #endif
 
+    #ifdef USE_GETPROGNAME
+    char * prog_name = &(prog_path[0]);
+    #else
     const size_t prog_path_len = strlen(&(prog_path[0]));
     if (!prog_path_len)
         return(std::string());
@@ -596,6 +617,7 @@ static std::string getLogIdent()
     char * prog_name = PS_BASENAME_R(&(prog_path[0]), bname_buff.data());
     if ((!prog_name) || (!strlen(prog_name)))
         prog_name = &(prog_path[0]);
+    #endif // of ifdef USE_GETPROGNAME
 
     if (strlen(prog_name) <= 5)
         return(std::string(prog_name));

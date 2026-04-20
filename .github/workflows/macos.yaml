@@ -24,6 +24,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+
 jobs:
   macos:
     name: macOS with Libevent
@@ -94,8 +95,27 @@ jobs:
 
         export PKG_CONFIG_PATH="$(brew --prefix)/opt/curl/lib/pkgconfig:$PKG_CONFIG_PATH"
 
+        os_version=$(sw_vers -productVersion | cut -d. -f1) # Major macOS version
+        arch=$(uname -m) # "x86_64" or "arm64"
+        if [[ "$os_version" -ge 26 ]] && [[ "$arch" == "x86_64" ]] && [ ${{ matrix.compiler }} = gcc ]; then
+          echo "MacOS 26+ on Intel hardware with gcc"
+          export do_pist_tests=false
+          # Apr/2026, there is an incompatibility between the MacOS 26
+          # SDK header files and gcc. The construct
+          # xnu_static_assert_struct_size, and similar, cause compile
+          # errors. Although these macros are defined (probably in
+          # mach.h or mach/machine/kern_return.h), the definition is
+          # said to have nested #if __has_attribute in a way that is
+          # specific to Apple's clang, and which gcc does not handle
+          # in the same way. As a result, we can't compile the tests,
+          # and in fact even googletest itself does not compile with
+          # gcc.
+        else
+          export do_pist_tests=true
+        fi
+
         meson setup build \
-          -DPISTACHE_BUILD_TESTS=true -DPISTACHE_DEBUG=${{ matrix.def_debug }} -DPISTACHE_USE_SSL=${{ matrix.tls }} -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_DOCS=false -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true -DPISTACHE_USE_CONTENT_ENCODING_BROTLI=true -DPISTACHE_USE_CONTENT_ENCODING_ZSTD=true \
+          -DPISTACHE_BUILD_TESTS=$do_pist_tests -DPISTACHE_DEBUG=${{ matrix.def_debug }} -DPISTACHE_USE_SSL=${{ matrix.tls }} -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_DOCS=false -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true -DPISTACHE_USE_CONTENT_ENCODING_BROTLI=true -DPISTACHE_USE_CONTENT_ENCODING_ZSTD=true \
           --buildtype=debug -Db_coverage=true -Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false \
           || (cat build/meson-logs/meson-log.txt ; false)
       env:
@@ -105,9 +125,16 @@ jobs:
       run: ninja -C build
 
     - name: Test
-      run: meson test -C build --verbose
-      # Use the following to run just a single test (e.g. http_server_test)
-      # run: build/tests/run_http_server_test
+      run: |
+        os_version=$(sw_vers -productVersion | cut -d. -f1) # Major macOS version
+        arch=$(uname -m) # "x86_64" or "arm64"
+        if [[ "$os_version" -ge 26 ]] && [[ "$arch" == "x86_64" ]] && [ ${{ matrix.compiler }} = gcc ]; then
+          echo "MacOS 26+ on Intel hardware with gcc, skipping tests"
+        else
+          meson test -C build --verbose
+          # Use the following to run just a single test (e.g. http_server_test)
+          # build/tests/run_http_server_test
+        fi
 
     - name: Coverage
       if: ${{ !contains(matrix.os, 'macos') }}  # Remove this if to do coverage test
