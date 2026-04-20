@@ -22,6 +22,7 @@
 
 typedef struct ssl_st SSL;
 typedef struct ssl_ctx_st SSL_CTX;
+struct addrinfo;
 
 // ---------------------------------------------------------------------------
 
@@ -81,6 +82,14 @@ public:
     ~SslAsync();
 
     Fd getFd() const { return(mFd); }
+
+private:
+    // tryToConnectSocket is a helper for the constructor SslAsync::SslAsync
+    em_socket_t tryToConnectSocket(const char * _hostName,
+                                   unsigned int _hostPort,
+                                   int _domain, // AF_INET or AF_INET6
+                                   struct addrinfo * & addrinfo_ptr,
+                                   bool _allowAnotherTry);
 };
 typedef std::shared_ptr<SslAsync> SslAsyncSPtr;
 typedef std::shared_ptr<const SslAsync> SslAsyncSPtrC;

@@ -85,9 +85,10 @@ static void assertCurlVersionInfo(void)
     toLower(sslVersion);
 
     // Perform checks on SSL version.
-    if (sslVersion.find("openssl") == std::string::npos)
+    if ((sslVersion.find("openssl") == std::string::npos) &&
+        (sslVersion.find("libressl") == std::string::npos))
     {
-        FAIL() << "Found cURL '" << curlVersion << "' with SSL Version: '" << sslVersion << "', OpenSSL is required.";
+        FAIL() << "Found cURL '" << curlVersion << "' with SSL Version: '" << sslVersion << "', OpenSSL or LibreSSL are required.";
     }
 }
 

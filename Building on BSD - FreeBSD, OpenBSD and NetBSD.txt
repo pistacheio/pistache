@@ -71,6 +71,8 @@ Typically, required packages are installed using:
 For instance:
   sudo pkg_in install meson
 Do this for each Pistache dependency, excluding howard-hinnant-date.
+Note: You may need to use pkg_add, or /usr/sbin/pkg_add, rather than
+"pkg_in install".
 
 Regarding NetBSD 9.4. NetBSD 9.4 uses gcc 7.5.0, while Pistache's
 build files require C++17 support, and Pistache's code uses

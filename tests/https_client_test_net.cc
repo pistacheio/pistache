@@ -203,14 +203,17 @@ TEST(https_client_test, one_client_with_nonexisitent_url_request)
 
     bool done  = false;
     bool excep = false;
+    int resp_code = -1;
+
     auto rb       = client.get(server_address);
     try {
         auto response = rb.header<Http::Header::Connection>(
             Http::ConnectionControl::KeepAlive).send();
 
         response.then(
-            [&done](Http::Response rsp) {
-                PS_LOG_DEBUG_ARGS("http rsp code: %d", rsp.code());
+            [&done, &resp_code](Http::Response rsp) {
+                resp_code = static_cast<int>(rsp.code());
+
                 if (rsp.code() == Http::Code::Ok)
                 {
                     done = true;
@@ -242,8 +245,22 @@ TEST(https_client_test, one_client_with_nonexisitent_url_request)
 
     client.shutdown();
 
-    ASSERT_TRUE(excep);
     ASSERT_FALSE(done);
+#ifdef __NetBSD__
+    ASSERT_TRUE((resp_code == -1) || (excep));
+    // Note (April/2026): In NetBSD with some (but not all) networking
+    // libraries / OS configurations, the attempt to reach a non-existent URL
+    // times-out rather than throws an exception.
+    //
+    // For instance, on NetBSD 10.0, we see a timeout in the normal
+    // configuration for GitHub workflow, but an exception if we turn on the
+    // "address" sanitizer.
+    //
+    // In all other OS configurations (Linux, macOS, Windows, FreeBSD, OpenBSD)
+    // we see an exception, not a time-out.
+#else
+    ASSERT_TRUE((resp_code == -1) && (excep));
+#endif
 }
 
 TEST(https_client_test, one_client_with_bad_google_request)

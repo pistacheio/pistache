@@ -74,14 +74,23 @@ namespace Pistache::Http::Experimental {
 
 // ---------------------------------------------------------------------------
 
-#define SSL_LOG_WRN_CLOSE_AND_THROW(__MSG)                \
+#define SSL_CLOSE_FD_AND_FREE_ADDRINFO                    \
     {                                                     \
-        PS_LOG_WARNING(__MSG);                            \
         auto current_fd = mFd;                            \
         mFd = PS_FD_EMPTY;                                \
         if (current_fd != PS_FD_EMPTY)                    \
             CLOSE_FD(current_fd);                         \
-        if (addrinfo_ptr) ::freeaddrinfo(addrinfo_ptr);   \
+        if (addrinfo_ptr)                                 \
+        {                                                 \
+            ::freeaddrinfo(addrinfo_ptr);                 \
+            addrinfo_ptr = 0;                             \
+        }                                                 \
+    }
+
+#define SSL_LOG_WRN_CLOSE_AND_THROW(__MSG)                \
+    {                                                     \
+        PS_LOG_WARNING(__MSG);                            \
+        SSL_CLOSE_FD_AND_FREE_ADDRINFO;                   \
         throw std::runtime_error(__MSG);                  \
     }
 
@@ -707,56 +716,14 @@ static SSL_CTX * makeSslCtx(const char * _hostChainPemFile)
 }
 
 // ---------------------------------------------------------------------------
+// tryToConnectSocket is a helper for the constructor SslAsync::SslAsync
 
-SslAsync::SslAsync(const char * _hostName, unsigned int _hostPort,
-                   int _domain, // AF_INET or AF_INET6
-                   bool _doVerification,
-                   const char * _hostChainPemFile) :
-    mFd(PS_FD_EMPTY),
-    mWantsTcpRead(1),
-    mWantsTcpWrite(1),
-    mCallSslReadForSslLib(0),
-    mCallSslWriteForSslLib(0),
-    mDoVerification(_doVerification),
-    mSsl(NULL), mCtxt(NULL)
+em_socket_t SslAsync::tryToConnectSocket(const char * _hostName,
+                                         unsigned int _hostPort,
+                                         int _domain, // AF_INET or AF_INET6
+                                         struct addrinfo * & addrinfo_ptr,
+                                         bool _allowAnotherTry)
 {
-    struct addrinfo * addrinfo_ptr = NULL;
-
-    if (!_hostName)
-    {
-        errno = EINVAL;
-        SSL_LOG_WRN_CLOSE_AND_THROW("Null hostName");
-    }
-
-    if (!_hostChainPemFile)
-    {
-        errno = EINVAL;
-        SSL_LOG_WRN_CLOSE_AND_THROW("Null hostChainPemFile");
-    }
-
-    if (!_hostPort)
-        _hostPort = 443;
-
-    struct addrinfo hints = {};
-    hints.ai_family       = _domain;
-    hints.ai_socktype     = SOCK_STREAM;
-    hints.ai_protocol     = IPPROTO_TCP;
-    std::string host_port_as_sstr(std::to_string(_hostPort));
-
-    PS_LOG_DEBUG_ARGS("Doing getaddrinfo. _hostName %s, _hostPort %u",
-                      _hostName, static_cast<unsigned int>(_hostPort));
-    int res = getaddrinfo(_hostName, host_port_as_sstr.c_str(),
-                          &hints, &addrinfo_ptr);
-    PS_LOG_DEBUG_ARGS("getaddrinfo res %d", res);
-    if (res != 0)
-        SSL_LOG_WRN_CLOSE_AND_THROW("Local getaddrinfo failed");
-
-    initOpenSslIfNotAlready();
-
-    mCtxt = makeSslCtx(_hostChainPemFile);
-    if (!mCtxt)
-        SSL_LOG_WRN_CLOSE_AND_THROW("Could not SSL_CTX_new");
-
     em_socket_t sfd = PST_SOCK_SOCKET(_domain, SOCK_STREAM, 0);
     if (sfd < 0)
         SSL_LOG_WRN_CLOSE_AND_THROW("Could not create socket");
@@ -786,9 +753,19 @@ SslAsync::SslAsync(const char * _hostName, unsigned int _hostPort,
     mFd = sfd;
     #endif
 
-    mSsl = SSL_new(mCtxt);
-    if (!mSsl)
-        SSL_LOG_WRN_CLOSE_AND_THROW("Could not SSL_new");
+    struct addrinfo hints = {};
+    hints.ai_family       = _domain;
+    hints.ai_socktype     = SOCK_STREAM;
+    hints.ai_protocol     = IPPROTO_TCP;
+    std::string host_port_as_sstr(std::to_string(_hostPort));
+
+    PS_LOG_DEBUG_ARGS("Doing getaddrinfo. _hostName %s, _hostPort %u",
+                      _hostName, static_cast<unsigned int>(_hostPort));
+    int res = getaddrinfo(_hostName, host_port_as_sstr.c_str(),
+                          &hints, &addrinfo_ptr);
+    PS_LOG_DEBUG_ARGS("getaddrinfo res %d", res);
+    if (res != 0)
+        SSL_LOG_WRN_CLOSE_AND_THROW("Local getaddrinfo failed");
 
     // Set the socket to be non blocking.
     int flags = PST_FCNTL(sfd, PST_F_GETFL, 0);
@@ -820,6 +797,7 @@ SslAsync::SslAsync(const char * _hostName, unsigned int _hostPort,
     mConnecting = 0;
     struct addrinfo * this_addrinfo;
     int last_sock_connect_errno = -1;
+    bool any_no_route_to_host = false;
     for(this_addrinfo = addrinfo_ptr; this_addrinfo;
         this_addrinfo = this_addrinfo->ai_next)
     {
@@ -858,6 +836,12 @@ SslAsync::SslAsync(const char * _hostName, unsigned int _hostPort,
             mConnecting = 1; //true
             break;
         }
+        if (errno == EHOSTUNREACH)
+        {
+            PS_LOG_DEBUG("No route to host");
+            any_no_route_to_host = true;
+        }
+
         last_sock_connect_errno = errno;
         PS_LOG_DEBUG_ARGS("sock connect error, errno %d, "
                           "sfd %d, ai_addrlen %d, ai_addr %p",
@@ -873,8 +857,82 @@ SslAsync::SslAsync(const char * _hostName, unsigned int _hostPort,
                              last_sock_connect_errno,
                              PST_STRERROR_R_SE_ERR(last_sock_connect_errno));
         }
+
+        if ((_allowAnotherTry) && (any_no_route_to_host))
+        {
+            if (_domain == AF_INET)
+                _domain = AF_INET6;
+            else if (_domain == AF_INET6)
+                _domain = AF_INET;
+            else
+                SSL_LOG_WRN_CLOSE_AND_THROW("Unexpected _domain");
+
+            // Try again with other domain (AF_INET vs AF_INET6)
+            PS_LOG_DEBUG("Try to connect with other domain (IPv4 vs v6)");
+
+            SSL_CLOSE_FD_AND_FREE_ADDRINFO;
+
+            return(tryToConnectSocket(_hostName, _hostPort, _domain,
+                                      addrinfo_ptr, false /*No more tries*/));
+        }
+
         SSL_LOG_WRN_CLOSE_AND_THROW("Failed to start connecting");
     }
+
+    return(sfd);
+}
+
+
+
+// ---------------------------------------------------------------------------
+
+SslAsync::SslAsync(const char * _hostName, unsigned int _hostPort,
+                   int _domain, // AF_INET or AF_INET6
+                   bool _doVerification,
+                   const char * _hostChainPemFile) :
+    mFd(PS_FD_EMPTY),
+    mWantsTcpRead(1),
+    mWantsTcpWrite(1),
+    mCallSslReadForSslLib(0),
+    mCallSslWriteForSslLib(0),
+    mDoVerification(_doVerification),
+    mSsl(NULL), mCtxt(NULL)
+{
+    struct addrinfo * addrinfo_ptr = NULL;
+
+    if (!_hostName)
+    {
+        errno = EINVAL;
+        SSL_LOG_WRN_CLOSE_AND_THROW("Null hostName");
+    }
+
+    if (!_hostChainPemFile)
+    {
+        errno = EINVAL;
+        SSL_LOG_WRN_CLOSE_AND_THROW("Null hostChainPemFile");
+    }
+
+    if (!_hostPort)
+        _hostPort = 443;
+
+    PS_LOG_DEBUG_ARGS("_hostChainPemFile %s, _hostPort %u",
+                      _hostChainPemFile, _hostPort);
+
+    initOpenSslIfNotAlready();
+
+    mCtxt = makeSslCtx(_hostChainPemFile);
+    if (!mCtxt)
+        SSL_LOG_WRN_CLOSE_AND_THROW("Could not SSL_CTX_new");
+
+    em_socket_t sfd = tryToConnectSocket(
+        _hostName, _hostPort, _domain, addrinfo_ptr,
+        true/*try other domain if first fails to find route to host*/);
+    if (sfd < 0)
+        SSL_LOG_WRN_CLOSE_AND_THROW("tryToConnectSocket failed");
+
+    mSsl = SSL_new(mCtxt);
+    if (!mSsl)
+        SSL_LOG_WRN_CLOSE_AND_THROW("Could not SSL_new");
 
     // Save a pointer to mDoVerification for use in verify_callback
     SSL_set_ex_data(mSsl, 0, &mDoVerification); // 0 is "idx" for app data

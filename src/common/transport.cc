@@ -654,58 +654,62 @@ namespace Pistache::Tcp
                                   &tcp_no_push, &len);
 #endif // of if defined(__NetBSD__) || defined(_IS_WINDOWS) ... else
 
-        if (sock_opt_res == 0)
+        if (sock_opt_res != 0)
         {
-            if (((tcp_no_push == 0) && (msg_more_style)) || ((tcp_no_push != 0) && (!msg_more_style)))
-            {
-                PS_LOG_DEBUG_ARGS("Setting MSG_MORE style to %s",
-                                  (msg_more_style) ? "on" : "off");
-
-                PST_SOCK_OPT_VAL_TYPICAL_T optval =
-#ifdef PS_USE_TCP_NODELAY
-                    // In NetBSD case we're getting/setting (or resetting) the
-                    // TCP_NODELAY socket option, which _stops_ data being held
-                    // prior to send, whereas in Linux, macOS, FreeBSD or
-                    // OpenBSD we're using TCP_CORK/TCP_NOPUSH which may
-                    // _cause_ data to be held prior to send. I.e. they're
-                    // opposites.
-                    msg_more_style ? 0 : 1;
-#else
-                    msg_more_style ? 1 : 0;
-#endif
-
-                sock_opt_res = setsockopt(
-                    GET_ACTUAL_FD(fd), tcp_prot_num_,
-#ifdef PS_USE_TCP_NODELAY
-                    TCP_NODELAY,
-#elif defined __APPLE__ || defined _IS_BSD
-                    TCP_NOPUSH,
-#else
-                        TCP_CORK,
-#endif
-                    reinterpret_cast<PST_SOCK_OPT_VAL_PTR_T>(&optval),
-                    len);
-                if (sock_opt_res < 0)
-                    throw std::runtime_error("setsockopt failed");
-            }
-#ifdef DEBUG
-            else
-            {
-                PS_LOG_DEBUG_ARGS("MSG_MORE style is already %s",
-                                  (msg_more_style ? 1 : 0) ? "on" : "off");
-            }
-#endif
+            PST_DECL_SE_ERR_P_EXTRA;
+            PS_LOG_INFO_ARGS("getsockopt failed for fd %p, actual fd %d, "
+                             "errno %d, err %s",
+                             fd, GET_ACTUAL_FD(fd), errno,
+                             PST_STRERROR_R_ERRNO);
         }
+
+        if ((sock_opt_res != 0) || (((tcp_no_push == 0) && (msg_more_style)) ||
+                                    ((tcp_no_push != 0) && (!msg_more_style))))
+        {
+            PS_LOG_DEBUG_ARGS("Setting MSG_MORE style to %s",
+                              (msg_more_style) ? "on" : "off");
+
+            PST_SOCK_OPT_VAL_TYPICAL_T optval =
+#ifdef PS_USE_TCP_NODELAY
+                // In NetBSD case we're getting/setting (or resetting) the
+                // TCP_NODELAY socket option, which _stops_ data being held
+                // prior to send, whereas in Linux, macOS, FreeBSD or
+                // OpenBSD we're using TCP_CORK/TCP_NOPUSH which may
+                // _cause_ data to be held prior to send. I.e. they're
+                // opposites.
+                msg_more_style ? 0 : 1;
+#else
+            msg_more_style ? 1 : 0;
+#endif
+
+            sock_opt_res = setsockopt(
+                GET_ACTUAL_FD(fd), tcp_prot_num_,
+#ifdef PS_USE_TCP_NODELAY
+                TCP_NODELAY,
+#elif defined __APPLE__ || defined _IS_BSD
+                TCP_NOPUSH,
+#else
+                TCP_CORK,
+#endif
+                reinterpret_cast<PST_SOCK_OPT_VAL_PTR_T>(&optval), len);
+
+            if (sock_opt_res < 0)
+            {
+                PST_DECL_SE_ERR_P_EXTRA;
+                PS_LOG_ERR_ARGS("setsockopt failed for fd %p, actual fd %d, "
+                                "errno %d, err %s",
+                                fd, GET_ACTUAL_FD(fd), errno,
+                                PST_STRERROR_R_ERRNO);
+                // throw std::runtime_error("setsockopt failed");
+            }
+        }
+#ifdef DEBUG
         else
         {
-            PST_DBG_DECL_SE_ERR_P_EXTRA;
-            PS_LOG_DEBUG_ARGS("getsockopt failed for fd %p, actual fd %d, "
-                              "errno %d, err %s",
-                              fd, GET_ACTUAL_FD(fd), errno,
-                              PST_STRERROR_R_ERRNO);
-
-            throw std::runtime_error("getsockopt failed");
+            PS_LOG_DEBUG_ARGS("MSG_MORE style is already %s",
+                              (msg_more_style ? 1 : 0) ? "on" : "off");
         }
+#endif
     }
 #endif // of ifdef _USE_LIBEVENT_LIKE_APPLE
 
