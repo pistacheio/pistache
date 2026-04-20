@@ -105,7 +105,8 @@ jobs:
               Get-Content $stdoutLog -ErrorAction SilentlyContinue
               Write-Host "=== Server STDERR ==="
               Get-Content $stderrLog -ErrorAction SilentlyContinue
-              throw "Server exited during startup (exit code $($proc.ExitCode) / 0x$($([uint32]$proc.ExitCode).ToString('X8')))."
+              $uintExitCode = [System.BitConverter]::ToUInt32([System.BitConverter]::GetBytes($proc.ExitCode), 0)
+              throw "Server exited during startup (exit code $($proc.ExitCode) / 0x$($uintExitCode.ToString('X8')))."
             }
             try {
               $c = [System.Net.Sockets.TcpClient]::new('127.0.0.1', 9080)
