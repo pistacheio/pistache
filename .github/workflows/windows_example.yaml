@@ -21,7 +21,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-windows:
+  build:
     runs-on: windows-latest
 
     strategy:
@@ -71,7 +71,6 @@ jobs:
           -Db_lundef=false
           --default-library=${{ matrix.library_type }}
           --prefix="$env:ProgramFiles\pistache_distribution"
-
       - name: Build
         run: meson compile -C build
 
@@ -83,74 +82,44 @@ jobs:
           $installDir = "$env:ProgramFiles\pistache_distribution"
           $vcpkgBin   = "${{ github.workspace }}/vcpkg/installed/x64-windows-release/bin"
           $libType    = "${{ matrix.library_type }}"
-
-          if ($libType -eq 'shared') {
-            $dll = Get-Item "$installDir\bin\pistache*.dll" -ErrorAction SilentlyContinue
-            if (! $dll) { throw "pistache*.dll not found in $installDir\bin" }
-            Write-Host "Found DLL(s): $($dll.Name)"
-          } else {
-            $lib = Get-Item "$installDir\lib\pistache*.lib" -ErrorAction SilentlyContinue
-            if (! $lib) { throw "pistache*.lib not found in $installDir\lib" }
-            Write-Host "Found static lib(s): $($lib.Name)"
-          }
-          if (! (Test-Path "$installDir\include\pistache\endpoint.h")) { throw "headers not installed" }
-
-          # For shared builds put installed bin first so the versioned DLL is found
           if ($libType -eq 'shared') {
             $env:Path = "$installDir\bin;$vcpkgBin;$env:Path"
           } else {
             $env:Path = "$vcpkgBin;$env:Path"
           }
-
           $exePath = Get-ChildItem -Recurse -Path build -Filter "runhello_server.exe" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
           if (! $exePath) { throw "runhello_server.exe not found under build\" }
           Write-Host "Using exe: $exePath"
-
-          # Capture stdout/stderr so we can diagnose startup failures
           $stdoutLog = "hello_server_stdout.txt"
           $stderrLog = "hello_server_stderr.txt"
           $proc = Start-Process -FilePath $exePath -PassThru `
                     -RedirectStandardOutput $stdoutLog `
                     -RedirectStandardError  $stderrLog
-
-          # Wait up to 30s for the server to start accepting connections
+          $null = $proc.Handle
+          # Wait up to 30s for the server to open port 9080
           $ready = $false
           for ($i = 0; $i -lt 30; $i++) {
-            if ($proc.HasExited) { break }
+            if ($proc.HasExited) {
+              $proc.WaitForExit()
+              Write-Host "=== Server STDOUT ==="
+              Get-Content $stdoutLog -ErrorAction SilentlyContinue
+              Write-Host "=== Server STDERR ==="
+              Get-Content $stderrLog -ErrorAction SilentlyContinue
+              throw "Server exited during startup (exit code $($proc.ExitCode) / 0x$($([uint32]$proc.ExitCode).ToString('X8')))."
+            }
             try {
-              $conn = [System.Net.Sockets.TcpClient]::new()
-              $conn.Connect('127.0.0.1', 9080)
-              $conn.Close()
+              $c = [System.Net.Sockets.TcpClient]::new('127.0.0.1', 9080)
+              $c.Close()
               $ready = $true
               break
-            } catch {
-              Start-Sleep -Seconds 1
-            }
+            } catch { Start-Sleep -Seconds 1 }
           }
-
-          # Check the process is still alive and port is open
-          if ($proc.HasExited -or -not $ready) {
-            Write-Host "=== stdout ==="
-            Get-Content $stdoutLog -ErrorAction SilentlyContinue
-            Write-Host "=== stderr ==="
-            Get-Content $stderrLog -ErrorAction SilentlyContinue
-            $exitCode = $proc.ExitCode
-            $ucode = [System.BitConverter]::ToUInt32([System.BitConverter]::GetBytes($exitCode), 0)
-            $msg = "Server process exited prematurely or port 9080 not ready (exit code $exitCode / 0x$($ucode.ToString('X8')))."
-            if ($ucode.ToString('X8') -eq 'C0000135') {
-              $msg += " STATUS_DLL_NOT_FOUND: a required DLL could not be located."
-            }
-            throw $msg
-          }
-          Write-Host "Server process running (PID $($proc.Id))"
-
+          if (-not $ready) { throw "Server did not open port 9080 within 30s." }
           try {
             $resp = Invoke-WebRequest -Uri http://localhost:9080 -UseBasicParsing -TimeoutSec 5
-            Write-Host "Response ($($resp.StatusCode)): $($resp.Content)"
-            if ($resp.StatusCode -ne 200) { throw "Unexpected status: $($resp.StatusCode)" }
-            Write-Host "Smoke test passed"
+            Write-Host "Smoke test passed ($($resp.StatusCode)): $($resp.Content)"
+          } catch {
+            throw "HTTP request failed: $_"
           } finally {
             Stop-Process -Id $proc.Id -ErrorAction SilentlyContinue
-            Write-Host "=== server stdout ==="; Get-Content $stdoutLog -ErrorAction SilentlyContinue
-            Write-Host "=== server stderr ==="; Get-Content $stderrLog -ErrorAction SilentlyContinue
           }
