@@ -72,11 +72,17 @@ if (PISTACHE_USE_SSL)
 endif ()
 
 if (BUILD_SHARED_LIBS)
-    set_target_properties(pistache_shared PROPERTIES
-        OUTPUT_NAME ${PROJECT_NAME}
-        VERSION ${pistache_VERSION}
-        SOVERSION "${pistache_VERSION_MAJOR}.${pistache_VERSION_MINOR}"
-    )
+    if (WIN32)
+        set_target_properties(pistache_shared PROPERTIES
+            OUTPUT_NAME ${PROJECT_NAME}
+        )
+    else ()
+        set_target_properties(pistache_shared PROPERTIES
+            OUTPUT_NAME ${PROJECT_NAME}
+            VERSION ${pistache_VERSION}
+            SOVERSION "${pistache_VERSION_MAJOR}.${pistache_VERSION_MINOR}"
+        )
+    endif ()
 endif ()
 
 set_target_properties(pistache_static PROPERTIES

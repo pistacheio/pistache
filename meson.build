@@ -5,7 +5,7 @@
 project(
 	'pistache',
 	'cpp',
-        version: '0.3.0', # In Meson 0.57 this can be replaced with files('version.txt')
+    version: files('version.txt'),
 	license: 'Apache-2.0',
 	default_options: [
 		'cpp_std=c++17',
@@ -14,7 +14,7 @@ project(
 		'b_lto=false',
 		'warning_level=3'
 	],
-	meson_version: '>=0.53.2'
+	meson_version: '>=0.57'
 )
 
 fs = import('fs')
@@ -274,7 +274,7 @@ endif
 
 if not meson.is_subproject()
 	git = find_program('git', required: false)
-	if git.found() and fs.is_dir(meson.source_root()/'.git')
-		run_command(git, 'config', '--local', 'core.hooksPath', meson.source_root()/'.hooks', check: false)
+	if git.found() and fs.is_dir(meson.project_source_root()/'.git')
+		run_command(git, 'config', '--local', 'core.hooksPath', meson.project_source_root()/'.hooks', check: false)
 	endif
 endif

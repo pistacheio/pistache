@@ -1,0 +1,126 @@
+# SPDX-FileCopyrightText: 2026 Maximilian Kleinert
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: WindowsExample
+
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+    branches:
+    - master
+
+defaults:
+  run:
+    shell: powershell
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        library_type: [shared, static]
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+
+      - run: pip install cmake ninja meson
+
+      - name: vcpkg build
+        uses: johnwason/vcpkg-action@v7
+        id: vcpkg
+        with:
+          pkgs: pkgconf libevent openssl curl[openssl] brotli zstd date
+          triplet: x64-windows-release
+          token: ${{ github.token }}
+
+      - name: Set up MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure
+        env:
+          PKG_CONFIG: ${{ github.workspace }}/vcpkg/installed/x64-windows-release/tools/pkgconf/pkgconf.exe
+          PKG_CONFIG_PATH: ${{ github.workspace }}/vcpkg/installed/x64-windows-release/lib/pkgconfig
+        run: >
+          meson setup build
+          -DPISTACHE_BUILD_TESTS=false
+          -DPISTACHE_DEBUG=false
+          -DPISTACHE_USE_SSL=true
+          -DPISTACHE_BUILD_EXAMPLES=true
+          -DPISTACHE_BUILD_DOCS=false
+          -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true
+          -DPISTACHE_USE_CONTENT_ENCODING_BROTLI=true
+          -DPISTACHE_USE_CONTENT_ENCODING_ZSTD=true
+          --buildtype=release
+          -Db_coverage=false
+          -Db_sanitize=none
+          -Db_lundef=false
+          --default-library=${{ matrix.library_type }}
+          --prefix="$env:ProgramFiles\pistache_distribution"
+      - name: Build
+        run: meson compile -C build
+
+      - name: Install
+        run: meson install -C build
+
+      - name: Smoke-test example
+        run: |
+          $installDir = "$env:ProgramFiles\pistache_distribution"
+          $vcpkgBin   = "${{ github.workspace }}/vcpkg/installed/x64-windows-release/bin"
+          $libType    = "${{ matrix.library_type }}"
+          if ($libType -eq 'shared') {
+            $env:Path = "$installDir\bin;$vcpkgBin;$env:Path"
+          } else {
+            $env:Path = "$vcpkgBin;$env:Path"
+          }
+          $exePath = Get-ChildItem -Recurse -Path build -Filter "runhello_server.exe" -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+          if (! $exePath) { throw "runhello_server.exe not found under build\" }
+          Write-Host "Using exe: $exePath"
+          $stdoutLog = "hello_server_stdout.txt"
+          $stderrLog = "hello_server_stderr.txt"
+          $proc = Start-Process -FilePath $exePath -PassThru `
+                    -RedirectStandardOutput $stdoutLog `
+                    -RedirectStandardError  $stderrLog
+          $null = $proc.Handle
+          # Wait up to 30s for the server to open port 9080
+          $ready = $false
+          for ($i = 0; $i -lt 30; $i++) {
+            if ($proc.HasExited) {
+              $proc.WaitForExit()
+              Write-Host "=== Server STDOUT ==="
+              Get-Content $stdoutLog -ErrorAction SilentlyContinue
+              Write-Host "=== Server STDERR ==="
+              Get-Content $stderrLog -ErrorAction SilentlyContinue
+              $uintExitCode = [System.BitConverter]::ToUInt32([System.BitConverter]::GetBytes($proc.ExitCode), 0)
+              throw "Server exited during startup (exit code $($proc.ExitCode) / 0x$($uintExitCode.ToString('X8')))."
+            }
+            try {
+              $c = [System.Net.Sockets.TcpClient]::new('127.0.0.1', 9080)
+              $c.Close()
+              $ready = $true
+              break
+            } catch { Start-Sleep -Seconds 1 }
+          }
+          if (-not $ready) { throw "Server did not open port 9080 within 30s." }
+          try {
+            $resp = Invoke-WebRequest -Uri http://localhost:9080 -UseBasicParsing -TimeoutSec 5
+            Write-Host "Smoke test passed ($($resp.StatusCode)): $($resp.Content)"
+          } catch {
+            throw "HTTP request failed: $_"
+          } finally {
+            Stop-Process -Id $proc.Id -ErrorAction SilentlyContinue
+          }
