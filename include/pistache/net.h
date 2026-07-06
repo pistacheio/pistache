@@ -309,6 +309,18 @@ namespace Pistache
         }
     };
 
+    template <>
+    struct Size<std::string>
+    {
+        size_t operator()(const std::string& s) const { return s.size(); }
+    };
+
+    template <>
+    struct Size<std::string_view>
+    {
+        size_t operator()(std::string_view s) const { return s.size(); }
+    };
+
 #define DEFINE_INTEGRAL_SIZE(Int)        \
     template <>                          \
     struct Size<Int>                     \

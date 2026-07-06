@@ -235,12 +235,12 @@ public:
 
         std::this_thread::sleep_for(std::chrono::seconds(2));
 
-        stream << "world";
+        stream << std::string{"world"};
         stream.flush();
 
         std::this_thread::sleep_for(std::chrono::seconds(2));
 
-        stream << "!";
+        stream << std::string_view{"!"};
         stream.ends();
 
         ctx_.flag = true;
