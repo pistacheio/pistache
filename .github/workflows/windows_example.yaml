@@ -39,7 +39,7 @@ jobs:
       - run: pip install cmake ninja meson
 
       - name: vcpkg build
-        uses: johnwason/vcpkg-action@v7
+        uses: johnwason/vcpkg-action@v8
         id: vcpkg
         with:
           pkgs: pkgconf libevent openssl curl[openssl] brotli zstd date
