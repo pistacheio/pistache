@@ -1138,11 +1138,20 @@ namespace Pistache::Tcp
                 toWrite[fd].push_back(std::move(*write));
             }
 
-            reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write,
-                                Polling::Mode::Edge);
-
+            // If flush is requested, write synchronously right here instead
+            // of arming NotifyOn::Write: when called from the worker thread
+            // itself that would be cleared before returning to epoll anyway,
+            // and when called from another thread it would just cause a
+            // spurious wakeup of the worker thread after asyncWriteImpl below
+            // has already fully drained (and possibly erased) the toWrite
+            // entry for this fd, leading it to fail to find write data. If
+            // asyncWriteImpl cannot finish the write due to EWOULDBLOCK, it
+            // arms NotifyOn::Write itself.
             if (flush)
                 asyncWriteImpl(fd);
+            else
+                reactor()->modifyFd(key(), fd, NotifyOn::Read | NotifyOn::Write,
+                                    Polling::Mode::Edge);
         }
     }
 
