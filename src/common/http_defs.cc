@@ -10,6 +10,7 @@
    Implementation of http definitions
 */
 
+#include <cctype>
 #include <iomanip>
 #include <iostream>
 
@@ -50,6 +51,29 @@ namespace Pistache::Http
             std::istringstream in { s };
             in >> date::parse("%a %b %d %T %Y", tp);
             return !in.fail();
+        }
+
+        // Some clients (e.g. git) send a Date header as a raw Unix epoch
+        // (seconds since 1970-01-01T00:00:00Z) instead of one of the RFC
+        // formats above.
+        bool parse_epoch(const std::string& s, time_point& tp)
+        {
+            for (unsigned int i = 0; i < s.size(); ++i)
+            {
+                if (!std::isdigit(static_cast<unsigned char>(s[i])))
+                    return false;
+            }
+
+            try
+            {
+                tp = time_point(std::chrono::seconds(std::stoull(s)));
+            }
+            catch (const std::exception&)
+            {
+                return false;
+            }
+
+            return true;
         }
 
     } // anonymous namespace
@@ -116,6 +140,8 @@ namespace Pistache::Http
         else if (parse_RFC_850(str, tp))
             return FullDate(tp);
         else if (parse_asctime(str, tp))
+            return FullDate(tp);
+        else if (parse_epoch(str, tp))
             return FullDate(tp);
 
         throw std::runtime_error("Invalid Date format");
