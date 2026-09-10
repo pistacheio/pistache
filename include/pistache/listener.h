@@ -27,6 +27,7 @@
 #include PST_SYS_RESOURCE_HDR
 
 #include <memory>
+#include <mutex>
 #include <thread>
 #include <vector>
 
@@ -107,6 +108,12 @@ namespace Pistache::Tcp
 
         size_t workers_ = Const::DefaultWorkers;
         std::string workersName_;
+
+        // handlerMutex_ protects handler_, which is written by
+        // setHandler() and read from defaultTransportFactory()'s lambda,
+        // possibly on a different thread (the transport factory is
+        // invoked from bindListener(), called via bind()).
+        mutable std::mutex handlerMutex_;
         std::shared_ptr<Handler> handler_;
 
         std::shared_ptr<Aio::Reactor> reactor_;

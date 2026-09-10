@@ -308,6 +308,9 @@ namespace Pistache::Tcp
                         const std::string& workersName, int backlog,
                         PISTACHE_STRING_LOGGER_T logger)
     {
+        if (workers == 0)
+            throw std::invalid_argument("workers must be greater than zero");
+
         if (workers > hardware_concurrency())
         {
             // Log::warning() << "More workers than available cores"
@@ -328,6 +331,7 @@ namespace Pistache::Tcp
 
     void Listener::setHandler(const std::shared_ptr<Handler>& handler)
     {
+        std::lock_guard<std::mutex> guard(handlerMutex_);
         handler_ = handler;
     }
 
@@ -398,7 +402,12 @@ namespace Pistache::Tcp
 
         LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(actual_fd);
 
-        TRY(PST_SOCK_LISTEN(actual_fd, backlog_));
+        if (PST_SOCK_LISTEN(actual_fd, backlog_) < 0)
+        {
+            PS_LOG_DEBUG_ARGS("::listen failed, actual_fd %d", actual_fd);
+            PST_SOCK_CLOSE(actual_fd);
+            return false;
+        }
 
         LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(actual_fd);
 
@@ -416,12 +425,18 @@ namespace Pistache::Tcp
 
 #ifdef _USE_LIBEVENT
         // Use EVM_READ, as per call to addFd below
-        Fd event_fd = TRY_NULL_RET(
-            Polling::Epoll::em_event_new(actual_fd, // pre-allocated file desc
-                                         EVM_READ | EVM_PERSIST | EVM_ET,
-                                         F_SETFDL_NOTHING, // f_setfd_flags - don't change
-                                         F_SETFDL_NOTHING // f_setfl_flags - don't change
-                                         ));
+        Fd event_fd = Polling::Epoll::em_event_new(
+            actual_fd, // pre-allocated file desc
+            EVM_READ | EVM_PERSIST | EVM_ET,
+            F_SETFDL_NOTHING, // f_setfd_flags - don't change
+            F_SETFDL_NOTHING // f_setfl_flags - don't change
+        );
+        if (event_fd == NULL)
+        {
+            PS_LOG_DEBUG_ARGS("em_event_new failed, actual_fd %d", actual_fd);
+            PST_SOCK_CLOSE(actual_fd);
+            return false;
+        }
 #else
         Fd event_fd = actual_fd;
 #endif
@@ -451,6 +466,9 @@ namespace Pistache::Tcp
     void Listener::bind(const Address& address)
     {
         PS_TIMEDBG_START_THIS;
+
+        if (isBound())
+            throw std::runtime_error("Listener is already bound");
 
         addr_ = address;
 
@@ -557,47 +575,74 @@ namespace Pistache::Tcp
 
         for (;;)
         {
-            { // encapsulate l_guard(poller.reg_unreg_mutex_)
-              // See comment in class Epoll regarding reg_unreg_mutex_
-                PS_TIMEDBG_START;
+            std::vector<Polling::Event> events;
+            int ready_fds = 0;
 
+            {
+                // See comment in class Epoll regarding reg_unreg_mutex_.
+                // Only poller.poll() itself needs it here: Listener::poller
+                // is private to this Listener and is otherwise only ever
+                // touched by bindListener()/runThreaded(), both of which
+                // run strictly before this loop starts (single-threaded
+                // setup), so nothing else can unregister it concurrently
+                // with the event handling below. Releasing the mutex
+                // before handling the returned events (in particular
+                // before handleNewConnection(), which can block for up to
+                // sslHandshakeTimeout_ performing a TLS handshake) avoids
+                // needlessly holding it for the duration of that blocking
+                // work.
                 std::mutex& poller_reg_unreg_mutex(poller.reg_unreg_mutex_);
                 GUARD_AND_DBG_LOG(poller_reg_unreg_mutex);
 
-                std::vector<Polling::Event> events;
-                int ready_fds = poller.poll(events);
+                ready_fds = poller.poll(events);
+            }
 
-                if (ready_fds == -1)
-                {
-                    PS_LOG_DEBUG("Polling failed");
-                    throw Error::system("Polling");
-                }
-                for (const auto& event : events)
-                {
-                    if (event.tag == shutdownFd.tag())
-                        return;
+            if (ready_fds == -1)
+            {
+                PS_LOG_DEBUG("Polling failed");
+                throw Error::system("Polling");
+            }
+            for (const auto& event : events)
+            {
+                if (event.tag == shutdownFd.tag())
+                    return;
 
-                    if (event.flags.hasFlag(Polling::NotifyOn::Read))
+                if (event.flags.hasFlag(Polling::NotifyOn::Read))
+                {
+                    Fd fd = static_cast<Fd>(event.tag.value());
+                    if (fd == listen_fd)
                     {
-                        Fd fd = static_cast<Fd>(event.tag.value());
-                        if (fd == listen_fd)
+                        try
                         {
-                            try
-                            {
-                                handleNewConnection();
-                            }
-                            catch (SocketError& ex)
-                            {
-                                PISTACHE_LOG_STRING_WARN(
-                                    logger_, "Socket error: " << ex.what());
-                            }
-                            catch (ServerError& ex)
-                            {
-                                PS_LOG_WARNING("Server error");
-                                PISTACHE_LOG_STRING_FATAL(
-                                    logger_, "Server error: " << ex.what());
-                                throw;
-                            }
+                            handleNewConnection();
+                        }
+                        catch (SocketError& ex)
+                        {
+                            PISTACHE_LOG_STRING_WARN(
+                                logger_, "Socket error: " << ex.what());
+                        }
+                        catch (ServerError& ex)
+                        {
+                            PS_LOG_WARNING("Server error");
+                            PISTACHE_LOG_STRING_FATAL(
+                                logger_, "Server error: " << ex.what());
+                            throw;
+                        }
+                        // SocketError/ServerError above only cover the
+                        // exceptions acceptConnection() itself throws
+                        // for a failed accept(4). Other paths in
+                        // handleNewConnection() (e.g. the TRY/
+                        // TRY_NULL_RET macros around setsockopt() or
+                        // em_event_new()) throw a plain
+                        // std::runtime_error, which would otherwise
+                        // propagate out of this thread and call
+                        // std::terminate() over what should be a
+                        // single failed connection.
+                        catch (std::runtime_error& ex)
+                        {
+                            PISTACHE_LOG_STRING_WARN(
+                                logger_,
+                                "Error handling new connection: " << ex.what());
                         }
                     }
                 }
@@ -609,7 +654,8 @@ namespace Pistache::Tcp
     {
         PS_TIMEDBG_START;
 
-        shutdownFd.bind(poller);
+        if (!shutdownFd.isBound())
+            shutdownFd.bind(poller);
         PS_LOG_DEBUG("shutdownFd.bind done");
 
         acceptThread = std::thread([this]() {
@@ -627,6 +673,17 @@ namespace Pistache::Tcp
             shutdownFd.notify();
         }
 
+        // Wait for acceptThread (if any) to observe the shutdown signal
+        // above and return from run(), before tearing down the reactor:
+        // run() may still be mid-handleNewConnection()/dispatchPeer(),
+        // dispatching a new peer to one of reactor_'s workers, and
+        // reactor_->shutdown() must not race with that. Guard against a
+        // self-join if shutdown() is somehow called from acceptThread
+        // itself.
+        if (acceptThread.joinable()
+            && acceptThread.get_id() != std::this_thread::get_id())
+            acceptThread.join();
+
         if (reactor_)
             reactor_->shutdown();
     }
@@ -635,6 +692,12 @@ namespace Pistache::Tcp
     Listener::requestLoad(const Listener::Load& old)
     {
         PS_TIMEDBG_START_THIS;
+
+        if (!reactor_)
+        {
+            return Async::Promise<Listener::Load>::rejected(
+                std::runtime_error("requestLoad() called before bind()"));
+        }
 
         auto handlers = reactor_->handlers(transportKey);
 
@@ -965,7 +1028,11 @@ namespace Pistache::Tcp
             PST_SOCK_CLOSE(client_actual_fd);
             PS_LOG_DEBUG_ARGS("::close actual_fd %d", client_actual_fd);
 
-            return (fcntl_res);
+            // Signal failure the same way every other failure path in this
+            // function does (by throwing) rather than returning a negative
+            // fd: callers of acceptConnection() treat its return value as
+            // an open, live fd and do not check it for negativity.
+            throw SocketError(strerror(errno));
         }
 
         fcntl_res = PST_FCNTL(client_actual_fd, PST_F_SETFL, 0 /*clear everything*/);
@@ -979,7 +1046,7 @@ namespace Pistache::Tcp
             PST_SOCK_CLOSE(client_actual_fd);
             PS_LOG_DEBUG_ARGS("::close actual_fd %d", client_actual_fd);
 
-            return (fcntl_res);
+            throw SocketError(strerror(errno));
         }
 #endif // ifdef _USE_LIBEVENT_LIKE_APPLE
 
@@ -1023,6 +1090,14 @@ namespace Pistache::Tcp
             return;
         }
 
+        auto handlers = reactor_->handlers(transportKey);
+        if (handlers.empty())
+        {
+            PS_LOG_INFO_ARGS("No transport handlers registered for peer %p",
+                             peer.get());
+            return;
+        }
+
         em_socket_t input_for_idx = 0;
 #ifdef _IS_WINDOWS
         // actual_fd in Windows seems to be a multiple of 4, so we'll fail to
@@ -1047,7 +1122,6 @@ namespace Pistache::Tcp
         input_for_idx = actual_fd;
 #endif
 
-        auto handlers  = reactor_->handlers(transportKey);
         auto idx       = input_for_idx % handlers.size();
         auto transport = std::static_pointer_cast<Transport>(handlers[idx]);
 
@@ -1057,13 +1131,18 @@ namespace Pistache::Tcp
     Listener::TransportFactory Listener::defaultTransportFactory() const
     {
         return [&] {
-            if (!handler_)
+            std::shared_ptr<Handler> handler;
+            {
+                std::lock_guard<std::mutex> guard(handlerMutex_);
+                handler = handler_;
+            }
+            if (!handler)
             {
                 PS_LOG_DEBUG("setHandler() has not been called");
                 throw std::runtime_error("setHandler() has not been called");
             }
 
-            return std::make_shared<Transport>(handler_);
+            return std::make_shared<Transport>(handler);
         };
     }
 
@@ -1144,6 +1223,9 @@ namespace Pistache::Tcp
     std::vector<std::shared_ptr<Tcp::Peer>> Listener::getAllPeer()
     {
         std::vector<std::shared_ptr<Tcp::Peer>> vecPeers;
+        if (!reactor_)
+            return vecPeers;
+
         auto handlers = reactor_->handlers(transportKey);
 
         for (const auto& handler : handlers)

@@ -358,11 +358,19 @@ namespace Pistache::Tcp
                     {
                     case SSL_ERROR_SYSCALL:
                     case SSL_ERROR_SSL:
+                        // A peer that closes the TCP connection without
+                        // sending a TLS close_notify shutdown alert is
+                        // reported here (with OpenSSL 3.x logging
+                        // SSL_R_UNEXPECTED_EOF_WHILE_READING on the
+                        // per-thread error queue). If that queued error is
+                        // not cleared, it can be misattributed to a later,
+                        // unrelated SSL call made on this same thread.
                         PS_LOG_DEBUG_ARGS("SSL_read clearing error queue, last 0x%08X", ERR_peek_last_error());
                         ERR_clear_error();
                         break;
 
                     case SSL_ERROR_WANT_READ:
+                    case SSL_ERROR_WANT_WRITE:
                         bytes = -1; // To force handling of reset in the logic that follows.
                         retry = true;
                         break;
@@ -776,6 +784,7 @@ namespace Pistache::Tcp
 
                     switch (ssl_get_error_res)
                     {
+                    case SSL_ERROR_WANT_READ:
                     case SSL_ERROR_WANT_WRITE:
                         errno = EAGAIN;
                         break;
@@ -791,6 +800,11 @@ namespace Pistache::Tcp
 
                     case SSL_ERROR_SYSCALL:
                     case SSL_ERROR_SSL:
+                        // A peer that has gone away without a TLS
+                        // close_notify shutdown surfaces here, and its
+                        // queued OpenSSL error must be cleared so it isn't
+                        // misattributed to a later, unrelated SSL call on
+                        // this same thread.
                         PS_LOG_DEBUG_ARGS("SSL_write clearing error queue, last 0x%08X", ERR_peek_last_error());
                         ERR_clear_error();
                         errno = EBADF;
@@ -1088,6 +1102,15 @@ namespace Pistache::Tcp
                 toWrite[fd].push_back(std::move(*write));
             }
 
+            // If flush is requested, write synchronously right here instead
+            // of arming NotifyOn::Write: when called from the worker thread
+            // itself that would be cleared before returning to epoll anyway,
+            // and when called from another thread it would just cause a
+            // spurious wakeup of the worker thread after asyncWriteImpl below
+            // has already fully drained (and possibly erased) the toWrite
+            // entry for this fd, leading it to fail to find write data. If
+            // asyncWriteImpl cannot finish the write due to EWOULDBLOCK, it
+            // arms NotifyOn::Write itself.
             if (flush)
                 asyncWriteImpl(fd);
             else

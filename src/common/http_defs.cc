@@ -10,6 +10,7 @@
    Implementation of http definitions
 */
 
+#include <cctype>
 #include <iomanip>
 #include <iostream>
 
@@ -62,11 +63,14 @@ namespace Pistache::Http
             return !in.fail();
         }
 
+        // Some clients (e.g. git) send a Date header as a raw Unix epoch
+        // (seconds since 1970-01-01T00:00:00Z) instead of one of the RFC
+        // formats above.
         bool parse_epoch(const std::string& s, time_point& tp)
         {
             for (unsigned int i = 0; i < s.size(); ++i)
             {
-                if (!std::isdigit(s[i]))
+                if (!std::isdigit(static_cast<unsigned char>(s[i])))
                     return false;
             }
 
@@ -74,7 +78,7 @@ namespace Pistache::Http
             {
                 tp = time_point(std::chrono::seconds(std::stoull(s)));
             }
-            catch (std::out_of_range& e)
+            catch (const std::exception&)
             {
                 return false;
             }
