@@ -429,6 +429,9 @@ namespace Pistache::Tcp
     {
         PS_TIMEDBG_START_THIS;
 
+        if (isBound())
+            throw std::runtime_error("Listener is already bound");
+
         addr_ = address;
 
         auto found            = false;
@@ -605,7 +608,8 @@ namespace Pistache::Tcp
 
     void Listener::runThreaded()
     {
-        shutdownFd.bind(poller);
+        if (!shutdownFd.isBound())
+            shutdownFd.bind(poller);
         acceptThread = std::thread([=]() { this->run(); });
     }
 
