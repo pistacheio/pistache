@@ -266,6 +266,14 @@ namespace Pistache::Tcp
         Lock toWriteLock;
 
         PollableQueue<TimerEntry> timersQueue;
+
+        // timersLock protects timers. Unlike armTimerMs, disarmTimer can be
+        // called directly from a thread other than this transport's reactor
+        // thread (e.g. via Http::Timeout::disarm() when a handler completes
+        // a deferred response on its own thread), so timers cannot rely on
+        // being touched only from the reactor thread the way toWrite/peers_
+        // mostly do via their own explicit locks.
+        Lock timersLock;
         std::unordered_map<FdConst, TimerEntry> timers;
 
         PollableQueue<PeerEntry> peersQueue;
