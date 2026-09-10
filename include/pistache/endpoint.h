@@ -207,11 +207,7 @@ namespace Pistache::Http
         void serveImpl(Method method)
         {
 #define CALL_MEMBER_FN(obj, pmf) ((obj).*(pmf))
-            std::shared_ptr<Handler> handler;
-            {
-                std::lock_guard<std::mutex> guard(handlerMutex_);
-                handler = handler_;
-            }
+            auto handler = getHandler();
             if (!handler)
                 throw std::runtime_error("Must call setHandler() prior to serve()");
 
@@ -223,13 +219,24 @@ namespace Pistache::Http
 #undef CALL_MEMBER_FN
         }
 
-        // handlerMutex_ protects handler_, which is read (via the
-        // transport factory set up in init()) and written (via
-        // setHandler()) from different threads in normal use: init()
-        // captures `this` in a factory lambda that the Listener/Reactor
-        // may invoke from a different context than the thread that later
-        // calls setHandler().
-        mutable std::mutex handlerMutex_;
+        // Returns handler_ under stateMutex_. Centralizes the
+        // lock-then-copy pattern needed anywhere handler_ is read from a
+        // thread other than the one that last called setHandler().
+        std::shared_ptr<Handler> getHandler() const
+        {
+            std::lock_guard<std::mutex> guard(stateMutex_);
+            return handler_;
+        }
+
+        // stateMutex_ protects handler_ and options_, both of which are
+        // read (via the transport factory set up in init(), and via
+        // setHandler()/useSSL()) and written (via init()/setHandler())
+        // from different threads in normal use: init() captures `this` in
+        // a factory lambda that the Listener/Reactor may invoke from a
+        // different context than the thread that later calls
+        // setHandler(), and setHandler()/useSSL() read options_ set by a
+        // prior init() call.
+        mutable std::mutex stateMutex_;
         std::shared_ptr<Handler> handler_;
         Tcp::Listener listener;
 
