@@ -59,8 +59,6 @@ namespace Pistache::Rest
 
     std::vector<TypedParam> Request::splat() const { return splats_; }
 
-    std::regex SegmentTreeNode::multiple_slash = std::regex("//+", std::regex_constants::optimize);
-
     SegmentTreeNode::SegmentTreeNode()
         : resource_ref_()
         , fixed_()
@@ -121,9 +119,21 @@ namespace Pistache::Rest
 
     std::string SegmentTreeNode::sanitizeResource(const std::string& path)
     {
-        const auto& dup = std::regex_replace(path, SegmentTreeNode::multiple_slash,
-                                             std::string("/"));
-        if (dup[dup.length() - 1] == '/')
+        // Collapse runs of consecutive slashes to a single one. This is done
+        // with a manual linear scan rather than a regex (e.g. "//+") because
+        // libstdc++'s std::regex backtracking engine recurses once per
+        // repetition of a quantified sub-expression; a path containing a
+        // long run of slashes could therefore exhaust the stack.
+        std::string dup;
+        dup.reserve(path.length());
+        for (size_t i = 0; i < path.length(); ++i)
+        {
+            if (path[i] == '/' && i > 0 && path[i - 1] == '/')
+                continue;
+            dup.push_back(path[i]);
+        }
+
+        if (!dup.empty() && dup[dup.length() - 1] == '/')
         {
             return dup.substr(1, dup.length() - 2);
         }
