@@ -642,6 +642,12 @@ namespace Pistache::Tcp
     {
         PS_TIMEDBG_START_THIS;
 
+        if (!reactor_)
+        {
+            return Async::Promise<Listener::Load>::rejected(
+                std::runtime_error("requestLoad() called before bind()"));
+        }
+
         auto handlers = reactor_->handlers(transportKey);
 
         std::vector<Async::Promise<rusage>> loads;
@@ -1077,6 +1083,9 @@ namespace Pistache::Tcp
     std::vector<std::shared_ptr<Tcp::Peer>> Listener::getAllPeer()
     {
         std::vector<std::shared_ptr<Tcp::Peer>> vecPeers;
+        if (!reactor_)
+            return vecPeers;
+
         auto handlers = reactor_->handlers(transportKey);
 
         for (const auto& handler : handlers)
