@@ -172,14 +172,20 @@ namespace Pistache::Aio
             return key;
         }
 
-        // poller.reg_unreg_mutex_ must be locked before calling
+        // Public entry point: takes poller.reg_unreg_mutex_ itself, then
+        // calls the already-locked implementation below. Do not call this
+        // from a context that already holds poller.reg_unreg_mutex_ (use
+        // detachFromReactorMutexAlreadyLocked instead), as std::mutex is
+        // non-recursive.
         void detachFromReactor(const std::shared_ptr<Handler>& handler)
             override
         {
             PS_TIMEDBG_START_THIS;
 
-            handler->unregisterPoller(poller);
-            handler->reactor_ = nullptr;
+            std::mutex& poller_reg_unreg_mutex(poller.reg_unreg_mutex_);
+            GUARD_AND_DBG_LOG(poller_reg_unreg_mutex);
+
+            detachFromReactorMutexAlreadyLocked(handler);
         }
 
         void detachAndRemoveAllHandlers() override
@@ -189,12 +195,13 @@ namespace Pistache::Aio
 
             handlers_.forEachHandler([this](
                                          const std::shared_ptr<Handler> handler) {
-                detachFromReactor(handler);
+                detachFromReactorMutexAlreadyLocked(handler);
             });
 
             handlers_.removeAll();
         }
 
+        // poller.reg_unreg_mutex_ must be locked before calling
         std::shared_ptr<Handler> handler(const Reactor::Key& key) const
         {
             return handlers_.at(static_cast<size_t>(key.data()));
@@ -203,6 +210,10 @@ namespace Pistache::Aio
         std::vector<std::shared_ptr<Handler>>
         handlers(const Reactor::Key& key) const override
         {
+            std::mutex& poller_reg_unreg_mutex(
+                const_cast<Polling::Epoll&>(poller).reg_unreg_mutex_);
+            GUARD_AND_DBG_LOG(poller_reg_unreg_mutex);
+
             std::vector<std::shared_ptr<Handler>> res;
 
             res.push_back(handler(key));
@@ -347,6 +358,16 @@ namespace Pistache::Aio
         static constexpr size_t MaxHandlers() { return HandlerList::MaxHandlers; }
 
     private:
+        // poller.reg_unreg_mutex_ must be locked before calling
+        void detachFromReactorMutexAlreadyLocked(
+            const std::shared_ptr<Handler>& handler)
+        {
+            PS_TIMEDBG_START_THIS;
+
+            handler->unregisterPoller(poller);
+            handler->reactor_ = NULL;
+        }
+
         static Polling::Tag encodeTag(const Reactor::Key& key, Polling::Tag tag)
         {
             auto value = tag.value();
@@ -601,7 +622,10 @@ namespace Pistache::Aio
             res.reserve(workers_.size());
             for (const auto& wrk : workers_)
             {
-                res.push_back(wrk->sync->handler(originalKey));
+                // sync->handlers() takes sync's own poller.reg_unreg_mutex_
+                // internally and returns a single-element vector.
+                auto workerHandlers = wrk->sync->handlers(originalKey);
+                res.insert(res.end(), workerHandlers.begin(), workerHandlers.end());
             }
 
             return res;
