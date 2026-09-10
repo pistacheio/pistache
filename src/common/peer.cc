@@ -50,7 +50,7 @@ namespace Pistache::Tcp
     Peer::~Peer()
     {
         PS_LOG_DEBUG_ARGS("peer %p, fd %" PIST_QUOTE(PS_FD_PRNTFCD) ", Address ptr %p, ssl %p",
-                          this, fd_, &addr, ssl_);
+                          this, fd_.load(), &addr, ssl_);
 
         closeFd(); // does nothing if already closed
 
@@ -118,7 +118,7 @@ namespace Pistache::Tcp
 
     Fd Peer::fd() const
     {
-        Fd res_fd(fd_);
+        Fd res_fd(fd_.load());
 
         if (res_fd == PS_FD_EMPTY)
         {
@@ -131,7 +131,7 @@ namespace Pistache::Tcp
 
     em_socket_t Peer::actualFd() const // can return -1
     {
-        Fd this_fd(fd_);
+        Fd this_fd(fd_.load());
 
         if (this_fd == PS_FD_EMPTY)
         {
@@ -146,14 +146,18 @@ namespace Pistache::Tcp
     {
 
         PS_LOG_DEBUG_ARGS("peer %p, fd %" PIST_QUOTE(PS_FD_PRNTFCD),
-                          this, fd_);
+                          this, fd_.load());
 
-        auto this_fd = fd_;
+        // Atomically read-and-clear fd_ so that if closeFd() is somehow
+        // invoked concurrently (e.g. from two threads that both still hold
+        // this Peer's shared_ptr), only one of them observes the real fd
+        // and actually closes it; the other sees PS_FD_EMPTY and is a
+        // no-op. A plain read-then-clear (as used to be done here) would
+        // let both threads see the real fd and both attempt to close it.
+        auto this_fd = fd_.exchange(PS_FD_EMPTY);
 
         if (this_fd != PS_FD_EMPTY)
         {
-            fd_ = PS_FD_EMPTY;
-
             if (transport_)
             {
                 // Getting transport to do the close allows transport to clean
