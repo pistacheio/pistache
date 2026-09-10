@@ -300,6 +300,7 @@ namespace Pistache::Tcp
 
     void Listener::setHandler(const std::shared_ptr<Handler>& handler)
     {
+        std::lock_guard<std::mutex> guard(handlerMutex_);
         handler_ = handler;
     }
 
@@ -972,10 +973,15 @@ namespace Pistache::Tcp
     Listener::TransportFactory Listener::defaultTransportFactory() const
     {
         return [&] {
-            if (!handler_)
+            std::shared_ptr<Handler> handler;
+            {
+                std::lock_guard<std::mutex> guard(handlerMutex_);
+                handler = handler_;
+            }
+            if (!handler)
                 throw std::runtime_error("setHandler() has not been called");
 
-            return std::make_shared<Transport>(handler_);
+            return std::make_shared<Transport>(handler);
         };
     }
 
