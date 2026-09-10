@@ -518,44 +518,72 @@ namespace Pistache::Tcp
 
         for (;;)
         {
-            { // encapsulate l_guard(poller.reg_unreg_mutex_)
-              // See comment in class Epoll regarding reg_unreg_mutex_
+            std::vector<Polling::Event> events;
+            int ready_fds = 0;
 
+            {
+                // See comment in class Epoll regarding reg_unreg_mutex_.
+                // Only poller.poll() itself needs it here: Listener::poller
+                // is private to this Listener and is otherwise only ever
+                // touched by bindListener()/runThreaded(), both of which
+                // run strictly before this loop starts (single-threaded
+                // setup), so nothing else can unregister it concurrently
+                // with the event handling below. Releasing the mutex
+                // before handling the returned events (in particular
+                // before handleNewConnection(), which can block for up to
+                // sslHandshakeTimeout_ performing a TLS handshake) avoids
+                // needlessly holding it for the duration of that blocking
+                // work.
                 std::mutex& poller_reg_unreg_mutex(poller.reg_unreg_mutex_);
                 GUARD_AND_DBG_LOG(poller_reg_unreg_mutex);
 
-                std::vector<Polling::Event> events;
-                int ready_fds = poller.poll(events);
+                ready_fds = poller.poll(events);
+            }
 
-                if (ready_fds == -1)
-                {
-                    throw Error::system("Polling");
-                }
-                for (const auto& event : events)
-                {
-                    if (event.tag == shutdownFd.tag())
-                        return;
+            if (ready_fds == -1)
+            {
+                throw Error::system("Polling");
+            }
+            for (const auto& event : events)
+            {
+                if (event.tag == shutdownFd.tag())
+                    return;
 
-                    if (event.flags.hasFlag(Polling::NotifyOn::Read))
+                if (event.flags.hasFlag(Polling::NotifyOn::Read))
+                {
+                    Fd fd = (Fd)event.tag.value();
+                    if (fd == listen_fd)
                     {
-                        Fd fd = (Fd)event.tag.value();
-                        if (fd == listen_fd)
+                        try
                         {
-                            try
-                            {
-                                handleNewConnection();
-                            }
-                            catch (SocketError& ex)
-                            {
-                                PISTACHE_LOG_STRING_WARN(
-                                    logger_, "Socket error: " << ex.what());
-                            }
-                            catch (ServerError& ex)
-                            {
-                                PISTACHE_LOG_STRING_FATAL(
-                                    logger_, "Server error: " << ex.what());
-                                throw;
-                            }
+                            handleNewConnection();
+                        }
+                        catch (SocketError& ex)
+                        {
+                            PISTACHE_LOG_STRING_WARN(
+                                logger_, "Socket error: " << ex.what());
+                        }
+                        catch (ServerError& ex)
+                        {
+                            PISTACHE_LOG_STRING_FATAL(
+                                logger_, "Server error: " << ex.what());
+                            throw;
+                        }
+                        // SocketError/ServerError above only cover the
+                        // exceptions acceptConnection() itself throws
+                        // for a failed accept(4). Other paths in
+                        // handleNewConnection() (e.g. the TRY/
+                        // TRY_NULL_RET macros around setsockopt() or
+                        // em_event_new()) throw a plain
+                        // std::runtime_error, which would otherwise
+                        // propagate out of this thread and call
+                        // std::terminate() over what should be a
+                        // single failed connection.
+                        catch (std::runtime_error& ex)
+                        {
+                            PISTACHE_LOG_STRING_WARN(
+                                logger_,
+                                "Error handling new connection: " << ex.what());
                         }
                     }
                 }
