@@ -25,6 +25,7 @@
 
 #ifdef PISTACHE_USE_SSL
 
+#include <openssl/err.h>
 #include <openssl/ssl.h>
 
 #endif /* PISTACHE_USE_SSL */

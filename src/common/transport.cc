@@ -324,8 +324,43 @@ namespace Pistache::Tcp
             {
                 PS_LOG_DEBUG("SSL_read");
 
-                bytes = SSL_read((SSL*)peer->ssl(), buffer + totalBytes,
-                                 static_cast<int>(Const::MaxBuffer - totalBytes));
+                auto* ssl_ = (SSL*)peer->ssl();
+                bytes      = SSL_read(ssl_, buffer + totalBytes,
+                                      static_cast<int>(Const::MaxBuffer - totalBytes));
+
+                // SSL_read's return value cannot be interpreted with plain
+                // errno like a raw recv(): it must be paired with
+                // SSL_get_error. In particular, a peer that closes the TCP
+                // connection without sending a TLS close_notify shutdown
+                // alert is reported as SSL_ERROR_SYSCALL or SSL_ERROR_SSL
+                // (with OpenSSL 3.x logging SSL_R_UNEXPECTED_EOF_WHILE_READING
+                // on the per-thread error queue). If that queued error is not
+                // cleared here, it can be misattributed to a later, unrelated
+                // SSL call made on this same thread.
+                if (bytes <= 0)
+                {
+                    const int ssl_err = SSL_get_error(ssl_, static_cast<int>(bytes));
+                    switch (ssl_err)
+                    {
+                    case SSL_ERROR_WANT_READ:
+                    case SSL_ERROR_WANT_WRITE:
+                        bytes = -1;
+                        errno = EAGAIN;
+                        break;
+                    case SSL_ERROR_SYSCALL:
+                    case SSL_ERROR_SSL:
+                        PS_LOG_DEBUG_ARGS(
+                            "SSL_read error %d (peer likely closed without "
+                            "TLS shutdown), clearing error queue, last 0x%08lX",
+                            ssl_err, ERR_peek_last_error());
+                        ERR_clear_error();
+                        bytes = -1;
+                        errno = ECONNRESET;
+                        break;
+                    default:
+                        break;
+                    }
+                }
             }
             else
             {
@@ -704,6 +739,41 @@ namespace Pistache::Tcp
                 PS_LOG_DEBUG_ARGS("SSL_write, len %d", (int)len);
 
                 bytesWritten = SSL_write(ssl_, buffer, static_cast<int>(len));
+
+                // See comment in handleIncoming: SSL_write's return value
+                // must be interpreted via SSL_get_error, not plain errno. A
+                // peer that has gone away without a TLS close_notify shutdown
+                // surfaces as SSL_ERROR_SYSCALL/SSL_ERROR_SSL and must have
+                // its queued OpenSSL error cleared so it isn't picked up by
+                // a later, unrelated SSL call on this thread.
+                if (bytesWritten <= 0)
+                {
+                    const int ssl_err = SSL_get_error(ssl_, static_cast<int>(bytesWritten));
+                    switch (ssl_err)
+                    {
+                    case SSL_ERROR_WANT_READ:
+                    case SSL_ERROR_WANT_WRITE:
+                        bytesWritten = -1;
+                        errno        = EAGAIN;
+                        break;
+                    case SSL_ERROR_ZERO_RETURN:
+                        bytesWritten = -1;
+                        errno        = ECONNRESET;
+                        break;
+                    case SSL_ERROR_SYSCALL:
+                    case SSL_ERROR_SSL:
+                        PS_LOG_DEBUG_ARGS(
+                            "SSL_write error %d (peer likely closed without "
+                            "TLS shutdown), clearing error queue, last 0x%08lX",
+                            ssl_err, ERR_peek_last_error());
+                        ERR_clear_error();
+                        bytesWritten = -1;
+                        errno        = ECONNRESET;
+                        break;
+                    default:
+                        break;
+                    }
+                }
             }
         }
 
