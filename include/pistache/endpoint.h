@@ -18,6 +18,7 @@
 #include <pistache/transport.h>
 
 #include <chrono>
+#include <mutex>
 
 namespace Pistache::Http
 {
@@ -206,10 +207,15 @@ namespace Pistache::Http
         void serveImpl(Method method)
         {
 #define CALL_MEMBER_FN(obj, pmf) ((obj).*(pmf))
-            if (!handler_)
+            std::shared_ptr<Handler> handler;
+            {
+                std::lock_guard<std::mutex> guard(handlerMutex_);
+                handler = handler_;
+            }
+            if (!handler)
                 throw std::runtime_error("Must call setHandler() prior to serve()");
 
-            listener.setHandler(handler_);
+            listener.setHandler(handler);
             listener.bind();
 
             CALL_MEMBER_FN(listener, method)
@@ -217,6 +223,13 @@ namespace Pistache::Http
 #undef CALL_MEMBER_FN
         }
 
+        // handlerMutex_ protects handler_, which is read (via the
+        // transport factory set up in init()) and written (via
+        // setHandler()) from different threads in normal use: init()
+        // captures `this` in a factory lambda that the Listener/Reactor
+        // may invoke from a different context than the thread that later
+        // calls setHandler().
+        mutable std::mutex handlerMutex_;
         std::shared_ptr<Handler> handler_;
         Tcp::Listener listener;
 
