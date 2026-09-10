@@ -896,7 +896,11 @@ namespace Pistache::Tcp
             ::close(client_actual_fd);
             PS_LOG_DEBUG_ARGS("::close actual_fd %d", client_actual_fd);
 
-            return (fcntl_res);
+            // Signal failure the same way every other failure path in this
+            // function does (by throwing) rather than returning a negative
+            // fd: callers of acceptConnection() treat its return value as
+            // an open, live fd and do not check it for negativity.
+            throw SocketError(strerror(errno));
         }
 
         fcntl_res = fcntl(client_actual_fd, F_SETFL, 0 /*clear everything*/);
@@ -908,7 +912,7 @@ namespace Pistache::Tcp
             ::close(client_actual_fd);
             PS_LOG_DEBUG_ARGS("::close actual_fd %d", client_actual_fd);
 
-            return (fcntl_res);
+            throw SocketError(strerror(errno));
         }
 #endif // ifdef _USE_LIBEVENT_LIKE_APPLE
 
