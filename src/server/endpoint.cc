@@ -21,7 +21,8 @@
 namespace Pistache::Http
 {
 
-    class TransportImpl : public Tcp::Transport
+    class TransportImpl : public Tcp::Transport,
+                          public std::enable_shared_from_this<TransportImpl>
     {
     public:
         using Base = Tcp::Transport;
@@ -131,6 +132,7 @@ namespace Pistache::Http
                 r->removeFd(key(), timerFd);
 
             CLOSE_FD(timerFd);
+            timerFd = PS_FD_EMPTY;
         }
 
         Base::unregisterPoller(poller); // Transport unregisterPoller
@@ -235,7 +237,22 @@ namespace Pistache::Http
         else
         {
             ResponseWriter response(Http::Version::Http11, this, static_cast<Http::Handler*>(handler_.get()), peer);
-            response.send(Http::Code::Request_Timeout).then([=](ssize_t) { removePeer(peer); }, [=](std::exception_ptr) { removePeer(peer); });
+
+            // Capture a weak_ptr rather than `this`: if this TransportImpl
+            // is torn down (e.g. reactor shutdown) while the response is
+            // still in flight, the continuation must not touch a dangling
+            // TransportImpl when it eventually runs.
+            std::weak_ptr<TransportImpl> weakSelf = weak_from_this();
+            response.send(Http::Code::Request_Timeout)
+                .then(
+                    [weakSelf, peer](ssize_t) {
+                        if (auto self = weakSelf.lock())
+                            self->removePeer(peer);
+                    },
+                    [weakSelf, peer](std::exception_ptr) {
+                        if (auto self = weakSelf.lock())
+                            self->removePeer(peer);
+                    });
         }
     }
 
