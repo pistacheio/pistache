@@ -277,6 +277,9 @@ namespace Pistache::Tcp
                         const std::string& workersName, int backlog,
                         PISTACHE_STRING_LOGGER_T logger)
     {
+        if (workers == 0)
+            throw std::invalid_argument("workers must be greater than zero");
+
         if (workers > hardware_concurrency())
         {
             // Log::warning() << "More workers than available cores"
@@ -910,7 +913,13 @@ namespace Pistache::Tcp
             return;
         }
 
-        auto handlers  = reactor_->handlers(transportKey);
+        auto handlers = reactor_->handlers(transportKey);
+        if (handlers.empty())
+        {
+            PS_LOG_INFO_ARGS("No transport handlers registered for peer %p",
+                             peer.get());
+            return;
+        }
         auto idx       = actual_fd % handlers.size();
         auto transport = std::static_pointer_cast<Transport>(handlers[idx]);
 
