@@ -363,7 +363,12 @@ namespace Pistache::Tcp
 
         LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(actual_fd);
 
-        TRY(::listen(actual_fd, backlog_));
+        if (::listen(actual_fd, backlog_) < 0)
+        {
+            PS_LOG_DEBUG_ARGS("::listen failed, actual_fd %d", actual_fd);
+            close(actual_fd);
+            return false;
+        }
 
         LOG_DEBUG_ACT_FD_AND_FDL_FLAGS(actual_fd);
 
@@ -381,12 +386,18 @@ namespace Pistache::Tcp
 
 #ifdef _USE_LIBEVENT
         // Use EVM_READ, as per call to addFd below
-        Fd event_fd = TRY_NULL_RET(
-            Polling::Epoll::em_event_new(actual_fd, // pre-allocated file desc
-                                         EVM_READ | EVM_PERSIST,
-                                         F_SETFDL_NOTHING, // f_setfd_flags - don't change
-                                         F_SETFDL_NOTHING // f_setfl_flags - don't change
-                                         ));
+        Fd event_fd = Polling::Epoll::em_event_new(
+            actual_fd, // pre-allocated file desc
+            EVM_READ | EVM_PERSIST,
+            F_SETFDL_NOTHING, // f_setfd_flags - don't change
+            F_SETFDL_NOTHING // f_setfl_flags - don't change
+        );
+        if (event_fd == NULL)
+        {
+            PS_LOG_DEBUG_ARGS("em_event_new failed, actual_fd %d", actual_fd);
+            close(actual_fd);
+            return false;
+        }
 #else
         Fd event_fd = actual_fd;
 #endif
