@@ -121,22 +121,34 @@ private:
     static unsigned mUniCounter; // universal (static) counter
     unsigned mCounter; // individual counter for this __PS_TIMEDBG
 
-    static std::map<pthread_t, unsigned> mThreadMap;
-    static std::mutex mThreadMapMutex;
-
-    
+    // Returned via function-local statics (Meyer's singleton), rather than
+    // as plain static data members, to avoid the static-initialization-order
+    // fiasco: an application embedding this library may have its own static
+    // objects whose constructors call into Pistache (directly or
+    // indirectly triggering PS_TIMEDBG_START) before this translation
+    // unit's own static initializers are guaranteed to have run.
+    static std::map<pthread_t, unsigned>& mThreadMap()
+        {
+            static std::map<pthread_t, unsigned> inst;
+            return inst;
+        }
+    static std::mutex& mThreadMapMutex()
+        {
+            static std::mutex mutex_;
+            return mutex_;
+        }
 
     unsigned getThreadNextDepth() // returns depth value after increment
         {
-            std::lock_guard<std::mutex> l_guard(mThreadMapMutex);
+            std::lock_guard<std::mutex> l_guard(mThreadMapMutex());
             pthread_t pthread_id = pthread_self();
-            
+
             std::map<pthread_t, unsigned>::iterator it =
-                mThreadMap.find(pthread_id);
-            if (it == mThreadMap.end())
+                mThreadMap().find(pthread_id);
+            if (it == mThreadMap().end())
             {
                 std::pair<pthread_t, unsigned> pr(pthread_id, 1);
-                mThreadMap.insert(pr);
+                mThreadMap().insert(pr);
                 return(1);
             }
 
@@ -144,19 +156,19 @@ private:
         }
     unsigned decrementThreadDepth() // returns depth value before decrement
         {
-            std::lock_guard<std::mutex> l_guard(mThreadMapMutex);
+            std::lock_guard<std::mutex> l_guard(mThreadMapMutex());
             pthread_t pthread_id = pthread_self();
-            
+
             std::map<pthread_t, unsigned>::iterator it =
-                mThreadMap.find(pthread_id);
+                mThreadMap().find(pthread_id);
 
             unsigned old_depth = 1;
             if (it->second) // else something went wrong
                 old_depth = ((it->second)--);
 
             if (old_depth <= 1)
-                mThreadMap.erase(it); // arguably optional, but avoids any risk
-                                      // of leaks
+                mThreadMap().erase(it); // arguably optional, but avoids any risk
+                                        // of leaks
             return(old_depth);
         }
 

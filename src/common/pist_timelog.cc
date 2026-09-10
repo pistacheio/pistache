@@ -15,7 +15,4 @@
 
 #ifdef DEBUG
 unsigned __PS_TIMEDBG::mUniCounter = 0;
-
-std::map<pthread_t, unsigned> __PS_TIMEDBG::mThreadMap;
-std::mutex __PS_TIMEDBG::mThreadMapMutex;
 #endif
