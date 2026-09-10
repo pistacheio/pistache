@@ -618,6 +618,17 @@ namespace Pistache::Tcp
             shutdownFd.notify();
         }
 
+        // Wait for acceptThread (if any) to observe the shutdown signal
+        // above and return from run(), before tearing down the reactor:
+        // run() may still be mid-handleNewConnection()/dispatchPeer(),
+        // dispatching a new peer to one of reactor_'s workers, and
+        // reactor_->shutdown() must not race with that. Guard against a
+        // self-join if shutdown() is somehow called from acceptThread
+        // itself.
+        if (acceptThread.joinable()
+            && acceptThread.get_id() != std::this_thread::get_id())
+            acceptThread.join();
+
         if (reactor_)
             reactor_->shutdown();
     }
