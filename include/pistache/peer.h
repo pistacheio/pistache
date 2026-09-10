@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -84,7 +85,11 @@ namespace Pistache::Tcp
 
         Transport* transport_ = nullptr;
 
-        Fd fd_ = PS_FD_EMPTY;
+        // atomic because fd() / actualFd() (readers) and closeFd() (writer)
+        // may be called from different threads: e.g. a handler thread
+        // still holding this Peer's shared_ptr while the transport's
+        // reactor thread closes it.
+        std::atomic<Fd> fd_ { PS_FD_EMPTY };
 
         Address addr;
 

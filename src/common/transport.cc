@@ -194,6 +194,20 @@ namespace Pistache::Tcp
     {
         PS_LOG_DEBUG_ARGS("%d fds", fds.size());
 
+        // Drain any pending new-peer registrations unconditionally, before
+        // handling anything else below (in particular before
+        // handleWriteQueue()). handleNewPeer() (possibly called from a
+        // thread other than this one) always pushes to peersQueue before a
+        // caller could subsequently push a write for that same fd to
+        // writesQueue, but if both queues' notifications happen to arrive
+        // together in the same fds set, the two branches below could
+        // otherwise run in the wrong relative order (write queue drained
+        // before the peer is registered in peers_), causing
+        // handleWriteQueue() to find isPeerFd() false and silently drop
+        // the write (its Promise would then never resolve/reject).
+        // Draining here first closes that window.
+        handlePeerQueue();
+
         for (const auto& entry : fds)
         {
             PS_LOG_DBG_FD_AND_NOTIFY;
@@ -233,16 +247,24 @@ namespace Pistache::Tcp
                 }
                 else if (isTimerFd(tag))
                 {
-                    auto it      = timers.find(static_cast<decltype(timers)::key_type>(tag.value()));
-                    auto& entry_ = it->second;
-                    PS_LOG_DEBUG("handleTimer");
-                    handleTimer(std::move(entry_));
-                    PS_LOG_DEBUG_ARGS("Timer %" PIST_QUOTE(PS_FD_PRNTFCD) " erased from timers",
-                                      it->first);
+                    std::optional<TimerEntry> entry_;
+                    {
+                        Guard guard(timersLock);
+                        auto it = timers.find(static_cast<decltype(timers)::key_type>(tag.value()));
+                        if (it == std::end(timers))
+                        {
+                            PS_LOG_DEBUG("Timer fd not found in timers (already disarmed/erased)");
+                            continue;
+                        }
+                        entry_.emplace(std::move(it->second));
 
-                    PS_LOG_DEBUG_ARGS("Timer %" PIST_QUOTE(PS_FD_PRNTFCD) " erasing from timers",
-                                      it->first);
-                    timers.erase(it->first);
+                        PS_LOG_DEBUG_ARGS("Timer %" PIST_QUOTE(PS_FD_PRNTFCD) " erasing from timers",
+                                          it->first);
+                        timers.erase(it);
+                    }
+
+                    PS_LOG_DEBUG("handleTimer");
+                    handleTimer(std::move(*entry_));
                 }
                 else
                 {
@@ -282,6 +304,8 @@ namespace Pistache::Tcp
     void Transport::disarmTimer(Fd fd)
     {
         PS_TIMEDBG_START_ARGS("fd %" PIST_QUOTE(PS_FD_PRNTFCD), fd);
+
+        Guard guard(timersLock);
 
         auto it = timers.find(fd);
         if (it == std::end(timers))
@@ -987,15 +1011,18 @@ namespace Pistache::Tcp
 
 #endif
 
-        auto it = timers.find(entry.fd);
-        if (it != std::end(timers))
         {
-            PS_LOG_DEBUG_ARGS("Fd %" PIST_QUOTE(PS_FD_PRNTFCD),
-                              "timer already armed",
-                              entry.fd);
+            Guard guard(timersLock);
+            auto it = timers.find(entry.fd);
+            if (it != std::end(timers))
+            {
+                PS_LOG_DEBUG_ARGS("Fd %" PIST_QUOTE(PS_FD_PRNTFCD),
+                                  "timer already armed",
+                                  entry.fd);
 
-            entry.deferred.reject(std::runtime_error("Timer is already armed"));
-            return;
+                entry.deferred.reject(std::runtime_error("Timer is already armed"));
+                return;
+            }
         }
 
         int res = -1;
@@ -1035,7 +1062,10 @@ namespace Pistache::Tcp
                                      Polling::Mode::Edge);
 
         PS_LOG_DEBUG_ARGS("Timer %" PIST_QUOTE(PS_FD_PRNTFCD) " inserting into timers", entry.fd);
-        timers.insert(std::make_pair(entry.fd, std::move(entry)));
+        {
+            Guard guard(timersLock);
+            timers.insert(std::make_pair(entry.fd, std::move(entry)));
+        }
     }
 
     void Transport::handleWriteQueue(bool flush)
@@ -1201,6 +1231,12 @@ namespace Pistache::Tcp
     bool Transport::isTimerFd(FdConst fdconst) const
     {
         PS_TIMEDBG_START_THIS;
+
+        // Cast away const so we can lock the mutex. Nonetheless, this function
+        // overall locks then unlocks the mutex, leaving it unchanged
+        Transport* non_const_this = (Transport*)this;
+
+        Guard guard(non_const_this->timersLock);
 
         // Can cast away const since we're not actually going to change fd
         Fd fd    = PS_CAST_AWAY_CONST_FD(fdconst);

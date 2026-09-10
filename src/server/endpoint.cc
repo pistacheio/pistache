@@ -133,6 +133,7 @@ namespace Pistache::Http
                 r->removeFd(key(), timerFd);
 
             CLOSE_FD(timerFd);
+            timerFd = PS_FD_EMPTY;
         }
 
         Base::unregisterPoller(poller); // Transport unregisterPoller
@@ -321,10 +322,11 @@ namespace Pistache::Http
     {
         listener.init(options.threads_, options.flags_, options.threadsName_, options.backlog_);
         listener.setTransportFactory([this, options] {
-            if (!handler_)
+            auto handler = getHandler();
+            if (!handler)
                 throw std::runtime_error("Must call setHandler()");
 
-            auto transport = std::make_shared<TransportImpl>(handler_);
+            auto transport = std::make_shared<TransportImpl>(handler);
             transport->setHeaderTimeout(options.headerTimeout_);
             transport->setBodyTimeout(options.bodyTimeout_);
             transport->setKeepaliveTimeout(options.keepaliveTimeout_);
@@ -332,18 +334,26 @@ namespace Pistache::Http
             return transport;
         });
 
-        if (handler_)
+        auto handler = getHandler();
+        if (handler)
         {
-            handler_->setMaxRequestSize(options.maxRequestSize_);
-            handler_->setMaxResponseSize(options.maxResponseSize_);
+            handler->setMaxRequestSize(options.maxRequestSize_);
+            handler->setMaxResponseSize(options.maxResponseSize_);
         }
 
-        options_ = options;
-        logger_  = options.logger_;
+        {
+            std::lock_guard<std::mutex> guard(stateMutex_);
+            options_ = options;
+        }
+        logger_ = options.logger_;
     }
 
     void Endpoint::setHandler(const std::shared_ptr<Handler>& handler)
     {
+        if (!handler)
+            throw std::runtime_error("setHandler() called with a null handler");
+
+        std::lock_guard<std::mutex> guard(stateMutex_);
         handler_ = handler;
         handler_->setMaxRequestSize(options_.maxRequestSize_);
         handler_->setMaxResponseSize(options_.maxResponseSize_);
@@ -366,7 +376,12 @@ namespace Pistache::Http
 #ifndef PISTACHE_USE_SSL
         throw std::runtime_error("Pistache is not compiled with SSL support.");
 #else
-        listener.setupSSL(cert, key, use_compression, pass_cb, options_.sslHandshakeTimeout_);
+        std::chrono::milliseconds sslHandshakeTimeout;
+        {
+            std::lock_guard<std::mutex> guard(stateMutex_);
+            sslHandshakeTimeout = options_.sslHandshakeTimeout_;
+        }
+        listener.setupSSL(cert, key, use_compression, pass_cb, sslHandshakeTimeout);
 #endif /* PISTACHE_USE_SSL */
     }
 
