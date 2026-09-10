@@ -524,14 +524,20 @@ namespace Pistache
         EmEventCtr(uint64_t initval);
 
     private:
-        std::mutex cv_read_mutex_;  // used in wait
-        std::mutex cv_write_mutex_; // used in wait
-
         // cv_xxx_sptr_ are null if EmEventFd is nonblocking
         std::shared_ptr<std::condition_variable> cv_read_sptr_;
         std::shared_ptr<std::condition_variable> cv_write_sptr_;
 
-        std::mutex counter_val_mutex_; // Also guards condition_variable
+        // counter_val_mutex_ is the mutex used with cv_read_sptr_ /
+        // cv_write_sptr_'s wait() calls (not a separate mutex per
+        // condition_variable). This is required: wait() only releases the
+        // mutex it is given while blocked, so if a distinct mutex were used
+        // for the wait while counter_val_mutex_ stayed locked for the
+        // encapsulating block, a blocked reader/writer would hold
+        // counter_val_mutex_ forever, and the peer thread -- which must
+        // lock counter_val_mutex_ before it can update counter_val_ and
+        // notify -- could never wake it up (deadlock).
+        std::mutex counter_val_mutex_;
         uint64_t counter_val_;
 
         std::mutex block_nonblock_mutex_;
@@ -1367,16 +1373,11 @@ namespace Pistache
                 PS_LOG_DEBUG_ARGS(
                     "EmEventCtr %p waking up any blocked writes", this);
 
-                { // encapsulate cv_write_mutex_ lock
-                    //
-                    // Per spec, must claim and release the mutex before
-                    // doing a notify_all
-                    // https://en.cppreference.com/w/cpp/thread/
-                    //                                condition_variable/wait
-                    // (See example)
-                    GUARD_AND_DBG_LOG(cv_write_mutex_);
-                }
-
+                // counter_val_mutex_ is already locked by the caller (per
+                // this function's contract) and is the same mutex that a
+                // blocked writeProt() waits on, so it is safe -- and
+                // required, to avoid a lost wakeup -- to notify while still
+                // holding it.
                 tmp_cv_sptr->notify_all(); // does nothing if none waiting
             }
         }
@@ -1396,7 +1397,7 @@ namespace Pistache
         }
 
         { // encapsulate counter_val_mutex_
-            GUARD_AND_DBG_LOG(counter_val_mutex_);
+            std::unique_lock<std::mutex> lk(counter_val_mutex_);
 
             uint64_t old_counter_val = resetCounterValMutexAlreadyLocked();
             if (old_counter_val)
@@ -1418,8 +1419,15 @@ namespace Pistache
             PS_LOG_DEBUG_ARGS(
                 "EmEventCtr %p blocking until counter nonzero", this);
 
-            std::unique_lock<std::mutex> lk(cv_read_mutex_);
-            cv_read_sptr_->wait(lk);
+            // Keep a local copy of the shared_ptr for the duration of the
+            // wait, matching the pattern used elsewhere in this class.
+            std::shared_ptr<std::condition_variable> tmp_cv_sptr(cv_read_sptr_);
+
+            // wait(lk) atomically unlocks counter_val_mutex_ while blocked
+            // and re-locks it before returning, so a writer thread (which
+            // must also lock counter_val_mutex_ to update counter_val_ and
+            // notify) can make progress and wake us up.
+            tmp_cv_sptr->wait(lk);
         }
 
         PS_LOG_DEBUG_ARGS("EmEventCtr %p unblocked after read", this);
@@ -1440,7 +1448,7 @@ namespace Pistache
         }
 
         { // encapsulate counter_val_mutex_
-            GUARD_AND_DBG_LOG(counter_val_mutex_);
+            std::unique_lock<std::mutex> lk(counter_val_mutex_);
 
             uint64_t max_writable_val = (0xfffffffffffffffe - counter_val_);
             if (val > max_writable_val)
@@ -1454,8 +1462,17 @@ namespace Pistache
                 PS_LOG_DEBUG_ARGS(
                     "EmEventCtr %p blocking until counter read", this);
 
-                        std::unique_lock<std::mutex> lk(cv_write_mutex_);
-                        cv_write_sptr_->wait(lk);
+                // Keep a local copy of the shared_ptr for the duration of
+                // the wait, matching the pattern used elsewhere in this
+                // class.
+                std::shared_ptr<std::condition_variable> tmp_cv_sptr(cv_write_sptr_);
+
+                // wait(lk) atomically unlocks counter_val_mutex_ while
+                // blocked and re-locks it before returning, so a reader
+                // thread (which must also lock counter_val_mutex_ to drain
+                // counter_val_ and notify) can make progress and wake us
+                // up.
+                tmp_cv_sptr->wait(lk);
             }
             else
             {
@@ -1503,17 +1520,10 @@ namespace Pistache
                     PS_LOG_DEBUG_ARGS(
                         "EmEventCtr %p waking up any blocked reads", this);
 
-                    { // encapsulate cv_read_mutex_) lock
-                      //
-                      // Per spec, must claim and release the mutex before
-                      // doing a notify_all
-                      // https://en.cppreference.com/w/cpp/thread/
-                      //                                condition_variable/wait
-                      // (See example)
-                        GUARD_AND_DBG_LOG(cv_read_mutex_);
-                    }
-
-                    tmp_cv_sptr->notify_all();// does nothing if none waiting
+                    // counter_val_mutex_ (lk) is still held here and is the
+                    // same mutex a blocked read() waits on, so notifying
+                    // while holding it is safe and avoids a lost wakeup.
+                    tmp_cv_sptr->notify_all(); // does nothing if none waiting
                 }
 
                 return(sizeof(val));
