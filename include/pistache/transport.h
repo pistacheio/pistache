@@ -266,14 +266,6 @@ namespace Pistache::Tcp
         Lock toWriteLock;
 
         PollableQueue<TimerEntry> timersQueue;
-
-        // timersLock protects timers. Unlike armTimerMs, disarmTimer can be
-        // called directly from a thread other than this transport's reactor
-        // thread (e.g. via Http::Timeout::disarm() when a handler completes
-        // a deferred response on its own thread), so timers cannot rely on
-        // being touched only from the reactor thread the way toWrite/peers_
-        // mostly do via their own explicit locks.
-        Lock timersLock;
         std::unordered_map<FdConst, TimerEntry> timers;
 
         PollableQueue<PeerEntry> peersQueue;
@@ -299,6 +291,19 @@ namespace Pistache::Tcp
         // gets messed up due to a threading issue.
         mutable std::mutex peers_mutex_;
         std::unordered_map<Fd, std::shared_ptr<Peer>> peers_;
+
+        // timersLock protects timers. Unlike armTimerMs, disarmTimer can be
+        // called directly from a thread other than this transport's reactor
+        // thread (e.g. via Http::Timeout::disarm() when a handler completes
+        // a deferred response on its own thread), so timers cannot rely on
+        // being touched only from the reactor thread the way toWrite/peers_
+        // mostly do via their own explicit locks.
+        //
+        // Declared last (after the pre-existing data members above) so
+        // adding it only appends to the class layout instead of shifting
+        // their offsets (keeps the ABI diff to a size change, not an
+        // offset change).
+        Lock timersLock;
 
     private:
         bool isPeerFd(FdConst fd) const;

@@ -228,6 +228,12 @@ namespace Pistache::Http
             return handler_;
         }
 
+        std::shared_ptr<Handler> handler_;
+        Tcp::Listener listener;
+
+        Options options_;
+        PISTACHE_STRING_LOGGER_T logger_ = PISTACHE_NULL_STRING_LOGGER;
+
         // stateMutex_ protects handler_ and options_, both of which are
         // read (via the transport factory set up in init(), and via
         // setHandler()/useSSL()) and written (via init()/setHandler())
@@ -236,12 +242,11 @@ namespace Pistache::Http
         // different context than the thread that later calls
         // setHandler(), and setHandler()/useSSL() read options_ set by a
         // prior init() call.
+        //
+        // Declared last so adding it only appends to the class layout
+        // instead of shifting the offsets of the pre-existing members
+        // above (keeps the ABI diff to a size change, not an offset change).
         mutable std::mutex stateMutex_;
-        std::shared_ptr<Handler> handler_;
-        Tcp::Listener listener;
-
-        Options options_;
-        PISTACHE_STRING_LOGGER_T logger_ = PISTACHE_NULL_STRING_LOGGER;
     };
 
     template <typename Handler>
