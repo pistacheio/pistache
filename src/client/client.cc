@@ -663,7 +663,12 @@ namespace Pistache::Http::Experimental
                     connection->handleError("Remote closed connection");
                 }
                 connections.erase(conn_fd);
-                connection->close();
+
+                // Called from within Transport::onReady's call chain, on
+                // the same thread that already holds handling_mutex --
+                // must NOT call close() here (it would try to relock the
+                // non-recursive handling_mutex and deadlock).
+                connection->closeMutexAlreadyLocked();
                 break;
             }
             else
@@ -801,10 +806,7 @@ namespace Pistache::Http::Experimental
                               &handling_mutex);
             std::lock_guard<std::mutex> guard(handling_mutex);
 
-            transport_->setStopHandlingwMutexAlreadyLocked();
-
-            connectionState_.store(NotConnected);
-            CLOSE_FD(fd_);
+            closeMutexAlreadyLocked();
 
             PS_LOG_DEBUG_ARGS("Unlocking handling_mutex %p",
                               &handling_mutex);
@@ -816,6 +818,22 @@ namespace Pistache::Http::Experimental
             connectionState_.store(NotConnected);
             CLOSE_FD(fd_);
         }
+    }
+
+    // Assumes transport_'s handling_mutex is already held by the caller (or
+    // that transport_ is null and so there is nothing to protect). Used
+    // both by close() (which takes the lock itself) and, directly, by
+    // Transport::handleIncoming (which is only ever reached from within
+    // Transport::onReady's own handling_mutex-locked scope, on the same
+    // thread -- calling close() itself there would try to relock the
+    // non-recursive handling_mutex and deadlock).
+    void Connection::closeMutexAlreadyLocked()
+    {
+        if (transport_)
+            transport_->setStopHandlingwMutexAlreadyLocked();
+
+        connectionState_.store(NotConnected);
+        CLOSE_FD(fd_);
     }
 
     void Connection::associateTransport(

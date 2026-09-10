@@ -98,6 +98,15 @@ namespace Pistache::Http::Experimental
     private:
         void processRequestQueue();
 
+        // Does the actual work of close(), on the assumption that the
+        // caller already holds transport_'s handling_mutex (Transport's
+        // handlingMutex is not recursive, so close() itself cannot be
+        // called reentrantly from a context that already holds it -- e.g.
+        // from within Transport::onReady's own call chain).
+        void closeMutexAlreadyLocked();
+
+        friend class Transport;
+
         struct RequestEntry
         {
             RequestEntry(Async::Resolver resolve, Async::Rejection reject,
