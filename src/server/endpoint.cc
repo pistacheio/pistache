@@ -319,10 +319,15 @@ namespace Pistache::Http
     {
         listener.init(options.threads_, options.flags_, options.threadsName_, options.backlog_);
         listener.setTransportFactory([this, options] {
-            if (!handler_)
+            std::shared_ptr<Handler> handler;
+            {
+                std::lock_guard<std::mutex> guard(handlerMutex_);
+                handler = handler_;
+            }
+            if (!handler)
                 throw std::runtime_error("Must call setHandler()");
 
-            auto transport = std::make_shared<TransportImpl>(handler_);
+            auto transport = std::make_shared<TransportImpl>(handler);
             transport->setHeaderTimeout(options.headerTimeout_);
             transport->setBodyTimeout(options.bodyTimeout_);
             transport->setKeepaliveTimeout(options.keepaliveTimeout_);
@@ -330,10 +335,15 @@ namespace Pistache::Http
             return transport;
         });
 
-        if (handler_)
+        std::shared_ptr<Handler> handler;
         {
-            handler_->setMaxRequestSize(options.maxRequestSize_);
-            handler_->setMaxResponseSize(options.maxResponseSize_);
+            std::lock_guard<std::mutex> guard(handlerMutex_);
+            handler = handler_;
+        }
+        if (handler)
+        {
+            handler->setMaxRequestSize(options.maxRequestSize_);
+            handler->setMaxResponseSize(options.maxResponseSize_);
         }
 
         options_ = options;
@@ -342,6 +352,7 @@ namespace Pistache::Http
 
     void Endpoint::setHandler(const std::shared_ptr<Handler>& handler)
     {
+        std::lock_guard<std::mutex> guard(handlerMutex_);
         handler_ = handler;
         handler_->setMaxRequestSize(options_.maxRequestSize_);
         handler_->setMaxResponseSize(options_.maxResponseSize_);
