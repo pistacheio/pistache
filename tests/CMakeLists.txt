@@ -101,6 +101,7 @@ pistache_test(log_api_test)
 pistache_test(string_logger_test)
 pistache_test(endpoint_initialization_test)
 pistache_test(helpers_test)
+pistache_test(peer_test)
 
 if (PISTACHE_USE_SSL)
 

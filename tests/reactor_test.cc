@@ -10,6 +10,7 @@
 #include <gtest/gtest.h>
 
 #include <chrono>
+#include <future>
 #include <iostream>
 #include <memory>
 #include <thread>
@@ -103,6 +104,48 @@ TEST(reactor_test, reactor_creation)
             ASSERT_NE(resulted_values.find(values[i][j]), resulted_values.end());
         }
     }
+}
+
+// Best-effort concurrency stress test: handlers(key) used to iterate
+// handlers_ without holding poller.reg_unreg_mutex_, racing with a
+// concurrent attachHandler()/detachFromReactor() call on the same poller
+// (registering/unregistering the handler's own fds while handlers() reads
+// the handler list). This doesn't deterministically reproduce the race -
+// that would need something like TSan, which this sandboxed environment
+// can't run - but it does exercise both code paths under real contention.
+//
+// Deliberately does not call run(): runOnce() holds reg_unreg_mutex_ for
+// the full duration of each poll() call (by design, per the comment on
+// reg_unreg_mutex_ in os.h), and this handler never has anything to poll,
+// so a background poll loop would starve this test's own locking attempts
+// for the whole wait below and report a false hang.
+TEST(reactor_test, concurrent_handlers_lookup_and_detach_does_not_hang)
+{
+    std::shared_ptr<Aio::Reactor> reactor = Aio::Reactor::create();
+    reactor->init(Aio::AsyncContext(1));
+    auto handler = std::make_shared<TransportMock>();
+    auto key     = reactor->addHandler(handler);
+
+    constexpr int Iterations = 2000;
+
+    std::promise<void> done;
+    auto doneFuture = done.get_future();
+    std::thread reader([&reactor, &key, &done] {
+        for (int i = 0; i < Iterations; ++i)
+        {
+            auto handlers = reactor->handlers(key);
+            (void)handlers;
+        }
+        done.set_value();
+    });
+
+    reactor->detachFromReactor(handler);
+
+    ASSERT_EQ(doneFuture.wait_for(std::chrono::seconds(10)),
+              std::future_status::ready)
+        << "concurrent handlers()/detachFromReactor() hung";
+
+    reader.join();
 }
 
 TEST(reactor_test, reactor_exceed_max_threads)
