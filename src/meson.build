@@ -395,9 +395,7 @@ pistache_dep = declare_dependency(
 	dependencies: public_deps
 )
 
-if meson.version().version_compare('>=0.54.0')
-	meson.override_dependency('libpistache', pistache_dep)
-endif
+meson.override_dependency('libpistache', pistache_dep)
 
 if host_machine.system() == 'windows'
     if compiler.get_id() == 'gcc'
