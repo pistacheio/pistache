@@ -142,6 +142,13 @@ TEST(cookie_test, invalid_test)
 
     ASSERT_THROW(Cookie::fromString("lang=en-US; Max-Age=12ab"),
                  std::invalid_argument);
+
+    // Max-Age that does not fit in an int must be rejected, not silently
+    // overflowed (the value is parsed into std::optional<int>).
+    ASSERT_THROW(Cookie::fromString("lang=en-US; Max-Age=99999999999"),
+                 std::invalid_argument);
+    ASSERT_THROW(Cookie::fromString("lang=en-US; Max-Age=-1"),
+                 std::invalid_argument);
 }
 
 void addCookies(const char* str,

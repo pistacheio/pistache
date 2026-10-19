@@ -14,8 +14,10 @@
 #include <pistache/cookie.h>
 #include <pistache/stream.h>
 
+#include <charconv>
 #include <iterator>
 #include <optional>
+#include <system_error>
 #include <unordered_map>
 
 namespace Pistache::Http
@@ -61,21 +63,15 @@ namespace Pistache::Http
             {
                 auto token = matchValue(cursor);
 
-                auto strntol = [](const char* str, size_t len) {
-                    int ret = 0;
-                    for (size_t i = 0; i < len; ++i)
-                    {
-                        if (!isdigit(str[i]))
-                            throw std::invalid_argument("Invalid conversion");
+                const char* const beg = token.rawText();
+                const char* const end = beg + token.size();
 
-                        ret *= 10;
-                        ret += str[i] - '0';
-                    };
+                int value              = 0;
+                const auto parseResult = std::from_chars(beg, end, value);
+                if (parseResult.ec != std::errc {} || parseResult.ptr != end || value < 0)
+                    throw std::invalid_argument("Invalid conversion");
 
-                    return ret;
-                };
-
-                obj->*attr = strntol(token.rawText(), token.size());
+                obj->*attr = value;
             }
         };
 
