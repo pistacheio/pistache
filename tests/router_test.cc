@@ -224,6 +224,110 @@ TEST(router_test, test_notfound_exactly_once)
     endpoint->shutdown();
 }
 
+TEST(router_test, test_method_not_allowed_default)
+{
+    Address addr(Ipv4::any(), 0);
+    auto endpoint = std::make_shared<Http::Endpoint>(addr);
+
+    auto opts = Http::Endpoint::options().threads(1).maxRequestSize(4096);
+    endpoint->init(opts);
+
+    Rest::Router router;
+    Routes::Get(router, "/moogle",
+                [](const Pistache::Rest::Request&,
+                   Pistache::Http::ResponseWriter response) {
+                    response.send(Pistache::Http::Code::Ok, "kupo!\n");
+                    return Pistache::Rest::Route::Result::Ok;
+                });
+
+    endpoint->setHandler(router.handler());
+    endpoint->serveThreaded();
+    const auto bound_port = endpoint->getPort();
+    httplib::Client client("localhost", bound_port);
+
+    auto res = client.Delete("/moogle");
+    ASSERT_TRUE(res);
+    ASSERT_EQ(res->status, 405);
+    ASSERT_EQ(res->get_header_value("Allow"), "GET");
+    ASSERT_EQ(res->body, "Method Not Allowed");
+
+    endpoint->shutdown();
+}
+
+TEST(router_test, test_method_not_allowed_handler)
+{
+    Address addr(Ipv4::any(), 0);
+    auto endpoint = std::make_shared<Http::Endpoint>(addr);
+
+    auto opts = Http::Endpoint::options().threads(1).maxRequestSize(4096);
+    endpoint->init(opts);
+
+    int count_found       = 0;
+    int count_not_found   = 0;
+    int count_not_allowed = 0;
+
+    Rest::Router router;
+    Routes::Get(router, "/moogle/:id",
+                [&count_found](const Pistache::Rest::Request&,
+                               Pistache::Http::ResponseWriter response) {
+                    count_found++;
+                    response.send(Pistache::Http::Code::Ok, "kupo!\n");
+                    return Pistache::Rest::Route::Result::Ok;
+                });
+    Routes::Post(router, "/moogle/:id",
+                 [&count_found](const Pistache::Rest::Request&,
+                                Pistache::Http::ResponseWriter response) {
+                     count_found++;
+                     response.send(Pistache::Http::Code::Created);
+                     return Pistache::Rest::Route::Result::Ok;
+                 });
+    Routes::NotFound(router, [&count_not_found](const Pistache::Rest::Request&, Pistache::Http::ResponseWriter response) {
+        count_not_found++;
+        response.send(Pistache::Http::Code::Not_Found, "not found");
+        return Pistache::Rest::Route::Result::Ok;
+    });
+    Routes::MethodNotAllowed(router, [&count_not_allowed](const Pistache::Rest::Request& request, Pistache::Http::ResponseWriter response) {
+        count_not_allowed++;
+        response.send(Pistache::Http::Code::Method_Not_Allowed,
+                      "{\"instance\":\"" + request.resource() + "\"}",
+                      MIME(Application, Json));
+        return Pistache::Rest::Route::Result::Ok;
+    });
+
+    endpoint->setHandler(router.handler());
+    endpoint->serveThreaded();
+    const auto bound_port = endpoint->getPort();
+    httplib::Client client("localhost", bound_port);
+
+    // Unsupported method on a known resource: the handler answers, the
+    // Allow header is set by the router
+    auto res = client.Delete("/moogle/1");
+    ASSERT_TRUE(res);
+    ASSERT_EQ(res->status, 405);
+    ASSERT_EQ(res->get_header_value("Content-Type"), "application/json");
+    ASSERT_EQ(res->body, "{\"instance\":\"/moogle/1\"}");
+    const auto allow = res->get_header_value("Allow");
+    ASSERT_THAT(allow, testing::HasSubstr("GET"));
+    ASSERT_THAT(allow, testing::HasSubstr("POST"));
+    ASSERT_EQ(count_not_allowed, 1);
+
+    // Supported method: the route answers, not the handler
+    res = client.Get("/moogle/1");
+    ASSERT_TRUE(res);
+    ASSERT_EQ(res->status, 200);
+    ASSERT_EQ(count_found, 1);
+    ASSERT_EQ(count_not_allowed, 1);
+
+    // Unknown resource: the not found handler answers, not the handler
+    res = client.Delete("/kefka");
+    ASSERT_TRUE(res);
+    ASSERT_EQ(res->status, 404);
+    ASSERT_EQ(count_not_found, 1);
+    ASSERT_EQ(count_not_allowed, 1);
+
+    endpoint->shutdown();
+}
+
 TEST(router_test, test_route_head_request)
 {
     Address addr(Ipv4::any(), 0);
