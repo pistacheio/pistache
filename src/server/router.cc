@@ -495,6 +495,11 @@ namespace Pistache::Rest
         notFoundHandler = std::move(handler);
     }
 
+    void Router::addMethodNotAllowedHandler(Route::Handler handler)
+    {
+        methodNotAllowedHandler = std::move(handler);
+    }
+
     void Router::invokeNotFoundHandler(const Http::Request& req,
                                        Http::ResponseWriter resp) const
     {
@@ -578,7 +583,17 @@ namespace Pistache::Rest
 
         if (!supportedMethods.empty())
         {
-            response.sendMethodNotAllowed(supportedMethods);
+            if (hasMethodNotAllowedHandler())
+            {
+                response.headers().add<Http::Header::Allow>(supportedMethods);
+                methodNotAllowedHandler(
+                    Request(req, std::vector<TypedParam>(), std::vector<TypedParam>()),
+                    std::move(response));
+            }
+            else
+            {
+                response.sendMethodNotAllowed(supportedMethods);
+            }
             return Route::Status::NotAllowed;
         }
 
@@ -663,6 +678,11 @@ namespace Pistache::Rest
         void NotFound(Router& router, Route::Handler handler)
         {
             router.addNotFoundHandler(std::move(handler));
+        }
+
+        void MethodNotAllowed(Router& router, Route::Handler handler)
+        {
+            router.addMethodNotAllowedHandler(std::move(handler));
         }
 
         void Head(Router& router, const std::string& resource, Route::Handler handler)

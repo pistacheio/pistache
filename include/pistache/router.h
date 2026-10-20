@@ -250,6 +250,16 @@ namespace Pistache::Rest
         void addNotFoundHandler(Route::Handler handler);
         void addDisconnectHandler(Route::DisconnectHandler handler);
         inline bool hasNotFoundHandler() const { return notFoundHandler != nullptr; }
+
+        // Handler for requests whose resource is routed for other methods
+        // only. The response passed to the handler already carries the Allow
+        // header listing those methods, the handler sends the response (with
+        // status 405). Without such a handler a plain text 405 is sent.
+        void addMethodNotAllowedHandler(Route::Handler handler);
+        inline bool hasMethodNotAllowedHandler() const
+        {
+            return methodNotAllowedHandler != nullptr;
+        }
         void invokeNotFoundHandler(const Http::Request& req,
                                    Http::ResponseWriter resp) const;
 
@@ -263,6 +273,7 @@ namespace Pistache::Rest
             , customHandlers()
             , middlewares()
             , notFoundHandler()
+            , methodNotAllowedHandler()
         { }
 
     private:
@@ -275,6 +286,8 @@ namespace Pistache::Rest
         std::vector<Route::DisconnectHandler> disconnectHandlers;
 
         Route::Handler notFoundHandler;
+
+        Route::Handler methodNotAllowedHandler;
     };
 
     namespace Private
@@ -344,6 +357,8 @@ namespace Pistache::Rest
         void Head(Router& router, const std::string& resource, Route::Handler handler);
 
         void NotFound(Router& router, Route::Handler handler);
+
+        void MethodNotAllowed(Router& router, Route::Handler handler);
 
         namespace details
         {
