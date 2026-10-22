@@ -22,6 +22,7 @@
 
 #include PST_STRERROR_R_HDR
 
+#include <algorithm>
 #include <charconv>
 #include <cstring>
 #include <ctime>
@@ -496,20 +497,25 @@ namespace Pistache::Http
             message->body_.reserve(size);
             StreamCursor::Token chunkData(cursor);
             const PST_SSIZE_T available = cursor.remaining();
+            const PST_SSIZE_T dataLeft  = size - alreadyAppendedChunkBytes;
 
-            if (available + alreadyAppendedChunkBytes < size + 2)
+            if (available < dataLeft + 2)
             {
-                cursor.advance(available);
-                message->body_.append(chunkData.rawText(), available);
-                alreadyAppendedChunkBytes += available;
+                // Only consume chunk data here, never the trailing CRLF
+                const PST_SSIZE_T toAppend = std::min(available, dataLeft);
+                cursor.advance(toAppend);
+                message->body_.append(chunkData.rawText(), toAppend);
+                alreadyAppendedChunkBytes += toAppend;
                 return Incomplete;
             }
-            cursor.advance(size - alreadyAppendedChunkBytes);
+            cursor.advance(dataLeft);
+
+            message->body_.append(chunkData.rawText(), dataLeft);
 
             // trailing EOL
+            if (!cursor.eol())
+                throw std::runtime_error("Invalid chunk data terminator");
             cursor.advance(2);
-
-            message->body_.append(chunkData.rawText(), size - alreadyAppendedChunkBytes);
 
             return Complete;
         }

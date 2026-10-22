@@ -215,3 +215,41 @@ TEST(http_parsing_test, succ_method_parse_request)
         }
     }
 }
+
+TEST(http_parsing_test, chunked_body_split_inside_chunk_terminator)
+{
+    Http::RequestParser parser(Const::DefaultMaxRequestSize);
+
+    auto feed = [&parser](const char* data) {
+        parser.feed(data, std::strlen(data));
+    };
+
+    feed("POST /hello HTTP/1.1\r\n");
+    feed("Transfer-Encoding: chunked\r\n");
+    feed("\r\n");
+
+    // The packet ends between the CR and the LF following the chunk data
+    feed("5\r\nHELLO\r");
+    ASSERT_EQ(parser.parse(), Http::Private::State::Again);
+    ASSERT_EQ(parser.request.body(), "HELLO");
+
+    feed("\n0\r\n\r\n");
+    ASSERT_EQ(parser.parse(), Http::Private::State::Done);
+    ASSERT_EQ(parser.request.body(), "HELLO");
+}
+
+TEST(http_parsing_test, chunked_body_invalid_chunk_terminator)
+{
+    Http::RequestParser parser(Const::DefaultMaxRequestSize);
+
+    auto feed = [&parser](const char* data) {
+        parser.feed(data, std::strlen(data));
+    };
+
+    feed("POST /hello HTTP/1.1\r\n");
+    feed("Transfer-Encoding: chunked\r\n");
+    feed("\r\n");
+    feed("5\r\nHELLOXX0\r\n\r\n");
+
+    ASSERT_THROW(parser.parse(), Http::HttpError);
+}
