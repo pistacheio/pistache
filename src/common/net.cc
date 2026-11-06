@@ -496,6 +496,13 @@ namespace Pistache
             hints.ai_flags = AI_PASSIVE;
         }
 
+#ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
+        // In fuzzing builds only, restrict getaddrinfo() to numeric
+        // addresses and service strings so that fuzz iterations can never
+        // block on DNS name resolution. Production behaviour is unchanged.
+        hints.ai_flags |= AI_NUMERICHOST | AI_NUMERICSERV;
+#endif
+
         // The host is set to nullptr if empty because getaddrinfo() requires
         // it, and also when it is set to "*" because, when combined with the
         // AI_PASSIVE flag, it yields the proper wildcard address. The port, if
