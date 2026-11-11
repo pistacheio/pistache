@@ -124,15 +124,25 @@ namespace Pistache::Tcp
             {
                 PS_LOG_DEBUG("Disable SSL compression");
 
-                /* Disable compression to prevent BREACH and CRIME vulnerabilities. */
-                if (!SSL_CTX_set_options(GetSSLContext(ctx), SSL_OP_NO_COMPRESSION))
+#ifdef SSL_OP_NO_COMPRESSION
+                if (SSL_OP_NO_COMPRESSION != 0)
                 {
-                    std::string err = "SSL error - cannot disable compression: "
-                        + ssl_print_errors_to_string();
+                    /* Note: If SSL_OP_NO_COMPRESSION is zero, it means
+                     * compression is off in the ssl library, which appears to
+                     * be the case in OpenBSD (Nov/2026).*/
 
-                    PS_LOG_DEBUG_ARGS("%s", err.c_str());
-                    throw std::runtime_error(err);
+                    /* Disable compression to prevent BREACH and CRIME
+                     * vulnerabilities. */
+                    if (!SSL_CTX_set_options(GetSSLContext(ctx), SSL_OP_NO_COMPRESSION))
+                    {
+                        std::string err = "SSL error - cannot disable compression: "
+                            + ssl_print_errors_to_string();
+
+                        PS_LOG_DEBUG_ARGS("%s", err.c_str());
+                        throw std::runtime_error(err);
+                    }
                 }
+#endif
             }
 
             if (cb != nullptr)
