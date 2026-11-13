@@ -10,6 +10,8 @@
 #include <pistache/http.h>
 #include <pistache/peer.h>
 #include <pistache/router.h>
+#include PST_NETDB_HDR
+#include PST_NETINET_IN_HDR
 
 #ifdef __GNUC__
 #pragma GCC diagnostic push
@@ -108,7 +110,7 @@ TEST(rest_server_test, basic_test)
     cout << "Using " << thr << " threads" << endl;
     cout << "Port = " << port << endl;
 
-    httplib::Client client("localhost", port);
+    httplib::Client client("127.0.0.1", port);
     auto res = client.Get("/read/function1");
     ASSERT_TRUE(res) << httplib::to_string(res.error());
     ASSERT_EQ(res->status, 200);
@@ -118,29 +120,16 @@ TEST(rest_server_test, basic_test)
     ASSERT_TRUE(res) << httplib::to_string(res.error());
     ASSERT_EQ(res->status, 200);
 
-    // TODO: Clean this up to use proper gtest macros.
-    if ((res->body.length() >= 9) && // 9 being len of "localhost"
-        (0 == res->body.compare(res->body.length() - 9, 9, "localhost")))
-    {
-        // NOTE: res->body is "localhost", or "ip6-localhost", or (seen on
-        // Windows 10) "view-localhost" on some architectures.
-        // We are checking for res->body ends in "localhost"
-        ASSERT_TRUE(
-            0 == res->body.compare(res->body.length() - 9, 9, "localhost"));
-    }
-    else
-    {
-        const unsigned int my_max_hostname_len = 1024;
-
-        // NetBSD showed this case, when hostname was not "localhost"
-        char name[my_max_hostname_len + 6];
-        name[0] = 0;
-
-        int ghn_res = gethostname(&(name[0]), my_max_hostname_len+2);
-        ASSERT_EQ(ghn_res, 0);
-
-        ASSERT_EQ(res->body, &(name[0]));
-    }
+    // A loopback PTR record can differ from both "localhost" and the
+    // computer name. Compare the peer hostname with the system resolver.
+    const Address loopback(Ipv4::loopback(), Port(0));
+    const auto& sockAddr = loopback.getSockAddr();
+    char hostname[NI_MAXHOST] = {};
+    const int resolveResult = getnameinfo(
+        &sockAddr, sizeof(sockaddr_in), hostname, sizeof(hostname),
+        nullptr, 0, NI_NAMEREQD);
+    ASSERT_EQ(resolveResult, 0);
+    ASSERT_EQ(res->body, hostname);
 
     stats.shutdown();
 }

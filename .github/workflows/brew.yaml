@@ -4,7 +4,7 @@
 
 # See:
 #   https://docs.github.com/en/actions/writing-workflows/choosing-where-your-workflow-runs/choosing-the-runner-for-a-job
-#   https://github.com/actions/runner-images/blob/main/images/macos/macos-14-Readme.md
+#   https://github.com/actions/runner-images/blob/main/images/macos/macos-15-arm64-Readme.md
 
 name: Homebrew Formula
 
@@ -34,7 +34,8 @@ jobs:
         # Note: If you change the list of OS by adding a newer one,
         # PLEASE UPDATE THE AUDIT PHASE to use the most recent macOS
         # (See "runformula.sh --auditonly ..." later in this file)
-        os: [ 'macos-14', 'macos-15', 'macos-latest', 'macos-15-intel', 'macos-26-intel' ]
+        # macOS 14 runners retired on November 2, 2026.
+        os: [ 'macos-15', 'macos-latest', 'macos-15-intel', 'macos-26-intel' ]
         compiler: [ 'clang' ]
         sanitizer: [ 'none' ]
         tls: [ 'true' ]
@@ -79,12 +80,8 @@ jobs:
         export CC
         echo "CXX is $CXX; CC is $CC"
 
-        # This is a fine-grained personal access token restricted to a
-        # single repository and with all permissions left on "No
-        # Access". We set this token to avoid being blocked by the
-        # GitHub access rate limit for unauthenticated access
-        # (i.e. the rate limit for access with no token).
-        export HOMEBREW_GITHUB_API_TOKEN=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
+        # Use the workflow's short-lived token for authenticated API requests.
+        export HOMEBREW_GITHUB_API_TOKEN="${{ github.token }}"
 
         homebrew/runformula.sh --skipaudit --force --HEAD
         #   --skipaudit  Say "yes" to doing the brew audit
