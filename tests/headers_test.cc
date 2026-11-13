@@ -570,17 +570,17 @@ TEST(headers_test, date_test_ostream)
     Pistache::Http::Header::Date d4;
     d4.parse("Fri, 25 Jan 2019 21:04:45.000000000 UTC");
     d4.write(os);
-    const char* cstr_to_compare = "Fri, 25 Jan 2019 21:04:45."
-#if defined _MSC_VER // Includes clang-cl using the MSVC standard library.
-                                  "0000000"
-#elif defined __clang__ && !defined __linux__
-                                  "000000"
-#else
-                                  "000000000"
-#endif
-                                  " UTC";
+    using Duration = Pistache::Http::FullDate::time_point::duration;
+    constexpr auto fractional_width = date::hh_mm_ss<Duration>::fractional_width;
+    std::string expected = "Fri, 25 Jan 2019 21:04:45";
+    if constexpr (fractional_width > 0)
+    {
+        expected.push_back('.');
+        expected.append(fractional_width, '0');
+    }
+    expected += " UTC";
 
-    ASSERT_EQ(cstr_to_compare, os.str());
+    ASSERT_EQ(expected, os.str());
 }
 
 TEST(headers_test, host)
