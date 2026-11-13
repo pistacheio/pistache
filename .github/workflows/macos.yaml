@@ -4,7 +4,8 @@
 
 # See:
 #   https://docs.github.com/en/actions/writing-workflows/choosing-where-your-workflow-runs/choosing-the-runner-for-a-job
-#   https://github.com/actions/runner-images/blob/main/images/macos/macos-14-Readme.md
+#   https://github.com/actions/runner-images/blob/main/images/macos/macos-XY-Readme.md
+#   (Fill in the XY version number in the above URL)
 
 name: macOS libevent
 
@@ -31,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ 'macos-14', 'macos-15', 'macos-latest', 'macos-15-intel', 'macos-26-intel' ]
+        os: [ 'macos-15', 'macos-latest', 'macos-15-intel', 'macos-26-intel' ]
         compiler: [ 'gcc', 'clang' ]
         sanitizer: [ 'address', 'undefined', 'none' ]
         tls: [ 'true', 'false' ]
