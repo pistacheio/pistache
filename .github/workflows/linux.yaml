@@ -143,5 +143,7 @@ jobs:
       with:
         fail_ci_if_error: true
         flags: ${{ steps.coverage.outputs.flag }}
+        # Public fork push builds use Codecov's contributor branch namespace.
+        override_branch: ${{ github.event_name == 'push' && github.repository != 'pistacheio/pistache' && format('{0}:{1}', github.repository_owner, github.ref_name) || '' }}
         token: ${{ secrets.CODECOV_UPLOAD_TOKEN }}
         verbose: true

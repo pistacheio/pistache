@@ -1228,27 +1228,35 @@ TEST(http_server_test, client_request_no_timeout)
 namespace
 {
 
-    class WaitHelper
+    class ConnectionTracker
     {
     public:
-        void increment()
+        void connected(size_t id)
         {
-            std::lock_guard<std::mutex> lock(counterLock_);
-            ++counter_;
+            std::lock_guard<std::mutex> lock(mutex_);
+            activeConnections_.insert(id);
+            seenConnection_ = true;
+        }
+
+        void disconnected(size_t id)
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            activeConnections_.erase(id);
             cv_.notify_one();
         }
 
         template <typename Duration>
-        bool wait(const size_t count, const Duration timeout)
+        bool wait(const Duration timeout)
         {
-            std::unique_lock<std::mutex> lock(counterLock_);
+            std::unique_lock<std::mutex> lock(mutex_);
             return cv_.wait_for(lock, timeout,
-                                [this, count]() { return counter_ >= count; });
+                                [this]() { return seenConnection_ && activeConnections_.empty(); });
         }
 
     private:
-        size_t counter_ = 0;
-        std::mutex counterLock_;
+        std::unordered_set<size_t> activeConnections_;
+        bool seenConnection_ = false;
+        std::mutex mutex_;
         std::condition_variable cv_;
     };
 
@@ -1256,8 +1264,8 @@ namespace
     {
         HTTP_PROTOTYPE(ClientCountingHandler)
 
-        explicit ClientCountingHandler(std::shared_ptr<WaitHelper> waitHelper)
-            : waitHelper(waitHelper)
+        explicit ClientCountingHandler(std::shared_ptr<ConnectionTracker> tracker)
+            : tracker(tracker)
         { }
 
         void onRequest(const Http::Request& request,
@@ -1268,7 +1276,7 @@ namespace
             auto peer = writer.getPeer();
             if (peer)
             {
-                activeConnections.insert(peer->getID());
+                tracker->connected(peer->getID());
             }
             else
             {
@@ -1282,13 +1290,11 @@ namespace
         void onDisconnection(const std::shared_ptr<Tcp::Peer>& peer) override
         {
             LOGGER("server", "Disconnect from " << *peer);
-            activeConnections.erase(peer->getID());
-            waitHelper->increment();
+            tracker->disconnected(peer->getID());
         }
 
     private:
-        std::unordered_set<size_t> activeConnections;
-        std::shared_ptr<WaitHelper> waitHelper;
+        std::shared_ptr<ConnectionTracker> tracker;
     };
 
 } // namespace
@@ -1313,8 +1319,8 @@ TEST(http_server_test, client_multiple_requests_disconnects_handled)
     server.init(server_opts);
 
     std::cout << "Trying to run server...\n";
-    auto waitHelper = std::make_shared<WaitHelper>();
-    auto handler    = Http::make_handler<ClientCountingHandler>(waitHelper);
+    auto tracker = std::make_shared<ConnectionTracker>();
+    auto handler = Http::make_handler<ClientCountingHandler>(tracker);
     server.setHandler(handler);
     server.serveThreaded();
 
@@ -1322,12 +1328,15 @@ TEST(http_server_test, client_multiple_requests_disconnects_handled)
     std::cout << "Server address: " << server_address << "\n";
 
     const size_t CLIENT_REQUEST_SIZE = 3;
-    clientLogicFunc(CLIENT_REQUEST_SIZE, server_address, 1, 6);
+    const int responses = clientLogicFunc(CLIENT_REQUEST_SIZE, server_address, 1, 6);
 
-    const bool result = waitHelper->wait(CLIENT_REQUEST_SIZE, std::chrono::seconds(2));
+    // Requests can share pooled connections. Wait for the peers that actually
+    // served requests, rather than expecting one disconnection per request.
+    const bool result = tracker->wait(std::chrono::seconds(2));
     server.shutdown();
 
-    ASSERT_EQ(result, true);
+    ASSERT_EQ(responses, static_cast<int>(CLIENT_REQUEST_SIZE));
+    ASSERT_TRUE(result);
 
     } // end encapsulate
 

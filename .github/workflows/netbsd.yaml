@@ -110,6 +110,9 @@ jobs:
            if [ '${{ matrix.sanitizer }}' = address ]; then
              # NetBSD's ASan runtime requires ASLR disabled for each test executable.
              find build/tests -type f -name 'run_*' -exec paxctl +a {} +
+             # Keep leak checks enabled and expose the tracer failure if the
+             # system LeakSanitizer runtime cannot inspect a process.
+             export LSAN_OPTIONS=verbosity=1:log_threads=1
            fi
            meson test -C build --verbose
     # Note: The "run" command is what runs inside NetBSD

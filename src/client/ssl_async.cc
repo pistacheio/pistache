@@ -446,7 +446,11 @@ static void initOpenSslIfNotAlready()
 
 // ---------------------------------------------------------------------------
 
-static void logCnName(const char* label, const X509_NAME* const name)
+// OpenSSL 4 returns const names; older versions expose mutable names and
+// require them even for some read-only X509_NAME accessors.
+using X509NamePointer = decltype(X509_get_subject_name(static_cast<X509*>(nullptr)));
+
+static void logCnName(const char* label, X509NamePointer const name)
 {
     int idx = -1, success = 0;
     unsigned char *utf8 = NULL;
@@ -600,8 +604,8 @@ static int verify_callback(int preverify_ok, X509_STORE_CTX* x509_ctx)
     }
 
     X509* cert = X509_STORE_CTX_get_current_cert(x509_ctx);
-    const X509_NAME* iname = cert ? X509_get_issuer_name(cert) : NULL;
-    const X509_NAME* sname = cert ? X509_get_subject_name(cert) : NULL;
+    auto* iname = cert ? X509_get_issuer_name(cert) : nullptr;
+    auto* sname = cert ? X509_get_subject_name(cert) : nullptr;
 
     PS_LOG_DEBUG_ARGS("verify_callback (depth=%d)(preverify_ok=%d)",
                      depth, preverify_ok);
