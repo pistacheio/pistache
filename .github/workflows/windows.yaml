@@ -209,6 +209,37 @@ jobs:
         if (($env:mtrx_compiler -eq 'clang') -and ($env:mtrx_sanitizer -eq 'address')) {
           # Clang ASan supports the release DLL CRT, including debug builds.
           $crtArgs = @('-Db_vscrt=md');
+
+          # Meson invokes lld-link directly, so clang-cl cannot add its ASan
+          # runtime at link time. Use the runtime belonging to this compiler,
+          # rather than relying on the Visual Studio installation's version.
+          $runtimeDir = (& clang-cl --print-runtime-dir).Trim().Replace('\', '/');
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot locate the Clang runtime directory' }
+          $asanRuntime = 'clang_rt.asan_dynamic-x86_64.lib';
+          if (!(Test-Path (Join-Path $runtimeDir $asanRuntime))) {
+            # Some LLVM installers use lib/windows even when the compiler
+            # reports a target-triple-specific runtime directory.
+            $resourceDir = (& clang-cl -print-resource-dir).Trim().Replace('\', '/');
+            if ($LASTEXITCODE -ne 0) { throw 'Cannot locate the Clang resource directory' }
+            $runtimeDir = "$resourceDir/lib/windows";
+          }
+          if (!(Test-Path (Join-Path $runtimeDir $asanRuntime))) {
+            throw "Missing Clang ASan runtime: $runtimeDir/$asanRuntime";
+          }
+          $asanThunk = 'clang_rt.asan_dynamic_runtime_thunk-x86_64.lib';
+          if (!(Test-Path (Join-Path $runtimeDir $asanThunk))) {
+            throw "Missing Clang ASan runtime thunk: $runtimeDir/$asanThunk";
+          }
+          # Match LLVM's own lld-link setup: retain runtime initialization and
+          # prevent tail merging from breaking ASan global redzones.
+          $crtArgs += "-Dcpp_link_args=['/LIBPATH:$runtimeDir', '$asanRuntime', '/wholearchive:$asanThunk', '/opt:nolldtailmerge']";
+
+          # dump2def runs during the build, and the test executables also need
+          # the matching ASan DLL. Later steps restore Path from tmpvars.csv,
+          # so persist the runtime directory there as well.
+          $env:Path = "$runtimeDir;$env:Path";
+          ($impcsv | Where-Object name -eq 'env:Path').val = $env:Path;
+          $impcsv | Export-Csv "$env:USERPROFILE\tmpvars.csv";
         }
 
         meson setup build @crtArgs -DPISTACHE_BUILD_TESTS=true -DPISTACHE_DEBUG="$env:mtrx_def_debug" -DPISTACHE_USE_SSL="$env:mtrx_tls" -DPISTACHE_BUILD_EXAMPLES=true -DPISTACHE_BUILD_DOCS=false -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true -DPISTACHE_USE_CONTENT_ENCODING_BROTLI=true -DPISTACHE_USE_CONTENT_ENCODING_ZSTD=true --buildtype=debug -Db_coverage=true -Db_sanitize="$env:mtrx_sanitizer" -Db_lundef=false --prefix="$env:ProgramFiles\pistache_distribution"
