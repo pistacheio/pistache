@@ -31,7 +31,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ 'windows-2022', 'windows-latest' ] # Mar/2026, latest = 2025
-        compiler: [ 'msvc', 'gcc' ] # Could also add clang
+        compiler: [ 'msvc', 'gcc', 'clang' ]
         sanitizer: [ 'address', 'none' ]
         tls: [ 'true', 'false' ]
         def_debug: [ 'true', 'false' ]
@@ -63,9 +63,15 @@ jobs:
 
         $csvarray = @()
 
-        if ($env:mtrx_compiler -eq "msvc") {
+        if ($env:mtrx_compiler -in @("msvc", "clang")) {
 
           . winscripts\msvcsetup.ps1
+
+          if ($env:mtrx_compiler -eq "clang") {
+            $env:CXX="clang-cl";
+            $env:CC="clang-cl";
+            $env:CXX_LD="lld-link";
+          }
 
           cd ~
 
@@ -94,17 +100,11 @@ jobs:
               $myobj.val = $env:VSCMD_DEBUG;
               $csvarray += $myobj
           }
-        } # end 'if ($env:mtrx_compiler -eq "msvc") {...}'
+        } # end 'if ($env:mtrx_compiler -in @("msvc", "clang")) {...}'
 
         elseif ($env:mtrx_compiler -eq "gcc") {
           $env:force_msys_gcc = "Y";
           . winscripts\gccsetup.ps1
-        }
-        else { # Use clang with MSVC (MSVC's stdlib etc.)
-
-          $env:CXX="clang-cl";
-          $env:CXX_LD="lld";
-          $env:CC=$env:CXX
         }
 
         if ($env:CXX) {
@@ -172,7 +172,7 @@ jobs:
             Invoke-Expression "$assign_cmd"
         }
 
-        if ($env:mtrx_compiler -eq "msvc") {
+        if ($env:mtrx_compiler -in @("msvc", "clang")) {
           # Start a Visual Studio Developer Prompt, for access to compiler "cl"
 
           if (($dev_shell_path) -and (Test-Path -Path $dev_shell_path)) {
@@ -230,7 +230,7 @@ jobs:
             Invoke-Expression "$assign_cmd"
         }
 
-        if ($env:mtrx_compiler -eq "msvc") {
+        if ($env:mtrx_compiler -in @("msvc", "clang")) {
           # Start a Visual Studio Developer Prompt, for access to compiler "cl"
 
           if (($dev_shell_path) -and (Test-Path -Path $dev_shell_path)) {
@@ -307,7 +307,7 @@ jobs:
         #   $plogcsv = import-csv -Path "pistachelog.csv"
         #   Write-Host $plogcsv
 
-        if ($env:mtrx_compiler -eq "msvc") {
+        if ($env:mtrx_compiler -in @("msvc", "clang")) {
           # Start a Visual Studio Developer Prompt
 
           if (($dev_shell_path) -and (Test-Path -Path $dev_shell_path)) {
@@ -439,7 +439,7 @@ jobs:
             Invoke-Expression "$assign_cmd"
         }
 
-        if ($env:mtrx_compiler -eq "msvc") {
+        if ($env:mtrx_compiler -in @("msvc", "clang")) {
           # Start a Visual Studio Developer Prompt
 
           if (($dev_shell_path) -and (Test-Path -Path $dev_shell_path)) {

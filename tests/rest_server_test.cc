@@ -110,10 +110,12 @@ TEST(rest_server_test, basic_test)
 
     httplib::Client client("localhost", port);
     auto res = client.Get("/read/function1");
+    ASSERT_TRUE(res) << httplib::to_string(res.error());
     ASSERT_EQ(res->status, 200);
     ASSERT_EQ(res->body, "1");
 
     res = client.Get("/read/hostname");
+    ASSERT_TRUE(res) << httplib::to_string(res.error());
     ASSERT_EQ(res->status, 200);
 
     // TODO: Clean this up to use proper gtest macros.
@@ -163,12 +165,14 @@ TEST(rest_server_test, response_status_code_test)
 
     // Code 404 - Not Found.
     auto res = client.Get("/read/does_not_exist");
+    ASSERT_TRUE(res) << httplib::to_string(res.error());
     EXPECT_EQ(res->status, 404);
     EXPECT_EQ(res->body, "Could not find a matching route");
 
     // Code 405 - Method Not Allowed.
     std::string body("body goes here");
     res = client.Post("/read/function1", body, "text/plain");
+    ASSERT_TRUE(res) << httplib::to_string(res.error());
     EXPECT_EQ(res->status, 405);
     EXPECT_EQ(res->body, "Method Not Allowed");
     ASSERT_TRUE(res->has_header("Allow"));
@@ -176,6 +180,7 @@ TEST(rest_server_test, response_status_code_test)
 
     // Code 415 - Unknown Media Type
     res = client.Post("/read/function1", body, "invalid");
+    ASSERT_TRUE(res) << httplib::to_string(res.error());
     EXPECT_EQ(res->status, 415);
     EXPECT_EQ(res->body, "Unknown Media Type");
 
@@ -197,6 +202,7 @@ TEST(rest_server_test, keepalive_server_timeout)
 
     // first request
     auto res = client.Get("/read/hostname");
+    ASSERT_TRUE(res) << httplib::to_string(res.error());
     EXPECT_EQ(res->status, 200);
     peer           = stats.getAllPeer();
     auto peerPort1 = (*peer.begin())->address().port();
@@ -204,6 +210,7 @@ TEST(rest_server_test, keepalive_server_timeout)
 
     // second request
     res = client.Get("/read/hostname");
+    ASSERT_TRUE(res) << httplib::to_string(res.error());
     EXPECT_EQ(res->status, 200);
     peer           = stats.getAllPeer();
     auto peerPort2 = (*peer.begin())->address().port();
@@ -233,6 +240,7 @@ TEST(rest_server_test, keepalive_client_timeout)
         client.set_keep_alive(true);
 
         auto res = client.Get("/read/hostname");
+        ASSERT_TRUE(res) << httplib::to_string(res.error());
         EXPECT_EQ(res->status, 200);
         auto peer = stats.getAllPeer();
         EXPECT_EQ(peer.size(), 1ul);
@@ -265,6 +273,7 @@ TEST(rest_server_test, keepalive_multithread_client_request)
             client.set_keep_alive(true);
 
             auto res = client.Get("/read/hostname");
+            ASSERT_TRUE(res) << httplib::to_string(res.error());
             EXPECT_EQ(res->status, 200);
             std::this_thread::sleep_for(KEEPALIVE_TIMEOUT + std::chrono::milliseconds(700));
         }));

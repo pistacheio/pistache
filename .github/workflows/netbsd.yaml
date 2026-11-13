@@ -107,6 +107,10 @@ jobs:
            echo "Build"
            ninja -C build
            echo "Test"
+           if [ '${{ matrix.sanitizer }}' = address ]; then
+             # NetBSD's ASan runtime requires ASLR disabled for each test executable.
+             find build/tests -type f -name 'run_*' -exec paxctl +a {} +
+           fi
            meson test -C build --verbose
     # Note: The "run" command is what runs inside NetBSD
     #

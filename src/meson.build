@@ -208,7 +208,7 @@ if host_machine.system() == 'windows'
     endif
 
     pistachelog_linkargs = []
-    if compiler.get_id() == 'msvc'
+    if compiler.get_id() in ['msvc', 'clang-cl']
         pistachelog_linkargs += '/noentry'
     endif
     pistachelog_linkargs += pistachelog_implib_linkarg
@@ -233,7 +233,7 @@ if host_machine.system() == 'windows'
 endif
 
 if host_machine.system() == 'windows'
-  if compiler.get_id() == 'msvc'
+  if compiler.get_id() in ['msvc', 'clang-cl']
 
     # In order for other programs to use pistache.dll, we need to
     # provide a pistache import library, pistache.lib, which provides
@@ -376,7 +376,7 @@ if host_machine.system() == 'windows'
     deps_libpistache += gen_logging_txtfl_dep
 endif
 
-if host_machine.system() == 'windows' and compiler.get_id() == 'msvc'
+if host_machine.system() == 'windows' and compiler.get_id() in ['msvc', 'clang-cl']
     # Windows/MSVC: no soversion/version (not applicable on Windows), use vs_module_defs
     libpistache = library(
 	'pistache',
