@@ -4,8 +4,7 @@
 
 # See:
 #   https://docs.github.com/en/actions/writing-workflows/choosing-where-your-workflow-runs/choosing-the-runner-for-a-job
-#   https://github.com/actions/runner-images/blob/main/images/macos/macos-XY-Readme.md
-#   (Fill in the XY version number in the above URL)
+#   https://github.com/actions/runner-images/blob/main/images/macos/macos-15-arm64-Readme.md
 
 name: macOS libevent
 
@@ -32,6 +31,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # macOS 14 runners retired on November 2, 2026.
         os: [ 'macos-15', 'macos-latest', 'macos-15-intel', 'macos-26-intel' ]
         compiler: [ 'gcc', 'clang' ]
         sanitizer: [ 'address', 'undefined', 'none' ]

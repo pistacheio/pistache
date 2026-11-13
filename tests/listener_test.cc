@@ -32,8 +32,10 @@ using namespace std::chrono_literals;
 #include <pistache/http.h>
 #include <pistache/listener.h>
 
-#ifdef _IS_BSD
-#include <sys/wait.h> // for wait
+#ifndef _WIN32
+#include <spawn.h>
+#include <sys/wait.h>
+extern char** environ;
 #endif
 
 #ifdef _IS_WINDOWS
@@ -430,9 +432,7 @@ public:
     std::unique_ptr<Pistache::Tcp::Listener>
     prepare_listener(const Pistache::Tcp::Options options)
     {
-#ifndef __APPLE__
-        PS_TIMEDBG_START; // See try_to_leak_socket for why not in macOS
-#endif
+        PS_TIMEDBG_START;
 
         const Pistache::Address address(Pistache::Ipv4::any(),
                                         Pistache::Port(port));
@@ -442,61 +442,29 @@ public:
         return listener;
     }
 
-    bool is_child_process(pid_t id)
-    {
-        constexpr auto fork_child_pid = 0;
-        return id == fork_child_pid;
-    }
-
     /*
-     * we need to leak the socket through child process and verify that socket is
-     * still bound after child has quit
+     * Start a fresh process that binds the socket and leaks it to sleep.
+     * posix_spawn avoids calling Pistache or macOS os_log after fork().
      */
     void try_to_leak_socket(const Pistache::Tcp::Options options)
     {
         PS_TIMEDBG_START;
 
-        pid_t fork_res = fork();
-        if (is_child_process(fork_res))
-        {
-#ifndef __APPLE__
-            // For macOS, calling fork without an immediate exec is dangerous -
-            // you cannot call certain system library calls (including os_log,
-            // the macOS logging call) safely immediately after a
-            // fork. Otherwise you will get a SEGV occasionally in the
-            // _os_log_preferences_refresh function of libsystem_trace.dylib
-            // called by os_log.
-            //
-            // More specifically, in macOS, fork() only duplicates the calling
-            // thread. If any other thread in the parent process held an
-            // internal system lock (like the logging subsystem configuration
-            // lock used in _os_log_preferences_refresh) at the fork, that lock
-            // remains permanently unlockable in the child process.
-            //
-            // Note - this doesn't seem to apply on BSD. ALthough fork()
-            // operates similarly on BSD to macOS, BSD logging just uses syslog
-            // which (unlike os_log in macOS) is async-signal-safe. There could
-            // still be an issue on BSD if we relied on one our our own locks
-            // after a fork, but calling syslog shouldn't be an issue.
-            PS_TIMEDBG_START;
-#endif
-
-            auto server = prepare_listener(options);
-            server->bind();
-
-            // leak open socket to child of our child process
-            // static_cast<void> to ignore return value
-            [[maybe_unused]] int sys_res = (std::system("sleep 10 <&- &"));
-            // Assign result of std::system to suppress Linux warning:
-            //   warning: ignoring return value of ‘int system(const char*)’
-            //   declared with attribute ‘warn_unused_result’ [-Wunused-result]
-
-            exit(0);
-        }
+        const char* helper = std::getenv("PISTACHE_LEAK_SOCKET_HELPER");
+        ASSERT_NE(helper, nullptr);
+        std::string helperPath(helper);
+        std::string portArg = std::to_string(port);
+        std::string closeOnExecArg =
+            Pistache::Flags<Pistache::Tcp::Options>(options).hasFlag(Pistache::Tcp::Options::CloseOnExec)
+            ? "1" : "0";
+        char* args[] = { helperPath.data(), portArg.data(), closeOnExecArg.data(), nullptr };
+        pid_t child;
+        ASSERT_EQ(0, posix_spawn(&child, helper, nullptr, nullptr, args, environ));
 
         int status = 0;
-        wait(&status);
-        ASSERT_EQ(0, status);
+        ASSERT_EQ(child, waitpid(child, &status, 0));
+        ASSERT_TRUE(WIFEXITED(status));
+        ASSERT_EQ(0, WEXITSTATUS(status));
 
         // wait 100 ms, so socket gets a chance to be closed
         std::this_thread::sleep_for(100ms);
@@ -511,7 +479,7 @@ TEST_F(CloseOnExecTest, socket_not_leaked)
 
     Pistache::Tcp::Options options = Pistache::Tcp::Options::CloseOnExec | Pistache::Tcp::Options::ReuseAddr;
 
-    try_to_leak_socket(options);
+    ASSERT_NO_FATAL_FAILURE(try_to_leak_socket(options));
 
     ASSERT_NO_THROW({
         PS_TIMEDBG_START;
@@ -527,7 +495,7 @@ TEST_F(CloseOnExecTest, socket_leaked)
 
     Pistache::Tcp::Options options = Pistache::Tcp::Options::ReuseAddr;
 
-    try_to_leak_socket(options);
+    ASSERT_NO_FATAL_FAILURE(try_to_leak_socket(options));
 
     ASSERT_THROW(
         {

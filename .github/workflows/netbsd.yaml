@@ -34,21 +34,34 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        osver: [ '', '9.0' ]
-        compiler: [ 'gcc' ]
+        osver: [ '10.2', '11.1' ]
+        compiler: [ 'gcc', 'clang' ]
         arch: [ 'x86_64', 'aarch64' ]
         sanitizer: [ 'address', 'none' ]
         tls: [ 'true', 'false' ]
         def_debug: [ 'true', 'false' ]
         exclude:
+          # The base GCC runtime has incompatible SHA-2 interceptors that
+          # break OpenSSL. Current compiler-rt contains the upstream fix.
+          # https://github.com/llvm/llvm-project/issues/110215
+          - compiler: 'gcc'
+            sanitizer: 'address'
+          - compiler: 'clang'
+            sanitizer: 'none'
+          # NetBSD 11's close-on-fork descriptors make the system LSan
+          # tracer's clone(CLONE_FILES) fail with EINVAL after timezone use.
+          # Keep ASan/LSan on 10.2 and regular coverage on both releases.
+          # https://mail-index.netbsd.org/tech-toolchain/2025/10/01/msg004751.html
+          - osver: '11.1'
+            sanitizer: 'address'
           - arch: 'aarch64'
             def_debug: 'true'
+          # pkgsrc's compiler-rt does not build NetBSD AArch64 sanitizers.
+          # Retain AArch64 coverage with the regular GCC jobs.
           - arch: 'aarch64'
-            sanitizer: 'none'
+            compiler: 'clang'
           - arch: 'aarch64'
             tls: 'false'
-          - arch: 'aarch64'
-            osver: '9.0'
 
     # Note above: As of Apr/2026, aarch64 is run on an emulator,
     # making it very slow. When debug output is turned on, some tests
@@ -78,6 +91,7 @@ jobs:
       id: test
       uses: vmactions/netbsd-vm@v1
       with:
+        release: ${{ matrix.osver }}
         arch: ${{ matrix.arch }}
         envs: 'CC'
         usesh: true
@@ -86,7 +100,7 @@ jobs:
 
         run: |
           echo "Install Dependencies"
-          if [ ${{ matrix.compiler }} = gcc ]; then compiler=""; else compiler="clang"; fi
+          if [ ${{ matrix.compiler }} = gcc ]; then compiler=""; else compiler="clang compiler-rt"; fi
           {
             echo "Attempting to use default NetBSD package repository"
             /usr/sbin/pkg_add -u curl
@@ -97,16 +111,33 @@ jobs:
             /usr/sbin/pkg_add -u curl
           }
           /usr/sbin/pkg_add -u $compiler meson brotli pkgconf rapidjson libevent
+          # The system libstdc++ leaks locale facets for some named locales.
+          # Use the classic locale consistently across the CI processes.
+          export LC_ALL=C
           echo "Configure Meson"
-          if [ ${{ matrix.compiler }} = gcc ]; then CXX=g++; else CXX=clang++ CXX_LD=ld; fi
+          if [ ${{ matrix.compiler }} = gcc ]; then
+            CXX=g++
+          else
+            # Use one shared sanitizer runtime across the tests and library.
+            CXX="clang++ -shared-libasan"
+            CXX_LD=ld
+            export LD_LIBRARY_PATH="$(clang -print-runtime-dir)"
+          fi
           export CXX CXX_LD
+          # NetBSD libc exports an older llvm_gcda_* ABI. Collect coverage
+          # with GCC, separately from Clang's sanitizer instrumentation.
           meson setup build \
           -DPISTACHE_BUILD_TESTS=true -DPISTACHE_DEBUG=${{ matrix.def_debug }} -DPISTACHE_USE_SSL=${{ matrix.tls }} -DPISTACHE_USE_CONTENT_ENCODING_DEFLATE=true -DPISTACHE_USE_CONTENT_ENCODING_BROTLI=true -DPISTACHE_USE_CONTENT_ENCODING_ZSTD=true \
-            --buildtype=debug -Db_coverage=true -Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false \
+            --buildtype=debug -Db_coverage=${{ matrix.compiler == 'gcc' && 'true' || 'false' }} -Db_sanitize=${{ matrix.sanitizer }} -Db_lundef=false \
             || (cat build/meson-logs/meson-log.txt ; false)
            echo "Build"
            ninja -C build
            echo "Test"
+           if [ '${{ matrix.sanitizer }}' = address ]; then
+             # NetBSD's ASan runtime requires ASLR disabled for each test executable.
+             find build/tests -type f -name 'run_*' -exec paxctl +a {} +
+             export ASAN_OPTIONS=detect_leaks=1:halt_on_error=1:abort_on_error=1
+           fi
            meson test -C build --verbose
     # Note: The "run" command is what runs inside NetBSD
     #
