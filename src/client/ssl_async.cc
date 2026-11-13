@@ -42,7 +42,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <openssl/opensslv.h>
+
 #include <openssl/ssl.h>
+#include <openssl/x509_vfy.h> // X509_VERIFY_PARAM etc.
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/conf.h> // for OPENSSL_config
@@ -959,8 +962,10 @@ SslAsync::SslAsync(const char * _hostName, unsigned int _hostPort,
     if (!hostSet)
         SSL_LOG_WRN_CLOSE_AND_THROW("Could not set TLS peer identity");
 #else
-    if (!SSL_set1_host(mSsl, _hostName))
-        SSL_LOG_WRN_CLOSE_AND_THROW("Could not SSL_set1_host");
+    // Use upstream's verification-parameter API on older OpenSSL versions.
+    X509_VERIFY_PARAM* vpm = SSL_get0_param(mSsl);
+    if (!vpm || !X509_VERIFY_PARAM_set1_host(vpm, _hostName, 0))
+        SSL_LOG_WRN_CLOSE_AND_THROW("Could not set TLS peer identity");
 #endif
 
     if (!SSL_set_fd(mSsl,

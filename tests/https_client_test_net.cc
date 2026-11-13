@@ -344,13 +344,15 @@ TEST(https_client_test, multiple_clients_with_multiple_search_requests)
     //
     // Unfortunately, as of Jan 2025, Google, Bing and many other search
     // engines do not have easily scannable plain-text in their web-page
-    // responses; they send back blobs of encoded data. We include aol.com as a
-    // search engine so we can scan its search response and check that we have
-    // been sent reasonable results.
+    // responses; they send back blobs of encoded data. We include aol.com (now
+    // yahoo.com - AOL retired its search front-end as of Nov-2026)as a search
+    // engine so we can scan its search response and check that we have been
+    // sent reasonable results.
 
     // Issue https search queries to aol, google and bing:
     const std::string server_address_start[3] {
-        "https://search.aol.com/aol/search?q=", // must be first
+//        "https://search.aol.com/aol/search?q=", // must be first
+        "https://search.yahoo.com/search?p=", // must be first
         "https://www.google.com/search?q=",
         "https://www.bing.com/search?q="
     };
