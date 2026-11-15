@@ -45,6 +45,20 @@ TEST(http_parsing_test, should_parse_http_request_in_two_packets_issue_160)
     ASSERT_EQ(parser.parse(), Http::Private::State::Done);
 }
 
+TEST(http_parsing_test, reject_ambiguous_content_length)
+{
+    const std::vector<std::string> requests = {
+        "POST / HTTP/1.1\r\nContent-Length: abc\r\n\r\nGET /admin HTTP/1.1\r\n\r\n",
+        "POST / HTTP/1.1\r\nContent-Length: 0\r\nContent-Length: 27\r\n\r\nGET /admin HTTP/1.1\r\n\r\n",
+    };
+    for (const auto& req : requests)
+    {
+        Http::RequestParser parser(Const::DefaultMaxRequestSize);
+        parser.feed(req.data(), req.size());
+        ASSERT_THROW(parser.parse(), Http::HttpError);
+    }
+}
+
 TEST(http_parsing_test, parser_reset)
 {
     Http::RequestParser parser(Const::DefaultMaxRequestSize);

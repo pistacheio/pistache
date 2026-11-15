@@ -399,19 +399,23 @@ namespace Pistache::Http::Header
 
     void ContentLength::parse(const std::string& data)
     {
-        try
-        {
-            size_t pos;
-            uint64_t val = std::stoull(data, &pos);
-            if (pos != 0)
-            {
-            }
+        // RFC 9112 section 6.3: Content-Length must be a single run of
+        // decimal digits. Anything else makes the message framing ambiguous
+        // and has to be rejected rather than guessed at.
+        const auto first = data.find_first_not_of(" \t");
+        const auto last  = data.find_last_not_of(" \t");
+        if (first == std::string::npos)
+            throw HttpError(Http::Code::Bad_Request, "Invalid Content-Length");
 
-            value_ = val;
-        }
-        catch (const std::invalid_argument& /*e*/)
-        {
-        }
+        const char* beg = data.data() + first;
+        const char* end = data.data() + last + 1;
+
+        uint64_t val           = 0;
+        const auto parseResult = std::from_chars(beg, end, val);
+        if (parseResult.ec != std::errc {} || parseResult.ptr != end)
+            throw HttpError(Http::Code::Bad_Request, "Invalid Content-Length");
+
+        value_ = val;
     }
 
     void ContentLength::write(std::ostream& os) const { os << value_; }
