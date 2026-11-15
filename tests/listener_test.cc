@@ -454,7 +454,9 @@ public:
      */
     void try_to_leak_socket(const Pistache::Tcp::Options options)
     {
-        PS_TIMEDBG_START;
+#ifndef __APPLE__
+        PS_TIMEDBG_START; // See comment below for why not in macOS
+#endif
 
         pid_t fork_res = fork();
         if (is_child_process(fork_res))
@@ -507,14 +509,15 @@ public:
 
 TEST_F(CloseOnExecTest, socket_not_leaked)
 {
-    PS_TIMEDBG_START;
+#ifndef __APPLE__
+    PS_TIMEDBG_START; // See try_to_leak_socket for why not in macOS
+#endif
 
     Pistache::Tcp::Options options = Pistache::Tcp::Options::CloseOnExec | Pistache::Tcp::Options::ReuseAddr;
 
     try_to_leak_socket(options);
 
     ASSERT_NO_THROW({
-        PS_TIMEDBG_START;
         auto server = prepare_listener(options);
         server->bind();
         server->shutdown();
@@ -523,7 +526,9 @@ TEST_F(CloseOnExecTest, socket_not_leaked)
 
 TEST_F(CloseOnExecTest, socket_leaked)
 {
-    PS_TIMEDBG_START;
+#ifndef __APPLE__
+    PS_TIMEDBG_START; // See try_to_leak_socket for why not in macOS
+#endif
 
     Pistache::Tcp::Options options = Pistache::Tcp::Options::ReuseAddr;
 
@@ -531,7 +536,6 @@ TEST_F(CloseOnExecTest, socket_leaked)
 
     ASSERT_THROW(
         {
-            PS_TIMEDBG_START;
             auto server = prepare_listener(options);
             server->bind();
             server->shutdown();
