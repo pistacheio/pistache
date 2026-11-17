@@ -1,0 +1,80 @@
+# Dictionary for fuzz_headers_all: HTTP header tokens for the types the
+# existing corpus did not cover (dates, methods, encodings, etags, hosts).
+
+# header names (registry path)
+"Access-Control-Allow-Origin"
+"Access-Control-Allow-Headers"
+"Access-Control-Expose-Headers"
+"Access-Control-Allow-Methods"
+"Allow"
+"Transfer-Encoding"
+"Last-Modified"
+"Location"
+"User-Agent"
+"ETag"
+"Content-Type"
+"Content-Length"
+"Authorization"
+"Cache-Control"
+
+# methods (Allow / Access-Control-Allow-Methods)
+"GET, POST, HEAD, PUT, DELETE, PATCH"
+"OPTIONS, TRACE, CONNECT"
+"get, post"
+
+# encodings (Transfer-Encoding / Content-Encoding / Accept-Encoding)
+"chunked"
+"compress"
+"deflate"
+"gzip"
+"identity"
+"br"
+"zstd"
+"gzip;q=1.0, deflate;q=0.6, identity;q=0.3, *;q=0"
+"q=0.999"
+"q=1.0.0"
+
+# dates (Date / Last-Modified / cookie Expires)
+"Sun, 06 Nov 1994 08:49:37 GMT"
+"Sunday, 06-Nov-94 08:49:37 GMT"
+"Sun Nov  6 08:49:37 1994"
+"Thu, 01 Jan 1970 00:00:00 GMT"
+"Fri, 31 Dec 9999 23:59:59 GMT"
+"Sat, 11 Feb 2024 16:30:00 GMT"
+
+# mime (Content-Type / Accept)
+"text/html;charset=utf-8;level=1;q=0.9"
+"application/json"
+"application/vnd.api+json"
+"*/*"
+"*"
+
+# etag forms
+"W/\"abc123\""
+"\"version-42\""
+"W/"
+"\"\""
+"\"a\"\"b\""
+
+# authorization
+"Basic dXNlcjpwYXNzd29yZA=="
+"Bearer eyJhbGciOiJIUzI1NiJ9"
+"Basic !!!!"
+"Basic"
+"basic dXNlcjpwYXNzd29yZA=="
+
+# hosts / uri-ish values
+"example.com:8080"
+"[::1]:9090"
+"[2001:db8::1]:443"
+"localhost"
+"0.0.0.0:0"
+"*"
+"https://example.com/path/"
+
+# numbers
+"536870912"
+"-1"
+"+64"
+"0x10"
+"99999999999999999999"

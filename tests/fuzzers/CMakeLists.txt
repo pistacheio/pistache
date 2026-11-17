@@ -5,3 +5,7 @@
 add_executable(fuzz_parser fuzz_parser.cpp)
 target_link_libraries(fuzz_parser pistache_static)
 set_target_properties(fuzz_parser PROPERTIES LINK_FLAGS $ENV{LIB_FUZZING_ENGINE})
+
+add_executable(fuzz_headers_all fuzz_headers_all.cpp)
+target_link_libraries(fuzz_headers_all pistache_static)
+set_target_properties(fuzz_headers_all PROPERTIES LINK_FLAGS $ENV{LIB_FUZZING_ENGINE})
