@@ -374,6 +374,15 @@ namespace Pistache::Http
                 {
                     std::shared_ptr<Header::Header> header = Header::Registry::instance().makeHeader(name);
                     header->parseRaw(cursor.offset(start), cursor.diff(start));
+
+                    if (Header::LowercaseEqualStatic(name, "content-length"))
+                    {
+                        const auto prev = message->headers_.tryGet<Header::ContentLength>();
+                        const auto cl   = std::static_pointer_cast<Header::ContentLength>(header);
+                        if (prev && prev->value() != cl->value())
+                            raise("Conflicting Content-Length headers");
+                    }
+
                     message->headers_.add(header);
                 }
 

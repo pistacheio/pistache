@@ -392,6 +392,21 @@ TEST(headers_test, content_length)
     ASSERT_EQ(cl.value(), 3495U);
 }
 
+TEST(headers_test, content_length_invalid)
+{
+    const std::vector<std::string> invalid = { "", "abc", "0x20", "+5", "-1",
+                                               "5abc", "5, 33", "99999999999999999999" };
+    for (const auto& value : invalid)
+    {
+        Pistache::Http::Header::ContentLength cl;
+        ASSERT_THROW(cl.parse(value), Pistache::Http::HttpError) << value;
+    }
+
+    Pistache::Http::Header::ContentLength cl;
+    cl.parse("42 ");
+    ASSERT_EQ(cl.value(), 42U);
+}
+
 // Verify authorization header with basic method works correctly...
 TEST(headers_test, authorization_basic_test)
 {
