@@ -148,6 +148,7 @@ namespace Pistache
                     std::initializer_list<std::pair<const std::string, std::string>> params);
 
                 void add(std::string name, std::string value);
+                void update(std::string& name, std::string value);
                 std::optional<std::string> get(const std::string& name) const;
                 bool has(const std::string& name) const;
                 // Return empty string or "?key1=value1&key2=value2" if query exist
@@ -211,6 +212,7 @@ namespace Pistache
             const std::string& resource() const;
 
             const Uri::Query& query() const;
+            const std::vector<std::pair<std::string,std::string>>& rawParams() const;
 
 /* @Investigate: this is disabled because of a lock in the shared_ptr /
    weak_ptr implementation of libstdc++. Under contention, we experience a
@@ -254,6 +256,7 @@ namespace Pistache
             Method method_;
             std::string resource_;
             Uri::Query query_;
+            std::vector<std::pair<std::string,std::string>> raw_params_;
 
 #ifdef LIBSTDCPP_SMARTPTR_LOCK_FIXME
             std::weak_ptr<Tcp::Peer> peer_;

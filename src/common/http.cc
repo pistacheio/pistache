@@ -206,10 +206,12 @@ namespace Pistache::Http
                     auto c = cursor.current();
                     if (c == ' ')
                     {
+                        request->raw_params_.emplace_back(std::make_pair<std::string,std::string>(std::string(key), std::string()));
                         request->query_.add(std::move(key), "");
                     }
                     else if (c == '&')
                     {
+                        request->raw_params_.emplace_back(std::make_pair<std::string,std::string>(std::string(key), std::string()));
                         request->query_.add(std::move(key), "");
                         if (!cursor.advance(1))
                             return State::Again;
@@ -224,7 +226,16 @@ namespace Pistache::Http
                             return State::Again;
 
                         std::string value = valueToken.text();
-                        request->query_.add(std::move(key), std::move(value));
+                        request->raw_params_.emplace_back(std::make_pair<std::string,std::string>(std::string(key), std::string(value)));
+                        if (!request->query_.has(key)) {
+                            request->query_.add(std::move(key), std::move(value));
+                        } else {
+                            // If an existing param, append it to the current value seperated by ','
+                            // so that down stream the values will be converted to std::vector of multiple values.
+                            std::string newValue = request->query_.get(key).value();
+                            newValue += "," + value;
+                            request->query_.update(key, std::move(newValue));
+                        }
                         if (cursor.current() == '&')
                         {
                             if (!cursor.advance(1))
@@ -609,6 +620,11 @@ namespace Pistache::Http
         {
             params.insert(std::make_pair(std::move(name), std::move(value)));
         }
+        
+        void
+        Query::update(std::string& name, std::string value) {
+            params[name] = std::move(value);
+        }
 
         std::optional<std::string> Query::get(const std::string& name) const
         {
@@ -665,6 +681,11 @@ namespace Pistache::Http
     const std::string& Request::resource() const { return resource_; }
 
     const Uri::Query& Request::query() const { return query_; }
+    
+    const std::vector<std::pair<std::string,std::string>>&
+    Request::rawParams() const {
+        return raw_params_;
+    }
 
     const Address& Request::address() const { return address_; }
 
