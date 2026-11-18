@@ -44,14 +44,6 @@
 
 #include <openssl/opensslv.h>
 
-#if defined(OPENSSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x30000000L
-// OpenSSL 3.0.0 included const on lots of API function parameters that had not
-// had them before
-#define OSSL3ON_CONST const
-#else
-#define OSSL3ON_CONST
-#endif
-
 #include <openssl/ssl.h>
 #include <openssl/x509_vfy.h> // X509_VERIFY_PARAM etc.
 #include <openssl/crypto.h>
@@ -75,6 +67,7 @@
 #include PST_NETINET_TCP_HDR
 #include PST_SELECT_HDR
 #include PST_NETINET_IN_HDR
+#include PST_ARPA_INET_HDR
 #include PST_MISC_IO_HDR // for close
 
 #include <pistache/pist_sockfns.h>
@@ -456,7 +449,11 @@ static void initOpenSslIfNotAlready()
 
 // ---------------------------------------------------------------------------
 
-static void logCnName(const char* label, OSSL3ON_CONST X509_NAME* const name)
+// OpenSSL 4 returns const names; older versions expose mutable names and
+// require them even for some read-only X509_NAME accessors.
+using X509NamePointer = decltype(X509_get_subject_name(static_cast<X509*>(nullptr)));
+
+static void logCnName(const char* label, X509NamePointer const name)
 {
     int idx = -1, success = 0;
     unsigned char *utf8 = NULL;
@@ -468,10 +465,10 @@ static void logCnName(const char* label, OSSL3ON_CONST X509_NAME* const name)
         idx = X509_NAME_get_index_by_NID(name, NID_commonName, -1);
         if(!(idx > -1))  break; /* failed */
 
-        OSSL3ON_CONST X509_NAME_ENTRY* entry = X509_NAME_get_entry(name, idx);
+        const X509_NAME_ENTRY* entry = X509_NAME_get_entry(name, idx);
         if(!entry) break; /* failed */
 
-        OSSL3ON_CONST ASN1_STRING* data = X509_NAME_ENTRY_get_data(entry);
+        const ASN1_STRING* data = X509_NAME_ENTRY_get_data(entry);
         if(!data) break; /* failed */
 
         int length = ASN1_STRING_to_UTF8(&utf8, data);
@@ -610,8 +607,8 @@ static int verify_callback(int preverify_ok, X509_STORE_CTX* x509_ctx)
     }
 
     X509* cert = X509_STORE_CTX_get_current_cert(x509_ctx);
-    OSSL3ON_CONST X509_NAME* iname = cert ? X509_get_issuer_name(cert) : NULL;
-    OSSL3ON_CONST X509_NAME* sname = cert ? X509_get_subject_name(cert) : NULL;
+    auto* iname = cert ? X509_get_issuer_name(cert) : nullptr;
+    auto* sname = cert ? X509_get_subject_name(cert) : nullptr;
 
     PS_LOG_DEBUG_ARGS("verify_callback (depth=%d)(preverify_ok=%d)",
                      depth, preverify_ok);
@@ -956,14 +953,20 @@ SslAsync::SslAsync(const char * _hostName, unsigned int _hostPort,
         SSL_LOG_WRN_CLOSE_AND_THROW("Could not SSL_set_tlsext_host_name");
 
     SSL_set_hostflags(mSsl, X509_CHECK_FLAG_NO_PARTIAL_WILDCARDS);
-
-    { // Do this instead of SSL_set1_host, which is depcrecated in openssl 4.0
-      // was:
-      //   if (!SSL_set1_host(mSsl, _hostName)) {...}
-        X509_VERIFY_PARAM * vpm = SSL_get0_param(mSsl);
-        if (!vpm || !X509_VERIFY_PARAM_set1_host(vpm, _hostName, 0))
-            SSL_LOG_WRN_CLOSE_AND_THROW("Could not SSL_set1_host");
-    }
+#if OPENSSL_VERSION_NUMBER >= 0x40000000L && !defined(LIBRESSL_VERSION_NUMBER)
+    unsigned char ipAddress[16];
+    const bool isIpAddress = inet_pton(AF_INET, _hostName, ipAddress) == 1
+        || inet_pton(AF_INET6, _hostName, ipAddress) == 1;
+    const int hostSet = isIpAddress ? SSL_set1_ipaddr(mSsl, _hostName)
+                                    : SSL_set1_dnsname(mSsl, _hostName);
+    if (!hostSet)
+        SSL_LOG_WRN_CLOSE_AND_THROW("Could not set TLS peer identity");
+#else
+    // Use upstream's verification-parameter API on older OpenSSL versions.
+    X509_VERIFY_PARAM* vpm = SSL_get0_param(mSsl);
+    if (!vpm || !X509_VERIFY_PARAM_set1_host(vpm, _hostName, 0))
+        SSL_LOG_WRN_CLOSE_AND_THROW("Could not set TLS peer identity");
+#endif
 
     if (!SSL_set_fd(mSsl,
                     #ifdef _IS_WINDOWS

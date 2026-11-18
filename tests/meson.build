@@ -33,6 +33,15 @@ zstd_dep = dependency('', required: false)
 
 subdir('helpers')
 
+socket_helper_deps = []
+socket_helper_env = environment()
+if host_machine.system() != 'windows'
+    socket_helper = executable('run_leak_socket', 'helpers/leak_socket.cc',
+        dependencies: [pistache_dep, deps_libpistache])
+    socket_helper_deps += socket_helper
+    socket_helper_env.set('PISTACHE_LEAK_SOCKET_HELPER', socket_helper.full_path())
+endif
+
 pistache_test_files = [
 	'async_test',
 	'cookie_test',
@@ -177,7 +186,8 @@ foreach test_name : pistache_test_files
 				zstd_dep
 			]
 		),
-                depends: unversioned_dll_cts,
+                depends: unversioned_dll_cts + socket_helper_deps,
+                env: socket_helper_env,
 		timeout: 600,
 		workdir: meson.current_build_dir(),
 		is_parallel: false,

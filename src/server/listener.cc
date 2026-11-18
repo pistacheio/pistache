@@ -133,7 +133,8 @@ namespace Pistache::Tcp
 
                     /* Disable compression to prevent BREACH and CRIME
                      * vulnerabilities. */
-                    if (!SSL_CTX_set_options(GetSSLContext(ctx), SSL_OP_NO_COMPRESSION))
+                    const auto options = SSL_CTX_set_options(GetSSLContext(ctx), SSL_OP_NO_COMPRESSION);
+                    if ((options & SSL_OP_NO_COMPRESSION) != SSL_OP_NO_COMPRESSION)
                     {
                         std::string err = "SSL error - cannot disable compression: "
                             + ssl_print_errors_to_string();

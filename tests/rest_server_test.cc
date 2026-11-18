@@ -10,6 +10,8 @@
 #include <pistache/http.h>
 #include <pistache/peer.h>
 #include <pistache/router.h>
+#include PST_NETDB_HDR
+#include PST_NETINET_IN_HDR
 
 #ifdef __GNUC__
 #pragma GCC diagnostic push
@@ -108,37 +110,26 @@ TEST(rest_server_test, basic_test)
     cout << "Using " << thr << " threads" << endl;
     cout << "Port = " << port << endl;
 
-    httplib::Client client("localhost", port);
+    httplib::Client client("127.0.0.1", port);
     auto res = client.Get("/read/function1");
+    ASSERT_TRUE(res) << httplib::to_string(res.error());
     ASSERT_EQ(res->status, 200);
     ASSERT_EQ(res->body, "1");
 
     res = client.Get("/read/hostname");
+    ASSERT_TRUE(res) << httplib::to_string(res.error());
     ASSERT_EQ(res->status, 200);
 
-    // TODO: Clean this up to use proper gtest macros.
-    if ((res->body.length() >= 9) && // 9 being len of "localhost"
-        (0 == res->body.compare(res->body.length() - 9, 9, "localhost")))
-    {
-        // NOTE: res->body is "localhost", or "ip6-localhost", or (seen on
-        // Windows 10) "view-localhost" on some architectures.
-        // We are checking for res->body ends in "localhost"
-        ASSERT_TRUE(
-            0 == res->body.compare(res->body.length() - 9, 9, "localhost"));
-    }
-    else
-    {
-        const unsigned int my_max_hostname_len = 1024;
-
-        // NetBSD showed this case, when hostname was not "localhost"
-        char name[my_max_hostname_len + 6];
-        name[0] = 0;
-
-        int ghn_res = gethostname(&(name[0]), my_max_hostname_len+2);
-        ASSERT_EQ(ghn_res, 0);
-
-        ASSERT_EQ(res->body, &(name[0]));
-    }
+    // A loopback PTR record can differ from both "localhost" and the
+    // computer name. Compare the peer hostname with the system resolver.
+    const Address loopback(Ipv4::loopback(), Port(0));
+    const auto& sockAddr = loopback.getSockAddr();
+    char hostname[NI_MAXHOST] = {};
+    const int resolveResult = getnameinfo(
+        &sockAddr, sizeof(sockaddr_in), hostname, sizeof(hostname),
+        nullptr, 0, NI_NAMEREQD);
+    ASSERT_EQ(resolveResult, 0);
+    ASSERT_EQ(res->body, hostname);
 
     stats.shutdown();
 }
@@ -163,12 +154,14 @@ TEST(rest_server_test, response_status_code_test)
 
     // Code 404 - Not Found.
     auto res = client.Get("/read/does_not_exist");
+    ASSERT_TRUE(res) << httplib::to_string(res.error());
     EXPECT_EQ(res->status, 404);
     EXPECT_EQ(res->body, "Could not find a matching route");
 
     // Code 405 - Method Not Allowed.
     std::string body("body goes here");
     res = client.Post("/read/function1", body, "text/plain");
+    ASSERT_TRUE(res) << httplib::to_string(res.error());
     EXPECT_EQ(res->status, 405);
     EXPECT_EQ(res->body, "Method Not Allowed");
     ASSERT_TRUE(res->has_header("Allow"));
@@ -176,6 +169,7 @@ TEST(rest_server_test, response_status_code_test)
 
     // Code 415 - Unknown Media Type
     res = client.Post("/read/function1", body, "invalid");
+    ASSERT_TRUE(res) << httplib::to_string(res.error());
     EXPECT_EQ(res->status, 415);
     EXPECT_EQ(res->body, "Unknown Media Type");
 
@@ -197,6 +191,7 @@ TEST(rest_server_test, keepalive_server_timeout)
 
     // first request
     auto res = client.Get("/read/hostname");
+    ASSERT_TRUE(res) << httplib::to_string(res.error());
     EXPECT_EQ(res->status, 200);
     peer           = stats.getAllPeer();
     auto peerPort1 = (*peer.begin())->address().port();
@@ -204,6 +199,7 @@ TEST(rest_server_test, keepalive_server_timeout)
 
     // second request
     res = client.Get("/read/hostname");
+    ASSERT_TRUE(res) << httplib::to_string(res.error());
     EXPECT_EQ(res->status, 200);
     peer           = stats.getAllPeer();
     auto peerPort2 = (*peer.begin())->address().port();
@@ -233,6 +229,7 @@ TEST(rest_server_test, keepalive_client_timeout)
         client.set_keep_alive(true);
 
         auto res = client.Get("/read/hostname");
+        ASSERT_TRUE(res) << httplib::to_string(res.error());
         EXPECT_EQ(res->status, 200);
         auto peer = stats.getAllPeer();
         EXPECT_EQ(peer.size(), 1ul);
@@ -265,6 +262,7 @@ TEST(rest_server_test, keepalive_multithread_client_request)
             client.set_keep_alive(true);
 
             auto res = client.Get("/read/hostname");
+            ASSERT_TRUE(res) << httplib::to_string(res.error());
             EXPECT_EQ(res->status, 200);
             std::this_thread::sleep_for(KEEPALIVE_TIMEOUT + std::chrono::milliseconds(700));
         }));
