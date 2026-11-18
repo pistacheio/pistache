@@ -99,7 +99,7 @@ jobs:
         lcov --capture --output-file coverage.info --directory . --gcov-tool $HOME/.local/bin/cov.sh --exclude '/usr/*' --exclude '*/tests/*' --rc derive_function_end_line=0 --rc check_data_consistency=0
         lcov --list coverage.info
 
-    - uses: codecov/codecov-action@v5
+    - uses: codecov/codecov-action@v6
       if: ${{ steps.coverage.outputs.run == 'true' }}
       with:
         fail_ci_if_error: true
